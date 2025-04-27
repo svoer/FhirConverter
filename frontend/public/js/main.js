@@ -71,8 +71,22 @@
           if (typeof window.initializeApiTesterTab === 'function') {
             window.initializeApiTesterTab();
             state.modulesInitialized.apiTester = true;
+            
+            // Charger explicitement les applications pour l'onglet API Tester
+            // avec un délai pour s'assurer que tout est initialisé
+            setTimeout(() => {
+              if (typeof window.reloadApiTesterApplications === 'function') {
+                window.reloadApiTesterApplications();
+              }
+            }, 500);
           } else {
             console.error('Fonction initializeApiTesterTab non trouvée');
+          }
+        } else {
+          // Même si déjà initialisé, recharger les applications quand on 
+          // revient à cet onglet
+          if (typeof window.reloadApiTesterApplications === 'function') {
+            window.reloadApiTesterApplications();
           }
         }
         break;
@@ -116,8 +130,12 @@
     }
     
     // Rafraîchir le testeur d'API si l'onglet est initialisé
-    if (state.modulesInitialized.apiTester && typeof loadApplications === 'function') {
-      loadApplications();
+    if (state.modulesInitialized.apiTester) {
+      if (typeof window.reloadApiTesterApplications === 'function') {
+        window.reloadApiTesterApplications();
+      } else if (typeof loadApplications === 'function') {
+        loadApplications();
+      }
     }
   };
   
@@ -143,5 +161,146 @@
         }
         break;
     }
+  };
+  
+  // Fonction ajoutée pour charger manuellement les applications dans l'onglet API Tester
+  window.reloadApiTesterApplications = function() {
+    // Assurons-nous que tous les éléments nécessaires sont disponibles
+    const appSelect = document.getElementById('test-app-select');
+    if (!appSelect) {
+      console.error("Sélecteur d'applications non trouvé dans l'onglet API Tester");
+      return;
+    }
+    
+    console.log("Chargement manuel des applications pour l'onglet API Tester");
+    
+    // Afficher un message de chargement
+    appSelect.innerHTML = '<option value="">Chargement...</option>';
+    appSelect.disabled = true;
+    
+    // Effectuer une requête API directe pour obtenir les applications
+    fetch('/api/applications')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        // Réinitialiser le sélecteur
+        appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
+        appSelect.disabled = false;
+        
+        if (!result || !result.data) {
+          console.error("Aucune donnée d'application reçue");
+          return;
+        }
+        
+        // Forcer la conversion en tableau si nécessaire
+        const apps = Array.isArray(result.data) ? result.data : [result.data];
+        
+        // Créer les options pour chaque application
+        apps.forEach(app => {
+          if (!app || !app.id) return;
+          
+          const option = document.createElement('option');
+          option.value = app.id;
+          option.textContent = app.name || `Application #${app.id}`;
+          appSelect.appendChild(option);
+        });
+        
+        // Configurer l'événement de changement d'application pour charger les clés
+        if (!appSelect.getAttribute('data-event-attached')) {
+          appSelect.addEventListener('change', function() {
+            const appId = this.value;
+            if (appId) {
+              window.loadApiKeys(appId);
+            }
+          });
+          appSelect.setAttribute('data-event-attached', 'true');
+        }
+        
+        console.log(`${apps.length} applications chargées avec succès`);
+      })
+      .catch(error => {
+        console.error('Erreur lors du chargement des applications:', error);
+        appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        appSelect.disabled = false;
+      });
+  };
+  
+  // Fonction pour charger les clés API d'une application
+  window.loadApiKeys = function(appId) {
+    if (!appId) return;
+    
+    const keySelect = document.getElementById('test-key-select');
+    if (!keySelect) {
+      console.error("Sélecteur de clés API non trouvé");
+      return;
+    }
+    
+    // Message de chargement
+    keySelect.innerHTML = '<option value="">Chargement...</option>';
+    keySelect.disabled = true;
+    
+    // Effectuer la requête API
+    fetch(`/api/keys?appId=${appId}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        // Réinitialiser le sélecteur
+        keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
+        keySelect.disabled = false;
+        
+        if (!result || !result.data) {
+          console.error("Aucune donnée de clé API reçue");
+          keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
+          return;
+        }
+        
+        // Forcer la conversion en tableau si nécessaire
+        const keys = Array.isArray(result.data) ? result.data : [result.data];
+        
+        if (keys.length === 0) {
+          keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
+          return;
+        }
+        
+        // Ajouter les options
+        keys.forEach(key => {
+          if (!key) return;
+          
+          const keyValue = key.api_key || key.key || key.value;
+          if (!keyValue) return;
+          
+          const option = document.createElement('option');
+          option.value = keyValue;
+          option.textContent = key.name || key.description || 'Clé API';
+          keySelect.appendChild(option);
+        });
+        
+        console.log(`${keys.length} clés API chargées`);
+        
+        // Configurer l'événement de changement de clé
+        if (!keySelect.getAttribute('data-event-attached')) {
+          keySelect.addEventListener('change', function() {
+            // Mettre à jour l'en-tête API key si un élément avec cet ID existe
+            const apiKeyHeader = document.getElementById('api-key-header');
+            if (apiKeyHeader) {
+              apiKeyHeader.value = this.value;
+            }
+          });
+          keySelect.setAttribute('data-event-attached', 'true');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors du chargement des clés API:', error);
+        keySelect.innerHTML = '<option value="">Erreur de chargement</option>';
+        keySelect.disabled = false;
+      });
   };
 })();
