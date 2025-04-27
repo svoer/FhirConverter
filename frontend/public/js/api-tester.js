@@ -175,20 +175,48 @@ async function initApiTester() {
 // Charger les applications
 async function loadApplications() {
   try {
+    console.log('Chargement des applications depuis l\'API...');
     const result = await apiRequestForTester('applications');
-    apiTesterState.applications = result.data || [];
+    console.log('Résultat reçu:', result);
+    
+    if (!result || typeof result !== 'object') {
+      console.error('Format de réponse invalide:', result);
+      return;
+    }
+    
+    if (!result.data || !Array.isArray(result.data)) {
+      console.error('Les données d\'applications ne sont pas un tableau:', result.data);
+      return;
+    }
+    
+    apiTesterState.applications = result.data;
     
     // Mettre à jour le sélecteur d'application
     elements.appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
     
+    if (apiTesterState.applications.length === 0) {
+      console.log('Aucune application disponible');
+      const option = document.createElement('option');
+      option.value = "";
+      option.textContent = "Aucune application disponible";
+      option.disabled = true;
+      elements.appSelect.appendChild(option);
+      return;
+    }
+    
     apiTesterState.applications.forEach(app => {
       const option = document.createElement('option');
       option.value = app.id;
-      option.textContent = app.name;
+      option.textContent = app.name || `Application #${app.id}`;
       elements.appSelect.appendChild(option);
     });
+    
+    console.log(`${apiTesterState.applications.length} applications chargées avec succès`);
   } catch (error) {
     console.error('Erreur lors du chargement des applications:', error);
+    
+    // Gérer l'erreur dans l'interface
+    elements.appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
   }
 }
 
