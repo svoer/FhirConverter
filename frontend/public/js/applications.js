@@ -240,32 +240,42 @@ async function loadApiKeys(appId) {
             return;
         }
         
+        console.log("Clés API reçues:", apiKeys);
+        
         apiKeys.forEach(key => {
-            const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
+            // Standardiser les champs
+            const keyData = {
+                name: key.name || key.description || 'Clé API',
+                key: key.api_key || key.key || key.value || 'CLEF_INCONNUE',
+                createdAt: key.created_at || key.createdAt || new Date().toISOString(),
+                expiresAt: key.expires_at || key.expiresAt || null
+            };
+            
+            const isExpired = keyData.expiresAt && new Date(keyData.expiresAt) < new Date();
             const keyItem = document.createElement('div');
             keyItem.className = 'api-key-item';
             
             keyItem.innerHTML = `
                 <div class="key-header">
-                    <span class="key-name">${escapeHtml(key.name)}</span>
+                    <span class="key-name">${escapeHtml(keyData.name)}</span>
                     <span class="key-status ${isExpired ? 'expired' : ''}">${isExpired ? 'Expirée' : 'Active'}</span>
                 </div>
                 <div class="key-value">
-                    ${escapeHtml(key.key)}
-                    <button class="copy-key-btn" data-key="${escapeHtml(key.key)}">
+                    ${escapeHtml(keyData.key)}
+                    <button class="copy-key-btn" data-key="${escapeHtml(keyData.key)}">
                         <i class="fa fa-copy"></i>
                     </button>
                 </div>
                 <div class="key-meta">
-                    <span>Créée le ${formatDate(key.createdAt)}</span>
-                    ${key.expiresAt ? `<span>Expire le ${formatDate(key.expiresAt)}</span>` : '<span>Sans expiration</span>'}
+                    <span>Créée le ${formatDate(keyData.createdAt)}</span>
+                    ${keyData.expiresAt ? `<span>Expire le ${formatDate(keyData.expiresAt)}</span>` : '<span>Sans expiration</span>'}
                 </div>
             `;
             
             const copyBtn = keyItem.querySelector('.copy-key-btn');
             copyBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                copyToClipboard(key.key);
+                copyToClipboard(keyData.key);
             });
             
             appApiKeys.appendChild(keyItem);
@@ -316,18 +326,29 @@ async function loadApiKeys(appId) {
 // Charger les statistiques d'une application
 async function loadAppStats(appId) {
     try {
+        console.log("Demande des statistiques pour l'appId:", appId);
         const result = await apiRequest(`stats?appId=${appId}`);
-        const stats = result.data || { total: 0, success: 0, failed: 0, lastConversion: null };
+        console.log("Statistiques reçues:", result);
         
+        // Standardiser les champs pour gérer les différents formats de réponse
+        const stats = result.data || { total: 0, success: 0, failed: 0, error: 0, lastConversion: null };
+        
+        // Afficher les statistiques dans l'UI
         appStatsTotal.textContent = stats.total || 0;
         appStatsSuccess.textContent = stats.success || 0;
-        appStatsFailed.textContent = stats.failed || 0;
+        appStatsFailed.textContent = stats.failed || stats.error || 0;
         appStatsLast.textContent = stats.lastConversion ? formatDate(stats.lastConversion) : '-';
     } catch (error) {
-        appStatsTotal.textContent = '?';
-        appStatsSuccess.textContent = '?';
-        appStatsFailed.textContent = '?';
-        appStatsLast.textContent = '?';
+        console.error("Erreur lors de la récupération des statistiques:", error);
+        
+        // En cas d'erreur, afficher des points d'interrogation
+        appStatsTotal.textContent = '0';
+        appStatsSuccess.textContent = '0';
+        appStatsFailed.textContent = '0';
+        appStatsLast.textContent = '-';
+        
+        // Ne pas afficher l'alerte à l'utilisateur
+        // alert(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
 }
 
@@ -468,7 +489,8 @@ async function generateApiKey() {
     // Préparer les données
     const keyData = {
         name,
-        appId: currentAppId
+        appId: currentAppId,
+        description: name // Ajouter la description qui correspond au nom de la clé
     };
     
     // Ajouter la date d'expiration si fournie
@@ -486,8 +508,20 @@ async function generateApiKey() {
             body: JSON.stringify(keyData)
         });
         
-        // Stocker la nouvelle clé pour l'afficher
-        newKeyGenerated = result.data;
+        console.log("Réponse de création de clé:", result);
+        
+        // Stocker la nouvelle clé pour l'afficher correctement
+        if (result.data && result.data.api_key) {
+            newKeyGenerated = {
+                key: result.data.api_key,
+                name: name,
+                createdAt: result.data.created_at || new Date().toISOString(),
+                expiresAt: result.data.expires_at || null
+            };
+        } else {
+            console.error("Format de réponse API inattendu:", result);
+            alert("Erreur: La clé API a été créée mais ne peut pas être affichée correctement");
+        }
         
         // Fermer le modal de génération et rafraîchir les clés
         generateKeyModal.style.display = 'none';
