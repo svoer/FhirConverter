@@ -9,7 +9,7 @@
   // Configuration
   const config = {
     selectors: {
-      endpointBtns: '.endpoint-btn',
+      endpointBtns: '.endpoint-item',
       urlInput: 'endpoint-input',
       methodSelect: 'request-method',
       requestBody: 'request-body',
@@ -53,7 +53,8 @@
       
       button.addEventListener('click', function() {
         const method = this.getAttribute('data-method') || 'GET';
-        const url = this.getAttribute('data-url') || '';
+        const endpoint = this.getAttribute('data-endpoint') || '';
+        const url = '/api/' + endpoint;
         const body = this.getAttribute('data-body') || '';
         const info = this.getAttribute('data-info') || '';
         

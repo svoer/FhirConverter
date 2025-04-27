@@ -598,23 +598,58 @@
           <div class="section">
             <h3>Endpoints</h3>
             <div class="endpoints-list">
-              <div class="endpoint-item" data-method="GET" data-endpoint="status">
+              <div class="endpoint-item" data-method="GET" data-endpoint="status" onclick="selectEndpoint(this, 'GET', 'status')">
                 <span class="method">GET</span>
                 <span class="endpoint-path">/api/status</span>
               </div>
-              <div class="endpoint-item" data-method="GET" data-endpoint="conversions">
+              <div class="endpoint-item" data-method="GET" data-endpoint="conversions" onclick="selectEndpoint(this, 'GET', 'conversions')">
                 <span class="method">GET</span>
                 <span class="endpoint-path">/api/conversions</span>
               </div>
-              <div class="endpoint-item" data-method="GET" data-endpoint="stats">
+              <div class="endpoint-item" data-method="GET" data-endpoint="stats" onclick="selectEndpoint(this, 'GET', 'stats')">
                 <span class="method">GET</span>
                 <span class="endpoint-path">/api/stats</span>
               </div>
-              <div class="endpoint-item" data-method="POST" data-endpoint="convert">
+              <div class="endpoint-item" data-method="POST" data-endpoint="convert" onclick="selectEndpoint(this, 'POST', 'convert')">
                 <span class="method">POST</span>
                 <span class="endpoint-path">/api/convert</span>
               </div>
             </div>
+            
+            <script>
+              // Fonction pour sélectionner un endpoint directement
+              function selectEndpoint(element, method, endpoint) {
+                console.log(`Endpoint sélectionné: ${method} /api/${endpoint}`);
+                
+                // Définir la méthode
+                const methodSelect = document.getElementById('request-method');
+                if (methodSelect) {
+                  methodSelect.value = method;
+                }
+                
+                // Définir l'URL
+                const urlInput = document.getElementById('endpoint-input');
+                if (urlInput) {
+                  urlInput.value = '/api/' + endpoint;
+                }
+                
+                // Si c'est un POST, activer l'onglet de corps
+                if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+                  const bodyTab = document.querySelector('.request-tab[data-tab="body"]');
+                  if (bodyTab) {
+                    bodyTab.click();
+                  }
+                  
+                  // Ajouter un exemple de corps JSON pour /api/convert
+                  if (endpoint === 'convert') {
+                    const requestBody = document.getElementById('request-body');
+                    if (requestBody) {
+                      requestBody.value = '{\n  "content": "MSH|^~\\&|MESA_PD_CONSUMER|MESA_DEPARTMENT|MESA_PD_SUPPLIER|PIM|20100312152524||ADT^A04^ADT_A01|9B38584D|P|2.6"\n}';
+                    }
+                  }
+                }
+              }
+            </script>
           </div>
           
           <div class="section">
