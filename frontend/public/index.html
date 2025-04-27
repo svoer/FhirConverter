@@ -471,18 +471,18 @@
 <body>
   <div class="container">
     <header>
-      <h1>FHIRHub - Convertisseur HL7 vers FHIR</h1>
+      <h1><i class="fa fa-fire"></i> FHIRHub</h1>
     </header>
     
     <!-- Section de saisie de clé API supprimée -->
     
     <div class="info">
-      Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 conforme aux standards de l'ANS.
-      Utilisez l'API ou l'interface pour convertir vos messages HL7.
+      <strong>Plateforme d'interopérabilité e-Santé</strong> - Convertisseur HL7 v2.5 vers FHIR R4 conforme aux standards ANS
+      <p>Service de transformation et d'intégration pour les systèmes d'information de santé</p>
     </div>
     
     <div class="tabs">
-      <div class="tab active" data-tab="convert"><i class="fa fa-exchange"></i> Convertir</div>
+      <div class="tab active" data-tab="convert"><i class="fa fa-fire"></i> Convertir</div>
       <div class="tab" data-tab="history"><i class="fa fa-history"></i> Historique</div>
       <div class="tab" data-tab="applications"><i class="fa fa-cubes"></i> Applications</div>
       <div class="tab" data-tab="api"><i class="fa fa-plug"></i> API</div>
@@ -498,7 +498,7 @@
         <div class="upload-container">
           <div id="drop-zone" class="drop-zone">
             <div class="drop-zone-prompt">
-              <i class="fa fa-cloud-upload"></i>
+              <i class="fa fa-upload"></i>
               <p>Glissez et déposez un fichier HL7 ici</p>
               <p>ou</p>
               <label for="file" class="file-input-label">Parcourir les fichiers</label>
@@ -714,15 +714,145 @@
       <p>L'API requiert une clé d'authentification (x-api-key). Utilisez 'dev-key' pour les tests.</p>
       
       <div class="api-endpoints">
-        <div class="api-endpoint"><span class="method">GET</span> /api/status - Vérifier l'état du serveur</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/conversions - Obtenir l'historique des conversions</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/conversions/:id - Obtenir une conversion spécifique</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/stats - Obtenir les statistiques de conversion</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/files/fhir/:filename - Récupérer un fichier FHIR</div>
-        <div class="api-endpoint"><span class="method">POST</span> /api/convert - Convertir du contenu HL7 en FHIR</div>
-        <div class="api-endpoint"><span class="method">POST</span> /api/upload - Télécharger et convertir un fichier HL7</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/terminology/codesystem/:id - Obtenir un système de code spécifique</div>
-        <div class="api-endpoint"><span class="method">GET</span> /api/terminology/search - Rechercher dans les terminologies</div>
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">GET</span> /api/status
+            <div class="api-endpoint-desc">Vérifier l'état du serveur</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X GET http://localhost:5000/api/status</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "version": "1.0.0",
+                  "timestamp": "2025-04-27T23:36:15.577Z"
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">GET</span> /api/conversions
+            <div class="api-endpoint-desc">Obtenir l'historique des conversions</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X GET -H "x-api-key: dev-key" http://localhost:5000/api/conversions</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "data": [
+                    {
+                      "id": 5,
+                      "conversion_id": "312475f4-3df8-4b12-976c-24ab0eb22c34",
+                      "source_type": "API",
+                      "status": "success",
+                      "created_at": "2025-04-27 20:22:32"
+                    }
+                  ]
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">GET</span> /api/stats
+            <div class="api-endpoint-desc">Obtenir les statistiques de conversion</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X GET -H "x-api-key: dev-key" http://localhost:5000/api/stats</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "data": {
+                    "total": 4,
+                    "success": 4,
+                    "failed": 0,
+                    "resources": 22,
+                    "lastConversion": "2025-04-27 20:22:32"
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">POST</span> /api/convert
+            <div class="api-endpoint-desc">Convertir du contenu HL7 en FHIR</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X POST -H "Content-Type: application/json" -H "x-api-key: dev-key" -d '{"content": "MSH|^~\\&|MESA_ADT|XYZ_HOSPITAL|iFW|ABC_LABORATORY|200911091619||ADT^A01|20991109161900001|P|2.5"}' http://localhost:5000/api/convert</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "data": {
+                    "conversion_id": "9eb0f976-5d9e-4c02-9cc7-4e0151a8a65a",
+                    "fhir": {
+                      "resourceType": "Bundle",
+                      "type": "transaction",
+                      "entry": [...]
+                    }
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">POST</span> /api/upload
+            <div class="api-endpoint-desc">Télécharger et convertir un fichier HL7</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X POST -H "x-api-key: dev-key" -F "file=@message.hl7" http://localhost:5000/api/upload</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "data": {
+                    "conversion_id": "e508a3ee-8c65-487d-992f-92d6ac22b984",
+                    "fhir": {
+                      "resourceType": "Bundle",
+                      "type": "transaction",
+                      "entry": [...]
+                    }
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint-card">
+          <div class="api-endpoint-header">
+            <span class="method">GET</span> /api/terminology/search
+            <div class="api-endpoint-desc">Rechercher dans les terminologies</div>
+          </div>
+          <div class="api-endpoint-details">
+            <div class="api-example">
+              <div class="api-example-req">curl -X GET -H "x-api-key: dev-key" "http://localhost:5000/api/terminology/search?system=http://esante.gouv.fr/terminology&code=RPPS"</div>
+              <div class="api-example-res">
+                {
+                  "status": "ok",
+                  "data": {
+                    "systems": [...],
+                    "count": 1
+                  }
+                }
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     

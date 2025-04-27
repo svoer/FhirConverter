@@ -1,3 +1,109 @@
+/* Styles pour l'onglet API REST */
+.api-endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.api-endpoint-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.api-endpoint-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.api-endpoint-header {
+  background: linear-gradient(135deg, #f8f9fa, #eaecef);
+  padding: 15px;
+  border-bottom: 1px solid #e1e4e8;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.api-endpoint-header .method {
+  display: inline-block;
+  padding: 4px 8px;
+  margin-right: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.api-endpoint-header .method.get { 
+  background-color: #61affe;
+  color: white;
+}
+
+.api-endpoint-header .method.post { 
+  background-color: #49cc90;
+  color: white;
+}
+
+.api-endpoint-header .method.put { 
+  background-color: #fca130;
+  color: white;
+}
+
+.api-endpoint-header .method.delete { 
+  background-color: #f93e3e;
+  color: white;
+}
+
+.api-endpoint-desc {
+  margin-top: 5px;
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+.api-endpoint-details {
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.api-endpoint-card:hover .api-endpoint-details {
+  max-height: 500px;
+  padding: 15px;
+}
+
+.api-example {
+  background-color: #f6f8fa;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.api-example-req {
+  background-color: #272b33;
+  color: #fff;
+  padding: 10px 15px;
+  font-family: monospace;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.api-example-res {
+  background-color: #f8f9fa;
+  color: #333;
+  padding: 15px;
+  font-family: monospace;
+  white-space: pre;
+  overflow-x: auto;
+  font-size: 13px;
+  border-top: 1px solid #e1e4e8;
+}
+
 /* Styles pour l'onglet Test API */
 .api-playground {
   display: flex;
