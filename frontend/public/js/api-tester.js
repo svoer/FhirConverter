@@ -3,12 +3,15 @@
  * Fournit une interface similaire à Postman pour tester les endpoints de l'API
  */
 
-// Variables globales
-let currentAppId = null;
-let currentApiKey = localStorage.getItem('apiKey') || 'dev-key';
-let requestHistory = [];
-let applications = [];
-let apiKeys = [];
+// Variables globales pour le testeur d'API
+// Utilisez la clé de localStorage pour la cohérence avec le reste de l'application
+const apiTesterState = {
+  currentAppId: null,
+  currentApiKey: localStorage.getItem('apiKey') || 'dev-key',
+  requestHistory: [],
+  applications: [],
+  apiKeys: []
+};
 
 // Éléments DOM
 let elements = {};
@@ -101,9 +104,9 @@ async function initApiTester() {
   
   // Événement de changement d'application
   elements.appSelect.addEventListener('change', async () => {
-    currentAppId = elements.appSelect.value;
-    if (currentAppId) {
-      await loadApiKeys(currentAppId);
+    apiTesterState.currentAppId = elements.appSelect.value;
+    if (apiTesterState.currentAppId) {
+      await loadApiKeys(apiTesterState.currentAppId);
       elements.keySelect.disabled = false;
     } else {
       elements.keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
@@ -115,14 +118,14 @@ async function initApiTester() {
   elements.keySelect.addEventListener('change', () => {
     const selectedKey = elements.keySelect.value;
     if (selectedKey) {
-      currentApiKey = selectedKey;
+      apiTesterState.currentApiKey = selectedKey;
       elements.apiKeyHeader.value = selectedKey;
     }
   });
   
   // Initialiser les valeurs par défaut
   elements.endpointInput.value = 'status';
-  elements.apiKeyHeader.value = currentApiKey;
+  elements.apiKeyHeader.value = apiTesterState.currentApiKey;
   
   // Pré-remplir le corps de la requête pour les méthodes POST
   elements.methodSelect.addEventListener('change', () => {
@@ -155,12 +158,12 @@ async function initApiTester() {
 async function loadApplications() {
   try {
     const result = await apiRequestForTester('applications');
-    applications = result.data || [];
+    apiTesterState.applications = result.data || [];
     
     // Mettre à jour le sélecteur d'application
     elements.appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
     
-    applications.forEach(app => {
+    apiTesterState.applications.forEach(app => {
       const option = document.createElement('option');
       option.value = app.id;
       option.textContent = app.name;
@@ -175,12 +178,12 @@ async function loadApplications() {
 async function loadApiKeys(appId) {
   try {
     const result = await apiRequestForTester(`keys?appId=${appId}`);
-    apiKeys = result.data || [];
+    apiTesterState.apiKeys = result.data || [];
     
     // Mettre à jour le sélecteur de clé API
     elements.keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
     
-    apiKeys.forEach(key => {
+    apiTesterState.apiKeys.forEach(key => {
       const option = document.createElement('option');
       option.value = key.api_key || key.key || key.value;
       option.textContent = key.name || key.description || 'Clé API';
@@ -280,7 +283,7 @@ async function sendRequest() {
   
   // Construire les en-têtes
   const headers = {
-    'x-api-key': elements.apiKeyHeader.value || currentApiKey
+    'x-api-key': elements.apiKeyHeader.value || apiTesterState.currentApiKey
   };
   
   elements.headersContainer.querySelectorAll('.header-row').forEach(row => {
@@ -395,16 +398,16 @@ function addToHistory(method, endpoint, status) {
   }
   
   // Mettre à jour l'historique
-  requestHistory.unshift({ method, endpoint, status });
-  if (requestHistory.length > 10) {
-    requestHistory.pop();
+  apiTesterState.requestHistory.unshift({ method, endpoint, status });
+  if (apiTesterState.requestHistory.length > 10) {
+    apiTesterState.requestHistory.pop();
   }
 }
 
 // Fonction spéciale pour les requêtes API du testeur
 async function apiRequestForTester(endpoint, options = {}) {
   options.headers = options.headers || {};
-  options.headers['x-api-key'] = currentApiKey;
+  options.headers['x-api-key'] = apiTesterState.currentApiKey;
   
   console.log(`Requête API au endpoint: /api/${endpoint}`);
   
