@@ -1,0 +1,33 @@
+modules = ["nodejs-20", "java-17", "python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["jq", "maven"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "FHIRHub"
+
+[[workflows.workflow]]
+name = "FHIRHub"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash start.sh"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "cd backend && npm install express cors uuid hapi-fhir && cd ../frontend && npm install react react-dom && cd .. && node backend/server.js"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80

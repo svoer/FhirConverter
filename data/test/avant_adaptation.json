@@ -1,0 +1,60 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "test-bundle",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-test",
+        "identifier": [
+          {
+            "system": "https://annuaire.sante.gouv.fr/fhir/NOS/TRE_G07-NIR",
+            "value": "1234567890123"
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1980-01-01"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "observation-test",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "https://mos.esante.gouv.fr/NOS/CCAM_2/FHIR/CCAM",
+              "code": "AHQP003",
+              "display": "Électrocardiographie"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/patient-test"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-test",
+        "identifier": [
+          {
+            "system": "https://annuaire.sante.gouv.fr/fhir/NOS/TRE_G15-ProfessionSante",
+            "value": "12345678901"
+          }
+        ],
+        "name": [
+          {
+            "family": "Dupont",
+            "given": [
+              "Jean"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "TRE-R316-AutreCategorieEtablissement": {
+    "id": "TRE-R316-AutreCategorieEtablissement",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R316-AutreCategorieEtablissement/FHIR/TRE-R316-AutreCategorieEtablissement",
+    "oid": "1.2.250.1.213.1.6.1.239",
+    "version": "20240329120000",
+    "title": "Autre catégorie d'établissement",
+    "description": "Catégories d'établissements sanitaires, médico-sociaux et sociaux françaises"
+  },
+  "TRE-R51-DESCGroupe2Diplome": {
+    "id": "TRE-R51-DESCGroupe2Diplome",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R51-DESCGroupe2Diplome/FHIR/TRE-R51-DESCGroupe2Diplome",
+    "oid": "1.2.250.1.213.1.6.1.49",
+    "version": "20231215120000",
+    "title": "DESC Groupe 2 Diplôme",
+    "description": "Diplômes d'Études Spécialisées Complémentaires du Groupe 2"
+  },
+  "TRE-G02-TypeProduit": {
+    "id": "TRE-G02-TypeProduit",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_G02-TypeProduit/FHIR/TRE-G02-TypeProduit",
+    "oid": "1.2.250.1.71.1.2.2",
+    "version": "20231215120000",
+    "title": "Type de produit",
+    "description": "Type de produit de santé (médicament, dispositif médical, etc.)"
+  },
+  "TRE-R217-ProtectionJuridique": {
+    "id": "TRE-R217-ProtectionJuridique",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R217-ProtectionJuridique/FHIR/TRE-R217-ProtectionJuridique",
+    "oid": "1.2.250.1.213.1.1.4.327",
+    "version": "20231215120000",
+    "title": "Protection juridique",
+    "description": "Mesures de protection juridique (tutelle, curatelle, etc.)"
+  },
+  "TRE-R302-ContexteCodeComplementaire": {
+    "id": "TRE-R302-ContexteCodeComplementaire",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R302-ContexteCodeComplementaire/FHIR/TRE-R302-ContexteCodeComplementaire",
+    "oid": "1.2.250.1.213.3.3.70",
+    "version": "20240426120000",
+    "title": "Contexte code complémentaire",
+    "description": "Contexte utilisé pour les codes complémentaires dans les ressources FHIR"
+  },
+  "TRE-R239-PublicPrisEnCharge": {
+    "id": "TRE-R239-PublicPrisEnCharge",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R239-PublicPrisEnCharge/FHIR/TRE-R239-PublicPrisEnCharge",
+    "oid": "1.2.250.1.213.3.3.29",
+    "version": "20250328120000",
+    "title": "Public pris en charge",
+    "description": "Types de publics pris en charge dans les établissements médico-sociaux"
+  },
+  "TRE-A01-CadreExercice": {
+    "id": "TRE-A01-CadreExercice",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+    "oid": "1.2.250.1.213.1.1.4.9",
+    "version": "20240927120000",
+    "title": "Cadre d'exercice",
+    "description": "Cadre d'exercice des professionnels de santé français"
+  },
+  "TRE-R303-HL7v3AdministrativeGender": {
+    "id": "TRE-R303-HL7v3AdministrativeGender",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R303-HL7v3AdministrativeGender/FHIR/TRE-R303-HL7v3AdministrativeGender",
+    "oid": "1.2.250.1.213.1.1.5.1",
+    "version": "20231215120000",
+    "title": "Genre administratif HL7v3",
+    "description": "Correspondance avec les genres HL7v3 pour la France"
+  },
+  "TRE-R283-Confidentiality": {
+    "id": "TRE-R283-Confidentiality",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+    "oid": "1.2.250.1.213.1.1.4.13",
+    "version": "20231215120000",
+    "title": "Niveau de confidentialité",
+    "description": "Niveaux de confidentialité des documents médicaux"
+  },
+  "TRE-R287-FormatCode": {
+    "id": "TRE-R287-FormatCode",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+    "oid": "1.2.250.1.213.1.1.4.2.280",
+    "version": "20231215120000",
+    "title": "Format de document",
+    "description": "Formats des documents médicaux (CDA, HL7, etc.)"
+  },
+  "JDV-J07-XdsTypeCode-CISIS": {
+    "id": "JDV-J07-XdsTypeCode-CISIS",
+    "url": "https://mos.esante.gouv.fr/NOS/JDV_J07-XdsTypeCode-CISIS/FHIR/JDV-J07-XdsTypeCode-CISIS",
+    "oid": "1.2.250.1.213.1.1.5.471",
+    "version": "20250425120000",
+    "title": "Types de documents médicaux",
+    "description": "Jeu de valeurs des types de documents médicaux pour les échanges XDS"
+  },
+  "TRE-G07-TypeIdentifiantStructure": {
+    "id": "TRE-G07-TypeIdentifiantStructure",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_G07-TypeIdentifiantStructure/FHIR/TRE-G07-TypeIdentifiantStructure",
+    "oid": "1.2.250.1.71.1.2.15",
+    "version": "20240329120000",
+    "title": "Type d'identifiant de structure",
+    "description": "Types d'identifiants utilisés pour les établissements de santé (FINESS, SIRET, etc.)"
+  },
+  "TRE-G12-SpecialiteADELI": {
+    "id": "TRE-G12-SpecialiteADELI",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_G12-SpecialiteADELI/FHIR/TRE-G12-SpecialiteADELI",
+    "oid": "1.2.250.1.71.1.2.7",
+    "version": "20240531120000",
+    "title": "Spécialité ADELI",
+    "description": "Spécialités des professionnels de santé dans le répertoire ADELI"
+  },
+  "TRE-R39-Competence": {
+    "id": "TRE-R39-Competence",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R39-Competence/FHIR/TRE-R39-Competence",
+    "oid": "1.2.250.1.213.1.1.4.322",
+    "version": "20240628120000",
+    "title": "Compétence",
+    "description": "Compétences des professionnels de santé"
+  },
+  "TRE-R305-TypeRencontre": {
+    "id": "TRE-R305-TypeRencontre",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre",
+    "oid": "1.2.250.1.213.1.1.4.13",
+    "version": "20231215120000",
+    "title": "Type de rencontre",
+    "description": "Types de rencontres médicales (consultation, hospitalisation, etc.)"
+  },
+  "TRE-R213-ModePriseEnCharge": {
+    "id": "TRE-R213-ModePriseEnCharge",
+    "url": "https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge",
+    "oid": "1.2.250.1.71.4.2.4",
+    "version": "20240329120000",
+    "title": "Mode de prise en charge",
+    "description": "Modes de prise en charge des patients (ambulatoire, hospitalisation, etc.)"
+  }
+}

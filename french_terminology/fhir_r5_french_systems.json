@@ -1,0 +1,71 @@
+{
+  "french_terminology_systems": {
+    "TA": {
+      "name": "TRE_R287_NatureContact",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R287-NatureContact/FHIR/TRE-R287-NatureContact"
+    },
+    "CIP": {
+      "name": "TRE_R18_DisciplineAutorisation",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R18-DisciplineAutorisation/FHIR/TRE-R18-DisciplineAutorisation"
+    },
+    "INS": {
+      "name": "TRE_R323_BesoinScolarite",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R323-BesoinScolarite/FHIR/TRE-R323-BesoinScolarite"
+    },
+    "ATC": {
+      "name": "TRE_A11_IheFormatCode",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_A11-IheFormatCode/FHIR/TRE-A11-IheFormatCode"
+    },
+    "ROL": {
+      "name": "TRE_R290_RoleAdmTechSanitaireSocial",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R290-RoleAdmTechSanitaireSocial/FHIR/TRE-R290-RoleAdmTechSanitaireSocial"
+    },
+    "CCAM": {
+      "name": "CCAM",
+      "url": "https://smt.esante.gouv.fr/terminologie-ccam"
+    },
+    "NABM": {
+      "name": "NABM",
+      "url": "https://smt.esante.gouv.fr/terminologie-nabm"
+    }
+  },
+  "example_codes": {},
+  "recommended_mappings": {
+    "identifier_types": {
+      "INS-C": {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code": "PPN",
+        "display": "Passport Number"
+      },
+      "INS-NIR": {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code": "SN",
+        "display": "Subscriber Number"
+      },
+      "Numéro RPPS": {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code": "PRN",
+        "display": "Provider number"
+      }
+    },
+    "encounter_status": {
+      "finished": {
+        "fhir_r5_code": "completed",
+        "display": "Completed"
+      }
+    },
+    "practitioner_roles": {
+      "ODRP": {
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+        "code": "GENPHYS",
+        "display": "General Practitioner"
+      }
+    },
+    "identifier_systems": {
+      "ins": "https://mos.esante.gouv.fr/NOS/TRE_R323-BesoinScolarite/FHIR/TRE-R323-BesoinScolarite"
+    },
+    "role_systems": {
+      "role": "https://mos.esante.gouv.fr/NOS/TRE_R290-RoleAdmTechSanitaireSocial/FHIR/TRE-R290-RoleAdmTechSanitaireSocial"
+    }
+  }
+}

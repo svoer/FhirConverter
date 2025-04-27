@@ -1,0 +1,34 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "http://example.org/Practitioner/test",
+      "resource": {
+        "resourceType": "Practitioner",
+        "name": [
+          {
+            "family": "MARTIN",
+            "given": [
+              "JEAN"
+            ]
+          }
+        ],
+        "active": true,
+        "address": [
+          {
+            "line": [
+              "8    AVECONDORCET"
+            ],
+            "postalCode": "97200",
+            "country": "UNK"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    }
+  ]
+}

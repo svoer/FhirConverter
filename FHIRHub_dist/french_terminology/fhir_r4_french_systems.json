@@ -1,0 +1,154 @@
+{
+  "french_terminology_systems": {
+    "TRE-R316-AutreCategorieEtablissement": {
+      "id": "TRE-R316-AutreCategorieEtablissement",
+      "name": "TRE_R316_AutreCategorieEtablissement",
+      "oid": "1.2.250.1.213.1.6.1.239",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R316-AutreCategorieEtablissement/FHIR/TRE-R316-AutreCategorieEtablissement",
+      "version": "1.0.0",
+      "title": "Autre catégorie d'établissement",
+      "description": "Catégorisation des établissements de santé"
+    },
+    "TRE-R51-DESCGroupe2Diplome": {
+      "id": "TRE-R51-DESCGroupe2Diplome",
+      "name": "TRE_R51_DESCGroupe2Diplome",
+      "oid": "1.2.250.1.213.1.6.1.49",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R51-DESCGroupe2Diplome/FHIR/TRE-R51-DESCGroupe2Diplome",
+      "version": "1.0.0",
+      "title": "DESC Groupe 2 Diplôme",
+      "description": "Diplômes et qualifications médicales"
+    },
+    "TRE-G02-TypeProduit": {
+      "id": "TRE-G02-TypeProduit",
+      "name": "TRE_G02_TypeProduit",
+      "oid": "1.2.250.1.71.1.2.2",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_G02-TypeProduit/FHIR/TRE-G02-TypeProduit",
+      "version": "1.0.0",
+      "title": "Type de produit",
+      "description": "Catégorisation des produits de santé"
+    },
+    "TRE-R217-ProtectionJuridique": {
+      "id": "TRE-R217-ProtectionJuridique",
+      "name": "TRE_R217_ProtectionJuridique",
+      "oid": "1.2.250.1.213.1.1.4.327",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R217-ProtectionJuridique/FHIR/TRE-R217-ProtectionJuridique",
+      "version": "1.0.0",
+      "title": "Protection juridique",
+      "description": "Types de protection juridique (tutelle, curatelle, etc.)"
+    },
+    "TRE-R302-ContexteCodeComplementaire": {
+      "id": "TRE-R302-ContexteCodeComplementaire",
+      "name": "TRE_R302_ContexteCodeComplementaire",
+      "oid": "1.2.250.1.213.3.3.70",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R302-ContexteCodeComplementaire/FHIR/TRE-R302-ContexteCodeComplementaire",
+      "version": "1.0.0",
+      "title": "Contexte de code complémentaire",
+      "description": "Contexte d'utilisation des codes complémentaires"
+    },
+    "TRE-R239-PublicPrisEnCharge": {
+      "id": "TRE-R239-PublicPrisEnCharge",
+      "name": "TRE_R239_PublicPrisEnCharge",
+      "oid": "1.2.250.1.213.3.3.29",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R239-PublicPrisEnCharge/FHIR/TRE-R239-PublicPrisEnCharge",
+      "version": "1.0.0",
+      "title": "Public pris en charge",
+      "description": "Type de public pris en charge dans un établissement"
+    },
+    "TRE-A01-CadreExercice": {
+      "id": "TRE-A01-CadreExercice",
+      "name": "TRE_A01_CadreExercice",
+      "oid": "1.2.250.1.213.1.1.4.9",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+      "version": "1.0.0",
+      "title": "Cadre d'exercice",
+      "description": "Définit le cadre d'exercice d'un professionnel (libéral, salarié, etc.)"
+    },
+    "TRE-R303-HL7v3AdministrativeGender": {
+      "id": "TRE-R303-HL7v3AdministrativeGender",
+      "name": "TRE_R303_HL7v3AdministrativeGender",
+      "oid": "1.2.250.1.213.1.1.5.596",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R303-HL7v3AdministrativeGender/FHIR/TRE-R303-HL7v3AdministrativeGender",
+      "version": "1.0.0",
+      "title": "Genre administratif HL7v3",
+      "description": "Correspondance des genres selon HL7v3"
+    },
+    "CCAM": {
+      "id": "CCAM",
+      "name": "CCAM",
+      "oid": "1.2.250.1.213.2.5",
+      "url": "https://mos.esante.gouv.fr/NOS/CCAM_2/FHIR/CCAM",
+      "version": "2.0.0",
+      "title": "Classification Commune des Actes Médicaux",
+      "description": "Classification française des actes techniques médicaux"
+    },
+    "CIM-10": {
+      "id": "CIM-10",
+      "name": "CIM-10",
+      "oid": "1.2.250.1.213.2.12",
+      "url": "https://mos.esante.gouv.fr/NOS/CIM-10/FHIR/CIM-10",
+      "version": "10.0.0",
+      "title": "Classification Internationale des Maladies",
+      "description": "Classification internationale des maladies, 10ème révision"
+    },
+    "NABM": {
+      "id": "NABM",
+      "name": "NABM",
+      "oid": "1.2.250.1.213.1.1.4.351",
+      "url": "https://mos.esante.gouv.fr/NOS/NABM/FHIR/NABM",
+      "version": "1.0.0",
+      "title": "Nomenclature des Actes de Biologie Médicale",
+      "description": "Nomenclature française des actes de biologie médicale"
+    }
+  },
+  "recommended_mappings": {
+    "identifier_types": {
+      "INS-NIR": {
+        "system": "https://annuaire.sante.gouv.fr/fhir/NOS/TRE_G07-NIR",
+        "display": "INS-NIR"
+      },
+      "INS-NIA": {
+        "system": "https://annuaire.sante.gouv.fr/fhir/NOS/TRE_G08-NIA",
+        "display": "INS-NIA"
+      },
+      "INS-C": {
+        "system": "https://annuaire.sante.gouv.fr/fhir/NOS/TRE_G22-IdNatPers",
+        "display": "Identifiant National de Santé Calculé"
+      }
+    },
+    "identifier_systems": {
+      "ins": "urn:oid:1.2.250.1.213.1.4.8",
+      "ins-c": "urn:oid:1.2.250.1.213.1.4.2",
+      "rpps": "urn:oid:1.2.250.1.71.4.2.1",
+      "adeli": "urn:oid:1.2.250.1.71.4.2.2",
+      "finess": "urn:oid:1.2.250.1.71.4.2.3",
+      "siret": "urn:oid:1.2.250.1.71.4.2.4"
+    },
+    "code_systems": {
+      "ccam": "urn:oid:1.2.250.1.213.2.5",
+      "cim10": "urn:oid:1.2.250.1.213.2.12",
+      "nabm": "urn:oid:1.2.250.1.213.1.1.4.351",
+      "loinc": "urn:oid:2.16.840.1.113883.6.1",
+      "snomed-ct": "urn:oid:2.16.840.1.113883.6.96"
+    },
+    "practitioner_roles": {
+      "méd": {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+        "code": "10",
+        "display": "Médecin"
+      },
+      "inf": {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+        "code": "60",
+        "display": "Infirmier"
+      },
+      "pharma": {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+        "code": "21",
+        "display": "Pharmacien"
+      }
+    },
+    "role_systems": {
+      "role": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice"
+    }
+  }
+}

@@ -1,0 +1,469 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "1d5110a6-9221-4fe1-831f-763f3b714f72",
+  "timestamp": "2025-04-27T09:59:52.241Z",
+  "meta": {
+    "profile": [
+      "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
+    ],
+    "security": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+        "code": "N",
+        "display": "Normal"
+      }
+    ],
+    "tag": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+        "code": "urn:ans:ci-sis:hl7:v2.5",
+        "display": "HL7 v2.5 converti en FHIR R4 (ANS)"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "55325e01-6472-4039-8977-75c4f79e3bb8",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.211.10.200.1",
+            "value": "1174024",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "MCK"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.2",
+            "value": "1121717802492545833548",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS-C",
+                  "display": "Insurance Card"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "ASIP-SANTE-INS-C"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "160059932710027",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS",
+                  "display": "INS"
+                }
+              ]
+            },
+            "extension": [
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-NIR-Verifie",
+                "valueBoolean": true
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Source",
+                "valueCode": "RECUPERE"
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-DateConsultation",
+                "valueDateTime": "2025-04-27"
+              }
+            ],
+            "assigner": {
+              "display": "ASIP-SANTE-INS-NIR"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS JEAN RICHARD"
+            ]
+          }
+        ],
+        "birthDate": "1960-05-09",
+        "gender": "male",
+        "address": [
+          {
+            "line": [
+              "8  AVENUE CONDORCET"
+            ],
+            "city": "FORT DE FRANCE",
+            "state": "",
+            "postalCode": "97200",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "97000"
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-precinct",
+                "valueString": "97"
+              }
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "+33696039637",
+            "use": "home",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/rendering-style",
+                "valueString": "+33 n nn nn nn nn"
+              }
+            ]
+          },
+          {
+            "system": "phone",
+            "value": "+33596000093",
+            "use": "home",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/rendering-style",
+                "valueString": "+33 n nn nn nn nn"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Person/5b7f22f2-4665-465c-b3a9-24c2f0ab17c1",
+      "resource": {
+        "resourceType": "Person",
+        "id": "5b7f22f2-4665-465c-b3a9-24c2f0ab17c1",
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS JEAN RICHARD"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1960-05-09",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "+33696039637",
+            "use": "home",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/rendering-style",
+                "valueString": "+33 n nn nn nn nn"
+              }
+            ]
+          },
+          {
+            "system": "phone",
+            "value": "+33596000093",
+            "use": "home",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/rendering-style",
+                "valueString": "+33 n nn nn nn nn"
+              }
+            ]
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "8  AVENUE CONDORCET"
+            ],
+            "city": "FORT DE FRANCE",
+            "state": "",
+            "postalCode": "97200",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "97000"
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-precinct",
+                "valueString": "97"
+              }
+            ]
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/5b3aef36-cec5-4919-9fba-a5b8ec710771",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "5b3aef36-cec5-4919-9fba-a5b8ec710771",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "I",
+          "display": "Inpatient"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8"
+        },
+        "period": {
+          "start": "2025-04-17T05:04:00+00:00"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/0bcea080-f4d1-4220-98b5-69be1b3ec360",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "0bcea080-f4d1-4220-98b5-69be1b3ec360",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
+            "value": "MCK"
+          }
+        ],
+        "name": "MCK"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Coverage/4fb40c39-5477-4d12-b966-6fc95a2aa066",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "4fb40c39-5477-4d12-b966-6fc95a2aa066",
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "https://mos.esante.gouv.fr/NOS/JDV_J65-TypeMutuelles/FHIR/JDV-J65-TypeMutuelles",
+              "code": "AMO",
+              "display": "Assurance Maladie Obligatoire"
+            }
+          ]
+        },
+        "subscriberId": "160059932710027",
+        "beneficiary": {
+          "reference": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8"
+        },
+        "period": {
+          "end": "2025-12-31"
+        },
+        "extension": [
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/ror/StructureDefinition/ror-organization-field-codeNir",
+            "valueString": "160059932710027"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/307dd8fd-f71d-4f98-8c39-6cd74173a1c3",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "307dd8fd-f71d-4f98-8c39-6cd74173a1c3",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "EXT",
+                "display": "Contact"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "ELENA"
+            ]
+          }
+        ],
+        "telecom": [],
+        "address": [
+          {
+            "line": [],
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "UNK",
+            "use": "home"
+          },
+          {
+            "line": [],
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "UNK",
+            "use": "home"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/9c647d37-ea1b-46ce-be8e-88eebe8bd9a1",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "9c647d37-ea1b-46ce-be8e-88eebe8bd9a1",
+        "identifier": [
+          {
+            "system": "urn:oid:http://example.org/fhir/sid/provider-id",
+            "value": "971219175",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "unknown",
+                  "display": "Provider Number"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "MERAUT SALOMON",
+            "given": [
+              "RENEE"
+            ],
+            "prefix": []
+          }
+        ],
+        "active": true,
+        "qualification": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                  "code": "ODRP",
+                  "display": "Unknown Qualification"
+                }
+              ]
+            }
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "8    AVECONDORCET"
+            ],
+            "city": "",
+            "state": "",
+            "postalCode": "97200",
+            "country": "UNK"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/PractitionerRole/61641a37-6527-4d21-b1df-38b318ccef9e",
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "61641a37-6527-4d21-b1df-38b318ccef9e",
+        "practitioner": {
+          "reference": "Practitioner/9c647d37-ea1b-46ce-be8e-88eebe8bd9a1"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+                "code": "S",
+                "display": "Médecin"
+              },
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                "code": "ODRP",
+                "display": "Unknown Role"
+              }
+            ]
+          }
+        ],
+        "extension": [
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/practitionerRole-specialty",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale",
+                  "code": "01",
+                  "display": "Médecine générale"
+                }
+              ]
+            }
+          }
+        ],
+        "active": true,
+        "period": {},
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/55325e01-6472-4039-8977-75c4f79e3bb8"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "PractitionerRole"
+      }
+    }
+  ]
+}
