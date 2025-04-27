@@ -158,7 +158,7 @@ app.get('/', (req, res) => {
           <h1>FHIRHub - Convertisseur HL7 vers FHIR</h1>
           
           <div class="info">
-            Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 en utilisant la bibliothèque HAPI FHIR.
+            Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 conforme aux standards de l'ANS. Utilisez l'API ou l'interface pour convertir vos messages HL7.
           </div>
           
           <div class="status">

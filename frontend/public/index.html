@@ -319,8 +319,8 @@
     </div>
     
     <div class="info">
-      Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4.
-      Les fichiers HL7 déposés dans le répertoire 'data/in' sont automatiquement convertis.
+      Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 conforme aux standards de l'ANS.
+      Utilisez l'API ou l'interface pour convertir vos messages HL7.
     </div>
     
     <div class="tabs">
@@ -789,33 +789,7 @@
       }
     }
     
-    // Surveillance de fichiers
-    document.getElementById('start-monitoring').addEventListener('click', async () => {
-      try {
-        const result = await apiRequest('monitor/start', { method: 'POST' });
-        document.getElementById('monitor-status').textContent = 'État: Surveillance active (' + result.inputDirectory + ')';
-      } catch (error) {
-        document.getElementById('monitor-status').textContent = 'État: Erreur - ' + error.message;
-      }
-    });
-    
-    document.getElementById('stop-monitoring').addEventListener('click', async () => {
-      try {
-        const result = await apiRequest('monitor/stop', { method: 'POST' });
-        document.getElementById('monitor-status').textContent = 'État: Surveillance arrêtée';
-      } catch (error) {
-        document.getElementById('monitor-status').textContent = 'État: Erreur - ' + error.message;
-      }
-    });
-    
-    document.getElementById('scan-directory').addEventListener('click', async () => {
-      try {
-        const result = await apiRequest('monitor/scan', { method: 'POST' });
-        document.getElementById('monitor-status').textContent = 'État: Analyse démarrée (' + result.inputDirectory + ')';
-      } catch (error) {
-        document.getElementById('monitor-status').textContent = 'État: Erreur - ' + error.message;
-      }
-    });
+    // Surveillance de fichiers supprimée
     
     // Test de l'API
     document.getElementById('test-api').addEventListener('click', async () => {
