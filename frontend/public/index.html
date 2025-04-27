@@ -1107,5 +1107,143 @@
   <script src="js/applications.js"></script>
   <script src="js/api-tester.js"></script>
   <script src="js/main.js"></script>
+  
+  <!-- Correctif pour charger directement les applications dans le testeur d'API -->
+  <script>
+    // Attendre que la page soit complètement chargée
+    document.addEventListener('DOMContentLoaded', function() {
+      // Charger les applications après un court délai
+      setTimeout(function() {
+        // Fonction pour charger directement les applications
+        function loadApiTesterApps() {
+          console.log("Chargement direct des applications dans le testeur d'API");
+          const appSelect = document.getElementById('test-app-select');
+          
+          if (!appSelect) {
+            console.error("Sélecteur d'applications non trouvé");
+            return;
+          }
+          
+          appSelect.innerHTML = '<option value="">Chargement...</option>';
+          
+          fetch('/api/applications')
+            .then(response => response.json())
+            .then(result => {
+              console.log("Applications reçues:", result);
+              
+              // Réinitialiser le sélecteur
+              appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
+              
+              if (result && result.data && Array.isArray(result.data)) {
+                // Ajouter les options au sélecteur
+                result.data.forEach(app => {
+                  const option = document.createElement('option');
+                  option.value = app.id;
+                  option.textContent = app.name || `Application #${app.id}`;
+                  appSelect.appendChild(option);
+                });
+                
+                console.log(`${result.data.length} applications chargées avec succès`);
+                
+                // Ajouter l'événement de changement si ce n'est pas déjà fait
+                if (!appSelect.getAttribute('data-has-event')) {
+                  appSelect.addEventListener('change', function() {
+                    const appId = this.value;
+                    if (appId) {
+                      loadApiKeys(appId);
+                    }
+                  });
+                  appSelect.setAttribute('data-has-event', 'true');
+                }
+              } else {
+                console.error("Format de données d'applications invalide:", result);
+                appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+              }
+            })
+            .catch(err => {
+              console.error("Erreur lors du chargement des applications:", err);
+              appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            });
+        }
+        
+        // Fonction pour charger les clés API
+        function loadApiKeys(appId) {
+          console.log(`Chargement des clés API pour l'application ${appId}`);
+          const keySelect = document.getElementById('test-key-select');
+          
+          if (!keySelect) {
+            console.error("Sélecteur de clés API non trouvé");
+            return;
+          }
+          
+          keySelect.innerHTML = '<option value="">Chargement...</option>';
+          
+          fetch(`/api/keys?appId=${appId}`)
+            .then(response => response.json())
+            .then(result => {
+              console.log("Clés API reçues:", result);
+              
+              // Réinitialiser le sélecteur
+              keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
+              
+              if (result && result.data && Array.isArray(result.data)) {
+                if (result.data.length === 0) {
+                  keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
+                  return;
+                }
+                
+                // Ajouter les options au sélecteur
+                result.data.forEach(key => {
+                  if (!key) return;
+                  
+                  const keyValue = key.api_key || key.key || key.value;
+                  if (!keyValue) return;
+                  
+                  const option = document.createElement('option');
+                  option.value = keyValue;
+                  option.textContent = key.name || key.description || 'Clé API';
+                  keySelect.appendChild(option);
+                });
+                
+                console.log(`${result.data.length} clés API chargées avec succès`);
+                
+                // Ajouter l'événement de changement si ce n'est pas déjà fait
+                if (!keySelect.getAttribute('data-has-event')) {
+                  keySelect.addEventListener('change', function() {
+                    const apiKeyHeader = document.getElementById('api-key-header');
+                    if (apiKeyHeader) {
+                      apiKeyHeader.value = this.value;
+                    }
+                  });
+                  keySelect.setAttribute('data-has-event', 'true');
+                }
+              } else {
+                console.error("Format de données de clés API invalide:", result);
+                keySelect.innerHTML = '<option value="">Erreur de chargement</option>';
+              }
+            })
+            .catch(err => {
+              console.error("Erreur lors du chargement des clés API:", err);
+              keySelect.innerHTML = '<option value="">Erreur de chargement</option>';
+            });
+        }
+        
+        // Attacher les événements aux onglets pour charger les applications quand nécessaire
+        document.querySelectorAll('.tab').forEach(tab => {
+          if (tab.getAttribute('data-tab') === 'api-tester') {
+            tab.addEventListener('click', function() {
+              setTimeout(loadApiTesterApps, 300);
+            });
+          }
+        });
+        
+        // Charger les applications immédiatement si on est déjà sur cet onglet
+        const apiTesterTab = document.querySelector('.tab[data-tab="api-tester"]');
+        if (apiTesterTab && apiTesterTab.classList.contains('active')) {
+          loadApiTesterApps();
+        }
+      }, 1000); // Délai d'une seconde pour s'assurer que tout est chargé
+    });
+  </script>
 </body>
 </html>
