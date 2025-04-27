@@ -1,6 +1,6 @@
 /**
  * Application principale FHIRHub
- * Service de conversion de HL7 v2.5 vers FHIR R5
+ * Service de conversion de HL7 v2.5 vers FHIR R4
  * Compatible avec les terminologies et systèmes français de santé
  */
 
@@ -12,6 +12,14 @@ const bodyParser = require('body-parser');
 const api = require('./api');
 const fileMonitor = require('./fileMonitor');
 const frenchTerminologyService = require('./french_terminology_service');
+const { initialize } = require('./src/init');
+
+// Initialiser FHIRHub
+const initResult = initialize();
+if (!initResult.success) {
+  console.error('Erreur critique lors de l\'initialisation:', initResult.error);
+  process.exit(1);
+}
 
 // Création de l'application Express
 const app = express();
@@ -19,12 +27,22 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.text({ type: 'text/plain' }));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.text({ type: 'text/plain', limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'frontend/public')));
 
-// Routes API
+// Routes API principales
 app.use('/api', api);
+
+// Routes API d'authentification et d'administration
+const authRoutes = require('./src/routes/authRoutes');
+const applicationRoutes = require('./src/routes/applicationRoutes');
+const { router: apiKeyRoutes } = require('./src/routes/apiKeyRoutes');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/keys', apiKeyRoutes);
 
 // La page d'accueil est servie automatiquement depuis le répertoire frontend/public
 

@@ -1,209 +1,199 @@
 /**
- * Schéma de base de données pour FHIRHub
- * Définit les tables et relations pour la gestion des applications, API keys et logs
- * 
- * Ce module utilise Drizzle ORM pour définir le schéma PostgreSQL
- * permettant de stocker toutes les configurations du système
+ * Schéma de base de données SQLite pour FHIRHub
+ * Gère les applications, paramètres et clés API de manière portable
  */
 
-const { pgTable, serial, text, timestamp, boolean, integer, json, uuid, unique, primaryKey } = require('drizzle-orm/pg-core');
-const { relations } = require('drizzle-orm');
+const sqlite3 = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
 
-/**
- * Table des applications connectées à FHIRHub
- * Chaque application représente un établissement ou logiciel client
- */
-const applications = pgTable('applications', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description'),
-  logo: text('logo'),
-  active: boolean('active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  contactEmail: text('contact_email'),
-  contactName: text('contact_name'),
-  settings: json('settings')
-});
+// Assurer que le répertoire data existe
+const dataDir = path.join(__dirname, '../../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
-/**
- * Relations pour la table applications
- */
-const applicationsRelations = relations(applications, ({ many }) => ({
-  apiKeys: many(apiKeys),
-  folders: many(applicationFolders),
-  parameters: many(applicationParameters),
-  logs: many(conversionLogs)
-}));
+// Initialiser la base de données
+const dbPath = path.join(dataDir, 'fhirhub.db');
+const db = sqlite3(dbPath);
 
-/**
- * Table des clés API pour l'authentification
- * Chaque application peut avoir plusieurs clés API (prod, qualif, etc.)
- */
-const apiKeys = pgTable('api_keys', {
-  id: serial('id').primaryKey(),
-  applicationId: integer('application_id').notNull().references(() => applications.id, { onDelete: 'cascade' }),
-  keyValue: text('key_value').notNull().unique(),
-  name: text('name').notNull(), // Ex: "Production", "Qualification"
-  active: boolean('active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  expiresAt: timestamp('expires_at'),
-  lastUsedAt: timestamp('last_used_at')
-});
+// Activer les clés étrangères
+db.pragma('foreign_keys = ON');
 
-/**
- * Relations pour la table apiKeys
- */
-const apiKeysRelations = relations(apiKeys, ({ one, many }) => ({
-  application: one(applications, {
-    fields: [apiKeys.applicationId],
-    references: [applications.id]
-  }),
-  logs: many(conversionLogs)
-}));
+// Créer les tables si elles n'existent pas
+function initializeDatabase() {
+  // Table des utilisateurs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      fullname TEXT,
+      email TEXT,
+      role TEXT NOT NULL DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_login TIMESTAMP
+    )
+  `);
 
-/**
- * Table des paramètres configurables par application
- * Permet d'ajouter des paramètres personnalisés à chaque application
- */
-const applicationParameters = pgTable('application_parameters', {
-  id: serial('id').primaryKey(),
-  applicationId: integer('application_id').notNull().references(() => applications.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  value: text('value'),
-  description: text('description'),
-  type: text('type').default('string').notNull(), // string, number, boolean, json
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
-}, (t) => ({
-  // Chaque paramètre doit avoir un nom unique par application
-  unq: unique().on(t.applicationId, t.name)
-}));
+  // Table des applications
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS applications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      description TEXT,
+      active BOOLEAN DEFAULT 1,
+      retention_days INTEGER DEFAULT 30,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_by INTEGER,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )
+  `);
 
-/**
- * Relations pour la table applicationParameters
- */
-const applicationParametersRelations = relations(applicationParameters, ({ one }) => ({
-  application: one(applications, {
-    fields: [applicationParameters.applicationId],
-    references: [applications.id]
-  })
-}));
+  // Table des paramètres d'applications (extensible dynamiquement)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_params (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      param_key TEXT NOT NULL,
+      param_value TEXT,
+      param_type TEXT DEFAULT 'string',
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
+      UNIQUE(app_id, param_key)
+    )
+  `);
 
-/**
- * Table des dossiers assignés aux applications
- * Pour les applications qui déposent des fichiers dans des répertoires surveillés
- */
-const applicationFolders = pgTable('application_folders', {
-  id: serial('id').primaryKey(),
-  applicationId: integer('application_id').notNull().references(() => applications.id, { onDelete: 'cascade' }),
-  folderPath: text('folder_path').notNull(),
-  description: text('description'),
-  isMonitored: boolean('is_monitored').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull()
-});
+  // Table des clés API
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      api_key TEXT UNIQUE NOT NULL,
+      description TEXT,
+      environment TEXT DEFAULT 'development',
+      revoked BOOLEAN DEFAULT 0,
+      expires_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_used TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+    )
+  `);
 
-/**
- * Relations pour la table applicationFolders
- */
-const applicationFoldersRelations = relations(applicationFolders, ({ one }) => ({
-  application: one(applications, {
-    fields: [applicationFolders.applicationId],
-    references: [applications.id]
-  })
-}));
+  // Table des dossiers monitoriés par application
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_folders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      folder_path TEXT NOT NULL,
+      description TEXT,
+      active BOOLEAN DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
+      UNIQUE(app_id, folder_path)
+    )
+  `);
 
-/**
- * Table des logs de conversion
- * Enregistre toutes les opérations de conversion avec leur statut
- */
-const conversionLogs = pgTable('conversion_logs', {
-  id: serial('id').primaryKey(),
-  applicationId: integer('application_id').references(() => applications.id, { onDelete: 'set null' }),
-  apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
-  requestType: text('request_type').notNull(), // api, file, folder
-  sourceFilename: text('source_filename'),
-  targetFilename: text('target_filename'),
-  status: text('status').notNull(), // success, error, warning
-  message: text('message'),
-  errorDetails: text('error_details'),
-  conversionTime: integer('conversion_time'), // en ms
-  inputSize: integer('input_size'), // taille en octets
-  outputSize: integer('output_size'), // taille en octets
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  requestIp: text('request_ip'),
-  requestEndpoint: text('request_endpoint'),
-  resourceCount: integer('resource_count'), // nombre de ressources FHIR générées
-});
+  // Table des conversions HL7->FHIR
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS conversions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversion_id TEXT UNIQUE NOT NULL,
+      app_id INTEGER,
+      api_key_id INTEGER,
+      source_type TEXT,
+      source_name TEXT,
+      source_size INTEGER,
+      resource_count INTEGER,
+      status TEXT,
+      error_message TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      completed_at TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE SET NULL,
+      FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE SET NULL
+    )
+  `);
 
-/**
- * Relations pour la table conversionLogs
- */
-const conversionLogsRelations = relations(conversionLogs, ({ one }) => ({
-  application: one(applications, {
-    fields: [conversionLogs.applicationId],
-    references: [applications.id]
-  }),
-  apiKey: one(apiKeys, {
-    fields: [conversionLogs.apiKeyId],
-    references: [apiKeys.id]
-  })
-}));
+  // Table des statistiques par application
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      date DATE NOT NULL,
+      conversion_count INTEGER DEFAULT 0,
+      success_count INTEGER DEFAULT 0,
+      error_count INTEGER DEFAULT 0,
+      resource_count INTEGER DEFAULT 0,
+      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
+      UNIQUE(app_id, date)
+    )
+  `);
 
-/**
- * Table des métriques agrégées pour le dashboard
- * Stocke des statistiques précalculées pour optimiser l'affichage
- */
-const dashboardMetrics = pgTable('dashboard_metrics', {
-  id: serial('id').primaryKey(),
-  date: timestamp('date').notNull(),
-  applicationId: integer('application_id').references(() => applications.id, { onDelete: 'cascade' }),
-  metricsType: text('metrics_type').notNull(), // daily, weekly, monthly
-  conversionCount: integer('conversion_count').default(0).notNull(),
-  successCount: integer('success_count').default(0).notNull(),
-  errorCount: integer('error_count').default(0).notNull(),
-  warningCount: integer('warning_count').default(0).notNull(),
-  averageConversionTime: integer('average_conversion_time').default(0).notNull(),
-  data: json('data'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull()
-}, (t) => ({
-  // Chaque métrique doit être unique par date, application et type
-  unq: unique().on(t.date, t.applicationId, t.metricsType)
-}));
+  console.log('Base de données initialisée avec succès');
+  
+  // Vérifier si l'utilisateur admin existe déjà
+  const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+  
+  // Si l'admin n'existe pas, l'ajouter
+  if (!adminExists) {
+    // Mot de passe: adminfhirhub
+    const adminPassword = '$2b$10$QJFFLbLCEMXdPC8dBHxgVOHCG7PiLBf4B5BWJ8WgnrDBVn3sQZr3m';
+    
+    db.prepare(`
+      INSERT INTO users (username, password, fullname, email, role)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('admin', adminPassword, 'Administrateur', 'admin@fhirhub.local', 'admin');
+    
+    console.log('Utilisateur admin créé avec succès');
+  }
+  
+  // Vérifier si l'utilisateur standard existe déjà
+  const userExists = db.prepare('SELECT id FROM users WHERE username = ?').get('user');
+  
+  // Si l'utilisateur standard n'existe pas, l'ajouter
+  if (!userExists) {
+    // Mot de passe: userfhirhub
+    const userPassword = '$2b$10$0Z4Evm3HBJ0.HYZY6Gy7oekZpEFzQlQmEJzikVJFkwYpY3jLK8QZC';
+    
+    db.prepare(`
+      INSERT INTO users (username, password, fullname, email, role)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('user', userPassword, 'Utilisateur', 'user@fhirhub.local', 'user');
+    
+    console.log('Utilisateur standard créé avec succès');
+  }
+  
+  // Vérifier si une clé API par défaut existe
+  const apiKeyExists = db.prepare('SELECT id FROM api_keys WHERE api_key = ?').get('dev-key');
+  
+  // Si aucune clé API n'existe, créer l'application par défaut et sa clé
+  if (!apiKeyExists) {
+    // Créer une application par défaut
+    const appResult = db.prepare(`
+      INSERT INTO applications (name, description, retention_days, created_by)
+      VALUES (?, ?, ?, ?)
+    `).run('Application par défaut', 'Application créée automatiquement', 30, 1);
+    
+    const appId = appResult.lastInsertRowid;
+    
+    // Ajouter la clé API de développement
+    db.prepare(`
+      INSERT INTO api_keys (app_id, api_key, description, environment)
+      VALUES (?, ?, ?, ?)
+    `).run(appId, 'dev-key', 'Clé de développement par défaut', 'development');
+    
+    console.log('Application par défaut et clé API créées avec succès');
+  }
+}
 
-/**
- * Relations pour la table dashboardMetrics
- */
-const dashboardMetricsRelations = relations(dashboardMetrics, ({ one }) => ({
-  application: one(applications, {
-    fields: [dashboardMetrics.applicationId],
-    references: [applications.id]
-  })
-}));
-
-/**
- * Table des utilisateurs de l'interface d'administration
- */
-const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  username: text('username').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  email: text('email').unique(),
-  fullName: text('full_name'),
-  role: text('role').default('user').notNull(), // admin, user
-  active: boolean('active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  lastLoginAt: timestamp('last_login_at')
-});
-
-// Exportation des tables et relations
+// Exporter la connexion à la base de données et les fonctions
 module.exports = {
-  applications,
-  apiKeys,
-  applicationParameters,
-  applicationFolders,
-  conversionLogs,
-  dashboardMetrics,
-  users
+  db,
+  initializeDatabase
 };

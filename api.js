@@ -38,21 +38,27 @@ function apiKeyAuth(req, res, next) {
   next();
 }
 
-// Appliquer l'authentification à toutes les routes
-router.use(apiKeyAuth);
-
-/**
- * GET /api/status
- * Vérifier l'état du serveur
- */
+// Routes qui n'ont pas besoin d'authentification
 router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
-    message: 'FHIRHub API est opérationnelle',
     version: '1.0.0',
     timestamp: new Date().toISOString()
   });
 });
+
+// Appliquer l'authentification aux autres routes seulement
+router.use([
+  '/convert', 
+  '/upload', 
+  '/conversions',
+  '/stats',
+  '/monitor', 
+  '/terminology',
+  '/files'
+], apiKeyAuth);
+
+// La route /status est déjà définie plus haut
 
 /**
  * GET /api/conversions

@@ -1,413 +1,457 @@
 /**
- * Service de gestion des logs de conversion
- * Enregistre et récupère les informations sur les conversions HL7 vers FHIR
- * Implémente également l'agrégation de statistiques pour le tableau de bord
+ * Service de journalisation des conversions HL7 vers FHIR
+ * Enregistre et gère l'historique des conversions par application
  */
 
-const { db } = require('../db');
-const { conversionLogs, dashboardMetrics } = require('../db/schema');
-const { eq, and, gte, lte, desc, sql, count, avg, sum } = require('drizzle-orm');
-const { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } = require('date-fns');
-
-/**
- * Créer un nouveau log de conversion
- * @param {Object} logData - Données du log de conversion
- * @returns {Promise<Object>} Log de conversion créé
- */
-async function createConversionLog(logData) {
-  const {
-    applicationId,
-    apiKeyId,
-    requestType,
-    sourceFilename,
-    targetFilename,
-    status,
-    message,
-    errorDetails,
-    conversionTime,
-    inputSize,
-    outputSize,
-    requestIp,
-    requestEndpoint,
-    resourceCount
-  } = logData;
-  
-  const [log] = await db.insert(conversionLogs)
-    .values({
-      applicationId,
-      apiKeyId,
-      requestType,
-      sourceFilename,
-      targetFilename,
-      status,
-      message,
-      errorDetails,
-      conversionTime,
-      inputSize,
-      outputSize,
-      createdAt: new Date(),
-      requestIp,
-      requestEndpoint,
-      resourceCount
-    })
-    .returning();
-  
-  // Mettre à jour les métriques du tableau de bord de manière asynchrone
-  // sans attendre la fin pour ne pas ralentir la réponse API
-  updateDashboardMetrics(applicationId).catch(err => {
-    console.error('[LOG] Erreur lors de la mise à jour des métriques:', err);
-  });
-  
-  return log;
-}
+const { db } = require('../db/schema');
+const { v4: uuidv4 } = require('uuid');
+const { getApplicationById } = require('./applicationService');
+const { getApiKeyById } = require('./apiKeyService');
+const fs = require('fs');
+const path = require('path');
 
 /**
- * Récupérer les logs de conversion
- * @param {Object} options - Options de filtrage et de pagination
- * @returns {Promise<Array>} Liste des logs de conversion
+ * Créer un nouvel enregistrement de conversion
+ * @param {Object} conversionData - Données de la conversion
+ * @returns {Object} Conversion créée
  */
-async function getConversionLogs(options = {}) {
-  const {
-    applicationId,
-    apiKeyId,
-    status,
-    startDate,
-    endDate,
-    requestType,
-    limit = 100,
-    offset = 0
-  } = options;
-  
-  let query = db.select().from(conversionLogs);
-  
-  // Appliquer les filtres
-  if (applicationId) {
-    query = query.where(eq(conversionLogs.applicationId, applicationId));
-  }
-  
-  if (apiKeyId) {
-    query = query.where(eq(conversionLogs.apiKeyId, apiKeyId));
-  }
-  
-  if (status) {
-    query = query.where(eq(conversionLogs.status, status));
-  }
-  
-  if (requestType) {
-    query = query.where(eq(conversionLogs.requestType, requestType));
-  }
-  
-  if (startDate) {
-    query = query.where(gte(conversionLogs.createdAt, new Date(startDate)));
-  }
-  
-  if (endDate) {
-    query = query.where(lte(conversionLogs.createdAt, new Date(endDate)));
-  }
-  
-  return await query
-    .orderBy(desc(conversionLogs.createdAt))
-    .limit(limit)
-    .offset(offset);
-}
-
-/**
- * Récupérer un log de conversion par son ID
- * @param {number} id - ID du log de conversion
- * @returns {Promise<Object|null>} Log de conversion trouvé ou null
- */
-async function getConversionLogById(id) {
-  const [log] = await db.select()
-    .from(conversionLogs)
-    .where(eq(conversionLogs.id, id));
-  
-  return log || null;
-}
-
-/**
- * Compter les logs de conversion
- * @param {Object} options - Options de filtrage
- * @returns {Promise<number>} Nombre de logs de conversion correspondant aux critères
- */
-async function countConversionLogs(options = {}) {
-  const {
-    applicationId,
-    apiKeyId,
-    status,
-    startDate,
-    endDate,
-    requestType
-  } = options;
-  
-  let query = db.select({ count: count() }).from(conversionLogs);
-  
-  // Appliquer les filtres
-  if (applicationId) {
-    query = query.where(eq(conversionLogs.applicationId, applicationId));
-  }
-  
-  if (apiKeyId) {
-    query = query.where(eq(conversionLogs.apiKeyId, apiKeyId));
-  }
-  
-  if (status) {
-    query = query.where(eq(conversionLogs.status, status));
-  }
-  
-  if (requestType) {
-    query = query.where(eq(conversionLogs.requestType, requestType));
-  }
-  
-  if (startDate) {
-    query = query.where(gte(conversionLogs.createdAt, new Date(startDate)));
-  }
-  
-  if (endDate) {
-    query = query.where(lte(conversionLogs.createdAt, new Date(endDate)));
-  }
-  
-  const result = await query;
-  return result[0]?.count || 0;
-}
-
-/**
- * Supprimer les logs de conversion antérieurs à une certaine date
- * @param {number} days - Nombre de jours à conserver
- * @returns {Promise<number>} Nombre de logs supprimés
- */
-async function deleteOldLogs(days = 30) {
-  const cutoffDate = subDays(new Date(), days);
-  
-  const result = await db.delete(conversionLogs)
-    .where(lte(conversionLogs.createdAt, cutoffDate));
-  
-  return result.count;
-}
-
-/**
- * Mettre à jour les métriques du tableau de bord pour une application
- * @param {number} applicationId - ID de l'application (null pour toutes)
- * @returns {Promise<boolean>} True si la mise à jour a réussi
- */
-async function updateDashboardMetrics(applicationId = null) {
-  const today = new Date();
-  
-  // Périodes de temps
-  const dayStart = startOfDay(today);
-  const dayEnd = endOfDay(today);
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Lundi
-  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(today);
-  const monthEnd = endOfMonth(today);
+function createConversionLog(conversionData) {
+  const { 
+    app_id, 
+    api_key_id, 
+    source_type, 
+    source_name, 
+    source_size, 
+    resource_count,
+    status = 'success',
+    error_message
+  } = conversionData;
   
   try {
-    // Métriques journalières
-    await updateMetricsForPeriod(applicationId, dayStart, dayEnd, 'daily');
+    // Générer un ID unique pour la conversion
+    const conversionId = conversionData.conversion_id || uuidv4();
     
-    // Métriques hebdomadaires
-    await updateMetricsForPeriod(applicationId, weekStart, weekEnd, 'weekly');
+    const result = db.prepare(`
+      INSERT INTO conversions (
+        conversion_id, app_id, api_key_id, 
+        source_type, source_name, source_size, 
+        resource_count, status, error_message,
+        completed_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(
+      conversionId,
+      app_id,
+      api_key_id,
+      source_type,
+      source_name,
+      source_size,
+      resource_count,
+      status,
+      error_message
+    );
     
-    // Métriques mensuelles
-    await updateMetricsForPeriod(applicationId, monthStart, monthEnd, 'monthly');
-    
-    return true;
-  } catch (error) {
-    console.error('[METRICS] Erreur lors de la mise à jour des métriques:', error);
-    return false;
-  }
-}
-
-/**
- * Mettre à jour les métriques pour une période spécifique
- * @param {number} applicationId - ID de l'application (null pour toutes)
- * @param {Date} startDate - Date de début de la période
- * @param {Date} endDate - Date de fin de la période
- * @param {string} metricsType - Type de métriques ('daily', 'weekly', 'monthly')
- */
-async function updateMetricsForPeriod(applicationId, startDate, endDate, metricsType) {
-  // Requête de base pour les agrégations
-  let baseQuery = db
-    .select({
-      totalCount: count(),
-      successCount: count(sql`CASE WHEN ${conversionLogs.status} = 'success' THEN 1 END`),
-      errorCount: count(sql`CASE WHEN ${conversionLogs.status} = 'error' THEN 1 END`),
-      warningCount: count(sql`CASE WHEN ${conversionLogs.status} = 'warning' THEN 1 END`),
-      avgTime: avg(conversionLogs.conversionTime)
-    })
-    .from(conversionLogs)
-    .where(and(
-      gte(conversionLogs.createdAt, startDate),
-      lte(conversionLogs.createdAt, endDate)
-    ));
-  
-  // Ajouter le filtre par application si nécessaire
-  if (applicationId) {
-    baseQuery = baseQuery.where(eq(conversionLogs.applicationId, applicationId));
-  }
-  
-  // Exécuter la requête d'agrégation
-  const [metrics] = await baseQuery;
-  
-  // Préparer les données pour l'insertion/mise à jour
-  const metricsData = {
-    date: startDate,
-    applicationId,
-    metricsType,
-    conversionCount: metrics.totalCount || 0,
-    successCount: metrics.successCount || 0,
-    errorCount: metrics.errorCount || 0,
-    warningCount: metrics.warningCount || 0,
-    averageConversionTime: Math.round(metrics.avgTime || 0),
-    data: {}, // Données supplémentaires si nécessaire
-    updatedAt: new Date()
-  };
-  
-  // Vérifier si une entrée existe déjà
-  const existingQuery = db.select()
-    .from(dashboardMetrics)
-    .where(and(
-      eq(dashboardMetrics.date, startDate),
-      eq(dashboardMetrics.metricsType, metricsType),
-      applicationId ? eq(dashboardMetrics.applicationId, applicationId) : isNull(dashboardMetrics.applicationId)
-    ));
-  
-  const [existing] = await existingQuery;
-  
-  if (existing) {
-    // Mettre à jour l'entrée existante
-    await db.update(dashboardMetrics)
-      .set(metricsData)
-      .where(eq(dashboardMetrics.id, existing.id));
-  } else {
-    // Créer une nouvelle entrée
-    await db.insert(dashboardMetrics)
-      .values({
-        ...metricsData,
-        createdAt: new Date()
+    // Mettre à jour les statistiques de l'application
+    if (app_id) {
+      updateAppStats(app_id, {
+        conversion_count: 1,
+        success_count: status === 'success' ? 1 : 0,
+        error_count: status === 'error' ? 1 : 0,
+        resource_count: resource_count || 0
       });
-  }
-}
-
-/**
- * Récupérer les métriques du tableau de bord
- * @param {Object} options - Options de filtrage
- * @returns {Promise<Array>} Métriques du tableau de bord
- */
-async function getDashboardMetrics(options = {}) {
-  const { applicationId, metricsType, startDate, endDate, limit = 100 } = options;
-  
-  let query = db.select().from(dashboardMetrics);
-  
-  // Appliquer les filtres
-  if (applicationId) {
-    query = query.where(eq(dashboardMetrics.applicationId, applicationId));
-  }
-  
-  if (metricsType) {
-    query = query.where(eq(dashboardMetrics.metricsType, metricsType));
-  }
-  
-  if (startDate) {
-    query = query.where(gte(dashboardMetrics.date, new Date(startDate)));
-  }
-  
-  if (endDate) {
-    query = query.where(lte(dashboardMetrics.date, new Date(endDate)));
-  }
-  
-  return await query
-    .orderBy(desc(dashboardMetrics.date))
-    .limit(limit);
-}
-
-/**
- * Obtenir un résumé des statistiques pour le tableau de bord
- * @param {Object} options - Options de filtrage
- * @returns {Promise<Object>} Résumé des statistiques
- */
-async function getStatsSummary(options = {}) {
-  const { applicationId, startDate, endDate } = options;
-  
-  // Périodes par défaut si non spécifiées
-  const effectiveStartDate = startDate ? new Date(startDate) : subDays(new Date(), 30);
-  const effectiveEndDate = endDate ? new Date(endDate) : new Date();
-  
-  // Requête d'agrégation
-  let query = db
-    .select({
-      totalCount: count(),
-      successCount: count(sql`CASE WHEN ${conversionLogs.status} = 'success' THEN 1 END`),
-      errorCount: count(sql`CASE WHEN ${conversionLogs.status} = 'error' THEN 1 END`),
-      warningCount: count(sql`CASE WHEN ${conversionLogs.status} = 'warning' THEN 1 END`),
-      avgTime: avg(conversionLogs.conversionTime),
-      totalResources: sum(conversionLogs.resourceCount)
-    })
-    .from(conversionLogs)
-    .where(and(
-      gte(conversionLogs.createdAt, effectiveStartDate),
-      lte(conversionLogs.createdAt, effectiveEndDate)
-    ));
-  
-  // Ajouter le filtre par application si nécessaire
-  if (applicationId) {
-    query = query.where(eq(conversionLogs.applicationId, applicationId));
-  }
-  
-  // Exécuter la requête
-  const [summary] = await query;
-  
-  // Distribution par type de requête
-  const requestTypesQuery = db
-    .select({
-      requestType: conversionLogs.requestType,
-      count: count()
-    })
-    .from(conversionLogs)
-    .where(and(
-      gte(conversionLogs.createdAt, effectiveStartDate),
-      lte(conversionLogs.createdAt, effectiveEndDate)
-    ))
-    .groupBy(conversionLogs.requestType);
-  
-  // Ajouter le filtre par application si nécessaire
-  if (applicationId) {
-    requestTypesQuery.where(eq(conversionLogs.applicationId, applicationId));
-  }
-  
-  const requestTypes = await requestTypesQuery;
-  
-  // Construire le résultat final
-  return {
-    period: {
-      start: effectiveStartDate,
-      end: effectiveEndDate
-    },
-    conversions: {
-      total: summary.totalCount || 0,
-      success: summary.successCount || 0,
-      error: summary.errorCount || 0,
-      warning: summary.warningCount || 0
-    },
-    performance: {
-      averageTime: Math.round(summary.avgTime || 0),
-      totalResources: summary.totalResources || 0
-    },
-    distribution: {
-      requestTypes: requestTypes.reduce((acc, item) => {
-        acc[item.requestType] = item.count;
-        return acc;
-      }, {})
     }
-  };
+    
+    return getConversionById(conversionId);
+  } catch (error) {
+    console.error('Erreur lors de la création du log de conversion:', error);
+    throw new Error(`Impossible de créer le log: ${error.message}`);
+  }
 }
 
+/**
+ * Mettre à jour les statistiques d'une application
+ * @param {number} appId - ID de l'application
+ * @param {Object} stats - Statistiques à ajouter
+ * @private
+ */
+function updateAppStats(appId, stats) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Vérifier si des stats existent déjà pour aujourd'hui
+    const existingStats = db.prepare(
+      'SELECT * FROM app_stats WHERE app_id = ? AND date = ?'
+    ).get(appId, today);
+    
+    if (existingStats) {
+      // Mettre à jour les stats existantes
+      db.prepare(`
+        UPDATE app_stats
+        SET conversion_count = conversion_count + ?,
+            success_count = success_count + ?,
+            error_count = error_count + ?,
+            resource_count = resource_count + ?
+        WHERE id = ?
+      `).run(
+        stats.conversion_count || 0,
+        stats.success_count || 0,
+        stats.error_count || 0,
+        stats.resource_count || 0,
+        existingStats.id
+      );
+    } else {
+      // Créer de nouvelles stats
+      db.prepare(`
+        INSERT INTO app_stats (app_id, date, conversion_count, success_count, error_count, resource_count)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        appId,
+        today,
+        stats.conversion_count || 0,
+        stats.success_count || 0,
+        stats.error_count || 0,
+        stats.resource_count || 0
+      );
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour des statistiques:', error);
+    // Ne pas échouer l'opération principale si la mise à jour des stats échoue
+  }
+}
+
+/**
+ * Obtenir une conversion par son ID
+ * @param {string} id - ID de la conversion
+ * @returns {Object|null} Conversion trouvée ou null
+ */
+function getConversionById(id) {
+  try {
+    return db.prepare('SELECT * FROM conversions WHERE conversion_id = ?').get(id);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la conversion:', error);
+    throw new Error(`Impossible de récupérer la conversion: ${error.message}`);
+  }
+}
+
+/**
+ * Sauvegarder le contenu HL7 source et le résultat FHIR d'une conversion
+ * @param {string} conversionId - ID de la conversion
+ * @param {string} hl7Content - Contenu HL7 source
+ * @param {Object|string} fhirContent - Contenu FHIR résultant (objet ou JSON)
+ * @returns {Object} Chemins des fichiers sauvegardés
+ */
+function saveConversionContent(conversionId, hl7Content, fhirContent) {
+  try {
+    // Créer les répertoires de stockage si nécessaires
+    const dataDir = path.join(__dirname, '../../data');
+    const conversionsDir = path.join(dataDir, 'conversions');
+    
+    if (!fs.existsSync(conversionsDir)) {
+      fs.mkdirSync(conversionsDir, { recursive: true });
+    }
+    
+    // Créer un sous-répertoire pour cette conversion
+    const conversionDir = path.join(conversionsDir, conversionId);
+    
+    if (!fs.existsSync(conversionDir)) {
+      fs.mkdirSync(conversionDir, { recursive: true });
+    }
+    
+    // Sauvegarder le contenu HL7
+    const hl7Path = path.join(conversionDir, 'source.hl7');
+    fs.writeFileSync(hl7Path, hl7Content);
+    
+    // Sauvegarder le contenu FHIR
+    const fhirPath = path.join(conversionDir, 'result.json');
+    const fhirJson = typeof fhirContent === 'object' 
+      ? JSON.stringify(fhirContent, null, 2) 
+      : fhirContent;
+    
+    fs.writeFileSync(fhirPath, fhirJson);
+    
+    return {
+      hl7Path: hl7Path.replace(dataDir, ''),
+      fhirPath: fhirPath.replace(dataDir, '')
+    };
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du contenu de conversion:', error);
+    throw new Error(`Impossible de sauvegarder le contenu: ${error.message}`);
+  }
+}
+
+/**
+ * Charger le contenu sauvegardé d'une conversion
+ * @param {string} conversionId - ID de la conversion
+ * @returns {Object} Contenu HL7 et FHIR
+ */
+function loadConversionContent(conversionId) {
+  try {
+    const dataDir = path.join(__dirname, '../../data');
+    const conversionDir = path.join(dataDir, 'conversions', conversionId);
+    
+    if (!fs.existsSync(conversionDir)) {
+      throw new Error('Contenu de conversion non trouvé');
+    }
+    
+    const hl7Path = path.join(conversionDir, 'source.hl7');
+    const fhirPath = path.join(conversionDir, 'result.json');
+    
+    let hl7Content = null;
+    let fhirContent = null;
+    
+    if (fs.existsSync(hl7Path)) {
+      hl7Content = fs.readFileSync(hl7Path, 'utf8');
+    }
+    
+    if (fs.existsSync(fhirPath)) {
+      const fhirRaw = fs.readFileSync(fhirPath, 'utf8');
+      try {
+        fhirContent = JSON.parse(fhirRaw);
+      } catch (e) {
+        fhirContent = fhirRaw;
+      }
+    }
+    
+    return { hl7Content, fhirContent };
+  } catch (error) {
+    console.error('Erreur lors du chargement du contenu de conversion:', error);
+    throw new Error(`Impossible de charger le contenu: ${error.message}`);
+  }
+}
+
+/**
+ * Lister les conversions
+ * @param {Object} options - Options de filtrage et de pagination
+ * @returns {Object} Liste des conversions avec pagination
+ */
+function listConversions(options = {}) {
+  const { 
+    app_id,
+    status,
+    startDate,
+    endDate,
+    limit = 20,
+    offset = 0,
+    sortBy = 'created_at',
+    sortOrder = 'desc'
+  } = options;
+  
+  try {
+    let query = 'SELECT * FROM conversions WHERE 1=1';
+    const params = [];
+    
+    if (app_id) {
+      query += ' AND app_id = ?';
+      params.push(app_id);
+    }
+    
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    if (startDate) {
+      query += ' AND created_at >= ?';
+      params.push(startDate);
+    }
+    
+    if (endDate) {
+      query += ' AND created_at <= ?';
+      params.push(endDate);
+    }
+    
+    // Compter le total
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*)');
+    const totalCount = db.prepare(countQuery).get(...params)['COUNT(*)'];
+    
+    // Ajouter tri et pagination
+    query += ` ORDER BY ${sortBy} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+    query += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const conversions = db.prepare(query).all(...params);
+    
+    return {
+      total: totalCount,
+      limit,
+      offset,
+      conversions
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des conversions:', error);
+    throw new Error(`Impossible de récupérer les conversions: ${error.message}`);
+  }
+}
+
+/**
+ * Supprimer les conversions selon les règles de rétention des applications
+ * @returns {number} Nombre de conversions supprimées
+ */
+function cleanupConversions() {
+  try {
+    // Récupérer toutes les applications avec leur durée de rétention
+    const apps = db.prepare('SELECT id, retention_days FROM applications').all();
+    let totalDeleted = 0;
+    
+    for (const app of apps) {
+      // Calculer la date limite pour cette application
+      const retentionDays = app.retention_days || 30;
+      const date = new Date();
+      date.setDate(date.getDate() - retentionDays);
+      const retentionDate = date.toISOString();
+      
+      // Récupérer les IDs des conversions à supprimer
+      const conversionsToDelete = db.prepare(`
+        SELECT conversion_id FROM conversions
+        WHERE app_id = ? AND created_at < ?
+      `).all(app.id, retentionDate);
+      
+      // Supprimer les fichiers de chaque conversion
+      for (const conv of conversionsToDelete) {
+        try {
+          const convDir = path.join(__dirname, '../../data/conversions', conv.conversion_id);
+          if (fs.existsSync(convDir)) {
+            fs.rmdirSync(convDir, { recursive: true });
+          }
+        } catch (e) {
+          console.error(`Erreur lors de la suppression des fichiers de conversion ${conv.conversion_id}:`, e);
+        }
+      }
+      
+      // Supprimer les enregistrements de conversion
+      const result = db.prepare(`
+        DELETE FROM conversions
+        WHERE app_id = ? AND created_at < ?
+      `).run(app.id, retentionDate);
+      
+      totalDeleted += result.changes;
+    }
+    
+    return totalDeleted;
+  } catch (error) {
+    console.error('Erreur lors du nettoyage des conversions:', error);
+    throw new Error(`Impossible de nettoyer les conversions: ${error.message}`);
+  }
+}
+
+/**
+ * Obtenir des statistiques globales sur les conversions
+ * @param {Object} options - Options de filtrage (période, etc.)
+ * @returns {Object} Statistiques sur les conversions
+ */
+function getConversionStats(options = {}) {
+  const { app_id, startDate, endDate } = options;
+  
+  try {
+    let query = `
+      SELECT 
+        COUNT(*) as total_conversions,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+        SUM(resource_count) as total_resources,
+        AVG(resource_count) as avg_resources,
+        AVG(source_size) as avg_source_size
+      FROM conversions
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (app_id) {
+      query += ' AND app_id = ?';
+      params.push(app_id);
+    }
+    
+    if (startDate) {
+      query += ' AND created_at >= ?';
+      params.push(startDate);
+    }
+    
+    if (endDate) {
+      query += ' AND created_at <= ?';
+      params.push(endDate);
+    }
+    
+    const stats = db.prepare(query).get(...params);
+    
+    // Obtenir les statistiques par jour
+    let timeSeriesQuery = `
+      SELECT 
+        date(created_at) as date,
+        COUNT(*) as conversions,
+        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successes,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors,
+        SUM(resource_count) as resources
+      FROM conversions
+      WHERE 1=1
+    `;
+    
+    if (app_id) {
+      timeSeriesQuery += ' AND app_id = ?';
+    }
+    
+    if (startDate) {
+      timeSeriesQuery += ' AND created_at >= ?';
+    }
+    
+    if (endDate) {
+      timeSeriesQuery += ' AND created_at <= ?';
+    }
+    
+    timeSeriesQuery += ' GROUP BY date(created_at) ORDER BY date(created_at)';
+    
+    const timeSeriesData = db.prepare(timeSeriesQuery).all(...params);
+    
+    return {
+      summary: {
+        totalConversions: stats.total_conversions || 0,
+        successCount: stats.success_count || 0,
+        errorCount: stats.error_count || 0,
+        totalResources: stats.total_resources || 0,
+        averageResources: Math.round((stats.avg_resources || 0) * 10) / 10,
+        averageSourceSize: Math.round((stats.avg_source_size || 0) * 10) / 10,
+        successRate: stats.total_conversions 
+          ? Math.round((stats.success_count / stats.total_conversions) * 1000) / 10 
+          : 0
+      },
+      timeSeries: timeSeriesData
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des statistiques:', error);
+    throw new Error(`Impossible de récupérer les statistiques: ${error.message}`);
+  }
+}
+
+/**
+ * Supprimer une conversion et ses fichiers associés
+ * @param {string} conversionId - ID de la conversion
+ * @returns {boolean} Succès de la suppression
+ */
+function deleteConversion(conversionId) {
+  try {
+    // Supprimer les fichiers
+    const convDir = path.join(__dirname, '../../data/conversions', conversionId);
+    if (fs.existsSync(convDir)) {
+      fs.rmdirSync(convDir, { recursive: true });
+    }
+    
+    // Supprimer l'enregistrement
+    const result = db.prepare('DELETE FROM conversions WHERE conversion_id = ?').run(conversionId);
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error('Erreur lors de la suppression de la conversion:', error);
+    throw new Error(`Impossible de supprimer la conversion: ${error.message}`);
+  }
+}
+
+// Exporter les fonctions du service
 module.exports = {
   createConversionLog,
-  getConversionLogs,
-  getConversionLogById,
-  countConversionLogs,
-  deleteOldLogs,
-  updateDashboardMetrics,
-  getDashboardMetrics,
-  getStatsSummary
+  getConversionById,
+  saveConversionContent,
+  loadConversionContent,
+  listConversions,
+  cleanupConversions,
+  getConversionStats,
+  deleteConversion
 };
