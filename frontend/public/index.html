@@ -564,7 +564,8 @@
         <div class="api-endpoint"><span class="method">GET</span> /api/files/fhir/:filename - Récupérer un fichier FHIR</div>
         <div class="api-endpoint"><span class="method">POST</span> /api/convert - Convertir du contenu HL7 en FHIR</div>
         <div class="api-endpoint"><span class="method">POST</span> /api/upload - Télécharger et convertir un fichier HL7</div>
-        <!-- Endpoints de surveillance supprimés -->
+        <div class="api-endpoint"><span class="method">GET</span> /api/terminology/codesystem/:id - Obtenir un système de code spécifique</div>
+        <div class="api-endpoint"><span class="method">GET</span> /api/terminology/search - Rechercher dans les terminologies</div>
       </div>
       
       <h3>Tester l'API</h3>
@@ -957,9 +958,11 @@
       
       try {
         const result = await apiRequest('status');
-        statusSpan.innerHTML = '<span class="status-success">✓ API connectée: ' + result.message + '</span>';
+        // Vérifier si result.message existe, sinon afficher un message par défaut
+        const message = result.message || "Serveur OK";
+        statusSpan.innerHTML = '<span class="status-success">✓ API connectée: ' + message + '</span>';
       } catch (error) {
-        statusSpan.innerHTML = '<span class="status-error">✗ Échec de connexion: ' + error.message + '</span>';
+        statusSpan.innerHTML = '<span class="status-error">✗ Échec de connexion: ' + (error.message || "Erreur inconnue") + '</span>';
       }
     });
     
