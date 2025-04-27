@@ -10,7 +10,6 @@ const path = require('path');
 const fs = require('fs');
 const bodyParser = require('body-parser');
 const api = require('./api');
-const fileMonitor = require('./fileMonitor');
 const frenchTerminologyService = require('./french_terminology_service');
 const { initialize } = require('./src/init');
 
@@ -52,18 +51,16 @@ app.listen(port, '0.0.0.0', () => {
   
   // Créer les répertoires nécessaires
   const dataDir = path.join(__dirname, 'data');
-  const inDir = path.join(dataDir, 'in');
-  const outDir = path.join(dataDir, 'out');
   const uploadsDir = path.join(dataDir, 'uploads');
+  const conversionsDir = path.join(dataDir, 'conversions');
   
-  [dataDir, inDir, outDir, uploadsDir].forEach(dir => {
+  [dataDir, uploadsDir, conversionsDir].forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
   });
   
-  // La surveillance automatique des fichiers a été désactivée
-  console.log("Mode API uniquement: la surveillance automatique des fichiers est désactivée.");
+  console.log("Service FHIRHub prêt pour les conversions via API.");
 });
 
 // Gérer l'arrêt gracieux

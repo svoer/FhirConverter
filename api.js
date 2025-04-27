@@ -10,7 +10,6 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const converter = require('./hl7ToFhirConverter');
-const fileMonitor = require('./fileMonitor');
 const frenchTerminologyService = require('./french_terminology_service');
 const terminologyValidationRouter = require('./api/terminology_validation');
 const apiKeyService = require('./src/services/apiKeyService');
@@ -72,7 +71,6 @@ router.use([
   '/upload', 
   '/conversions',
   '/stats',
-  '/monitor', 
   '/terminology',
   '/files'
 ], apiKeyAuth);
@@ -170,7 +168,8 @@ router.get('/stats', async (req, res) => {
  * Récupérer un fichier FHIR
  */
 router.get('/files/fhir/:filename', (req, res) => {
-  const filePath = path.join(fileMonitor.outputDir, req.params.filename);
+  const outputDir = path.join(__dirname, 'data/conversions');
+  const filePath = path.join(outputDir, req.params.filename);
   
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({
@@ -299,38 +298,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-/**
- * POST /api/monitor/start
- * [Obsolète] Endpoint maintenu pour rétrocompatibilité
- */
-router.post('/monitor/start', (req, res) => {
-  res.status(410).json({
-    status: 'deprecated',
-    message: 'La fonctionnalité de surveillance des répertoires a été désactivée. Utilisez l\'API pour convertir des fichiers.'
-  });
-});
-
-/**
- * POST /api/monitor/stop
- * [Obsolète] Endpoint maintenu pour rétrocompatibilité
- */
-router.post('/monitor/stop', (req, res) => {
-  res.status(410).json({
-    status: 'deprecated',
-    message: 'La fonctionnalité de surveillance des répertoires a été désactivée.'
-  });
-});
-
-/**
- * POST /api/monitor/scan
- * [Obsolète] Endpoint maintenu pour rétrocompatibilité
- */
-router.post('/monitor/scan', (req, res) => {
-  res.status(410).json({
-    status: 'deprecated',
-    message: 'La fonctionnalité de surveillance des répertoires a été désactivée. Utilisez l\'API pour convertir des fichiers.'
-  });
-});
+// Les endpoints de surveillance de répertoires ont été entièrement supprimés
 
 /**
  * GET /api/terminology/codesystem/:id
