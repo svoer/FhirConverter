@@ -16,13 +16,43 @@ router.get('/', (req, res) => {
     const appId = req.query.appId ? parseInt(req.query.appId) : null;
     
     if (appId) {
-      // Statistiques pour une application spécifique
-      const stats = conversionLogService.getAppStats(appId);
-      res.json({ success: true, data: stats });
+      try {
+        // Statistiques pour une application spécifique
+        const stats = conversionLogService.getAppStats(appId);
+        return res.json({ success: true, data: stats });
+      } catch (appError) {
+        console.error('Erreur lors de la récupération des statistiques de l\'application:', appError);
+        // En cas d'erreur, retourner des statistiques vides plutôt que de faire échouer la requête
+        return res.json({
+          success: true,
+          data: {
+            total: 0,
+            success: 0,
+            failed: 0,
+            resources: 0,
+            lastConversion: null
+          }
+        });
+      }
     } else {
-      // Statistiques globales
-      const stats = conversionLogService.getGlobalStats();
-      res.json({ success: true, data: stats });
+      try {
+        // Statistiques globales
+        const stats = conversionLogService.getGlobalStats();
+        return res.json({ success: true, data: stats });
+      } catch (globalError) {
+        console.error('Erreur lors de la récupération des statistiques globales:', globalError);
+        // En cas d'erreur, retourner des statistiques vides
+        return res.json({
+          success: true,
+          data: {
+            total: 0,
+            success: 0,
+            error: 0,
+            resources: 0,
+            lastConversion: null
+          }
+        });
+      }
     }
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error);
