@@ -11,6 +11,8 @@
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   transition: all 0.3s ease;
+  margin-bottom: 20px;
+  background-color: white;
 }
 
 .api-endpoint-card:hover {
@@ -19,13 +21,15 @@
 }
 
 .api-endpoint-header {
-  background: linear-gradient(135deg, #f8f9fa, #eaecef);
+  background: linear-gradient(135deg, #ff5f6d, #ffc371);
   padding: 15px;
   border-bottom: 1px solid #e1e4e8;
   font-weight: 600;
   display: flex;
   align-items: center;
   cursor: pointer;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
 
 .api-endpoint-header .method {
@@ -61,7 +65,7 @@
 .api-endpoint-desc {
   margin-top: 5px;
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.85);
   font-weight: normal;
 }
 

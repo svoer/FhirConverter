@@ -41,7 +41,12 @@ function refreshStats() {
       'x-api-key': 'dev-key'
     }
   })
-  .then(response => response.json())
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+    return response.json();
+  })
   .then(data => {
     // Mettre à jour les compteurs dans l'interface
     if (data && data.status === 'ok' && data.data) {
@@ -104,7 +109,12 @@ function refreshHistory(reset = false) {
       'x-api-key': 'dev-key'
     }
   })
-  .then(response => response.json())
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+    return response.json();
+  })
   .then(data => {
     isLoadingHistory = false;
     
