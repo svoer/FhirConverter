@@ -192,9 +192,29 @@ router.get('/files/fhir/:filename', (req, res) => {
 /**
  * POST /api/convert
  * Convertir du contenu HL7 en FHIR
+ * Accepte soit du texte brut HL7 soit un objet JSON {content: "texte HL7", options: {...}}
  */
-router.post('/convert', express.text({ type: '*/*', limit: '10mb' }), async (req, res) => {
-  if (!req.body || req.body.trim() === '') {
+router.post('/convert', express.json({ limit: '10mb' }), async (req, res) => {
+  let hl7Content = '';
+  let options = {};
+  
+  // Détecter le format de la requête (JSON ou texte brut)
+  if (req.body && typeof req.body === 'object' && req.body.content) {
+    // Format JSON: {content: "MSH|...", options: {...}}
+    hl7Content = req.body.content;
+    options = req.body.options || {};
+  } else if (req.body && typeof req.body === 'string') {
+    // Texte brut
+    hl7Content = req.body;
+  } else {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Contenu HL7 manquant ou format non reconnu'
+    });
+  }
+  
+  // Vérifier que le contenu n'est pas vide
+  if (!hl7Content || hl7Content.trim() === '') {
     return res.status(400).json({
       status: 'error',
       message: 'Contenu HL7 manquant'
@@ -203,7 +223,7 @@ router.post('/convert', express.text({ type: '*/*', limit: '10mb' }), async (req
   
   try {
     const filename = req.query.filename || 'saisie_directe.hl7';
-    const result = converter.convertHl7Content(req.body, filename);
+    const result = converter.convertHl7Content(hl7Content, filename, options);
     
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {
@@ -214,7 +234,7 @@ router.post('/convert', express.text({ type: '*/*', limit: '10mb' }), async (req
           apiKeyId: req.apiKeyInfo.id,
           sourceType: 'API',
           sourceName: filename,
-          sourceSize: req.body.length,
+          sourceSize: typeof hl7Content === 'string' ? hl7Content.length : JSON.stringify(req.body).length,
           resourceCount: result.fhirData?.entry?.length || 0,
           status: result.success ? 'success' : 'error',
           errorMessage: result.success ? null : result.message

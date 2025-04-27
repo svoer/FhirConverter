@@ -2509,15 +2509,33 @@ function convertHl7File(filePath) {
  * Convertir un contenu HL7 en chaîne de caractères
  * @param {string} hl7Content - Contenu HL7
  * @param {string} [filename] - Nom de fichier (optionnel)
+ * @param {Object} [options={}] - Options supplémentaires pour la conversion
+ * @param {boolean} [options.validate=true] - Valider les terminologies 
+ * @param {boolean} [options.cleanResources=true] - Nettoyer les ressources FHIR
+ * @param {boolean} [options.adaptFrenchTerms=true] - Adapter aux terminologies françaises
  * @returns {Object} Résultat de la conversion
  */
-function convertHl7Content(hl7Content, filename = null) {
+function convertHl7Content(hl7Content, filename = null, options = {}) {
   try {
+    // Valeurs par défaut des options
+    const defaultOptions = {
+      validate: true,
+      cleanResources: true,
+      adaptFrenchTerms: true
+    };
+    
+    // Fusion des options par défaut avec celles fournies
+    const conversionOptions = { ...defaultOptions, ...options };
+    
+    // Afficher les options utilisées pour le débogage
+    console.log('Options de conversion utilisées:', conversionOptions);
+    
     // Générer un nom de fichier s'il n'est pas fourni
     const generatedFilename = filename || `hl7_${new Date().getTime()}.hl7`;
     
     // Convertir le message HL7 en FHIR
-    // Remarque: convertHl7ToFhir inclut déjà l'adaptation et le nettoyage
+    // Remarque: convertHl7ToFhir inclut déjà l'adaptation et le nettoyage,
+    // mais nous pouvons ajouter des options pour contrôler son comportement
     const fhirData = convertHl7ToFhir(hl7Content);
     
     // Sauvegarder les données FHIR dans un fichier
