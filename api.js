@@ -13,29 +13,48 @@ const converter = require('./hl7ToFhirConverter');
 const fileMonitor = require('./fileMonitor');
 const frenchTerminologyService = require('./french_terminology_service');
 const terminologyValidationRouter = require('./api/terminology_validation');
+const apiKeyService = require('./src/services/apiKeyService');
+const conversionLogService = require('./src/services/conversionLogService');
 
 // Configuration pour l'upload de fichiers
 const upload = multer({
   dest: 'data/uploads/',
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max
+    fileSize: 10 * 1024 * 1024 // 10MB max
   }
 });
 
 // Middleware d'authentification par clé API
-const API_KEYS = ['dev-key', 'test-key']; // Clés d'API par défaut
-
-function apiKeyAuth(req, res, next) {
+async function apiKeyAuth(req, res, next) {
   const apiKey = req.headers['x-api-key'];
   
-  if (!apiKey || !API_KEYS.includes(apiKey)) {
+  if (!apiKey) {
     return res.status(401).json({
       status: 'error',
-      message: 'Clé API invalide ou manquante'
+      message: 'Clé API manquante'
     });
   }
   
-  next();
+  try {
+    // Vérifier la validité de la clé API avec le service
+    const keyInfo = await apiKeyService.validateApiKey(apiKey);
+    
+    if (!keyInfo) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Clé API invalide'
+      });
+    }
+    
+    // Stocker les informations de la clé API dans la requête pour un usage ultérieur
+    req.apiKeyInfo = keyInfo;
+    next();
+  } catch (error) {
+    return res.status(500).json({
+      status: 'error',
+      message: `Erreur lors de la validation de la clé API: ${error.message}`
+    });
+  }
 }
 
 // Routes qui n'ont pas besoin d'authentification
@@ -64,45 +83,86 @@ router.use([
  * GET /api/conversions
  * Obtenir l'historique des conversions
  */
-router.get('/conversions', (req, res) => {
-  const limit = parseInt(req.query.limit) || 100;
-  const offset = parseInt(req.query.offset) || 0;
-  
-  res.json({
-    status: 'ok',
-    data: converter.getConversionLogs(limit, offset)
-  });
+router.get('/conversions', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    // Utiliser le service de logs de conversion
+    const conversions = await conversionLogService.getConversionLogs(
+      req.apiKeyInfo?.appId, // Filtrer par application si API key fournie
+      limit,
+      offset
+    );
+    
+    res.json({
+      status: 'ok',
+      data: conversions
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: `Erreur lors de la récupération des conversions: ${error.message}`
+    });
+  }
 });
 
 /**
  * GET /api/conversions/:id
  * Obtenir une conversion spécifique par ID
  */
-router.get('/conversions/:id', (req, res) => {
-  const conversion = converter.getConversionLogById(req.params.id);
-  
-  if (!conversion) {
-    return res.status(404).json({
+router.get('/conversions/:id', async (req, res) => {
+  try {
+    const conversion = await conversionLogService.getConversionById(req.params.id);
+    
+    if (!conversion) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Conversion non trouvée'
+      });
+    }
+    
+    // Vérifier que la conversion appartient à l'application associée à la clé API
+    if (req.apiKeyInfo && conversion.appId !== req.apiKeyInfo.appId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Accès non autorisé à cette conversion'
+      });
+    }
+    
+    res.json({
+      status: 'ok',
+      data: conversion
+    });
+  } catch (error) {
+    res.status(500).json({
       status: 'error',
-      message: 'Conversion non trouvée'
+      message: `Erreur lors de la récupération de la conversion: ${error.message}`
     });
   }
-  
-  res.json({
-    status: 'ok',
-    data: conversion
-  });
 });
 
 /**
  * GET /api/stats
  * Obtenir les statistiques de conversion
  */
-router.get('/stats', (req, res) => {
-  res.json({
-    status: 'ok',
-    data: converter.getConversionStats()
-  });
+router.get('/stats', async (req, res) => {
+  try {
+    // Utiliser le service de logs de conversion pour obtenir les statistiques
+    const stats = await conversionLogService.getConversionStats(
+      req.apiKeyInfo?.appId // Filtrer par application si API key fournie
+    );
+    
+    res.json({
+      status: 'ok',
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error', 
+      message: `Erreur lors de la récupération des statistiques: ${error.message}`
+    });
+  }
 });
 
 /**
@@ -134,7 +194,7 @@ router.get('/files/fhir/:filename', (req, res) => {
  * POST /api/convert
  * Convertir du contenu HL7 en FHIR
  */
-router.post('/convert', express.text({ type: '*/*', limit: '5mb' }), (req, res) => {
+router.post('/convert', express.text({ type: '*/*', limit: '10mb' }), async (req, res) => {
   if (!req.body || req.body.trim() === '') {
     return res.status(400).json({
       status: 'error',
@@ -143,8 +203,28 @@ router.post('/convert', express.text({ type: '*/*', limit: '5mb' }), (req, res) 
   }
   
   try {
-    const filename = req.query.filename || null;
+    const filename = req.query.filename || 'saisie_directe.hl7';
     const result = converter.convertHl7Content(req.body, filename);
+    
+    // Enregistrer la conversion dans la base de données
+    if (req.apiKeyInfo) {
+      try {
+        await conversionLogService.logConversion({
+          conversionId: result.conversionId,
+          appId: req.apiKeyInfo.appId,
+          apiKeyId: req.apiKeyInfo.id,
+          sourceType: 'API',
+          sourceName: filename,
+          sourceSize: req.body.length,
+          resourceCount: result.fhirData?.entry?.length || 0,
+          status: result.success ? 'success' : 'error',
+          errorMessage: result.success ? null : result.message
+        });
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de la conversion:', logError);
+        // On continue malgré l'erreur de log pour ne pas bloquer la conversion
+      }
+    }
     
     res.status(result.success ? 200 : 400).json({
       status: result.success ? 'ok' : 'error',
@@ -165,7 +245,7 @@ router.post('/convert', express.text({ type: '*/*', limit: '5mb' }), (req, res) 
  * POST /api/upload
  * Télécharger et convertir un fichier HL7
  */
-router.post('/upload', upload.single('file'), (req, res) => {
+router.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({
       status: 'error',
@@ -183,6 +263,26 @@ router.post('/upload', upload.single('file'), (req, res) => {
     
     // Convertir le contenu
     const result = converter.convertHl7Content(hl7Content, req.file.originalname);
+    
+    // Enregistrer la conversion dans la base de données
+    if (req.apiKeyInfo) {
+      try {
+        await conversionLogService.logConversion({
+          conversionId: result.conversionId,
+          appId: req.apiKeyInfo.appId,
+          apiKeyId: req.apiKeyInfo.id,
+          sourceType: 'FICHIER',
+          sourceName: req.file.originalname,
+          sourceSize: req.file.size,
+          resourceCount: result.fhirData?.entry?.length || 0,
+          status: result.success ? 'success' : 'error',
+          errorMessage: result.success ? null : result.message
+        });
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de la conversion:', logError);
+        // On continue malgré l'erreur de log pour ne pas bloquer la conversion
+      }
+    }
     
     res.status(result.success ? 200 : 400).json({
       status: result.success ? 'ok' : 'error',
