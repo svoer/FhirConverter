@@ -1,4 +1,24 @@
 /* Styles pour l'onglet API REST */
+.api-section {
+  margin-bottom: 30px;
+  border-left: 4px solid #ff5f6d;
+  padding-left: 15px;
+}
+
+.api-section h3 {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.api-section h4 {
+  font-size: 14px;
+  color: #555;
+  margin: 10px 0;
+}
+
 .api-endpoints {
   display: flex;
   flex-direction: column;
@@ -93,8 +113,9 @@
   padding: 10px 15px;
   font-family: monospace;
   overflow-x: auto;
-  white-space: nowrap;
+  white-space: pre;
   font-size: 13px;
+  border-radius: 4px 4px 0 0;
 }
 
 .api-example-res {
@@ -106,6 +127,7 @@
   overflow-x: auto;
   font-size: 13px;
   border-top: 1px solid #e1e4e8;
+  border-radius: 0 0 4px 4px;
 }
 
 /* Styles pour l'onglet Test API */
