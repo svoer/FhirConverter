@@ -37,11 +37,13 @@ app.use('/api', api);
 // Routes API d'authentification et d'administration
 const authRoutes = require('./src/routes/authRoutes');
 const applicationRoutes = require('./src/routes/applicationRoutes');
-const { router: apiKeyRoutes } = require('./src/routes/apiKeyRoutes');
+const apiKeyRoutes = require('./src/routes/apiKeyRoutes');
+const statsRoutes = require('./src/routes/statsRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/keys', apiKeyRoutes);
+app.use('/api/stats', statsRoutes);
 
 // La page d'accueil est servie automatiquement depuis le répertoire frontend/public
 

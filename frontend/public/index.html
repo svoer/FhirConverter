@@ -427,102 +427,126 @@
           </div>
           
           <div class="form-group">
-            <h4>Paramètres personnalisés</h4>
-            <div id="custom-params">
-              <!-- Les paramètres seront ajoutés ici -->
-            </div>
-            <button id="add-param-btn" class="small-btn">Ajouter un paramètre</button>
+            <label>Paramètres personnalisés</label>
+            <div id="custom-params" class="custom-params-container"></div>
+            <button id="add-param-btn" type="button" class="action-btn">
+              <i class="fa fa-plus"></i> Ajouter un paramètre
+            </button>
           </div>
           
-          <div class="modal-actions">
-            <button id="save-app-btn" class="primary-btn">Enregistrer</button>
+          <div class="modal-footer">
             <button class="cancel-btn">Annuler</button>
+            <button id="save-app-btn" class="save-btn">Créer l'application</button>
           </div>
         </div>
       </div>
-      
-      <!-- Modal de détails de l'application -->
-      <div id="app-details-modal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
+    </div>
+    
+    <!-- Modals pour la gestion des applications -->
+    <!-- Modal de détails d'application -->
+    <div id="app-details-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <div class="app-details-header">
           <h3 id="app-details-title">Détails de l'application</h3>
+        </div>
+        
+        <div class="app-details-info">
+          <div class="app-details-label">ID:</div>
+          <div id="app-details-id" class="app-details-value">1</div>
           
-          <div class="app-details-content">
-            <div class="app-info">
-              <h4>Informations</h4>
-              <p><strong>ID:</strong> <span id="app-details-id"></span></p>
-              <p><strong>Nom:</strong> <span id="app-details-name"></span></p>
-              <p><strong>Description:</strong> <span id="app-details-description"></span></p>
-              <p><strong>Date de création:</strong> <span id="app-details-created"></span></p>
-            </div>
-            
-            <div class="app-params">
-              <h4>Paramètres personnalisés</h4>
-              <div id="app-details-params">
-                <!-- Les paramètres seront ajoutés ici -->
+          <div class="app-details-label">Nom:</div>
+          <div id="app-details-name" class="app-details-value">Nom de l'application</div>
+          
+          <div class="app-details-label">Description:</div>
+          <div id="app-details-description" class="app-details-value">Description de l'application</div>
+          
+          <div class="app-details-label">Créée le:</div>
+          <div id="app-details-created" class="app-details-value">01/01/2023</div>
+        </div>
+        
+        <div class="app-sections-container">
+          <div class="app-section">
+            <h4>Statistiques</h4>
+            <div class="app-stats-grid">
+              <div class="app-stat-box">
+                <div class="stat-label">Total</div>
+                <div id="app-stats-total" class="stat-number">0</div>
               </div>
-              <button id="add-param-details-btn" class="small-btn">Ajouter un paramètre</button>
-            </div>
-            
-            <div class="app-keys">
-              <h4>Clés API</h4>
-              <div id="app-api-keys">
-                <!-- Les clés API seront ajoutées ici -->
+              <div class="app-stat-box">
+                <div class="stat-label">Réussies</div>
+                <div id="app-stats-success" class="stat-number">0</div>
               </div>
-              <button id="generate-key-btn" class="small-btn">Générer une nouvelle clé</button>
-            </div>
-            
-            <div class="app-stats">
-              <h4>Statistiques d'utilisation</h4>
-              <p><strong>Conversions totales:</strong> <span id="app-stats-total">0</span></p>
-              <p><strong>Conversions réussies:</strong> <span id="app-stats-success">0</span></p>
-              <p><strong>Conversions échouées:</strong> <span id="app-stats-failed">0</span></p>
-              <p><strong>Dernière conversion:</strong> <span id="app-stats-last">-</span></p>
+              <div class="app-stat-box">
+                <div class="stat-label">Échouées</div>
+                <div id="app-stats-failed" class="stat-number">0</div>
+              </div>
+              <div class="app-stat-box">
+                <div class="stat-label">Dernière</div>
+                <div id="app-stats-last" class="stat-number">-</div>
+              </div>
             </div>
           </div>
           
-          <div class="modal-actions">
-            <button id="update-app-btn" class="primary-btn">Mettre à jour</button>
-            <button id="delete-app-btn" class="danger-btn">Supprimer</button>
-            <button class="cancel-btn">Fermer</button>
+          <div class="app-section">
+            <h4>Paramètres personnalisés</h4>
+            <div id="app-details-params">
+              <p>Aucun paramètre personnalisé</p>
+            </div>
+            <button id="add-param-details-btn" class="action-btn"><i class="fa fa-plus"></i> Ajouter un paramètre</button>
+          </div>
+          
+          <div class="app-section">
+            <h4>Clés API</h4>
+            <div id="app-api-keys">
+              <p>Chargement des clés API...</p>
+            </div>
+            <button id="generate-key-btn" class="action-btn"><i class="fa fa-key"></i> Générer une nouvelle clé</button>
           </div>
         </div>
-      </div>
-      
-      <!-- Modal de confirmation de suppression -->
-      <div id="confirm-delete-modal" class="modal">
-        <div class="modal-content">
-          <h3>Confirmer la suppression</h3>
-          <p>Êtes-vous sûr de vouloir supprimer cette application?</p>
-          <p>Cette action est irréversible et supprimera également toutes les clés API associées.</p>
-          
-          <div class="modal-actions">
-            <button id="confirm-delete-btn" class="danger-btn">Supprimer</button>
-            <button class="cancel-btn">Annuler</button>
-          </div>
+        
+        <div class="modal-footer">
+          <button id="delete-app-btn" class="delete-btn">Supprimer</button>
+          <button id="update-app-btn" class="save-btn">Mettre à jour</button>
         </div>
       </div>
-      
-      <!-- Modal de génération de clé API -->
-      <div id="generate-key-modal" class="modal">
-        <div class="modal-content">
-          <span class="close">&times;</span>
-          <h3>Générer une nouvelle clé API</h3>
-          
-          <div class="form-group">
-            <label for="key-name">Nom de la clé</label>
-            <input type="text" id="key-name" placeholder="Ex: Clé de production">
-          </div>
-          
-          <div class="form-group">
-            <label for="key-expiry">Date d'expiration (optionnel)</label>
-            <input type="date" id="key-expiry">
-          </div>
-          
-          <div class="modal-actions">
-            <button id="save-key-btn" class="primary-btn">Générer</button>
-            <button class="cancel-btn">Annuler</button>
-          </div>
+    </div>
+    
+    <!-- Modal de génération de clé API -->
+    <div id="generate-key-modal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3>Générer une nouvelle clé API</h3>
+        
+        <div class="form-group">
+          <label for="key-name">Nom de la clé</label>
+          <input type="text" id="key-name" placeholder="Ex: Clé de production">
+        </div>
+        
+        <div class="form-group">
+          <label for="key-expiry">Date d'expiration (optionnel)</label>
+          <input type="date" id="key-expiry">
+        </div>
+        
+        <div class="modal-footer">
+          <button class="cancel-btn">Annuler</button>
+          <button id="save-key-btn" class="save-btn">Générer</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modal de confirmation de suppression -->
+    <div id="confirm-delete-modal" class="modal">
+      <div class="modal-content confirm-modal">
+        <span class="close">&times;</span>
+        <h3>Confirmer la suppression</h3>
+        
+        <p>Êtes-vous sûr de vouloir supprimer cette application?</p>
+        <p class="warning">Attention: Cette action est irréversible et supprimera également toutes les clés API et les logs associés.</p>
+        
+        <div class="confirm-actions">
+          <button class="cancel-btn">Annuler</button>
+          <button id="confirm-delete-btn" class="delete-btn">Supprimer définitivement</button>
         </div>
       </div>
     </div>

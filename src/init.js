@@ -6,7 +6,7 @@
 const { initializeDatabase } = require('./db/schema');
 const path = require('path');
 const fs = require('fs');
-const { cleanupConversions } = require('./services/conversionLogService');
+const { cleanupOldConversionLogs } = require('./services/conversionLogService');
 
 /**
  * Initialiser tous les composants de FHIRHub
@@ -24,7 +24,7 @@ function initialize() {
     
     // Nettoyer les anciennes conversions selon les règles de rétention
     try {
-      const deletedCount = cleanupConversions();
+      const deletedCount = cleanupOldConversionLogs();
       console.log(`Nettoyage des conversions terminé: ${deletedCount} conversion(s) supprimée(s)`);
     } catch (error) {
       console.warn('Avertissement: Impossible de nettoyer les anciennes conversions.', error);
