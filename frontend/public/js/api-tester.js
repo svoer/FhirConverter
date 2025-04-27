@@ -20,7 +20,8 @@ let elements = {};
 let apiTesterInitialized = false;
 
 // Fonction d'initialisation à appeler quand l'onglet devient visible
-function initializeApiTesterTab() {
+// Rendue disponible globalement pour main.js
+window.initializeApiTesterTab = function() {
   if (apiTesterInitialized) {
     console.log("Le testeur d'API est déjà initialisé, pas besoin de le recharger");
     return;
@@ -34,19 +35,20 @@ function initializeApiTesterTab() {
   } else {
     console.error("L'onglet test-api-tab n'a pas été trouvé");
   }
-}
+};
 
-// Initialisation au chargement initial de la page
+// L'initialisation est maintenant gérée par main.js
+// Mais on garde cette partie pour la compatibilité
 document.addEventListener('DOMContentLoaded', () => {
   // On initialise seulement si l'onglet est visible au démarrage
   const testApiTab = document.getElementById('test-api-tab');
   if (testApiTab && testApiTab.classList.contains('active')) {
-    initializeApiTesterTab();
+    window.initializeApiTesterTab();
   }
 });
 
-// Initialisation du testeur d'API
-async function initApiTester() {
+// Initialisation du testeur d'API - exportée globalement pour main.js
+window.initApiTester = async function() {
   // Initialiser les éléments DOM
   elements = {
     appSelect: document.getElementById('test-app-select'),
@@ -176,25 +178,35 @@ async function initApiTester() {
 async function loadApplications() {
   try {
     console.log('Chargement des applications depuis l\'API...');
+    
+    // Afficher un message de chargement dans le sélecteur
+    elements.appSelect.innerHTML = '<option value="">Chargement...</option>';
+    elements.appSelect.disabled = true;
+    
     const result = await apiRequestForTester('applications');
     console.log('Résultat reçu:', result);
     
+    // Toujours réinitialiser le sélecteur avant de le remplir
+    elements.appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
+    elements.appSelect.disabled = false;
+    
     if (!result || typeof result !== 'object') {
       console.error('Format de réponse invalide:', result);
+      elements.appSelect.innerHTML = '<option value="">Erreur: Format de réponse invalide</option>';
       return;
     }
     
-    if (!result.data || !Array.isArray(result.data)) {
-      console.error('Les données d\'applications ne sont pas un tableau:', result.data);
+    if (!result.data) {
+      console.error('Données d\'applications non trouvées');
+      elements.appSelect.innerHTML = '<option value="">Erreur: Données non trouvées</option>';
       return;
     }
     
-    apiTesterState.applications = result.data;
+    // Force le type tableau même si ce n'est pas le cas
+    const appData = Array.isArray(result.data) ? result.data : [result.data];
+    apiTesterState.applications = appData;
     
-    // Mettre à jour le sélecteur d'application
-    elements.appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
-    
-    if (apiTesterState.applications.length === 0) {
+    if (appData.length === 0) {
       console.log('Aucune application disponible');
       const option = document.createElement('option');
       option.value = "";
@@ -204,39 +216,86 @@ async function loadApplications() {
       return;
     }
     
-    apiTesterState.applications.forEach(app => {
+    // Tri par nom pour une meilleure expérience utilisateur
+    appData.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
+    appData.forEach(app => {
+      if (!app || !app.id) return; // Ignore les applications invalides
+      
       const option = document.createElement('option');
       option.value = app.id;
       option.textContent = app.name || `Application #${app.id}`;
       elements.appSelect.appendChild(option);
     });
     
-    console.log(`${apiTesterState.applications.length} applications chargées avec succès`);
+    console.log(`${appData.length} applications chargées avec succès`);
   } catch (error) {
     console.error('Erreur lors du chargement des applications:', error);
     
     // Gérer l'erreur dans l'interface
     elements.appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+    elements.appSelect.disabled = false;
   }
 }
 
 // Charger les clés API pour une application
 async function loadApiKeys(appId) {
   try {
+    if (!appId) {
+      console.error('Impossible de charger les clés API: ID application non défini');
+      elements.keySelect.innerHTML = '<option value="">Veuillez sélectionner une application</option>';
+      return;
+    }
+    
+    // Message de chargement
+    elements.keySelect.innerHTML = '<option value="">Chargement...</option>';
+    elements.keySelect.disabled = true;
+    
+    console.log(`Chargement des clés API pour l'application ${appId}...`);
     const result = await apiRequestForTester(`keys?appId=${appId}`);
-    apiTesterState.apiKeys = result.data || [];
+    console.log('Résultat des clés API:', result);
     
-    // Mettre à jour le sélecteur de clé API
+    // Réinitialiser le sélecteur
     elements.keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
+    elements.keySelect.disabled = false;
     
-    apiTesterState.apiKeys.forEach(key => {
+    if (!result || !result.data) {
+      console.error('Données de clés API non disponibles:', result);
+      elements.keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
+      return;
+    }
+    
+    // Forcer à un tableau
+    const keysData = Array.isArray(result.data) ? result.data : [result.data];
+    apiTesterState.apiKeys = keysData;
+    
+    if (keysData.length === 0) {
+      console.log('Aucune clé API disponible pour cette application');
+      elements.keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
+      return;
+    }
+    
+    keysData.forEach(key => {
+      if (!key) return; // Ignorer les clés invalides
+      
+      const keyValue = key.api_key || key.key || key.value;
+      if (!keyValue) return; // Ignorer les clés sans valeur
+      
       const option = document.createElement('option');
-      option.value = key.api_key || key.key || key.value;
+      option.value = keyValue;
       option.textContent = key.name || key.description || 'Clé API';
       elements.keySelect.appendChild(option);
     });
+    
+    console.log(`${keysData.length} clés API chargées pour l'application ${appId}`);
   } catch (error) {
     console.error('Erreur lors du chargement des clés API:', error);
+    elements.keySelect.innerHTML = '<option value="">Erreur de chargement</option>';
+    elements.keySelect.disabled = false;
   }
 }
 
@@ -466,7 +525,12 @@ async function apiRequestForTester(endpoint, options = {}) {
     let result;
     
     if (contentType && contentType.includes('application/json')) {
-      result = await response.json();
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('Erreur de parse JSON:', jsonError);
+        return { success: false, error: 'Format JSON invalide', data: [] };
+      }
     } else {
       const text = await response.text();
       // Essayer de parser le texte en JSON si possible
@@ -479,13 +543,18 @@ async function apiRequestForTester(endpoint, options = {}) {
     
     if (!response.ok) {
       console.error('Erreur API:', result);
-      throw new Error(result.message || result.error || 'Erreur lors de la requête API');
+      return { success: false, error: result.message || result.error || 'Erreur lors de la requête API', data: [] };
+    }
+    
+    if (!result) {
+      console.error('Réponse vide ou invalide');
+      return { success: false, error: 'Réponse vide ou invalide', data: [] };
     }
     
     return result;
   } catch (error) {
-    console.error('API request failed:', error.message);
+    console.error('API request failed:', error);
     // Crée un objet de résultat vide pour éviter les erreurs en cascade
-    return { success: false, error: error.message, data: [] };
+    return { success: false, error: error.message || 'Erreur inconnue', data: [] };
   }
 }
