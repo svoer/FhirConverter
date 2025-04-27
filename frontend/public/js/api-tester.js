@@ -11,35 +11,57 @@ let applications = [];
 let apiKeys = [];
 
 // Éléments DOM
-const elements = {
-  appSelect: document.getElementById('test-app-select'),
-  keySelect: document.getElementById('test-key-select'),
-  methodSelect: document.getElementById('request-method'),
-  endpointInput: document.getElementById('endpoint-input'),
-  sendButton: document.getElementById('send-request'),
-  requestBody: document.getElementById('request-body'),
-  responseBody: document.getElementById('response-body'),
-  responseHeaders: document.getElementById('response-headers'),
-  responseStatus: document.getElementById('response-status'),
-  responseTime: document.getElementById('response-time'),
-  addParamButton: document.getElementById('add-param'),
-  addHeaderButton: document.getElementById('add-header'),
-  paramsContainer: document.querySelector('.params-container'),
-  headersContainer: document.querySelector('.headers-container'),
-  endpointsList: document.querySelector('.endpoints-list'),
-  requestHistory: document.getElementById('request-history'),
-  apiKeyHeader: document.getElementById('api-key-header')
-};
+let elements = {};
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', () => {
+  console.log("Chargement du testeur d'API...");
   if (document.getElementById('test-api-tab')) {
+    console.log("L'onglet test-api-tab a été trouvé, initialisation...");
     initApiTester();
+  } else {
+    console.error("L'onglet test-api-tab n'a pas été trouvé");
   }
 });
 
 // Initialisation du testeur d'API
 async function initApiTester() {
+  // Initialiser les éléments DOM
+  elements = {
+    appSelect: document.getElementById('test-app-select'),
+    keySelect: document.getElementById('test-key-select'),
+    methodSelect: document.getElementById('request-method'),
+    endpointInput: document.getElementById('endpoint-input'),
+    sendButton: document.getElementById('send-request'),
+    requestBody: document.getElementById('request-body'),
+    responseBody: document.getElementById('response-body'),
+    responseHeaders: document.getElementById('response-headers'),
+    responseStatus: document.getElementById('response-status'),
+    responseTime: document.getElementById('response-time'),
+    addParamButton: document.getElementById('add-param'),
+    addHeaderButton: document.getElementById('add-header'),
+    paramsContainer: document.querySelector('.params-container'),
+    headersContainer: document.querySelector('.headers-container'),
+    endpointsList: document.querySelector('.endpoints-list'),
+    requestHistory: document.getElementById('request-history'),
+    apiKeyHeader: document.getElementById('api-key-header')
+  };
+
+  // Vérifier si tous les éléments DOM ont été trouvés
+  let missingElements = [];
+  for (const [key, value] of Object.entries(elements)) {
+    if (!value) {
+      missingElements.push(key);
+      console.error(`Élément DOM manquant: ${key}`);
+    }
+  }
+  
+  if (missingElements.length > 0) {
+    console.error("Certains éléments DOM n'ont pas été trouvés:", missingElements);
+    return;
+  }
+  
+  console.log('Tous les éléments DOM ont été trouvés, initialisation en cours...');
   // Initialiser les événements des onglets
   document.querySelectorAll('.request-tabs .tab, .response-tabs .tab').forEach(tab => {
     tab.addEventListener('click', function() {
@@ -384,15 +406,37 @@ async function apiRequestForTester(endpoint, options = {}) {
   options.headers = options.headers || {};
   options.headers['x-api-key'] = currentApiKey;
   
+  console.log(`Requête API au endpoint: /api/${endpoint}`);
+  
   try {
     const response = await fetch('/api/' + endpoint, options);
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erreur lors de la requête API');
+    console.log(`Réponse reçue: ${response.status} ${response.statusText}`);
+    
+    // Même en cas d'erreur HTTP, continuer à traiter la réponse
+    const contentType = response.headers.get('content-type');
+    let result;
+    
+    if (contentType && contentType.includes('application/json')) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      // Essayer de parser le texte en JSON si possible
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        result = { data: text, success: response.ok };
+      }
     }
-    return await response.json();
+    
+    if (!response.ok) {
+      console.error('Erreur API:', result);
+      throw new Error(result.message || result.error || 'Erreur lors de la requête API');
+    }
+    
+    return result;
   } catch (error) {
     console.error('API request failed:', error.message);
-    throw error;
+    // Crée un objet de résultat vide pour éviter les erreurs en cascade
+    return { success: false, error: error.message, data: [] };
   }
 }
