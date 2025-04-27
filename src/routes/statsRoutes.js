@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const conversionLogService = require('../services/conversionLogService');
+const { db } = require('../db/schema');
 
 /**
  * GET /api/stats
@@ -56,6 +57,38 @@ router.get('/', (req, res) => {
     }
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/stats/conversions
+ * Obtenir les statistiques des conversions pour l'historique
+ */
+router.get('/conversions', (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+    const offset = req.query.offset ? parseInt(req.query.offset) : 0;
+    const appId = req.query.appId ? parseInt(req.query.appId) : null;
+    
+    // Récupérer les logs de conversion
+    let conversions = [];
+    
+    if (appId) {
+      // Conversions pour une application spécifique
+      conversions = conversionLogService.getConversionLogs(appId, { limit, offset });
+    } else {
+      // Toutes les conversions
+      conversions = db.prepare(`
+        SELECT * FROM conversions
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `).all(limit, offset);
+    }
+    
+    return res.json({ success: true, data: conversions });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des conversions:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
