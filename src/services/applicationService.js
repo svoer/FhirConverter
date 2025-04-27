@@ -1,45 +1,120 @@
 /**
- * Service de gestion des applications FHIRHub
- * Permet de créer, modifier et gérer des applications et leurs paramètres
+ * Service pour la gestion des applications
+ * Fournit des fonctions pour créer, récupérer, mettre à jour et supprimer des applications
+ * ainsi que pour gérer leurs paramètres
  */
 
 const { db } = require('../db/schema');
-const { v4: uuidv4 } = require('uuid');
+
+/**
+ * Récupérer toutes les applications
+ * @returns {Array} Liste des applications
+ */
+function getAllApplications() {
+  return db.prepare(`
+    SELECT a.*, 
+           COUNT(DISTINCT k.id) as api_key_count, 
+           COUNT(DISTINCT c.id) as conversion_count
+    FROM applications a
+    LEFT JOIN api_keys k ON a.id = k.app_id
+    LEFT JOIN conversions c ON a.id = c.app_id
+    GROUP BY a.id
+    ORDER BY a.created_at DESC
+  `).all();
+}
+
+/**
+ * Récupérer une application par son ID
+ * @param {number} id - ID de l'application
+ * @returns {Object|null} Application ou null si non trouvée
+ */
+function getApplicationById(id) {
+  const app = db.prepare(`
+    SELECT * FROM applications WHERE id = ?
+  `).get(id);
+  
+  if (!app) {
+    return null;
+  }
+  
+  // Récupérer les paramètres de l'application
+  const params = db.prepare(`
+    SELECT param_key, param_value FROM app_params WHERE app_id = ?
+  `).all(id);
+  
+  // Convertir les paramètres en objet
+  const parameters = {};
+  params.forEach(param => {
+    parameters[param.param_key] = param.param_value;
+  });
+  
+  return {
+    ...app,
+    parameters
+  };
+}
+
+/**
+ * Récupérer une application par son nom
+ * @param {string} name - Nom de l'application
+ * @returns {Object|null} Application ou null si non trouvée
+ */
+function getApplicationByName(name) {
+  return db.prepare(`
+    SELECT * FROM applications WHERE name = ?
+  `).get(name);
+}
 
 /**
  * Créer une nouvelle application
  * @param {Object} appData - Données de l'application
+ * @param {string} appData.name - Nom de l'application
+ * @param {string} [appData.description] - Description de l'application
+ * @param {number} [appData.retention_days=30] - Durée de rétention des logs en jours
+ * @param {Object} [appData.parameters={}] - Paramètres personnalisés
+ * @param {number} [userId] - ID de l'utilisateur qui crée l'application
  * @returns {Object} Application créée
+ * @throws {Error} Si le nom est déjà utilisé
  */
-function createApplication(appData) {
-  const { name, description, retention_days, created_by } = appData;
+function createApplication(appData, userId = 1) {
+  // Valider les données
+  if (!appData.name) {
+    throw new Error('Le nom de l\'application est obligatoire');
+  }
   
-  try {
-    const result = db.prepare(`
-      INSERT INTO applications (name, description, retention_days, created_by)
-      VALUES (?, ?, ?, ?)
-    `).run(name, description, retention_days || 30, created_by);
-    
-    const newAppId = result.lastInsertRowid;
-    return getApplicationById(newAppId);
-  } catch (error) {
-    console.error('Erreur lors de la création de l\'application:', error);
-    throw new Error(`Impossible de créer l'application: ${error.message}`);
+  // Vérifier si le nom est déjà utilisé
+  const existingApp = getApplicationByName(appData.name);
+  if (existingApp) {
+    throw new Error(`Une application avec le nom "${appData.name}" existe déjà`);
   }
-}
-
-/**
- * Obtenir une application par son ID
- * @param {number} id - ID de l'application
- * @returns {Object|null} Application trouvée ou null
- */
-function getApplicationById(id) {
-  try {
-    return db.prepare('SELECT * FROM applications WHERE id = ?').get(id);
-  } catch (error) {
-    console.error('Erreur lors de la récupération de l\'application:', error);
-    throw new Error(`Impossible de récupérer l'application: ${error.message}`);
+  
+  // Créer l'application
+  const result = db.prepare(`
+    INSERT INTO applications (name, description, retention_days, created_by)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    appData.name,
+    appData.description || null,
+    appData.retention_days || 30,
+    userId
+  );
+  
+  const appId = result.lastInsertRowid;
+  
+  // Ajouter les paramètres de l'application
+  const parameters = appData.parameters || {};
+  
+  const insertParam = db.prepare(`
+    INSERT INTO app_params (app_id, param_key, param_value)
+    VALUES (?, ?, ?)
+  `);
+  
+  for (const [key, value] of Object.entries(parameters)) {
+    insertParam.run(appId, key, value);
   }
+  
+  // Retourner l'application créée
+  return getApplicationById(appId);
 }
 
 /**
@@ -47,395 +122,168 @@ function getApplicationById(id) {
  * @param {number} id - ID de l'application
  * @param {Object} appData - Données à mettre à jour
  * @returns {Object} Application mise à jour
+ * @throws {Error} Si l'application n'existe pas
  */
 function updateApplication(id, appData) {
-  const { name, description, active, retention_days } = appData;
+  // Vérifier si l'application existe
+  const app = getApplicationById(id);
+  if (!app) {
+    throw new Error(`L'application avec l'ID ${id} n'existe pas`);
+  }
   
-  try {
-    const app = getApplicationById(id);
-    if (!app) {
-      throw new Error('Application non trouvée');
+  // Mettre à jour les champs de base de l'application
+  if (appData.name || appData.description || appData.retention_days || appData.active !== undefined) {
+    const fields = [];
+    const values = [];
+    
+    if (appData.name) {
+      fields.push('name = ?');
+      values.push(appData.name);
     }
     
-    db.prepare(`
-      UPDATE applications
-      SET name = ?, description = ?, active = ?, retention_days = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(
-      name || app.name,
-      description !== undefined ? description : app.description,
-      active !== undefined ? active : app.active,
-      retention_days || app.retention_days,
-      id
-    );
+    if (appData.description !== undefined) {
+      fields.push('description = ?');
+      values.push(appData.description);
+    }
     
-    return getApplicationById(id);
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour de l\'application:', error);
-    throw new Error(`Impossible de mettre à jour l'application: ${error.message}`);
+    if (appData.retention_days) {
+      fields.push('retention_days = ?');
+      values.push(appData.retention_days);
+    }
+    
+    if (appData.active !== undefined) {
+      fields.push('active = ?');
+      values.push(appData.active ? 1 : 0);
+    }
+    
+    if (fields.length > 0) {
+      fields.push('updated_at = CURRENT_TIMESTAMP');
+      
+      db.prepare(`
+        UPDATE applications
+        SET ${fields.join(', ')}
+        WHERE id = ?
+      `).run(...values, id);
+    }
   }
+  
+  // Mettre à jour les paramètres si fournis
+  if (appData.parameters) {
+    updateApplicationParameters(id, appData.parameters);
+  }
+  
+  // Retourner l'application mise à jour
+  return getApplicationById(id);
+}
+
+/**
+ * Mettre à jour les paramètres d'une application
+ * @param {number} appId - ID de l'application
+ * @param {Object} parameters - Nouveaux paramètres
+ * @returns {Object} Paramètres mis à jour
+ * @throws {Error} Si l'application n'existe pas
+ */
+function updateApplicationParameters(appId, parameters) {
+  // Vérifier si l'application existe
+  const app = db.prepare('SELECT id FROM applications WHERE id = ?').get(appId);
+  if (!app) {
+    throw new Error(`L'application avec l'ID ${appId} n'existe pas`);
+  }
+  
+  // Supprimer tous les paramètres actuels
+  db.prepare('DELETE FROM app_params WHERE app_id = ?').run(appId);
+  
+  // Ajouter les nouveaux paramètres
+  const insertParam = db.prepare(`
+    INSERT INTO app_params (app_id, param_key, param_value)
+    VALUES (?, ?, ?)
+  `);
+  
+  for (const [key, value] of Object.entries(parameters)) {
+    insertParam.run(appId, key, value);
+  }
+  
+  // Récupérer et retourner les paramètres mis à jour
+  const params = db.prepare(`
+    SELECT param_key, param_value FROM app_params WHERE app_id = ?
+  `).all(appId);
+  
+  const updatedParams = {};
+  params.forEach(param => {
+    updatedParams[param.param_key] = param.param_value;
+  });
+  
+  return updatedParams;
+}
+
+/**
+ * Supprimer un paramètre d'une application
+ * @param {number} appId - ID de l'application
+ * @param {string} paramKey - Clé du paramètre à supprimer
+ * @returns {boolean} True si le paramètre a été supprimé
+ * @throws {Error} Si l'application n'existe pas
+ */
+function deleteApplicationParameter(appId, paramKey) {
+  // Vérifier si l'application existe
+  const app = db.prepare('SELECT id FROM applications WHERE id = ?').get(appId);
+  if (!app) {
+    throw new Error(`L'application avec l'ID ${appId} n'existe pas`);
+  }
+  
+  // Supprimer le paramètre
+  const result = db.prepare(`
+    DELETE FROM app_params
+    WHERE app_id = ? AND param_key = ?
+  `).run(appId, paramKey);
+  
+  return result.changes > 0;
 }
 
 /**
  * Supprimer une application
  * @param {number} id - ID de l'application
- * @returns {boolean} Succès de la suppression
+ * @returns {boolean} True si l'application a été supprimée
  */
 function deleteApplication(id) {
-  try {
-    const result = db.prepare('DELETE FROM applications WHERE id = ?').run(id);
-    return result.changes > 0;
-  } catch (error) {
-    console.error('Erreur lors de la suppression de l\'application:', error);
-    throw new Error(`Impossible de supprimer l'application: ${error.message}`);
-  }
-}
-
-/**
- * Lister toutes les applications
- * @param {Object} options - Options de filtrage et de tri
- * @returns {Array} Liste des applications
- */
-function listApplications(options = {}) {
-  const { active, search, sortBy = 'name', sortOrder = 'asc', limit = 100, offset = 0 } = options;
+  const result = db.prepare(`
+    DELETE FROM applications WHERE id = ?
+  `).run(id);
   
-  try {
-    let query = 'SELECT * FROM applications WHERE 1=1';
-    const params = [];
-    
-    if (active !== undefined) {
-      query += ' AND active = ?';
-      params.push(active ? 1 : 0);
-    }
-    
-    if (search) {
-      query += ' AND (name LIKE ? OR description LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
-    }
-    
-    query += ` ORDER BY ${sortBy} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
-    query += ' LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-    
-    return db.prepare(query).all(...params);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des applications:', error);
-    throw new Error(`Impossible de récupérer les applications: ${error.message}`);
-  }
+  return result.changes > 0;
 }
 
 /**
- * Ajouter un paramètre à une application
+ * Récupérer toutes les clés API d'une application
  * @param {number} appId - ID de l'application
- * @param {Object} paramData - Données du paramètre
- * @returns {Object} Paramètre créé
+ * @returns {Array} Liste des clés API
  */
-function addApplicationParam(appId, paramData) {
-  const { param_key, param_value, param_type, description } = paramData;
-  
-  try {
-    // Vérifier si l'application existe
-    const app = getApplicationById(appId);
-    if (!app) {
-      throw new Error('Application non trouvée');
-    }
-    
-    const result = db.prepare(`
-      INSERT INTO app_params (app_id, param_key, param_value, param_type, description)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(app_id, param_key) DO UPDATE SET
-        param_value = excluded.param_value,
-        param_type = excluded.param_type,
-        description = excluded.description,
-        updated_at = CURRENT_TIMESTAMP
-    `).run(appId, param_key, param_value, param_type || 'string', description);
-    
-    return getApplicationParam(appId, param_key);
-  } catch (error) {
-    console.error('Erreur lors de l\'ajout du paramètre:', error);
-    throw new Error(`Impossible d'ajouter le paramètre: ${error.message}`);
-  }
+function getApplicationApiKeys(appId) {
+  return db.prepare(`
+    SELECT * FROM api_keys
+    WHERE app_id = ?
+    ORDER BY created_at DESC
+  `).all(appId);
 }
 
 /**
- * Obtenir un paramètre d'application
- * @param {number} appId - ID de l'application
- * @param {string} paramKey - Clé du paramètre
- * @returns {Object|null} Paramètre trouvé ou null
+ * Vérifier si une application existe
+ * @param {number} id - ID de l'application
+ * @returns {boolean} True si l'application existe
  */
-function getApplicationParam(appId, paramKey) {
-  try {
-    return db.prepare('SELECT * FROM app_params WHERE app_id = ? AND param_key = ?').get(appId, paramKey);
-  } catch (error) {
-    console.error('Erreur lors de la récupération du paramètre:', error);
-    throw new Error(`Impossible de récupérer le paramètre: ${error.message}`);
-  }
+function applicationExists(id) {
+  const result = db.prepare('SELECT id FROM applications WHERE id = ?').get(id);
+  return !!result;
 }
 
-/**
- * Supprimer un paramètre d'application
- * @param {number} appId - ID de l'application
- * @param {string} paramKey - Clé du paramètre
- * @returns {boolean} Succès de la suppression
- */
-function deleteApplicationParam(appId, paramKey) {
-  try {
-    const result = db.prepare('DELETE FROM app_params WHERE app_id = ? AND param_key = ?').run(appId, paramKey);
-    return result.changes > 0;
-  } catch (error) {
-    console.error('Erreur lors de la suppression du paramètre:', error);
-    throw new Error(`Impossible de supprimer le paramètre: ${error.message}`);
-  }
-}
-
-/**
- * Lister tous les paramètres d'une application
- * @param {number} appId - ID de l'application
- * @returns {Array} Liste des paramètres
- */
-function listApplicationParams(appId) {
-  try {
-    return db.prepare('SELECT * FROM app_params WHERE app_id = ?').all(appId);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des paramètres:', error);
-    throw new Error(`Impossible de récupérer les paramètres: ${error.message}`);
-  }
-}
-
-/**
- * Ajouter un dossier à surveiller pour une application
- * @param {number} appId - ID de l'application
- * @param {Object} folderData - Données du dossier
- * @returns {Object} Dossier créé
- */
-function addApplicationFolder(appId, folderData) {
-  const { folder_path, description, active } = folderData;
-  
-  try {
-    // Vérifier si l'application existe
-    const app = getApplicationById(appId);
-    if (!app) {
-      throw new Error('Application non trouvée');
-    }
-    
-    const result = db.prepare(`
-      INSERT INTO app_folders (app_id, folder_path, description, active)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(app_id, folder_path) DO UPDATE SET
-        description = excluded.description,
-        active = excluded.active,
-        updated_at = CURRENT_TIMESTAMP
-    `).run(appId, folder_path, description, active !== undefined ? active : 1);
-    
-    return getApplicationFolder(appId, folder_path);
-  } catch (error) {
-    console.error('Erreur lors de l\'ajout du dossier:', error);
-    throw new Error(`Impossible d'ajouter le dossier: ${error.message}`);
-  }
-}
-
-/**
- * Obtenir un dossier d'application
- * @param {number} appId - ID de l'application
- * @param {string} folderPath - Chemin du dossier
- * @returns {Object|null} Dossier trouvé ou null
- */
-function getApplicationFolder(appId, folderPath) {
-  try {
-    return db.prepare('SELECT * FROM app_folders WHERE app_id = ? AND folder_path = ?').get(appId, folderPath);
-  } catch (error) {
-    console.error('Erreur lors de la récupération du dossier:', error);
-    throw new Error(`Impossible de récupérer le dossier: ${error.message}`);
-  }
-}
-
-/**
- * Supprimer un dossier d'application
- * @param {number} appId - ID de l'application
- * @param {string} folderPath - Chemin du dossier
- * @returns {boolean} Succès de la suppression
- */
-function deleteApplicationFolder(appId, folderPath) {
-  try {
-    const result = db.prepare('DELETE FROM app_folders WHERE app_id = ? AND folder_path = ?').run(appId, folderPath);
-    return result.changes > 0;
-  } catch (error) {
-    console.error('Erreur lors de la suppression du dossier:', error);
-    throw new Error(`Impossible de supprimer le dossier: ${error.message}`);
-  }
-}
-
-/**
- * Lister tous les dossiers d'une application
- * @param {number} appId - ID de l'application
- * @returns {Array} Liste des dossiers
- */
-function listApplicationFolders(appId) {
-  try {
-    return db.prepare('SELECT * FROM app_folders WHERE app_id = ?').all(appId);
-  } catch (error) {
-    console.error('Erreur lors de la récupération des dossiers:', error);
-    throw new Error(`Impossible de récupérer les dossiers: ${error.message}`);
-  }
-}
-
-/**
- * Obtenir les statistiques d'une application
- * @param {number} appId - ID de l'application
- * @param {Object} options - Options de filtrage (période, etc.)
- * @returns {Object} Statistiques de l'application
- */
-function getApplicationStats(appId, options = {}) {
-  const { start_date, end_date } = options;
-  
-  try {
-    let query = 'SELECT * FROM app_stats WHERE app_id = ?';
-    const params = [appId];
-    
-    if (start_date) {
-      query += ' AND date >= ?';
-      params.push(start_date);
-    }
-    
-    if (end_date) {
-      query += ' AND date <= ?';
-      params.push(end_date);
-    }
-    
-    query += ' ORDER BY date DESC';
-    
-    const stats = db.prepare(query).all(...params);
-    
-    // Calculer les totaux
-    const totals = {
-      conversion_count: 0,
-      success_count: 0,
-      error_count: 0,
-      resource_count: 0
-    };
-    
-    stats.forEach(stat => {
-      totals.conversion_count += stat.conversion_count;
-      totals.success_count += stat.success_count;
-      totals.error_count += stat.error_count;
-      totals.resource_count += stat.resource_count;
-    });
-    
-    return {
-      daily: stats,
-      totals
-    };
-  } catch (error) {
-    console.error('Erreur lors de la récupération des statistiques:', error);
-    throw new Error(`Impossible de récupérer les statistiques: ${error.message}`);
-  }
-}
-
-/**
- * Créer ou mettre à jour les statistiques quotidiennes d'une application
- * @param {number} appId - ID de l'application
- * @param {string} date - Date au format YYYY-MM-DD
- * @param {Object} statsData - Données statistiques à ajouter
- * @returns {Object} Statistiques mises à jour
- */
-function updateApplicationStats(appId, date, statsData) {
-  const { conversion_count = 0, success_count = 0, error_count = 0, resource_count = 0 } = statsData;
-  
-  try {
-    // Vérifier si l'application existe
-    const app = getApplicationById(appId);
-    if (!app) {
-      throw new Error('Application non trouvée');
-    }
-    
-    // Formater la date si nécessaire
-    const formattedDate = date instanceof Date ? date.toISOString().split('T')[0] : date;
-    
-    // Vérifier si des statistiques existent déjà pour cette date
-    const existingStat = db.prepare('SELECT * FROM app_stats WHERE app_id = ? AND date = ?').get(appId, formattedDate);
-    
-    if (existingStat) {
-      // Mettre à jour les statistiques existantes
-      db.prepare(`
-        UPDATE app_stats
-        SET conversion_count = conversion_count + ?,
-            success_count = success_count + ?,
-            error_count = error_count + ?,
-            resource_count = resource_count + ?
-        WHERE id = ?
-      `).run(
-        conversion_count,
-        success_count,
-        error_count,
-        resource_count,
-        existingStat.id
-      );
-    } else {
-      // Créer de nouvelles statistiques
-      db.prepare(`
-        INSERT INTO app_stats (app_id, date, conversion_count, success_count, error_count, resource_count)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        appId,
-        formattedDate,
-        conversion_count,
-        success_count,
-        error_count,
-        resource_count
-      );
-    }
-    
-    return db.prepare('SELECT * FROM app_stats WHERE app_id = ? AND date = ?').get(appId, formattedDate);
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour des statistiques:', error);
-    throw new Error(`Impossible de mettre à jour les statistiques: ${error.message}`);
-  }
-}
-
-/**
- * Obtenir le détail complet d'une application avec tous ses paramètres, dossiers et clés API
- * @param {number} appId - ID de l'application
- * @returns {Object} Application avec détails complets
- */
-function getApplicationDetails(appId) {
-  try {
-    const app = getApplicationById(appId);
-    if (!app) {
-      throw new Error('Application non trouvée');
-    }
-    
-    const params = listApplicationParams(appId);
-    const folders = listApplicationFolders(appId);
-    
-    // Les clés API seront récupérées par le service dédié
-    
-    return {
-      ...app,
-      params,
-      folders
-    };
-  } catch (error) {
-    console.error('Erreur lors de la récupération des détails de l\'application:', error);
-    throw new Error(`Impossible de récupérer les détails: ${error.message}`);
-  }
-}
-
-// Exporter les fonctions du service
 module.exports = {
-  createApplication,
+  getAllApplications,
   getApplicationById,
+  getApplicationByName,
+  createApplication,
   updateApplication,
+  updateApplicationParameters,
+  deleteApplicationParameter,
   deleteApplication,
-  listApplications,
-  addApplicationParam,
-  getApplicationParam,
-  deleteApplicationParam,
-  listApplicationParams,
-  addApplicationFolder,
-  getApplicationFolder,
-  deleteApplicationFolder,
-  listApplicationFolders,
-  getApplicationStats,
-  updateApplicationStats,
-  getApplicationDetails
+  getApplicationApiKeys,
+  applicationExists
 };
