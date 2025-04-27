@@ -146,10 +146,16 @@ router.get('/conversions/:id', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
   try {
+    let stats;
+    
     // Utiliser le service de logs de conversion pour obtenir les statistiques
-    const stats = await conversionLogService.getConversionStats(
-      req.apiKeyInfo?.appId // Filtrer par application si API key fournie
-    );
+    if (req.apiKeyInfo?.appId) {
+      // Si une API key est fournie, récupérer les stats de l'application
+      stats = conversionLogService.getAppStats(req.apiKeyInfo.appId);
+    } else {
+      // Sinon, récupérer les stats globales
+      stats = conversionLogService.getGlobalStats();
+    }
     
     res.json({
       status: 'ok',
