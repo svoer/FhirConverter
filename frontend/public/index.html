@@ -627,10 +627,11 @@
                   methodSelect.value = method;
                 }
                 
-                // Définir l'URL
+                // Définir l'URL - sans préfixer avec /api/ car le script send-request-fix.js
+                // s'occupera d'ajouter ce préfixe uniquement si nécessaire
                 const urlInput = document.getElementById('endpoint-input');
                 if (urlInput) {
-                  urlInput.value = '/api/' + endpoint;
+                  urlInput.value = endpoint;
                 }
                 
                 // Si c'est un POST, activer l'onglet de corps

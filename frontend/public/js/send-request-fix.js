@@ -148,7 +148,14 @@
     }
     
     // Construire l'URL avec les paramètres
-    let url = '/api/' + endpoint;
+    // Assurer que l'endpoint ne commence pas déjà par /api/ pour éviter les doublons
+    let url = endpoint.startsWith('/api/') ? endpoint : '/api/' + endpoint;
+    
+    // Mais si l'URL est simplement "/api/", on la normalise pour éviter un slash final en trop
+    if (url === '/api/') {
+      url = '/api';
+    }
+    
     const queryParams = new URLSearchParams();
     
     for (const [key, value] of Object.entries(params)) {
