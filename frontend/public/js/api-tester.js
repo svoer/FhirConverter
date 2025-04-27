@@ -16,14 +16,32 @@ const apiTesterState = {
 // Éléments DOM
 let elements = {};
 
-// Initialisation
-document.addEventListener('DOMContentLoaded', () => {
+// Flag pour éviter les initialisations multiples
+let apiTesterInitialized = false;
+
+// Fonction d'initialisation à appeler quand l'onglet devient visible
+function initializeApiTesterTab() {
+  if (apiTesterInitialized) {
+    console.log("Le testeur d'API est déjà initialisé, pas besoin de le recharger");
+    return;
+  }
+  
   console.log("Chargement du testeur d'API...");
   if (document.getElementById('test-api-tab')) {
     console.log("L'onglet test-api-tab a été trouvé, initialisation...");
     initApiTester();
+    apiTesterInitialized = true;
   } else {
     console.error("L'onglet test-api-tab n'a pas été trouvé");
+  }
+}
+
+// Initialisation au chargement initial de la page
+document.addEventListener('DOMContentLoaded', () => {
+  // On initialise seulement si l'onglet est visible au démarrage
+  const testApiTab = document.getElementById('test-api-tab');
+  if (testApiTab && testApiTab.classList.contains('active')) {
+    initializeApiTesterTab();
   }
 });
 
