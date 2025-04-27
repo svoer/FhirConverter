@@ -326,7 +326,6 @@
     <div class="tabs">
       <div class="tab active" data-tab="convert">Convertir</div>
       <div class="tab" data-tab="history">Historique</div>
-      <div class="tab" data-tab="monitor">Surveillance</div>
       <div class="tab" data-tab="api">API</div>
     </div>
     
@@ -396,21 +395,7 @@
       <button id="load-more" style="display: none;">Charger plus</button>
     </div>
     
-    <div class="tab-content" id="monitor-tab">
-      <h2>Surveillance de fichiers</h2>
-      
-      <p>Ce module surveille le répertoire d'entrée pour les nouveaux fichiers HL7 et les convertit automatiquement.</p>
-      
-      <div>
-        <button id="start-monitoring" class="monitor">Démarrer la surveillance</button>
-        <button id="stop-monitoring" class="monitor">Arrêter la surveillance</button>
-        <button id="scan-directory" class="monitor">Analyser les fichiers existants</button>
-      </div>
-      
-      <div id="monitor-status" class="info" style="margin-top: 20px;">
-        État: Inconnu
-      </div>
-    </div>
+    <!-- Section surveillance supprimée -->
     
     <div class="tab-content" id="api-tab">
       <h2>API REST</h2>
@@ -424,9 +409,7 @@
         <div class="api-endpoint"><span class="method">GET</span> /api/files/fhir/:filename - Récupérer un fichier FHIR</div>
         <div class="api-endpoint"><span class="method">POST</span> /api/convert - Convertir du contenu HL7 en FHIR</div>
         <div class="api-endpoint"><span class="method">POST</span> /api/upload - Télécharger et convertir un fichier HL7</div>
-        <div class="api-endpoint"><span class="method">POST</span> /api/monitor/start - Démarrer la surveillance des fichiers</div>
-        <div class="api-endpoint"><span class="method">POST</span> /api/monitor/stop - Arrêter la surveillance des fichiers</div>
-        <div class="api-endpoint"><span class="method">POST</span> /api/monitor/scan - Analyser les fichiers existants</div>
+        <!-- Endpoints de surveillance supprimés -->
       </div>
       
       <h3>Tester l'API</h3>
