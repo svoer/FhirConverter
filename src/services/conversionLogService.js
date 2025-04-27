@@ -444,6 +444,51 @@ function deleteConversion(conversionId) {
   }
 }
 
+/**
+ * Enregistrer une conversion (alias pour createConversionLog)
+ * @param {Object} data - Données de la conversion
+ * @returns {Object} Conversion créée
+ */
+function logConversion(data) {
+  // Adapter les noms de propriétés pour correspondre à la structure de la base de données
+  const conversionData = {
+    conversion_id: data.conversionId,
+    app_id: data.appId,
+    api_key_id: data.apiKeyId,
+    source_type: data.sourceType,
+    source_name: data.sourceName,
+    source_size: data.sourceSize,
+    resource_count: data.resourceCount,
+    status: data.status,
+    error_message: data.errorMessage
+  };
+  
+  return createConversionLog(conversionData);
+}
+
+/**
+ * Obtenir les logs de conversion pour une application
+ * @param {number} appId - Identifiant de l'application (optionnel)
+ * @param {number} limit - Nombre maximum de résultats
+ * @param {number} offset - Décalage pour la pagination
+ * @returns {Array} Liste des conversions
+ */
+function getConversionLogs(appId, limit = 100, offset = 0) {
+  const options = {
+    limit,
+    offset,
+    sortBy: 'created_at',
+    sortOrder: 'desc'
+  };
+  
+  if (appId) {
+    options.app_id = appId;
+  }
+  
+  const result = listConversions(options);
+  return result.conversions;
+}
+
 // Exporter les fonctions du service
 module.exports = {
   createConversionLog,
@@ -453,5 +498,7 @@ module.exports = {
   listConversions,
   cleanupConversions,
   getConversionStats,
-  deleteConversion
+  deleteConversion,
+  logConversion,
+  getConversionLogs
 };
