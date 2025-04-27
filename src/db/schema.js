@@ -85,20 +85,7 @@ function initializeDatabase() {
     )
   `);
 
-  // Table des dossiers monitoriés par application
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS app_folders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      folder_path TEXT NOT NULL,
-      description TEXT,
-      active BOOLEAN DEFAULT 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
-      UNIQUE(app_id, folder_path)
-    )
-  `);
+  // Table supprimée : app_folders (monitoring)
 
   // Table des conversions HL7->FHIR
   db.exec(`

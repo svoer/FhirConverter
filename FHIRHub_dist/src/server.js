@@ -15,5 +15,5 @@ const server = http.createServer(app);
 // Démarrer le serveur
 server.listen(port, '0.0.0.0', () => {
   console.log(`Serveur FHIRHub démarré sur le port ${port}`);
-  console.log('Mode API uniquement: la surveillance automatique des fichiers est désactivée.');
+  console.log('Service FHIRHub prêt pour les conversions via API.');
 });
