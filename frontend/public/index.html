@@ -1144,19 +1144,118 @@
   <script src="js/api-tester.js"></script>
   <script src="js/main.js"></script>
   <script src="js/api-tester-fix.js"></script>
-  <script src="js/api-endpoints-fix.js"></script>
   <script src="js/api-applications-fix.js"></script>
   <script src="js/send-request-fix.js"></script>
+  <!-- Correctifs désactivés temporairement car ils causent des conflits
+  <script src="js/api-endpoints-fix.js"></script>
   <script src="js/ui-fix.js"></script>
   <script src="js/tabs-fix.js"></script>
   <script src="js/input-fix.js"></script>
+  -->
   
-  <!-- Correctif pour charger directement les applications dans le testeur d'API -->
+  <!-- Script de correctif simple pour l'interface -->
   <script>
+    // Fonction pour corriger les champs texte et empêcher l'événement "a"
+    function fixTextInputs() {
+      console.log("Application du correctif pour les champs texte");
+      
+      // Trouver tous les champs de saisie
+      const inputs = document.querySelectorAll('input[type="text"], textarea');
+      if (inputs.length === 0) return;
+      
+      // Pour chaque champ, remplacer par un clone pour supprimer les gestionnaires existants
+      inputs.forEach(input => {
+        const clone = input.cloneNode(true);
+        input.parentNode.replaceChild(clone, input);
+        
+        // Empêcher la propagation de tous les événements importants
+        ['click', 'focus', 'keydown', 'keyup', 'keypress', 'input', 'change', 'mousedown', 'mouseup'].forEach(eventType => {
+          clone.addEventListener(eventType, function(event) {
+            event.stopPropagation();
+          }, true);
+        });
+      });
+      
+      console.log("Correctif appliqué à " + inputs.length + " champs de saisie");
+      
+      // Ajouter un gestionnaire spécial pour le corps de la requête
+      const bodyContent = document.getElementById('body-content');
+      if (bodyContent) {
+        const clone = bodyContent.cloneNode(true);
+        bodyContent.parentNode.replaceChild(clone, bodyContent);
+        
+        ['click', 'focus', 'keydown', 'keyup', 'keypress', 'input'].forEach(eventType => {
+          clone.addEventListener(eventType, function(event) {
+            event.stopPropagation();
+          }, true);
+        });
+        
+        console.log("Correctif appliqué au corps de la requête");
+      }
+    }
+    
+    // Fonction pour activer les onglets de l'interface sans redirection
+    function fixTabsNavigation() {
+      console.log("Application du correctif de navigation des onglets");
+      
+      // Obtenir tous les onglets de requête
+      const requestTabs = document.querySelectorAll('.request-tabs .tab');
+      if (requestTabs.length === 0) return;
+      
+      // Pour chaque onglet, ajouter un gestionnaire d'événement propre
+      requestTabs.forEach(tab => {
+        // Supprimer les anciens gestionnaires
+        const clone = tab.cloneNode(true);
+        tab.parentNode.replaceChild(clone, tab);
+        
+        // Ajouter le nouveau gestionnaire
+        clone.addEventListener('click', function(event) {
+          // Empêcher tout comportement par défaut
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // Désactiver tous les onglets dans ce groupe
+          requestTabs.forEach(t => t.classList.remove('active'));
+          
+          // Activer cet onglet
+          this.classList.add('active');
+          
+          // Obtenir l'ID du contenu à activer
+          const tabId = this.getAttribute('data-tab');
+          
+          // Désactiver tous les contenus
+          document.querySelectorAll('.tab-content').forEach(c => {
+            c.classList.remove('active');
+          });
+          
+          // Activer le contenu correspondant
+          const tabContent = document.getElementById(tabId + '-tab');
+          if (tabContent) {
+            tabContent.classList.add('active');
+            console.log(`Onglet ${tabId} activé`);
+          }
+          
+          return false;
+        });
+      });
+      
+      console.log("Correctif de navigation appliqué à " + requestTabs.length + " onglets");
+    }
+    
     // Attendre que la page soit complètement chargée
     document.addEventListener('DOMContentLoaded', function() {
-      // Charger les applications après un court délai
+      // Appliquer les correctifs après un court délai
       setTimeout(function() {
+        // Appliquer les correctifs
+        fixTabsNavigation();
+        fixTextInputs();
+        
+        // Appliquer à nouveau les correctifs périodiquement
+        setInterval(function() {
+          fixTextInputs();
+          fixTabsNavigation();
+        }, 2000);
+        
         // Fonction pour charger directement les applications
         function loadApiTesterApps() {
           console.log("Chargement direct des applications dans le testeur d'API");
