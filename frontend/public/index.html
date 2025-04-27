@@ -306,6 +306,55 @@
     .convert-btn:hover:not(:disabled) {
       background-color: #45a049;
     }
+    
+    /* Styles pour la documentation */
+    .doc-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      border-left: 4px solid #e74c3c;
+    }
+    
+    .doc-section h3 {
+      margin-top: 0;
+      color: #e74c3c;
+      font-size: 22px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .doc-section h4 {
+      color: #333;
+      font-size: 18px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .doc-section p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+    
+    .doc-section ul, .doc-section ol {
+      padding-left: 25px;
+      margin-bottom: 15px;
+    }
+    
+    .doc-section li {
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    
+    .doc-section a {
+      color: #e74c3c;
+      text-decoration: none;
+    }
+    
+    .doc-section a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -330,6 +379,7 @@
       <div class="tab" data-tab="history">Historique</div>
       <div class="tab" data-tab="applications">Applications</div>
       <div class="tab" data-tab="api">API</div>
+      <div class="tab" data-tab="documentation">Documentation</div>
     </div>
     
     <div class="tab-content active" id="convert-tab">
@@ -567,11 +617,81 @@
         <div class="api-endpoint"><span class="method">GET</span> /api/terminology/codesystem/:id - Obtenir un système de code spécifique</div>
         <div class="api-endpoint"><span class="method">GET</span> /api/terminology/search - Rechercher dans les terminologies</div>
       </div>
+    </div>
+    
+    <div class="tab-content" id="documentation-tab">
+      <h2>Documentation</h2>
       
-      <h3>Tester l'API</h3>
-      <div>
-        <button id="test-api">Tester la connexion</button>
-        <span id="api-status"></span>
+      <div class="doc-section">
+        <h3>Présentation de FHIRHub</h3>
+        <p>FHIRHub est une solution de conversion des messages HL7v2.5 vers le format FHIR R4 (version 4.0.1), conforme aux exigences de l'Agence du Numérique en Santé (ANS).</p>
+        <p>Cette plateforme est spécialement conçue pour le contexte français de la santé, avec un support intégré des terminologies de santé françaises.</p>
+      </div>
+      
+      <div class="doc-section">
+        <h3>Architecture technique</h3>
+        <p>FHIRHub adopte une architecture légère et portable :</p>
+        <ul>
+          <li><strong>Backend :</strong> Node.js avec Express pour l'API REST</li>
+          <li><strong>Stockage :</strong> Base de données SQLite intégrée</li>
+          <li><strong>Frontend :</strong> Interface utilisateur React moderne</li>
+          <li><strong>Sécurité :</strong> Authentification par clé API et système de rôles utilisateurs</li>
+        </ul>
+      </div>
+      
+      <div class="doc-section">
+        <h3>Fonctionnalités principales</h3>
+        <h4>Conversion HL7 vers FHIR</h4>
+        <ul>
+          <li>Conversion des messages HL7v2.5 vers FHIR R4</li>
+          <li>Support du format de transaction Bundle FHIR</li>
+          <li>Validation et nettoyage automatique des ressources générées</li>
+          <li>Adaptation aux terminologies françaises ANS</li>
+        </ul>
+        
+        <h4>Terminologies françaises</h4>
+        <ul>
+          <li>Support des terminologies standardisées de l'ANS</li>
+          <li>Adaptation automatique des identifiants (INS, RPPS, etc.)</li>
+          <li>Intégration des systèmes de codage français</li>
+          <li>Support des OIDs français standardisés</li>
+        </ul>
+        
+        <h4>Gestion multi-applications</h4>
+        <ul>
+          <li>Création et gestion d'applications clientes</li>
+          <li>Génération de clés API multiples par application</li>
+          <li>Séparation des logs et statistiques par application</li>
+          <li>Configuration personnalisable par application</li>
+        </ul>
+      </div>
+      
+      <div class="doc-section">
+        <h3>Guide d'utilisation</h3>
+        
+        <h4>Conversion de messages HL7</h4>
+        <p>Deux méthodes sont disponibles pour convertir vos messages HL7 :</p>
+        <ol>
+          <li><strong>Saisie directe :</strong> Collez votre message HL7 dans la zone de texte de l'onglet "Convertir" et cliquez sur "Convertir".</li>
+          <li><strong>Téléchargement de fichier :</strong> Utilisez la zone de glisser-déposer pour télécharger un fichier HL7 (.hl7 ou .txt).</li>
+        </ol>
+        
+        <h4>Historique des conversions</h4>
+        <p>L'onglet "Historique" vous permet de consulter toutes les conversions effectuées, avec possibilité de filtrer par application, date et statut.</p>
+        
+        <h4>Gestion des applications</h4>
+        <p>L'onglet "Applications" permet aux administrateurs de créer et gérer des applications clientes avec leurs propres clés API et configurations.</p>
+      </div>
+      
+      <div class="doc-section">
+        <h3>Support et référence</h3>
+        <p>Pour plus d'informations sur les standards utilisés :</p>
+        <ul>
+          <li><a href="https://hl7.org/fhir/R4/" target="_blank">FHIR R4 (v4.0.1)</a> - Standard officiel FHIR</li>
+          <li><a href="https://www.hl7.org/implement/standards/product_brief.cfm?product_id=185" target="_blank">HL7 v2.5</a> - Documentation du standard HL7</li>
+          <li><a href="https://esante.gouv.fr/" target="_blank">ANS</a> - Agence du Numérique en Santé</li>
+          <li><a href="https://smt.esante.gouv.fr/fhir/" target="_blank">SMT</a> - Serveur Multi-Terminologies ANS</li>
+        </ul>
       </div>
     </div>
     
