@@ -49,25 +49,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialisation du testeur d'API - exportée globalement pour main.js
 window.initApiTester = async function() {
-  // Initialiser les éléments DOM
+  // Initialiser les éléments DOM - avec protection contre les undefined
+  elements = {};
+  
+  // Fonction d'aide pour trouver un élément DOM en toute sécurité
+  function safeGetElement(id, fallback = null) {
+    const element = document.getElementById(id);
+    if (!element) {
+      console.error(`Élément DOM non trouvé: #${id}`);
+      return fallback || { 
+        // Objet fantôme pour éviter les erreurs
+        innerHTML: '', 
+        appendChild: () => {}, 
+        addEventListener: () => {},
+        querySelectorAll: () => [],
+        classList: { add: () => {}, remove: () => {}, contains: () => false }
+      };
+    }
+    return element;
+  }
+  
+  // Fonction d'aide pour trouver un élément par sélecteur CSS en toute sécurité
+  function safeQuerySelector(selector, fallback = null) {
+    const element = document.querySelector(selector);
+    if (!element) {
+      console.error(`Élément DOM non trouvé avec le sélecteur: ${selector}`);
+      return fallback || { 
+        // Objet fantôme pour éviter les erreurs
+        innerHTML: '', 
+        appendChild: () => {}, 
+        addEventListener: () => {},
+        querySelectorAll: () => [],
+        classList: { add: () => {}, remove: () => {}, contains: () => false }
+      };
+    }
+    return element;
+  }
+  
+  // Initialiser avec la protection
   elements = {
-    appSelect: document.getElementById('test-app-select'),
-    keySelect: document.getElementById('test-key-select'),
-    methodSelect: document.getElementById('request-method'),
-    endpointInput: document.getElementById('endpoint-input'),
-    sendButton: document.getElementById('send-request'),
-    requestBody: document.getElementById('request-body'),
-    responseBody: document.getElementById('response-body'),
-    responseHeaders: document.getElementById('response-headers'),
-    responseStatus: document.getElementById('response-status'),
-    responseTime: document.getElementById('response-time'),
-    addParamButton: document.getElementById('add-param'),
-    addHeaderButton: document.getElementById('add-header'),
-    paramsContainer: document.querySelector('.params-container'),
-    headersContainer: document.querySelector('.headers-container'),
-    endpointsList: document.querySelector('.endpoints-list'),
-    requestHistory: document.getElementById('request-history'),
-    apiKeyHeader: document.getElementById('api-key-header')
+    appSelect: safeGetElement('test-app-select'),
+    keySelect: safeGetElement('test-key-select'),
+    methodSelect: safeGetElement('request-method'),
+    endpointInput: safeGetElement('endpoint-input'),
+    sendButton: safeGetElement('send-request'),
+    requestBody: safeGetElement('request-body'),
+    responseBody: safeGetElement('response-body'),
+    responseHeaders: safeGetElement('response-headers'),
+    responseStatus: safeGetElement('response-status'),
+    responseTime: safeGetElement('response-time'),
+    addParamButton: safeGetElement('add-param'),
+    addHeaderButton: safeGetElement('add-header'),
+    paramsContainer: safeQuerySelector('.params-container'),
+    headersContainer: safeQuerySelector('.headers-container'),
+    endpointsList: safeQuerySelector('.endpoints-list'),
+    requestHistory: safeGetElement('request-history'),
+    apiKeyHeader: safeGetElement('api-key-header')
   };
 
   // Vérifier si tous les éléments DOM ont été trouvés
