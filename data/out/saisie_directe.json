@@ -1,8 +1,8 @@
 {
   "resourceType": "Bundle",
   "type": "transaction",
-  "id": "ed32587e-7131-49c2-b0f7-071f9e391438",
-  "timestamp": "2025-04-27T20:11:01.554Z",
+  "id": "950db493-4223-4cea-8412-84a87a1d788c",
+  "timestamp": "2025-04-27T20:14:00.958Z",
   "meta": {
     "profile": [
       "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
@@ -24,33 +24,34 @@
   },
   "entry": [
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Patient/9c895fb3-84cc-4957-a05f-a82a282cb253",
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/296d51be-32f4-4f1a-a93c-76733a6bb60d",
       "resource": {
         "resourceType": "Patient",
-        "id": "9c895fb3-84cc-4957-a05f-a82a282cb253",
+        "id": "296d51be-32f4-4f1a-a93c-76733a6bb60d",
         "identifier": [
           {
-            "system": "urn:HOSPITAL",
-            "value": "1234567890",
+            "system": "urn:SENDING_FACILITY",
+            "value": "12345",
             "type": {
               "coding": [
                 {
                   "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                  "code": "MR",
-                  "display": "Medical record number"
+                  "code": "PI",
+                  "display": "Patient internal identifier"
                 }
               ]
             },
             "assigner": {
-              "display": "HOSPITAL"
+              "display": "SENDING_FACILITY"
             }
           }
         ],
         "name": [
           {
-            "family": "DOE",
+            "family": "DUPONT",
             "given": [
-              "JOHN"
+              "JEAN",
+              "PHILIPPE"
             ]
           }
         ],
@@ -59,7 +60,7 @@
         "address": [
           {
             "line": [
-              "123 MAIN ST"
+              "1 RUE PRINCIPALE"
             ],
             "city": "PARIS",
             "postalCode": "75001",
@@ -76,7 +77,7 @@
         "telecom": [
           {
             "system": "phone",
-            "value": "+33612345678",
+            "value": "+33123456789",
             "use": "home",
             "extension": [
               {
@@ -84,6 +85,11 @@
                 "valueString": "+33 n nn nn nn nn"
               }
             ]
+          },
+          {
+            "system": "phone",
+            "value": "jean.dupont@example.com",
+            "use": "mobile"
           }
         ]
       },
@@ -93,15 +99,16 @@
       }
     },
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Person/428520c3-288c-44bd-83d9-171efc9c5715",
+      "fullUrl": "https://fhir.org/FHIRHub/Person/71fe61bb-9c2f-49f1-b494-2cb7351e3551",
       "resource": {
         "resourceType": "Person",
-        "id": "428520c3-288c-44bd-83d9-171efc9c5715",
+        "id": "71fe61bb-9c2f-49f1-b494-2cb7351e3551",
         "name": [
           {
-            "family": "DOE",
+            "family": "DUPONT",
             "given": [
-              "JOHN"
+              "JEAN",
+              "PHILIPPE"
             ]
           }
         ],
@@ -110,7 +117,7 @@
         "telecom": [
           {
             "system": "phone",
-            "value": "+33612345678",
+            "value": "+33123456789",
             "use": "home",
             "extension": [
               {
@@ -118,12 +125,17 @@
                 "valueString": "+33 n nn nn nn nn"
               }
             ]
+          },
+          {
+            "system": "phone",
+            "value": "jean.dupont@example.com",
+            "use": "mobile"
           }
         ],
         "address": [
           {
             "line": [
-              "123 MAIN ST"
+              "1 RUE PRINCIPALE"
             ],
             "city": "PARIS",
             "postalCode": "75001",
@@ -140,7 +152,7 @@
         "link": [
           {
             "target": {
-              "reference": "https://fhir.org/FHIRHub/Patient/9c895fb3-84cc-4957-a05f-a82a282cb253"
+              "reference": "https://fhir.org/FHIRHub/Patient/296d51be-32f4-4f1a-a93c-76733a6bb60d"
             }
           }
         ]
@@ -151,21 +163,196 @@
       }
     },
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Organization/5116bda2-c0e4-4cb1-a706-867219fbf705",
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/f0c38185-202b-409d-a572-0bf9d8667c37",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "f0c38185-202b-409d-a572-0bf9d8667c37",
+        "identifier": [
+          {
+            "system": "http://example.org/fhir/sid/provider-id",
+            "value": "123456"
+          }
+        ],
+        "name": [
+          {
+            "family": "DOCTEUR",
+            "given": [
+              "ROBERT"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/2f9ba7e9-45fa-4640-9607-d43df49da7bd",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "2f9ba7e9-45fa-4640-9607-d43df49da7bd",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "I",
+          "display": "Inpatient"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/296d51be-32f4-4f1a-a93c-76733a6bb60d"
+        },
+        "period": {},
+        "location": [
+          {
+            "location": {
+              "display": "MED^101^01"
+            }
+          }
+        ],
+        "participant": [
+          {
+            "individual": {
+              "reference": "https://fhir.org/FHIRHub/Practitioner/f0c38185-202b-409d-a572-0bf9d8667c37"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/957e07ae-990e-4b01-9f38-c757bfb44222",
       "resource": {
         "resourceType": "Organization",
-        "id": "5116bda2-c0e4-4cb1-a706-867219fbf705",
+        "id": "957e07ae-990e-4b01-9f38-c757bfb44222",
         "identifier": [
           {
             "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
-            "value": "HOSPITAL"
+            "value": "SENDING_FACILITY"
           }
         ],
-        "name": "HOSPITAL"
+        "name": "SENDING_FACILITY"
       },
       "request": {
         "method": "POST",
         "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/bd81389a-d610-4b50-a3d3-05d4a286075d",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "bd81389a-d610-4b50-a3d3-05d4a286075d",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.6.7",
+            "value": "123456789"
+          }
+        ],
+        "name": "ASSURANCE MALADIE",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_G08-TypeOrganisme/FHIR/TRE-G08-TypeOrganisme",
+                "code": "CPAM",
+                "display": "Caisse Primaire d'Assurance Maladie"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Coverage/f7680869-ccbb-4084-907f-fca203c7e9c2",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "f7680869-ccbb-4084-907f-fca203c7e9c2",
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "https://mos.esante.gouv.fr/NOS/JDV_J65-TypeMutuelles/FHIR/JDV-J65-TypeMutuelles",
+              "code": "AMO",
+              "display": "Assurance Maladie Obligatoire"
+            }
+          ]
+        },
+        "subscriberId": "",
+        "beneficiary": {
+          "reference": "https://fhir.org/FHIRHub/Patient/296d51be-32f4-4f1a-a93c-76733a6bb60d"
+        },
+        "period": {
+          "start": "2023-01-01",
+          "end": "2025-12-31"
+        },
+        "payor": [
+          {
+            "reference": "Organization/bd81389a-d610-4b50-a3d3-05d4a286075d"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/4d4cddd1-a04b-46ca-8b90-5b5364ee5a25",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "4d4cddd1-a04b-46ca-8b90-5b5364ee5a25",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/296d51be-32f4-4f1a-a93c-76733a6bb60d"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SPS",
+                "display": "SPOUSE"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "DUPONT",
+            "given": [
+              "MARIE"
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(01)23456789",
+            "use": "home"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "1 RUE PRINCIPALE"
+            ],
+            "city": "PARIS",
+            "postalCode": "75001",
+            "country": "FRA"
+          }
+        ],
+        "birthDate": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
       }
     }
   ]

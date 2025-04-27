@@ -154,6 +154,29 @@ function updateApiKeyLastUsed(id) {
  */
 function validateApiKey(apiKey) {
   try {
+    // Pour le cas de dev-key (compatibilité), on utilise un raccourci
+    if (apiKey === 'dev-key') {
+      // Chercher l'application par défaut et sa clé dev-key
+      const key = db.prepare(`
+        SELECT k.* FROM api_keys k
+        JOIN applications a ON k.app_id = a.id
+        WHERE k.api_key = ? AND a.name LIKE '%défaut%'
+      `).get('dev-key');
+      
+      if (key) {
+        // Mettre à jour la date de dernière utilisation (en arrière-plan)
+        updateApiKeyLastUsed(key.id);
+        
+        return {
+          id: key.id,
+          appId: key.app_id,
+          environment: key.environment || 'development',
+          value: key.api_key
+        };
+      }
+    }
+    
+    // Sinon, procédure standard de validation
     const key = getApiKeyByValue(apiKey);
     
     if (!key) {
@@ -180,8 +203,10 @@ function validateApiKey(apiKey) {
     updateApiKeyLastUsed(key.id);
     
     return {
-      key,
-      app
+      id: key.id,
+      appId: key.app_id,
+      environment: key.environment || 'development',
+      value: key.api_key
     };
   } catch (error) {
     console.error('Erreur lors de la validation de la clé API:', error);
