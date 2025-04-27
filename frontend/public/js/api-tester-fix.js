@@ -13,7 +13,7 @@
       appSelect: 'test-app-select',
       keySelect: 'test-key-select',
       apiKeyHeader: 'api-key-header',
-      apiTesterTab: '.tab[data-tab="api-tester"]'
+      apiTesterTab: '.tab[data-tab="test-api"]'
     },
     delay: 1000 // Délai avant le chargement initial
   };
@@ -221,16 +221,42 @@
   // Charger le script après que tout le DOM soit chargé
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(initialize, config.delay);
+      setTimeout(() => {
+        initialize();
+        // Essayer de charger immédiatement les applications
+        setTimeout(loadApplications, 500);
+      }, config.delay);
     });
   } else {
-    setTimeout(initialize, config.delay);
+    setTimeout(() => {
+      initialize();
+      // Essayer de charger immédiatement les applications
+      setTimeout(loadApplications, 500);
+    }, config.delay);
   }
   
-  // Exposer quelques fonctions pour le débogage
+  // Ajouter un bouton de secours pour recharger les applications
+  setTimeout(() => {
+    const appSelect = document.getElementById(config.selectors.appSelect);
+    if (appSelect && appSelect.innerHTML === '') {
+      // Si le sélecteur est vide après 5 secondes, ajouter un bouton de secours
+      const container = appSelect.parentElement;
+      if (container) {
+        const button = document.createElement('button');
+        button.className = 'refresh-button';
+        button.textContent = 'Rafraîchir les applications';
+        button.style.marginLeft = '10px';
+        button.addEventListener('click', loadApplications);
+        container.appendChild(button);
+      }
+    }
+  }, 5000);
+  
+  // Exposer quelques fonctions pour le débogage et l'accès direct
   window.apiTesterFix = {
     loadApplications,
     loadApiKeys,
-    init: initialize
+    init: initialize,
+    reloadApps: loadApplications
   };
 })();
