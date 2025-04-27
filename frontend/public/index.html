@@ -989,7 +989,7 @@
         historyDiv.innerHTML = '';
       }
       
-      if (conversions.length === 0) {
+      if (!conversions || conversions.length === 0) {
         historyDiv.innerHTML = clear ? '<p>Aucune conversion trouvée</p>' : historyDiv.innerHTML;
         return;
       }
@@ -998,16 +998,29 @@
         const convDiv = document.createElement('div');
         convDiv.className = 'conversion-log';
         
-        const date = new Date(conversion.timestamp);
-        const formattedDate = date.toLocaleString();
+        // Vérifier que la date est valide
+        let formattedDate = 'Date inconnue';
+        if (conversion.timestamp) {
+          const date = new Date(conversion.timestamp);
+          if (!isNaN(date.getTime())) {
+            formattedDate = date.toLocaleString();
+          }
+        }
+        
+        // Valeurs par défaut pour les propriétés manquantes
+        const id = conversion.id || 'Inconnu';
+        const originalFilename = conversion.originalFilename || 'Fichier inconnu';
+        const outputFilename = conversion.outputFilename || '';
+        const error = conversion.error || 'Erreur inconnue';
+        const success = conversion.success === true;
         
         convDiv.innerHTML = `
-          <h4>${conversion.success ? '<span class="status-success">Conversion réussie</span>' : '<span class="status-error">Échec de conversion</span>'}</h4>
-          <p>ID: ${conversion.id}</p>
+          <h4>${success ? '<span class="status-success">Conversion réussie</span>' : '<span class="status-error">Échec de conversion</span>'}</h4>
+          <p>ID: ${id}</p>
           <p>Date: ${formattedDate}</p>
-          <p>Fichier: ${conversion.originalFilename}</p>
-          ${conversion.success ? `<p>Fichier FHIR: ${conversion.outputFilename}</p>` : `<p>Erreur: ${conversion.error}</p>`}
-          ${conversion.success ? `<button class="view-fhir" data-filename="${conversion.outputFilename}">Voir FHIR</button>` : ''}
+          <p>Fichier: ${originalFilename}</p>
+          ${success ? `<p>Fichier FHIR: ${outputFilename}</p>` : `<p>Erreur: ${error}</p>`}
+          ${success && outputFilename ? `<button class="view-fhir" data-filename="${outputFilename}">Voir FHIR</button>` : ''}
         `;
         
         historyDiv.appendChild(convDiv);
@@ -1060,20 +1073,7 @@
     
     // Surveillance de fichiers supprimée
     
-    // Test de l'API
-    document.getElementById('test-api').addEventListener('click', async () => {
-      const statusSpan = document.getElementById('api-status');
-      statusSpan.innerHTML = '<div class="loader"></div>';
-      
-      try {
-        const result = await apiRequest('status');
-        // Vérifier si result.message existe, sinon afficher un message par défaut
-        const message = result.message || "Serveur OK";
-        statusSpan.innerHTML = '<span class="status-success">✓ API connectée: ' + message + '</span>';
-      } catch (error) {
-        statusSpan.innerHTML = '<span class="status-error">✗ Échec de connexion: ' + (error.message || "Erreur inconnue") + '</span>';
-      }
-    });
+    // Fonction de test de l'API supprimée (il n'y a plus de bouton test-api)
     
     // Fonction pour rafraîchir tous les composants
     function refreshAll() {
