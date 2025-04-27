@@ -363,11 +363,7 @@
       <h1>FHIRHub - Convertisseur HL7 vers FHIR</h1>
     </header>
     
-    <div class="api-key-section">
-      <label for="api-key">Clé API (utiliser 'dev-key' pour les tests):</label>
-      <input type="text" id="api-key" value="dev-key">
-      <button id="save-api-key">Enregistrer</button>
-    </div>
+    <!-- Section de saisie de clé API supprimée -->
     
     <div class="info">
       Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 conforme aux standards de l'ANS.
@@ -701,16 +697,9 @@
   </div>
   
   <script>
-    // Gestion de la clé API
-    let apiKey = localStorage.getItem('apiKey') || 'dev-key';
-    document.getElementById('api-key').value = apiKey;
-    
-    document.getElementById('save-api-key').addEventListener('click', () => {
-      apiKey = document.getElementById('api-key').value;
-      localStorage.setItem('apiKey', apiKey);
-      alert('Clé API enregistrée !');
-      refreshAll();
-    });
+    // Gestion de la clé API (utilisation d'une clé fixe pour simplifier)
+    let apiKey = 'dev-key';
+    localStorage.setItem('apiKey', apiKey);
     
     // Gestion des onglets
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1090,11 +1079,10 @@
     function refreshAll() {
       refreshStats();
       refreshHistory();
-      document.getElementById('test-api').click();
     }
     
     // Initialisation
-    document.getElementById('test-api').click();
+    refreshAll(); // Charger les données initiales
   </script>
   <!-- Charger les scripts dans le bon ordre -->
   <script src="js/applications.js"></script>
