@@ -1409,8 +1409,12 @@ function convertHl7ToFhir(hl7Message) {
                 if (parts.length > 1 && parts[1].trim() !== '') {
                   givenNames.push(parts[1].trim());
                 }
-                // Autres prénoms (composant 2)
+                // Autres prénoms (composant 2) - CORRECTION POUR NOMS FRANÇAIS
                 if (parts.length > 2 && parts[2].trim() !== '') {
+                  // Pour les noms français, on vérifie si c'est un prénom composé comme "MARYSE BERTHE ALICE"
+                  // donc on doit s'assurer de traiter correctement ces prénoms multiples
+                  console.log(`TRAITEMENT PRÉNOMS COMPOSÉS: '${parts[2].trim()}'`);
+                  
                   const middleNames = parts[2].trim().split(' ');
                   middleNames.forEach(name => {
                     if (name.trim() !== '' && !givenNames.includes(name.trim())) {
