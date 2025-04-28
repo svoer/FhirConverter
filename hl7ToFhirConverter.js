@@ -1177,38 +1177,100 @@ function convertHl7ToFhir(hl7Message) {
         });
       }
       
-      // Ajouter le nom du patient
-      patientResource.name = [{
-        family: hl7Data.PID.patientName.family,
-        given: []
-      }];
+      // Ajouter le nom du patient avec traitement amélioré
+      patientResource.name = [];
       
-      // Ajouter le prénom et éviter les doublons
-      const allGivenNames = new Set();
-      
-      // Ajouter le prénom si disponible
-      if (hl7Data.PID.patientName.given && hl7Data.PID.patientName.given.trim() !== '') {
-        allGivenNames.add(hl7Data.PID.patientName.given);
+      // Traiter le nom principal (PID-5)
+      if (hl7Data.PID.patientName && hl7Data.PID.patientName.raw) {
+        const nameObj = {
+          family: hl7Data.PID.patientName.family || '',
+          given: [],
+          use: 'official'
+        };
+        
+        // Ajouter tous les prénoms disponibles
+        const allGivenNames = new Set();
+        
+        // Ajouter le prénom principal
+        if (hl7Data.PID.patientName.given && hl7Data.PID.patientName.given.trim() !== '') {
+          allGivenNames.add(hl7Data.PID.patientName.given);
+        }
+        
+        // Ajouter les autres prénoms s'ils sont différents du premier
+        if (hl7Data.PID.patientName.middle) {
+          // Diviser les prénoms multiples s'ils sont séparés par des espaces
+          const middleNames = hl7Data.PID.patientName.middle.split(' ');
+          middleNames.forEach(name => {
+            if (name.trim() !== '' && name !== hl7Data.PID.patientName.given) {
+              allGivenNames.add(name.trim());
+            }
+          });
+        }
+        
+        // Convertir le Set en tableau
+        nameObj.given = Array.from(allGivenNames);
+        
+        // Ajouter le préfixe (exemple: "MME")
+        if (hl7Data.PID.patientName.prefix && hl7Data.PID.patientName.prefix.trim() !== '') {
+          nameObj.prefix = [hl7Data.PID.patientName.prefix];
+        }
+        
+        // Ajouter le suffixe si disponible
+        if (hl7Data.PID.patientName.suffix && hl7Data.PID.patientName.suffix.trim() !== '') {
+          nameObj.suffix = [hl7Data.PID.patientName.suffix];
+        }
+        
+        // Déterminer l'utilisation du nom (usage officiel ou courant)
+        const fullNameParts = hl7Data.PID.patientName.raw.split('^');
+        if (fullNameParts.length > 6 && fullNameParts[6] === 'D') {
+          nameObj.use = 'usual';
+        } else if (fullNameParts.length > 6 && fullNameParts[6] === 'L') {
+          nameObj.use = 'official';
+        }
+        
+        patientResource.name.push(nameObj);
       }
       
-      // Ajouter le deuxième prénom s'il est disponible et différent du premier
-      if (hl7Data.PID.patientName.middle && 
-          hl7Data.PID.patientName.middle.trim() !== '' && 
-          hl7Data.PID.patientName.middle !== hl7Data.PID.patientName.given) {
-        allGivenNames.add(hl7Data.PID.patientName.middle);
+      // Traiter les noms supplémentaires s'ils existent (autres répétitions de PID-5)
+      if (hl7Data.PID.alternatePatientName && hl7Data.PID.alternatePatientName.raw) {
+        const altNameParts = hl7Data.PID.alternatePatientName.raw.split('^');
+        if (altNameParts.length > 0 && altNameParts[0].trim() !== '') {
+          const altNameObj = {
+            family: altNameParts[0] || '',
+            given: [],
+            use: 'maiden' // Par défaut pour les noms alternatifs
+          };
+          
+          // Ajouter les prénoms si disponibles
+          if (altNameParts.length > 1 && altNameParts[1].trim() !== '') {
+            altNameObj.given.push(altNameParts[1]);
+          }
+          
+          if (altNameParts.length > 2 && altNameParts[2].trim() !== '') {
+            altNameObj.given.push(altNameParts[2]);
+          }
+          
+          // Déterminer l'utilisation du nom alternatif
+          if (altNameParts.length > 6) {
+            switch (altNameParts[6]) {
+              case 'D': altNameObj.use = 'usual'; break;
+              case 'L': altNameObj.use = 'official'; break;
+              case 'M': altNameObj.use = 'maiden'; break;
+              case 'N': altNameObj.use = 'nickname'; break;
+              default: altNameObj.use = 'old';
+            }
+          }
+          
+          patientResource.name.push(altNameObj);
+        }
       }
       
-      // Convertir le Set en tableau
-      patientResource.name[0].given = Array.from(allGivenNames);
-      
-      // Ajouter le suffixe si disponible
-      if (hl7Data.PID.patientName.suffix) {
-        patientResource.name[0].suffix = [hl7Data.PID.patientName.suffix];
-      }
-      
-      // Ajouter le préfixe si disponible
-      if (hl7Data.PID.patientName.prefix) {
-        patientResource.name[0].prefix = [hl7Data.PID.patientName.prefix];
+      // S'assurer qu'il y a au moins un nom
+      if (patientResource.name.length === 0) {
+        patientResource.name = [{
+          family: hl7Data.PID.patientName ? (hl7Data.PID.patientName.family || '') : '',
+          given: []
+        }];
       }
       
       // Ajouter la date de naissance s'il y en a une
