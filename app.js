@@ -204,12 +204,15 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
+// Importation du convertisseur HL7 vers FHIR avancé
+const advancedConverter = require('./hl7ToFhirAdvancedConverter');
+
 /**
  * @swagger
  * /api/convert:
  *   post:
  *     summary: Convertir un message HL7 v2.5 en FHIR R4
- *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction)
+ *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS
  *     tags:
  *       - Conversion
  *     requestBody:
@@ -270,144 +273,14 @@ app.post('/api/convert', (req, res) => {
       });
     }
     
-    // Convertir le message HL7 en FHIR
-    const segments = hl7Message.replace(/\n/g, '\r').split('\r').filter(Boolean);
+    console.log('[API] Démarrage de la conversion HL7 vers FHIR');
     
-    // Analyser les segments du message HL7
-    const mshSegment = segments.find(s => s.startsWith('MSH|')) || '';
-    const pidSegment = segments.find(s => s.startsWith('PID|')) || '';
-    const pv1Segment = segments.find(s => s.startsWith('PV1|')) || '';
+    // Utiliser le convertisseur avancé pour transformer HL7 en FHIR
+    const startTime = Date.now();
+    const result = advancedConverter.convertHL7ToFHIR(hl7Message);
+    const conversionTime = Date.now() - startTime;
     
-    // Extraire les informations de base
-    const mshParts = mshSegment.split('|');
-    const pidParts = pidSegment.split('|');
-    const pv1Parts = pv1Segment.split('|');
-    
-    // Créer un identifiant unique pour le Bundle
-    const bundleId = 'bundle-' + Date.now();
-    const patientId = 'patient-' + (pidParts[3] || Date.now());
-    const encounterId = 'encounter-' + (pv1Parts[1] || Date.now());
-    
-    // Extraire le nom du patient
-    let familyName = '';
-    let givenNames = [];
-    
-    if (pidParts[5]) {
-      const nameParts = pidParts[5].split('^');
-      familyName = nameParts[0] || '';
-      
-      // Gérer les prénoms composés à la française
-      if (nameParts[1]) {
-        // Si le prénom contient des espaces, c'est un prénom composé
-        if (nameParts[1].includes(' ')) {
-          givenNames = nameParts[1].split(' ');
-        } else {
-          givenNames = [nameParts[1]];
-        }
-        
-        // Ajouter les autres prénoms s'ils existent
-        for (let i = 2; i < nameParts.length; i++) {
-          if (nameParts[i]) {
-            givenNames.push(nameParts[i]);
-          }
-        }
-      }
-    }
-    
-    // Extraire la date de naissance
-    const birthDate = pidParts[7] ? 
-      pidParts[7].substring(0, 4) + '-' + 
-      pidParts[7].substring(4, 6) + '-' + 
-      pidParts[7].substring(6, 8) : 
-      null;
-    
-    // Extraire le sexe
-    const gender = pidParts[8] === 'M' ? 'male' : 
-                  pidParts[8] === 'F' ? 'female' : 
-                  'unknown';
-    
-    // Créer le bundle FHIR
-    const result = {
-      resourceType: 'Bundle',
-      id: bundleId,
-      type: 'transaction',
-      timestamp: new Date().toISOString(),
-      entry: [
-        // Patient
-        {
-          fullUrl: `urn:uuid:${patientId}`,
-          resource: {
-            resourceType: 'Patient',
-            id: patientId,
-            identifier: pidParts[3] ? [
-              {
-                system: 'urn:oid:1.2.250.1.213.1.4.8',
-                value: pidParts[3].split('^')[0] || '',
-                type: {
-                  coding: [
-                    {
-                      system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-                      code: 'PI',
-                      display: 'Patient internal identifier'
-                    }
-                  ]
-                }
-              }
-            ] : [],
-            name: [
-              {
-                family: familyName,
-                given: givenNames.length > 0 ? givenNames : undefined,
-                use: 'official'
-              }
-            ],
-            gender: gender,
-            birthDate: birthDate
-          },
-          request: {
-            method: 'POST',
-            url: 'Patient'
-          }
-        }
-      ]
-    };
-    
-    // Ajouter l'Encounter si des données PV1 sont présentes
-    if (pv1Segment) {
-      const encounter = {
-        fullUrl: `urn:uuid:${encounterId}`,
-        resource: {
-          resourceType: 'Encounter',
-          id: encounterId,
-          status: 'finished',
-          class: {
-            system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-            code: pv1Parts[2] === 'I' ? 'IMP' : 'AMB',
-            display: pv1Parts[2] === 'I' ? 'inpatient encounter' : 'ambulatory'
-          },
-          subject: {
-            reference: `urn:uuid:${patientId}`
-          }
-        },
-        request: {
-          method: 'POST',
-          url: 'Encounter'
-        }
-      };
-      
-      // Ajouter les dates de début/fin si disponibles
-      if (pv1Parts[44]) {
-        const startDate = pv1Parts[44].replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6');
-        encounter.resource.period = { start: startDate };
-        
-        if (pv1Parts[45]) {
-          const endDate = pv1Parts[45].replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6');
-          encounter.resource.period.end = endDate;
-        }
-      }
-      
-      result.entry.push(encounter);
-    }
+    console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées`);
     
     // Enregistrement de la conversion
     db.prepare(`
@@ -425,7 +298,11 @@ app.post('/api/convert', (req, res) => {
     
     return res.status(200).json({
       success: true,
-      data: result
+      data: result,
+      meta: {
+        conversionTime: conversionTime,
+        resourceCount: result.entry.length
+      }
     });
   } catch (error) {
     console.error('[CONVERSION ERROR]', error);
