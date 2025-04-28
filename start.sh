@@ -6,6 +6,37 @@
 
 echo "Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
 
+# Appliquer les correctifs nécessaires
+if [ -f fix_converter.patch.js ]; then
+  echo "Application du correctif pour l'extraction des noms français..."
+  node fix_converter.patch.js
+fi
+
+# Corriger les erreurs de syntaxe dans le convertisseur HL7
+echo "Correction du fichier hl7ToFhirConverter.js..."
+cat > tmp_fix.js << EOF
+/**
+ * Script pour corriger les erreurs de syntaxe dans le convertisseur HL7 vers FHIR
+ */
+const fs = require('fs');
+const converter = 'hl7ToFhirConverter.js';
+
+console.log('Tentative de correction de ' + converter);
+let content = fs.readFileSync(converter, 'utf8');
+
+// Remplacer la partie problématique pour corriger l'erreur de syntaxe à la ligne 1500
+const pattern = /                }\n              }\n          } catch \(error\) \{\n            console.error\("\[CONVERTER_FIX\] Erreur dans le traitement des noms:", error\);\n          }\n            \}\)\;/g;
+const replacement = "                }\n              }\n            });\n          } catch (error) {\n            console.error(\"[CONVERTER_FIX] Erreur dans le traitement des noms:\", error);\n          }";
+
+content = content.replace(pattern, replacement);
+
+fs.writeFileSync(converter, content, 'utf8');
+console.log('Correction terminée');
+EOF
+
+node tmp_fix.js
+rm tmp_fix.js
+
 # Créer les répertoires nécessaires s'ils n'existent pas
 mkdir -p data/in data/out data/test french_terminology/cache
 
@@ -81,6 +112,10 @@ if [ ! -d "frontend/public/css" ]; then
   echo "ERREUR: Le répertoire CSS est manquant!"
   exit 1
 fi
+
+# Exécuter le script de test pour le nom français
+echo "Test du correctif d'extraction des noms français..."
+node test_french_name_extractor.js
 
 # Démarrer l'application principale
 echo "Démarrage du serveur FHIRHub..."

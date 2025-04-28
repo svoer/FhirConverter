@@ -9,11 +9,14 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
-const converter = require('./hl7ToFhirConverter');
+// Utiliser le proxy pour contourner les problèmes de syntaxe dans le convertisseur original
+const converter = require('./hl7ToFhirConverter.proxy');
 const frenchTerminologyService = require('./french_terminology_service');
 const terminologyValidationRouter = require('./api/terminology_validation');
 const apiKeyService = require('./src/services/apiKeyService');
 const conversionLogService = require('./src/services/conversionLogService');
+// Correctif pour l'extraction des noms français
+const applyFrenchNamesFix = require('./apply_french_names_fix');
 
 // Configuration pour l'upload de fichiers
 const upload = multer({
@@ -229,7 +232,10 @@ router.post('/convert', express.json({ limit: '10mb' }), async (req, res) => {
   
   try {
     const filename = req.query.filename || 'saisie_directe.hl7';
-    const result = converter.convertHl7Content(hl7Content, filename, options);
+    let result = converter.convertHl7Content(hl7Content, filename, options);
+    
+    // Appliquer le correctif pour les noms français composés
+    result = applyFrenchNamesFix(result, hl7Content);
     
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {
@@ -287,7 +293,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     fs.unlinkSync(filePath);
     
     // Convertir le contenu
-    const result = converter.convertHl7Content(hl7Content, req.file.originalname);
+    let result = converter.convertHl7Content(hl7Content, req.file.originalname);
+    
+    // Appliquer le correctif pour les noms français composés
+    result = applyFrenchNamesFix(result, hl7Content);
     
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {

@@ -1,0 +1,50 @@
+/**
+ * Module de conversion de HL7 v2.5 vers FHIR R4
+ * Implémentation en Node.js avec support complet des spécifications FHIR R4 (v4.0.1)
+ * 
+ * Ce module permet de convertir des messages HL7 v2.5 en ressources FHIR R4 conformes
+ * aux spécifications de l'ANS (Agence du Numérique en Santé). Il gère les particularités 
+ * de syntaxe HL7 comme les champs répétés, les composants multiples, et les systèmes 
+ * d'identification complexes.
+ * 
+ * Conforme aux exigences françaises de l'ANS:
+ * - Utilisation des OIDs standards français pour les systèmes d'identification
+ * - Support des terminologies ANS (TRE-R316, TRE-R51, etc.)
+ * - Format des références FHIR conforme à R4
+ * - Traitement des spécificités des identifiants français (INS, RPPS, ADELI, etc.)
+ * - Structures de ressources conformes aux profils français
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+// Importer l'adaptateur de terminologies françaises
+const frenchAdapter = require('./french_terminology_adapter');
+// Importer le module de nettoyage des ressources FHIR
+const fhirCleaner = require('./fhir_cleaner');
+// Importer le nouveau module d'extraction des noms français
+const frenchNameExtractor = require('./french_name_extractor');
+
+// Base de données en mémoire pour les logs de conversion
+const conversionLogs = [];
+
+/**
+ * Fonction utilitaire pour traiter les répétitions dans les champs HL7
+ * @param {string} fieldValue - Valeur du champ qui peut contenir des répétitions
+ * @returns {Array} Tableau des valeurs répétées
+ */
+function processRepeatedField(fieldValue) {
+  if (!fieldValue) return [];
+  return fieldValue.split('~').map(item => item.trim()).filter(item => item !== '');
+}
+
+/**
+ * Analyser un message HL7 en objets JavaScript
+ * @param {string} hl7Message - Message HL7 v2.5
+ * @returns {Object} Objet JavaScript structuré
+ */
+function parseHl7Message(hl7Message) {
+  try {
+    // Diviser le message en segments
+    const segments = hl7Message.trim().split(/[\r\n]+/);
+    const result = {
