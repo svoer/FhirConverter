@@ -20,6 +20,9 @@ app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
+// Servir les fichiers statiques
+app.use(express.static('public'));
+
 // Base de données SQLite simplifiée
 const Database = require('better-sqlite3');
 const DATA_DIR = './data';
@@ -53,11 +56,7 @@ function initDb() {
 
 // Route de base
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'FHIRHub API en ligne',
-    version: '1.0.0'
-  });
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 // Route pour la conversion
@@ -236,6 +235,67 @@ app.post('/api/convert', (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Conversion Error',
+      message: error.message || 'Erreur inconnue'
+    });
+  }
+});
+
+// Route pour valider un message HL7
+app.post('/api/convert/validate', (req, res) => {
+  try {
+    const { hl7Message } = req.body;
+    
+    if (!hl7Message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Le message HL7 est requis'
+      });
+    }
+    
+    // Valider le message HL7
+    const segments = hl7Message.replace(/\n/g, '\r').split('\r').filter(Boolean);
+    
+    if (segments.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Le message HL7 ne contient aucun segment'
+      });
+    }
+    
+    if (!segments[0].startsWith('MSH|')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Le message HL7 doit commencer par un segment MSH'
+      });
+    }
+    
+    // Compter les segments par type
+    const segmentTypes = {};
+    
+    segments.forEach(segment => {
+      const type = segment.split('|')[0] || 'UNKNOWN';
+      segmentTypes[type] = (segmentTypes[type] || 0) + 1;
+    });
+    
+    console.log('[HL7 Validation] Message parsé avec succès:', segments.length, 'segments');
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        valid: true,
+        segmentCount: segments.length,
+        segmentTypes
+      }
+    });
+  } catch (error) {
+    console.error('[VALIDATION ERROR]', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Validation Error',
       message: error.message || 'Erreur inconnue'
     });
   }
