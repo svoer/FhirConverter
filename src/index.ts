@@ -75,13 +75,17 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Routes API
+// Routes API avec double mapping (v1 pour nouvelle structure, racine pour compatibilité)
 app.use('/api/v1/convert', convertRoutes);
+app.use('/api/convert', convertRoutes);
 app.use('/api/v1/apikeys', apiKeyRoutes);
+app.use('/api/api-keys', apiKeyRoutes);
 app.use('/api/v1/applications', applicationRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // Documentation Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Route par défaut pour l'interface utilisateur
 app.get('/', (req, res) => {

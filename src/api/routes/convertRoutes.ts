@@ -1,21 +1,27 @@
 /**
  * Routes pour la conversion HL7 vers FHIR
  */
-import { Router, Request, Response } from 'express';
-import multer from 'multer';
-import { apiKeyAuth } from '../middleware/apiKeyAuth';
-import { convertHL7ToFHIR, isValidHL7 } from '../services/conversionService';
-import { logConversion } from '../services/conversionLogService';
 
-const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+import express, { Request, Response } from 'express';
+import multer from 'multer';
+import { isValidHL7, convertHL7ToFHIR, logConversion } from '../services/conversionService';
+import { apiKeyAuth } from '../middleware/apiKeyAuth';
+
+const router = express.Router();
+
+// Configuration de multer pour le téléchargement de fichiers
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // Limite de 5MB
+});
 
 /**
  * @swagger
- * /api/v1/convert:
+ * /api/convert:
  *   post:
  *     summary: Convertit un message HL7 en ressource FHIR
- *     description: Convertit un message HL7 v2.5 en ressource FHIR R4
+ *     description: Convertit un message HL7 v2.5 en ressource FHIR R4 compatible avec les terminologies françaises
  *     tags: [Conversion]
  *     security:
  *       - ApiKeyAuth: []
@@ -45,6 +51,9 @@ const upload = multer({ storage: multer.memoryStorage() });
  *                 data:
  *                   type: object
  *                   description: Ressource FHIR générée
+ *                 processingTime:
+ *                   type: number
+ *                   description: Temps de traitement en millisecondes
  *       400:
  *         description: Message HL7 invalide
  *       401:
@@ -52,7 +61,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         description: Erreur serveur lors de la conversion
  */
-router.post('/convert', apiKeyAuth, (req: Request, res: Response): void => {
+router.post('/', apiKeyAuth, (req: Request, res: Response): void => {
   const startTime = Date.now();
   let hl7Message = req.body.hl7Message as string;
   
@@ -126,7 +135,7 @@ router.post('/convert', apiKeyAuth, (req: Request, res: Response): void => {
 
 /**
  * @swagger
- * /api/v1/convert/file:
+ * /api/convert/file:
  *   post:
  *     summary: Convertit un fichier HL7 en ressource FHIR
  *     description: Convertit un fichier contenant un message HL7 v2.5 en ressource FHIR R4
@@ -163,7 +172,7 @@ router.post('/convert', apiKeyAuth, (req: Request, res: Response): void => {
  *       500:
  *         description: Erreur serveur lors de la conversion
  */
-router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, res: Response): void => {
+router.post('/file', apiKeyAuth, upload.single('file'), (req: Request, res: Response): void => {
   const startTime = Date.now();
   
   // Vérifier que le fichier est fourni
@@ -228,6 +237,80 @@ router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, r
       );
     }
     
+    // Renvoyer l'erreur
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/convert/validate:
+ *   post:
+ *     summary: Valide un message HL7
+ *     description: Vérifie si un message HL7 v2.5 est valide sans effectuer la conversion
+ *     tags: [Conversion]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               hl7Message:
+ *                 type: string
+ *                 description: Message HL7 à valider
+ *             required:
+ *               - hl7Message
+ *     responses:
+ *       200:
+ *         description: Résultat de la validation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 isValid:
+ *                   type: boolean
+ *                   description: Indique si le message HL7 est valide
+ *       400:
+ *         description: Requête invalide
+ *       401:
+ *         description: Non autorisé (clé API invalide)
+ *       500:
+ *         description: Erreur serveur lors de la validation
+ */
+router.post('/validate', apiKeyAuth, (req: Request, res: Response): void => {
+  const hl7Message = req.body.hl7Message as string;
+  
+  // Vérifier que le message HL7 est fourni
+  if (!hl7Message) {
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'Le message HL7 est requis'
+    });
+    return;
+  }
+  
+  try {
+    // Valider le message HL7
+    const isValid = isValidHL7(hl7Message);
+    
+    // Renvoyer le résultat de la validation
+    res.status(200).json({
+      success: true,
+      isValid
+    });
+  } catch (error: any) {
     // Renvoyer l'erreur
     res.status(500).json({
       success: false,

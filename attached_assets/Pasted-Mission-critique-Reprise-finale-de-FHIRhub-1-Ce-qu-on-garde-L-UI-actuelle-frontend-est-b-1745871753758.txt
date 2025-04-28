@@ -1,0 +1,73 @@
+Mission critique — Reprise finale de FHIRhub 🔥
+✅ 1. Ce qu’on garde :
+L’UI actuelle (frontend) est bien, on la garde.
+
+Pas besoin de changer le design à ce stade.
+
+🛠️ 2. Ce qu’il faut absolument corriger :
+Toutes les APIs doivent être 100% fonctionnelles.
+
+Tester manuellement chaque route :
+
+/api/v1/convert
+
+/api/v1/applications
+
+/api/v1/api-keys
+
+/api/v1/system
+
+/api/v1/stats
+
+/api/v1/templates
+
+Corriger tous les bugs existants.
+
+Vérifier toutes les erreurs (validation, erreurs serveur, erreurs inattendues).
+
+404 et 500 doivent être gérés proprement sur toutes les routes.
+
+Swagger / documentation API doit être accessible à /docs et fonctionnelle.
+
+⚙️ 3. Gestion HL7 ➔ FHIR
+Tu dois brancher un parseur HL7 vers JSON côté serveur.
+
+🔵 HL7 Parser recommandé :
+simple-hl7 (npm package)
+→ https://www.npmjs.com/package/simple-hl7
+
+OU si besoin d’un plus robuste :
+hl7-standard (plus récent, TypeScript friendly)
+→ https://www.npmjs.com/package/hl7-standard
+
+Ces librairies permettent de parser un message HL7 V2 brut en un objet JSON directement utilisable.
+
+🟠 FHIR Parser recommandé :
+Pour valider ou transformer en FHIR France ANF :
+
+fhir-kit-client pour manipuler les ressources FHIR. → https://www.npmjs.com/package/fhir-kit-client
+
+fhir.js pour manipuler le format FHIR. → https://www.npmjs.com/package/fhir
+
+Tu peux aussi utiliser du simple TypeScript sans client si tu maîtrises les structures FHIR.
+L’important : produire du FHIR ANF minimal valide.
+
+📑 4. Résumé ultra clair
+Toutes les APIs doivent marcher.
+
+Les erreurs doivent être attrapées et retournées proprement.
+
+Un test live Convertisseur HL7 vers FHIR doit fonctionner.
+
+Swagger accessible et lisible.
+
+Utilisation de simple-hl7 ou hl7-standard pour parser HL7.
+
+Utilisation de fhir-kit-client ou fhir.js pour formater FHIR.
+
+🧠 Mentalité demandée :
+Professionnel : chaque fonctionnalité doit marcher avant de passer à la suivante.
+
+Pas d’improvisation : suivre précisément les besoins.
+
+Tests manuels avant de déclarer "c’est fait".
