@@ -105,16 +105,16 @@ function extractNameComponents(nameValue, separator) {
   // comme "MARYSE BERTHE ALICE"
   const givenNames = [];
   
-  if (givenName) {
-    givenNames.push(givenName);
-  }
-  
+  // Utiliser uniquement les prénoms composés si présents, sinon utiliser le prénom simple
   if (middleName && middleName.includes(" ")) {
     // Diviser le prénom composé en prénoms individuels
     const additionalNames = middleName.split(" ").filter(name => name.trim() !== "");
     givenNames.push(...additionalNames);
   } else if (middleName) {
     givenNames.push(middleName);
+  } else if (givenName) {
+    // Utiliser le givenName seulement si pas de middleName
+    givenNames.push(givenName);
   }
   
   // Créer l'objet nom au format FHIR

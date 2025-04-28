@@ -5,7 +5,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "patient-746f7b69",
+        "id": "patient-e1237030",
         "identifier": [
           {
             "value": "442777",
@@ -102,7 +102,7 @@
     {
       "resource": {
         "resourceType": "Practitioner",
-        "id": "practitioner-1585a1b9",
+        "id": "practitioner-ec7846b8",
         "identifier": [
           {
             "system": "http://terminology.hl7.fr/CodeSystem/v2-0203",
@@ -126,14 +126,14 @@
     {
       "resource": {
         "resourceType": "Encounter",
-        "id": "encounter-623c3d2a",
+        "id": "encounter-766bffc4",
         "status": "in-progress",
         "class": {
           "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
           "code": "IMP"
         },
         "subject": {
-          "reference": "Patient/patient-746f7b69"
+          "reference": "Patient/patient-e1237030"
         },
         "participant": [
           {
@@ -148,7 +148,7 @@
               }
             ],
             "individual": {
-              "reference": "Practitioner/practitioner-1585a1b9"
+              "reference": "Practitioner/practitioner-ec7846b8"
             }
           }
         ],

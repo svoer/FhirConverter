@@ -1,0 +1,31 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-a3f6e2c9",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "442777"
+          }
+        ],
+        "name": [
+          {
+            "family": "SECLET",
+            "given": [
+              ""
+            ],
+            "use": "official"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    }
+  ]
+}
