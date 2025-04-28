@@ -7,6 +7,7 @@
  */
 
 const { extractFrenchNames } = require('../utils/frenchNameExtractor');
+const { cleanBundle, cleanNames } = require('../utils/fhirCleaner');
 
 /**
  * Applique le correctif des noms français au résultat de conversion FHIR
@@ -54,6 +55,13 @@ function processFhirNames(conversionResult, hl7Message) {
     if (!patientResource.name) {
       patientResource.name = [];
     }
+    
+    // Filtrer les noms existants pour ne garder que ceux qui ont des prénoms non vides
+    patientResource.name = patientResource.name.filter(n => {
+      if (!n.given || !Array.isArray(n.given)) return false;
+      // Ne garder que les noms avec au moins un prénom non vide
+      return n.given.some(g => g && g.trim() !== '');
+    });
     
     // Ajouter les noms français extraits au début du tableau des noms
     frenchNames.forEach(name => {
