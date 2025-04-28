@@ -1514,8 +1514,8 @@ function getRelationshipDisplay(relationshipCode) {
 
 /**
  * Crée une ressource Coverage FHIR à partir des segments IN1/IN2
- * @param {Object} in1Segment - Segment IN1 parsé
- * @param {Object} in2Segment - Segment IN2 parsé (optionnel)
+ * @param {Array} in1Segment - Segment IN1 parsé
+ * @param {Array} in2Segment - Segment IN2 parsé (optionnel)
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object|null} Entrée de bundle pour un Coverage ou null si non disponible
  */
@@ -1525,19 +1525,19 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
   }
   
   // IN1-2 (Plan ID)
-  const planId = in1Segment.fields[2] ? in1Segment.fields[2].value : '';
+  const planId = in1Segment.length > 2 ? in1Segment[2] || '' : '';
   
   // IN1-12 (Policy Expiration Date)
-  const expirationDate = in1Segment.fields[12] ? in1Segment.fields[12].value : '';
+  const expirationDate = in1Segment.length > 12 ? in1Segment[12] || '' : '';
   
   // IN1-16 (Name of Insured)
-  const insuredNameField = in1Segment.fields[16];
+  const insuredNameField = in1Segment.length > 16 ? in1Segment[16] : null;
   
   if (!planId && !insuredNameField) {
     return null;
   }
   
-  const coverageId = `coverage-${uuid.v4()}`;
+  const coverageId = `coverage-${Date.now()}`;
   
   // Créer la ressource Coverage
   const coverageResource = {
@@ -1571,17 +1571,16 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
   }
   
   // Ajouter le nom de l'assuré
-  if (insuredNameField) {
-    const components = insuredNameField.components || [];
-    
-    if (components[0] && components[0].value) {
-      coverageResource.subscriberId = components[0].value;
+  if (insuredNameField && typeof insuredNameField === 'string') {
+    const components = insuredNameField.split('^');
+    if (components.length > 0 && components[0]) {
+      coverageResource.subscriberId = components[0];
     }
   }
   
   // Extension française: numéro AMC/AMO
-  if (in1Segment.fields[36] && in1Segment.fields[36].value) {
-    const insuredId = in1Segment.fields[36].value;
+  if (in1Segment.length > 36 && in1Segment[36]) {
+    const insuredId = in1Segment[36];
     coverageResource.extension = [{
       url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/Coverage-InsuredID',
       valueIdentifier: {
@@ -1689,7 +1688,7 @@ function processZFPSegment(zfpSegment) {
 
 /**
  * Traite les données du segment ZFV (spécifique français - infos visite)
- * @param {Object} zfvSegment - Segment ZFV parsé
+ * @param {Array} zfvSegment - Segment ZFV parsé
  * @returns {Object} Données extraites du segment ZFV
  */
 function processZFVSegment(zfvSegment) {
@@ -1700,8 +1699,8 @@ function processZFVSegment(zfvSegment) {
   const zfvData = {};
   
   // ZFV-1 (Encodage classe d'encounter)
-  if (zfvSegment.fields[1]) {
-    const encounterClassValue = zfvSegment.fields[1].value;
+  if (zfvSegment.length > 1 && zfvSegment[1]) {
+    const encounterClassValue = zfvSegment[1];
     
     // Mapping des codes français vers les classes FHIR
     const classMappings = {
@@ -1725,7 +1724,7 @@ function processZFVSegment(zfvSegment) {
 
 /**
  * Traite les données du segment ZFM (spécifique français - infos médicales)
- * @param {Object} zfmSegment - Segment ZFM parsé
+ * @param {Array} zfmSegment - Segment ZFM parsé
  * @returns {Object} Données extraites du segment ZFM
  */
 function processZFMSegment(zfmSegment) {
@@ -1736,18 +1735,18 @@ function processZFMSegment(zfmSegment) {
   const zfmData = {};
   
   // ZFM-1 (Type d'hospitalisation)
-  if (zfmSegment.fields[1]) {
-    zfmData.hospitalizationType = zfmSegment.fields[1].value;
+  if (zfmSegment.length > 1 && zfmSegment[1]) {
+    zfmData.hospitalizationType = zfmSegment[1];
   }
   
   // ZFM-2 (Mode d'entrée)
-  if (zfmSegment.fields[2]) {
-    zfmData.admissionMode = zfmSegment.fields[2].value;
+  if (zfmSegment.length > 2 && zfmSegment[2]) {
+    zfmData.admissionMode = zfmSegment[2];
   }
   
   // ZFM-3 (Mode de sortie)
-  if (zfmSegment.fields[3]) {
-    zfmData.dischargeMode = zfmSegment.fields[3].value;
+  if (zfmSegment.length > 3 && zfmSegment[3]) {
+    zfmData.dischargeMode = zfmSegment[3];
   }
   
   return zfmData;
