@@ -1,8 +1,8 @@
 {
   "resourceType": "Bundle",
   "type": "transaction",
-  "id": "2d7db395-6241-4a6d-af27-d362b8dbde2c",
-  "timestamp": "2025-04-28T10:09:17.850Z",
+  "id": "17e6edac-a383-4bf6-976c-e706dc63594f",
+  "timestamp": "2025-04-28T10:13:20.930Z",
   "meta": {
     "profile": [
       "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
@@ -24,10 +24,219 @@
   },
   "entry": [
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Organization/42b26c3b-5930-4771-8387-bbfee8fcdcfa",
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/67625440-3005-4c54-b6f3-d06911888920",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "67625440-3005-4c54-b6f3-d06911888920",
+        "identifier": [
+          {
+            "system": "urn:CEGI",
+            "value": "442777",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "CEGI"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "248098060602525",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS",
+                  "display": "INS"
+                }
+              ]
+            },
+            "extension": [
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-NIR-Verifie",
+                "valueBoolean": true
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Source",
+                "valueCode": "RECUPERE"
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-DateConsultation",
+                "valueDateTime": "2025-04-28"
+              }
+            ],
+            "assigner": {
+              "display": "ASIP-SANTE-INS-NIR"
+            }
+          },
+          {
+            "system": "urn:CEGI",
+            "value": "1000345108",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PIP",
+                  "display": "PIP"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "CEGI"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "SECLET",
+            "prefix": [
+              "MME"
+            ]
+          }
+        ],
+        "birthDate": "1948-09-09",
+        "gender": "female",
+        "address": [
+          {
+            "line": [
+              "7 RUE DU BOUJONNIER"
+            ],
+            "city": "FORMERIE",
+            "postalCode": "60220",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "60000"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Person/99ee75bd-5ed3-438c-baed-781581732a30",
+      "resource": {
+        "resourceType": "Person",
+        "id": "99ee75bd-5ed3-438c-baed-781581732a30",
+        "name": [
+          {
+            "family": "SECLET",
+            "prefix": [
+              "MME"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1948-09-09",
+        "address": [
+          {
+            "line": [
+              "7 RUE DU BOUJONNIER"
+            ],
+            "city": "FORMERIE",
+            "postalCode": "60220",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "60000"
+              }
+            ]
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "https://fhir.org/FHIRHub/Patient/67625440-3005-4c54-b6f3-d06911888920"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/73f3fadf-a2f7-4154-a687-deac31819198",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "73f3fadf-a2f7-4154-a687-deac31819198",
+        "identifier": [
+          {
+            "system": "http://example.org/fhir/sid/provider-id",
+            "value": "10001850758"
+          }
+        ],
+        "name": [
+          {
+            "family": "BARTOLI",
+            "given": [
+              "PAULINE"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/028c4c44-d959-4749-9aea-0a08c0837bd3",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "028c4c44-d959-4749-9aea-0a08c0837bd3",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "I",
+          "display": "Inpatient"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/67625440-3005-4c54-b6f3-d06911888920"
+        },
+        "period": {
+          "start": null
+        },
+        "location": [
+          {
+            "location": {
+              "display": "^^^CLINIQUE VICTOR PAUCHET&800009920&M"
+            }
+          }
+        ],
+        "participant": [
+          {
+            "individual": {
+              "reference": "https://fhir.org/FHIRHub/Practitioner/73f3fadf-a2f7-4154-a687-deac31819198"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/bfb4ec58-fa2e-4801-8bfe-8a3d3c1ab765",
       "resource": {
         "resourceType": "Organization",
-        "id": "42b26c3b-5930-4771-8387-bbfee8fcdcfa",
+        "id": "bfb4ec58-fa2e-4801-8bfe-8a3d3c1ab765",
         "identifier": [
           {
             "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
@@ -39,6 +248,40 @@
       "request": {
         "method": "POST",
         "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/daf781b6-7262-47e8-8347-5c744ed887bb",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "daf781b6-7262-47e8-8347-5c744ed887bb",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/67625440-3005-4c54-b6f3-d06911888920"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "ONESELF",
+                "display": "UNK"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "REMY",
+            "given": [
+              "AUDREY"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
       }
     }
   ]
