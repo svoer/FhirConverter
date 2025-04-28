@@ -2489,6 +2489,126 @@ function convertHl7ToFhir(hl7Message) {
       });
     }
     
+    // AMÉLIORATION: Traitement des segments Z personnalisés
+    // ZBE: Segment d'événement spécifique
+    if (hl7Data.ZBE && hl7Data.ZBE.length > 0) {
+      console.log('[CONVERTER] Traitement des segments ZBE personnalisés');
+      
+      hl7Data.ZBE.forEach(zbeSegment => {
+        // Créer une ressource Provenance pour capturer les informations du segment ZBE
+        const provenanceId = uuidv4();
+        const provenanceResource = {
+          resourceType: 'Provenance',
+          id: provenanceId,
+          recorded: formatHl7Date(zbeSegment.movementDateTime) || new Date().toISOString(),
+          activity: {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v3-DataOperation',
+              code: zbeSegment.actionType || 'CREATE',
+              display: mapActionType(zbeSegment.actionType) || 'Create'
+            }]
+          },
+          agent: [{
+            type: {
+              coding: [{
+                system: 'http://terminology.hl7.org/CodeSystem/provenance-participant-type',
+                code: 'author',
+                display: 'Author'
+              }]
+            },
+            who: {
+              reference: resourceRefs.patientFullUrl || 'Patient/unknown'
+            }
+          }]
+        };
+        
+        // Ajouter des informations supplémentaires dans les extensions
+        if (zbeSegment.indicator || zbeSegment.previousLocation || zbeSegment.currentLocation || zbeSegment.customData) {
+          provenanceResource.extension = [];
+          
+          if (zbeSegment.indicator) {
+            provenanceResource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/event-indicator',
+              valueString: zbeSegment.indicator
+            });
+          }
+          
+          if (zbeSegment.previousLocation) {
+            provenanceResource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/previous-location',
+              valueString: zbeSegment.previousLocation
+            });
+          }
+          
+          if (zbeSegment.currentLocation) {
+            provenanceResource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/current-location',
+              valueString: zbeSegment.currentLocation
+            });
+          }
+          
+          if (zbeSegment.customData) {
+            provenanceResource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/custom-data',
+              valueString: zbeSegment.customData
+            });
+          }
+        }
+        
+        // Ajouter la ressource Provenance au Bundle
+        fhirBundle.entry.push({
+          fullUrl: `${baseUrl}/Provenance/${provenanceId}`,
+          resource: provenanceResource,
+          request: {
+            method: 'POST',
+            url: 'Provenance'
+          }
+        });
+      });
+    }
+    
+    // ZFD: Segment de données françaises spécifiques
+    if (hl7Data.ZFD && hl7Data.ZFD.length > 0) {
+      console.log('[CONVERTER] Traitement des segments ZFD personnalisés');
+      
+      hl7Data.ZFD.forEach(zfdSegment => {
+        // Créer une extension sur la ressource Patient avec les données de ZFD
+        if (resourceRefs.patientFullUrl && fhirBundle.entry.length > 0) {
+          // Trouver la ressource Patient dans le bundle
+          const patientEntry = fhirBundle.entry.find(entry => 
+            entry.resource && entry.resource.resourceType === 'Patient' && 
+            entry.fullUrl === resourceRefs.patientFullUrl
+          );
+          
+          if (patientEntry) {
+            patientEntry.resource.extension = patientEntry.resource.extension || [];
+            
+            // Ajouter les données ZFD comme extensions sur le Patient
+            if (zfdSegment.insuranceType) {
+              patientEntry.resource.extension.push({
+                url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/insurance-type',
+                valueString: zfdSegment.insuranceType
+              });
+            }
+            
+            if (zfdSegment.verificationDate) {
+              patientEntry.resource.extension.push({
+                url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/verification-date',
+                valueDateTime: formatHl7Date(zfdSegment.verificationDate)
+              });
+            }
+            
+            if (zfdSegment.verificationStatus) {
+              patientEntry.resource.extension.push({
+                url: 'https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/verification-status',
+                valueCode: zfdSegment.verificationStatus
+              });
+            }
+          }
+        }
+      });
+    }
+    
     // Adapter le Bundle aux terminologies françaises
     console.log('[CONVERTER] Adaptation aux terminologies françaises');
     const adaptedBundle = frenchAdapter.adaptFhirBundle(fhirBundle);
