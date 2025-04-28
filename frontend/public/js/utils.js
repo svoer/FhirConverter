@@ -18,6 +18,7 @@ async function apiRequest(endpoint, options = {}) {
   
   // Ajouter la clé API à la fois dans les en-têtes et dans l'URL (pour compatibilité)
   options.headers['x-api-key'] = apiKey;
+  options.headers['Accept'] = 'application/json';
   
   // Construire l'URL avec la clé API en paramètre de requête
   let url = `/api/${endpoint}`;
@@ -30,12 +31,29 @@ async function apiRequest(endpoint, options = {}) {
   console.log(`Requête API: ${options.method || 'GET'} ${url}`);
   
   try {
+    const startTime = Date.now();
     const response = await fetch(url, options);
+    const endTime = Date.now();
+    console.log(`Temps de réponse API: ${endTime - startTime}ms`);
     
     if (!response.ok) {
       console.error(`Erreur API: ${response.status} ${response.statusText}`);
+      
+      // Vérifier le type de contenu
+      const contentType = response.headers.get('content-type');
+      console.log(`Type de contenu de la réponse: ${contentType}`);
+      
+      // Lire le texte de la réponse
       const errorText = await response.text();
-      console.error('Détails:', errorText);
+      
+      // Afficher le début de la réponse pour diagnostic
+      console.error('Début de la réponse:', errorText.substring(0, 300));
+      
+      // Si c'est du HTML (indiqué par <!DOCTYPE ou <html>)
+      if (errorText.includes('<!DOCTYPE') || errorText.includes('<html')) {
+        console.error('Réponse HTML reçue au lieu de JSON. Problème de routage API probable.');
+        throw new Error('Erreur API: Le serveur a renvoyé une page HTML au lieu de JSON. Vérifiez le routage API ou les redirections.');
+      }
       
       try {
         // Essayer de parser comme JSON
@@ -47,11 +65,38 @@ async function apiRequest(endpoint, options = {}) {
       }
     }
     
-    // Analyser la réponse comme JSON
-    const data = await response.json();
-    return data;
+    // Pour les réponses vides (comme 204 No Content)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return { success: true };
+    }
+    
+    // Vérifier le type de contenu
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn(`Réponse non-JSON reçue. Type de contenu: ${contentType}`);
+    }
+    
+    try {
+      // Analyser la réponse comme JSON
+      const data = await response.json();
+      return data;
+    } catch (jsonError) {
+      console.error('Erreur lors du parsing JSON:', jsonError);
+      
+      // Lire la réponse comme texte pour diagnostic
+      const textResponse = await response.text();
+      console.error('Contenu de la réponse brute:', textResponse.substring(0, 500));
+      
+      throw new Error('Impossible de parser la réponse JSON');
+    }
   } catch (error) {
     console.error('Erreur lors de la requête API:', error);
+    
+    // Pour les erreurs de connexion ou CORS
+    if (error.message.includes('NetworkError') || error.message.includes('CORS')) {
+      console.error('Erreur réseau détectée. Possible problème CORS ou serveur non disponible.');
+    }
+    
     throw error;
   }
 }
