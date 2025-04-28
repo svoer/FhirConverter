@@ -179,7 +179,13 @@
     appSelect.disabled = true;
     
     // Effectuer une requête API directe pour obtenir les applications
-    fetch('/api/applications')
+    // Assurons-nous que la clé API est fournie
+    const apiKey = localStorage.getItem('apiKey') || 'dev-key';
+    fetch(`/api/applications?apiKey=${apiKey}`, {
+        headers: {
+          'x-api-key': apiKey
+        }
+      })
       .then(response => {
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -243,8 +249,13 @@
     keySelect.innerHTML = '<option value="">Chargement...</option>';
     keySelect.disabled = true;
     
-    // Effectuer la requête API
-    fetch(`/api/keys?appId=${appId}`)
+    // Effectuer la requête API avec authentification
+    const apiKey = localStorage.getItem('apiKey') || 'dev-key';
+    fetch(`/api/keys?appId=${appId}&apiKey=${apiKey}`, {
+        headers: {
+          'x-api-key': apiKey
+        }
+      })
       .then(response => {
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
