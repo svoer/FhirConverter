@@ -83,9 +83,9 @@ function processFhirNames(conversionResult, hl7Message) {
     // Mettre à jour la ressource Patient dans le bundle
     patientEntry.resource = patientResource;
     
-    // Mettre à jour le résultat de conversion avec le bundle corrigé
-    conversionResult.fhirData = conversionResult.fhirData;
-    console.log("[FHIR_NAME_PROCESSOR] Traitement terminé avec succès");
+    // Nettoyer le bundle FHIR pour supprimer les données vides ou non significatives
+    conversionResult.fhirData = cleanBundle(conversionResult.fhirData);
+    console.log("[FHIR_NAME_PROCESSOR] Nettoyage FHIR et traitement terminés avec succès");
     
     return conversionResult;
   } catch (error) {

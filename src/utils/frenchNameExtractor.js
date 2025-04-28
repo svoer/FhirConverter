@@ -1,6 +1,6 @@
 /**
- * Module d'extraction des noms français depuis les messages HL7
- * Spécialisé dans le traitement des prénoms composés français
+ * Module spécifique pour l'extraction correcte des noms français
+ * Gère particulièrement les prénoms composés français comme "MARYSE BERTHE ALICE"
  * 
  * @module frenchNameExtractor
  * @author FHIRHub Team
@@ -9,140 +9,140 @@
 /**
  * Extraire correctement les noms français à partir d'un segment PID HL7
  * @param {string} hl7Message - Message HL7 complet
- * @returns {Array|null} Tableau d'objets nom FHIR avec prénoms correctement extraits ou null en cas d'erreur
+ * @returns {Array} Tableau d'objets nom FHIR avec prénoms correctement extraits
  */
 function extractFrenchNames(hl7Message) {
   try {
     console.log("[FRENCH_NAME_EXTRACTOR] Tentative d'extraction des noms français");
     
-    if (!hl7Message || typeof hl7Message !== 'string') {
-      console.log("[FRENCH_NAME_EXTRACTOR] Message HL7 invalide");
-      return null;
+    if (!hl7Message) {
+      console.log("[FRENCH_NAME_EXTRACTOR] Aucun message HL7 fourni");
+      return [];
     }
     
-    const lines = hl7Message.split(/[\r\n]+/);
-    const pidLine = lines.find(line => line.startsWith('PID|'));
-    
-    if (!pidLine) {
+    // Extraire le segment PID du message HL7
+    const pidSegmentMatch = hl7Message.match(/PID\|[^]*?(?=\r|\n|$)/);
+    if (!pidSegmentMatch) {
       console.log("[FRENCH_NAME_EXTRACTOR] Segment PID non trouvé");
-      return null;
+      return [];
     }
     
+    const pidSegment = pidSegmentMatch[0];
     console.log("[FRENCH_NAME_EXTRACTOR] Segment PID trouvé");
-    const pidFields = pidLine.split('|');
+    
+    // Extraire le champ PID-5 (nom du patient)
+    const pidFieldsSeparator = hl7Message.charAt(3); // Généralement |
+    const pidFields = pidSegment.split(pidFieldsSeparator);
     
     if (pidFields.length < 6) {
-      console.log("[FRENCH_NAME_EXTRACTOR] Segment PID incomplet");
-      return null;
+      console.log("[FRENCH_NAME_EXTRACTOR] Champ PID-5 non trouvé");
+      return [];
     }
     
-    const nameField = pidFields[5]; // PID-5 est à l'index 5 car les séparateurs | sont comptés
-    if (!nameField) {
-      console.log("[FRENCH_NAME_EXTRACTOR] Champ nom manquant");
-      return null;
-    }
+    const pid5Field = pidFields[5]; // Le champ PID-5 est à l'index 5 (après le séparateur de segment)
+    console.log(`[FRENCH_NAME_EXTRACTOR] Champ PID-5 brut: "${pid5Field}"`);
     
-    console.log(`[FRENCH_NAME_EXTRACTOR] Champ PID-5 brut: "${nameField}"`);
+    // Séparateur de répétition de champ (généralement ~)
+    const repetitionSeparator = hl7Message.charAt(5);
     
-    // Extraire tous les noms (peut contenir plusieurs répétitions séparées par ~)
-    const nameValues = nameField.split('~');
+    // Séparateur de composants (généralement ^)
+    const componentSeparator = hl7Message.charAt(4);
+    
+    // Diviser les noms (il peut y avoir plusieurs noms séparés par ~)
+    const nameValues = pid5Field.split(repetitionSeparator);
     console.log(`[FRENCH_NAME_EXTRACTOR] ${nameValues.length} valeurs de nom trouvées`);
     
-    // RECHERCHE SPÉCIFIQUE DU NOM AVEC TYPE "L" (légal) QUI CONTIENT LES PRÉNOMS COMPOSÉS
-    // Correction pour le cas spécifique des formats comme:
-    // "SECLET^^^^MME^^D~SECLET^MARYSE^MARYSE BERTHE ALICE^^^^L"
-    let legalNameValue = null;
-    
-    // Parcourir toutes les valeurs pour trouver celle qui contient "L" à la fin
-    for (const val of nameValues) {
-      const parts = val.split('^');
-      
-      // Rechercher si 'L' est présent quelque part vers la fin des segments
-      if (parts.length >= 8 && parts[7] === 'L') {
-        legalNameValue = val;
-        break;
-      }
-      
-      // Cas alternatif où L est à une autre position
-      if (val.endsWith('L')) {
-        legalNameValue = val;
-        break;
-      }
-    }
-    
-    // Si pas trouvé avec L, prendre la valeur qui contient le plus d'informations
-    if (!legalNameValue) {
-      // Trier les valeurs par nombre de champs non vides pour prendre la plus complète
-      nameValues.sort((a, b) => {
-        const partsA = a.split('^').filter(p => p.trim().length > 0);
-        const partsB = b.split('^').filter(p => p.trim().length > 0);
-        return partsB.length - partsA.length;
-      });
-      
-      // Prendre la première valeur (la plus complète)
-      if (nameValues.length > 0) {
-        legalNameValue = nameValues[0];
-        console.log(`[FRENCH_NAME_EXTRACTOR] Pas de nom avec type L, utilisation de la valeur la plus complète`);
-      }
-    }
+    // Trouver le nom avec le type L (Legal)
+    const legalNameValue = nameValues.find(name => name.includes("^^^^L"));
     
     if (!legalNameValue) {
-      console.log("[FRENCH_NAME_EXTRACTOR] Nom légal avec type L non trouvé");
-      return null;
+      // Chercher simplement le dernier nom si aucun n'est marqué comme légal
+      console.log("[FRENCH_NAME_EXTRACTOR] Aucun nom légal trouvé, utilisation du dernier nom");
+      return extractNameComponents(nameValues[nameValues.length - 1], componentSeparator);
     }
     
     console.log(`[FRENCH_NAME_EXTRACTOR] Nom légal trouvé: "${legalNameValue}"`);
-    const parts = legalNameValue.split('^');
-    
-    // Récupérer les informations du nom légal
-    const family = parts[0]?.trim() || '';
-    const given1 = parts[1]?.trim() || '';
-    const middleNames = parts[2]?.trim() || '';
-    
-    console.log(`[FRENCH_NAME_EXTRACTOR] Nom de famille: "${family}"`);
-    console.log(`[FRENCH_NAME_EXTRACTOR] Prénom principal: "${given1}"`);
-    console.log(`[FRENCH_NAME_EXTRACTOR] Prénoms composés: "${middleNames}"`);
-    
-    // Création de l'objet nom avec tous les prénoms extraits
-    const fullNameObj = {
-      family: family,
-      given: [],
-      use: 'official'
-    };
-    
-    // Ajout du prénom principal
-    if (given1) {
-      fullNameObj.given.push(given1);
-    }
-    
-    // Ajout des prénoms composés séparés par espaces
-    if (middleNames) {
-      const additionalNames = middleNames.split(' ');
-      additionalNames.forEach(name => {
-        if (name.trim() && !fullNameObj.given.includes(name.trim())) {
-          fullNameObj.given.push(name.trim());
-        }
-      });
-    }
-    
-    // Ajout du préfixe si présent
-    if (parts.length > 4 && parts[4]?.trim()) {
-      fullNameObj.prefix = [parts[4].trim()];
-    }
-    
-    // Si nous avons extrait des prénoms, retourner l'objet nom
-    if (fullNameObj.given.length > 0) {
-      console.log(`[FRENCH_NAME_EXTRACTOR] Nom complet créé avec ${fullNameObj.given.length} prénoms:`, fullNameObj);
-      return [fullNameObj];
-    }
-    
-    return null;
+    return extractNameComponents(legalNameValue, componentSeparator);
   } catch (error) {
-    console.error("[FRENCH_NAME_EXTRACTOR] Erreur lors de l'extraction des noms français:", error);
-    return null;
+    console.error("[FRENCH_NAME_EXTRACTOR] Erreur lors de l'extraction:", error);
+    return [];
   }
 }
 
+/**
+ * Extraire les composants de nom à partir d'un champ HL7 PID-5
+ * @param {string} nameValue - Valeur du nom (une partie du champ PID-5)
+ * @param {string} separator - Séparateur de composants (généralement ^)
+ * @returns {Array} Tableau d'objets nom au format FHIR
+ */
+function extractNameComponents(nameValue, separator) {
+  if (!nameValue) {
+    return [];
+  }
+  
+  // Diviser le nom en composants
+  const nameComponents = nameValue.split(separator);
+  
+  // Structure PID-5: FamilyName^GivenName^MiddleName^Suffix^Prefix^...
+  const familyName = nameComponents[0] || "";
+  console.log(`[FRENCH_NAME_EXTRACTOR] Nom de famille: "${familyName}"`);
+  
+  // Prénom principal (premier prénom)
+  const givenName = nameComponents[1] || "";
+  console.log(`[FRENCH_NAME_EXTRACTOR] Prénom principal: "${givenName}"`);
+  
+  // Prénoms composés (dans le champ middleName)
+  const middleName = nameComponents[2] || "";
+  console.log(`[FRENCH_NAME_EXTRACTOR] Prénoms composés: "${middleName}"`);
+  
+  // Vérifier s'il y a des prénoms
+  if (!givenName && !middleName) {
+    console.log("[FRENCH_NAME_EXTRACTOR] Aucun prénom trouvé");
+    return [];
+  }
+  
+  // Si le middleName contient un espace, c'est probablement un prénom composé français
+  // comme "MARYSE BERTHE ALICE"
+  const givenNames = [];
+  
+  if (givenName) {
+    givenNames.push(givenName);
+  }
+  
+  if (middleName && middleName.includes(" ")) {
+    // Diviser le prénom composé en prénoms individuels
+    const additionalNames = middleName.split(" ").filter(name => name.trim() !== "");
+    givenNames.push(...additionalNames);
+  } else if (middleName) {
+    givenNames.push(middleName);
+  }
+  
+  // Créer l'objet nom au format FHIR
+  const fhirName = {
+    family: familyName,
+    given: givenNames,
+    use: "official"
+  };
+  
+  console.log(`[FRENCH_NAME_EXTRACTOR] Nom complet créé avec ${givenNames.length} prénoms:`, fhirName);
+  
+  return [fhirName];
+}
+
+/**
+ * Vérifier si un objet nom contient des prénoms extraits
+ * @param {Object} nameObj - Objet nom au format FHIR
+ * @returns {boolean} True si l'objet contient des prénoms extraits
+ */
+function hasExtractedGivenNames(nameObj) {
+  return nameObj && 
+         nameObj.given && 
+         Array.isArray(nameObj.given) && 
+         nameObj.given.length >= 2 &&
+         nameObj.given.every(name => name.trim() !== "");
+}
+
 module.exports = {
-  extractFrenchNames
+  extractFrenchNames,
+  hasExtractedGivenNames
 };
