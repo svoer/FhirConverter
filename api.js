@@ -26,6 +26,31 @@ const upload = multer({
   }
 });
 
+/**
+ * GET /health
+ * Point d'entrée pour vérifier la santé du serveur
+ */
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    version: '1.0.0' 
+  });
+});
+
+/**
+ * GET /info
+ * Informations sur le serveur
+ */
+router.get('/info', (req, res) => {
+  const frenchTerminologyAdapter = require('./french_terminology_adapter');
+  res.json({
+    name: 'FHIRHub',
+    description: 'Convertisseur HL7 v2.5 vers FHIR R4',
+    version: '1.0.0',
+    frenchTerminologies: frenchTerminologyAdapter.getAllTerminologySystems() ? 'loaded' : 'not_loaded'
+  });
+});
+
 // Middleware d'authentification par clé API
 async function apiKeyAuth(req, res, next) {
   const apiKey = req.headers['x-api-key'];

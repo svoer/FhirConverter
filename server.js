@@ -100,24 +100,13 @@ async function apiKeyAuth(req, res, next) {
   next();
 }
 
-// Utiliser le middleware d'authentification
-app.use('/api', apiKeyAuth);
+// Importer le routeur API principal
+const apiRouter = require('./api');
 
-// Routes API
-// Point d'entrée pour vérifier la santé du serveur
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '1.0.0' });
-});
+// Utiliser le middleware d'authentification et le routeur API
+app.use('/api', apiKeyAuth, apiRouter);
 
-// Informations sur le serveur
-app.get('/api/info', (req, res) => {
-  res.json({
-    name: 'FHIRHub',
-    description: 'Convertisseur HL7 v2.5 vers FHIR R4',
-    version: '1.0.0',
-    frenchTerminologies: frenchTerminologyAdapter.getAllTerminologySystems() ? 'loaded' : 'not_loaded'
-  });
-});
+// Routes API principales maintenant gérées par apiRouter
 
 // Récupérer la liste des conversions
 app.get('/api/conversions', (req, res) => {
