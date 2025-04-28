@@ -72,7 +72,7 @@ async function apiKeyAuth(req, res, next) {
   
   // Clé de développement spéciale pour les tests
   if (apiKey === 'dev-key') {
-    req.app = { 
+    req.appInfo = { 
       id: 1, 
       name: 'Application par défaut', 
       settings: { maxHistoryDays: 30, enableLogging: true } 
@@ -91,7 +91,7 @@ async function apiKeyAuth(req, res, next) {
   }
   
   // Stocker les informations de l'application dans la requête
-  req.app = {
+  req.appInfo = {
     id: apiKeyInfo.app_id,
     name: apiKeyInfo.app_name,
     settings: apiKeyInfo.settings || {}
@@ -122,7 +122,7 @@ app.get('/api/info', (req, res) => {
 // Récupérer la liste des conversions
 app.get('/api/conversions', (req, res) => {
   const limit = req.query.limit ? parseInt(req.query.limit) : 20;
-  const appId = req.app && req.app.id ? req.app.id : 1;
+  const appId = req.appInfo && req.appInfo.id ? req.appInfo.id : 1;
   
   const conversions = dbService.getConversionHistory({
     appId,
@@ -144,7 +144,7 @@ app.get('/api/conversions/:id', (req, res) => {
   }
   
   // Vérifier que la conversion appartient à l'application actuelle
-  if (conversion.app_id && req.app && req.app.id && conversion.app_id !== req.app.id) {
+  if (conversion.app_id && req.appInfo && req.appInfo.id && conversion.app_id !== req.appInfo.id) {
     return res.status(403).json({ 
       error: 'Accès refusé', 
       message: 'Cette conversion appartient à une autre application'
@@ -176,7 +176,7 @@ app.get('/api/conversions/:id', (req, res) => {
 // Statistiques
 app.get('/api/stats', (req, res) => {
   const days = req.query.days ? parseInt(req.query.days) : 30;
-  const appId = req.app && req.app.id ? req.app.id : 1;
+  const appId = req.appInfo && req.appInfo.id ? req.appInfo.id : 1;
   
   const stats = dbService.getAppStats(appId, days);
   const systemInfo = dbService.getSystemInfo();
@@ -280,7 +280,7 @@ app.post('/api/convert', async (req, res) => {
   
   // Enregistrer la conversion dans l'historique
   const conversionId = dbService.saveConversion({
-    app_id: req.app && req.app.id ? req.app.id : 1,
+    app_id: req.appInfo && req.appInfo.id ? req.appInfo.id : 1,
     source_name: 'API Direct',
     source_content: hl7Content,
     result_content: JSON.stringify(result),
