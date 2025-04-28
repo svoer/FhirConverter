@@ -53,30 +53,26 @@ async function validateApiKey(apiKey) {
  */
 async function apiKeyAuth(req, res, next) {
   try {
-    // Extraire la clé API des en-têtes HTTP ou des paramètres de requête
-    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
-    
-    // Si nous sommes en développement et qu'aucune clé n'est fournie, utiliser la clé de développement
-    if (!apiKey && process.env.NODE_ENV === 'development') {
-      const devKey = 'dev-key';
-      console.log(`[API-KEY] Utilisation de la clé de développement: ${devKey}`);
+    // En mode développement, autoriser les requêtes sans authentification
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[API-KEY] Mode développement: authentification contournée`);
       
-      // Vérifier si la clé de développement existe, sinon la créer
-      await ensureDevKey(devKey);
-      
-      // Ajouter les informations d'API à la requête
+      // Ajouter les informations d'API par défaut à la requête
       req.apiKey = {
         id: 1,
-        key: devKey,
+        key: 'dev-key',
         name: 'Clé de développement',
         environment: 'development',
-        active: 1,
+        active: true,
         application_id: 1,
         application_name: 'Application de développement'
       };
       
       return next();
     }
+    
+    // Extraire la clé API des en-têtes HTTP ou des paramètres de requête
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
     
     // Valider la clé API
     const apiKeyInfo = await validateApiKey(apiKey);
@@ -95,6 +91,23 @@ async function apiKeyAuth(req, res, next) {
     next();
   } catch (error) {
     console.error('[API-KEY] Erreur dans le middleware d\'authentification:', error);
+    
+    // En mode développement, autoriser même en cas d'erreur
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API-KEY] Mode développement: erreur ignorée, accès autorisé');
+      
+      req.apiKey = {
+        id: 1,
+        key: 'dev-key',
+        name: 'Clé de développement (secours)',
+        environment: 'development',
+        active: true,
+        application_id: 1,
+        application_name: 'Application de développement'
+      };
+      
+      return next();
+    }
     
     res.status(500).json({
       success: false,
