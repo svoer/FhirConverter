@@ -1,6 +1,8 @@
 /**
- * Application FHIRHub simplifiée
- * Convertisseur HL7 v2.5 vers FHIR R4
+ * Application FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
+ * Compatible avec les terminologies françaises
+ * @author Équipe FHIRHub
+ * @version 1.0.0
  */
 
 const express = require('express');
@@ -9,16 +11,24 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
+const { setupSwagger } = require('./swagger');
 
-// Configuration de l'application
+/**
+ * Configuration de l'application
+ */
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+/**
+ * Configuration des middlewares
+ */
 app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+
+// Configuration de Swagger
+setupSwagger(app);
 
 // Servir les fichiers statiques
 app.use(express.static('public'));
@@ -35,23 +45,136 @@ const db = new Database('./data/fhirhub.db');
 function initDb() {
   console.log('Initialisation de la base de données SQLite...');
   
-  // Supprimer la table existante qui a une structure différente
+  // Créer les tables si elles n'existent pas
   try {
-    db.exec('DROP TABLE IF EXISTS conversion_logs');
+    // Table des logs de conversion
+    db.exec(`CREATE TABLE IF NOT EXISTS conversion_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      input_message TEXT NOT NULL,
+      output_message TEXT,
+      status TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      api_key_id INTEGER
+    )`);
+    
+    // Table des utilisateurs
+    db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`);
+    
+    // Table des applications
+    db.exec(`CREATE TABLE IF NOT EXISTS applications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      cors_origins TEXT,
+      settings TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      created_by INTEGER,
+      FOREIGN KEY(created_by) REFERENCES users(id)
+    )`);
+    
+    // Table des clés API
+    db.exec(`CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      application_id INTEGER NOT NULL,
+      key TEXT UNIQUE NOT NULL,
+      hashed_key TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      description TEXT,
+      expires_at TEXT,
+      created_at TEXT NOT NULL,
+      last_used_at TEXT,
+      FOREIGN KEY(application_id) REFERENCES applications(id)
+    )`);
+    
+    // Vérifier si l'utilisateur admin existe, sinon le créer
+    const adminUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+    
+    if (!adminUser) {
+      // Créer l'utilisateur admin avec le mot de passe par défaut
+      db.prepare(`
+        INSERT INTO users (username, password, role, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+      `).run('admin', hashPassword('adminfhirhub'), 'admin');
+      
+      console.log('[DB] Utilisateur admin créé avec le mot de passe par défaut');
+    }
+    
+    // Vérifier si l'application par défaut existe, sinon la créer
+    const defaultApp = db.prepare('SELECT id FROM applications WHERE name = ?').get('Default');
+    
+    if (!defaultApp) {
+      const adminId = db.prepare('SELECT id FROM users WHERE username = ?').get('admin').id;
+      
+      const appId = db.prepare(`
+        INSERT INTO applications (
+          name, description, settings, created_at, updated_at, created_by
+        ) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
+      `).run(
+        'Default',
+        'Application par défaut pour le développement',
+        JSON.stringify({
+          max_conversions_per_day: 1000,
+          max_message_size: 100000
+        }),
+        adminId
+      ).lastInsertRowid;
+      
+      // Créer une clé API de développement
+      const apiKey = generateApiKey();
+      
+      db.prepare(`
+        INSERT INTO api_keys (
+          application_id, key, hashed_key, description, created_at
+        ) VALUES (?, ?, ?, ?, datetime('now'))
+      `).run(
+        appId,
+        'dev-key',
+        hashValue('dev-key'),
+        'Clé de développement'
+      );
+      
+      console.log('[DB] Application par défaut et clé API de développement créées');
+    }
+    
+    console.log('Base de données initialisée avec succès.');
   } catch (error) {
-    console.error('Erreur lors de la suppression de la table:', error);
+    console.error('Erreur lors de l\'initialisation de la base de données:', error);
   }
-  
-  // Créer la nouvelle table avec notre structure
-  db.exec(`CREATE TABLE IF NOT EXISTS conversion_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    input_message TEXT NOT NULL,
-    output_message TEXT,
-    status TEXT NOT NULL,
-    timestamp TEXT NOT NULL
-  )`);
-  
-  console.log('Base de données initialisée avec succès.');
+}
+
+// Fonction pour générer une clé API
+function generateApiKey() {
+  const crypto = require('crypto');
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Fonction pour hacher un mot de passe
+function hashPassword(password) {
+  const crypto = require('crypto');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+// Fonction pour vérifier un mot de passe
+function verifyPassword(storedPassword, suppliedPassword) {
+  const crypto = require('crypto');
+  const [salt, hash] = storedPassword.split(':');
+  const suppliedHash = crypto.pbkdf2Sync(suppliedPassword, salt, 10000, 64, 'sha512').toString('hex');
+  return hash === suppliedHash;
+}
+
+// Fonction pour hacher une valeur (pour les clés API)
+function hashValue(value) {
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 // Route de base
@@ -59,7 +182,60 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// Route pour la conversion
+/**
+ * @swagger
+ * /api/convert:
+ *   post:
+ *     summary: Convertir un message HL7 v2.5 en FHIR R4
+ *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction)
+ *     tags:
+ *       - Conversion
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - hl7Message
+ *             properties:
+ *               hl7Message:
+ *                 type: string
+ *                 description: Message HL7 v2.5 à convertir
+ *                 example: "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N"
+ *     responses:
+ *       200:
+ *         description: Conversion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Bundle FHIR R4 contenant les ressources converties
+ *       400:
+ *         description: Requête invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: Bad Request
+ *                 message:
+ *                   type: string
+ *                   example: Le message HL7 est requis
+ *       500:
+ *         description: Erreur serveur
+ */
 app.post('/api/convert', (req, res) => {
   try {
     const { hl7Message } = req.body;
@@ -240,7 +416,53 @@ app.post('/api/convert', (req, res) => {
   }
 });
 
-// Route pour valider un message HL7
+/**
+ * @swagger
+ * /api/convert/validate:
+ *   post:
+ *     summary: Valider un message HL7 v2.5
+ *     description: Vérifie la syntaxe d'un message HL7 v2.5 et retourne des informations sur les segments
+ *     tags:
+ *       - Conversion
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - hl7Message
+ *             properties:
+ *               hl7Message:
+ *                 type: string
+ *                 description: Message HL7 v2.5 à valider
+ *     responses:
+ *       200:
+ *         description: Validation réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     valid:
+ *                       type: boolean
+ *                     segmentCount:
+ *                       type: integer
+ *                     segmentTypes:
+ *                       type: object
+ *                       additionalProperties:
+ *                         type: integer
+ *       400:
+ *         description: Requête invalide
+ *       500:
+ *         description: Erreur serveur
+ */
 app.post('/api/convert/validate', (req, res) => {
   try {
     const { hl7Message } = req.body;
@@ -301,7 +523,41 @@ app.post('/api/convert/validate', (req, res) => {
   }
 });
 
-// Statistiques
+/**
+ * @swagger
+ * /api/stats:
+ *   get:
+ *     summary: Obtenir les statistiques du système
+ *     description: Retourne les statistiques de conversion et les informations du système
+ *     tags:
+ *       - Système
+ *     responses:
+ *       200:
+ *         description: Statistiques récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     conversions:
+ *                       type: integer
+ *                       description: Nombre total de conversions effectuées
+ *                     uptime:
+ *                       type: number
+ *                       format: float
+ *                       description: Temps de fonctionnement du serveur en secondes
+ *                     memory:
+ *                       type: object
+ *                       description: Informations sur la mémoire utilisée
+ *       500:
+ *         description: Erreur serveur
+ */
 app.get('/api/stats', (req, res) => {
   try {
     const conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();

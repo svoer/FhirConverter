@@ -1,0 +1,96 @@
+Créer une plateforme FHIRhub capable de :
+
+Convertir en direct du texte ou des fichiers HL7 v2 vers FHIR France ANF.
+
+Afficher et documenter toutes les API avec une interface Swagger complète.
+
+Proposer un moteur d'API capable de :
+
+Recevoir des trames HL7.
+
+Pousser des ressources FHIR correspondantes.
+
+🏗️ Spécifications obligatoires
+1. Convertisseur HL7 → FHIR
+Interface simple : upload de fichier ou copier-coller d'un texte HL7.
+
+Conversion vers FHIR France ANF.
+
+Utilise un parseur HL7 fiable, compatible Node.js par exemple :
+
+📚 node-hl7-parser (léger et efficace pour HL7v2.x).
+
+Ou si besoin, en Python : hl7apy (ultra complet).
+
+2. API Swagger
+Tous les endpoints API doivent être :
+
+Documentés dynamiquement via Swagger (OpenAPI 3).
+
+Testables en direct depuis l'interface Swagger.
+
+La documentation doit être accessible immédiatement sans erreur 404.
+
+3. Applications et API Key
+Il doit être possible de :
+
+Créer des applications dans la plateforme.
+
+Leur affecter des propriétés configurables (libres, modifiables).
+
+Générer une clé API pour chaque application.
+
+Ajouter un champ CORS (optionnel, pas obligatoire).
+
+4. Correction de tous les bugs
+Toutes les APIs doivent être fonctionnelles.
+
+Aucun bouton mort ou bug UX/UI toléré.
+
+Chaque appel API doit être vérifié : pas d'erreur 500 ni comportement incohérent.
+
+5. Respect des standards ANS
+S'inspirer des exemples ANS FHIR que je t'ai fournis dans la documentation PDF.
+
+Respecter les ressources FHIR : CodeSystem, ValueSet, ConceptMap, TerminologyCapabilities.
+
+Suivre les bonnes pratiques CRUD FHIR, comme spécifié dans le Guide ANS.
+
+6. Design
+Le design actuel peut être conservé s’il est propre et fonctionnel.
+
+La priorité est la stabilité du backend et de la conversion.
+
+🔥 Libs recommandées
+HL7 Parsing :
+
+node-hl7-parser
+
+hl7apy (Python, si besoin)
+
+FHIR Library :
+
+fhir.js (client léger pour manipuler FHIR resources)
+
+simplifier.net pour les profils ANS à intégrer
+
+📋 Checklist technique
+ Remettre l'architecture en place (/api, /frontend, /services)
+
+ Correction absolue de tous les appels API.
+
+ Mise en place du parser HL7.
+
+ Intégration de la conversion HL7 → FHIR.
+
+ Génération dynamique de la documentation Swagger.
+
+ Test live de conversion HL7 dans l'interface.
+
+ CORS configurable pour les applications.
+
+ API Key génération automatique et sécurisée.
+
+📢 Dernier rappel
+Si un fichier est mauvais ou cassé, tu dois le supprimer et repartir proprement.
+On veut un produit fonctionnel, pas du code mort ou bricolé.
