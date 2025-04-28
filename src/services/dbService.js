@@ -62,10 +62,21 @@ async function initialize() {
  */
 async function createTables() {
   // Importer les schémas
-  const { ALL_SCHEMAS } = require('../db/schema');
+  const schema = require('../db/schema');
   
-  // Création des tables principales
-  const tables = ALL_SCHEMAS.map(schema => 
+  // Création des tables principales dans un ordre spécifique pour respecter les contraintes de clés étrangères
+  const orderedSchemas = [
+    schema.USERS_SCHEMA,
+    schema.APPLICATIONS_SCHEMA,
+    schema.API_KEYS_SCHEMA,
+    schema.CONVERSION_LOGS_SCHEMA,
+    schema.SYSTEM_METRICS_SCHEMA,
+    schema.NOTIFICATIONS_SCHEMA,
+    schema.API_ACTIVITY_LOGS_SCHEMA,
+    schema.API_USAGE_LIMITS_SCHEMA
+  ];
+  
+  const tables = orderedSchemas.map(schema => 
     `CREATE TABLE IF NOT EXISTS ${schema.tableName} (${schema.columns})`
   );
   

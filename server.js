@@ -9,7 +9,8 @@ const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
-const mainRouter = require('./src/routes/mainRouter');
+// const mainRouter = require('./src/routes/mainRouter');
+const tmpRouter = require('./src/routes/tmpRouter');
 const dbService = require('./src/services/dbService');
 const terminologyService = require('./src/services/terminologyService');
 
@@ -34,7 +35,7 @@ app.use((req, res, next) => {
 });
 
 // Router principal
-app.use('/', mainRouter);
+app.use('/api', tmpRouter);
 
 // Middleware de gestion des erreurs
 app.use((err, req, res, next) => {
