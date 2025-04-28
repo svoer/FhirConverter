@@ -22,7 +22,25 @@
 
 const fs = require('fs');
 const path = require('path');
-// Utiliser le service de terminologie hors ligne
+
+/**
+ * CONFIGURATION DU SERVICE DE TERMINOLOGIE
+ * ----------------------------------------
+ * L'application utilise par défaut le service hors ligne (offline) pour fonctionner
+ * sans dépendance à une connexion internet ou à des identifiants ANS.
+ * 
+ * Pour activer le service en ligne à la place:
+ * 1. Remplacez la ligne ci-dessous par:
+ *    const terminologyService = require('./french_terminology_service');
+ * 
+ * 2. Configurez l'authentification dans app.js:
+ *    terminologyService.configureAuth({
+ *      authEnabled: true,
+ *      clientId: 'VOTRE_CLIENT_ID', 
+ *      clientSecret: 'VOTRE_CLIENT_SECRET',
+ *      apiKey: 'VOTRE_CLE_API'
+ *    });
+ */
 const terminologyService = require('./french_terminology_service_offline');
 
 // Chemin vers le fichier de configuration des systèmes français

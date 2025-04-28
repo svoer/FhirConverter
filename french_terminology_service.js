@@ -3,6 +3,24 @@
  * Permet la récupération en temps réel des terminologies et codes français
  * pour l'enrichissement des ressources FHIR
  * 
+ * IMPORTANT: Ce service nécessite une authentification auprès de l'ANS pour fonctionner pleinement.
+ * ---------------------------------------------------------------------------------------------
+ * COMMENT ACTIVER CE SERVICE:
+ * ---------------------------------------------------------------------------------------------
+ * 1. Créez un compte sur le portail de l'ANS (https://esante.gouv.fr)
+ * 2. Demandez une clé API pour le Serveur Multi-Terminologies (SMT)
+ * 3. Dans votre code, utilisez la fonction configureAuth() pour activer l'authentification:
+ *    const frenchTerminologyService = require('./french_terminology_service');
+ *    frenchTerminologyService.configureAuth({
+ *      authEnabled: true,
+ *      clientId: 'VOTRE_CLIENT_ID',       // Généralement "user-api"
+ *      clientSecret: 'VOTRE_CLIENT_SECRET', 
+ *      apiKey: 'VOTRE_CLE_API'            // Clé fournie par l'ANS
+ *    });
+ * 
+ * Pour des besoins hors ligne ou de développement, utilisez plutôt french_terminology_service_offline.js
+ * qui ne nécessite pas de connexion internet ni d'authentification.
+ *
  * Ce service interagit avec le Serveur Multi-Terminologies (SMT) de l'Agence du
  * Numérique en Santé (ANS) pour accéder aux terminologies standardisées françaises
  * nécessaires à l'interopérabilité des systèmes de santé en France.
@@ -78,11 +96,19 @@ let authToken = null;
 let tokenExpiration = 0;
 
 /**
- * Obtenir un token d'accès pour les API du SMT
+ * Obtenir un token d'accès pour les API du Serveur Multi-Terminologies (SMT)
+ * 
+ * Cette fonction tente d'obtenir un token d'authentification auprès du serveur SSO de l'ANS.
+ * Elle vérifie d'abord si un token existant est encore valide avant d'en demander un nouveau.
+ * 
+ * ACTIVATION REQUISE:
+ * Cette fonctionnalité nécessite une authentification active (authEnabled: true) et des
+ * identifiants valides (clientId, clientSecret ou apiKey) fournis par l'ANS.
+ * 
  * @returns {Promise<string|null>} Token d'accès ou null si non autorisé
  */
 async function getAccessToken() {
-  // Vérifier si le token est encore valide
+  // Vérifier si le token existant est encore valide
   if (authToken && tokenExpiration > Date.now()) {
     return authToken;
   }
@@ -94,6 +120,8 @@ async function getAccessToken() {
   }
 
   try {
+    // REMARQUE: Cette implémentation peut nécessiter des ajustements selon les exigences de l'ANS
+    // Les paramètres exacts (headers, credentials, etc.) peuvent varier selon votre type de compte
     const response = await axios.post(
       `${SMT_API_CONFIG.baseUrl}${SMT_API_CONFIG.ssoEndpoint}`,
       `grant_type=${SMT_API_CONFIG.grantType}&client_id=${SMT_API_CONFIG.clientId}`,
@@ -265,8 +293,31 @@ function getConfiguration() {
 }
 
 /**
- * Configurer l'authentification pour le SMT
+ * Configurer l'authentification pour le SMT (Serveur Multi-Terminologies)
+ * 
+ * Cette fonction permet d'activer et de configurer l'authentification avec le
+ * serveur de l'ANS. Elle doit être appelée avec vos identifiants personnels
+ * pour utiliser les fonctionnalités complètes du service.
+ * 
+ * IMPORTANT: Vous devez obtenir vos identifiants auprès de l'ANS avant de pouvoir utiliser
+ * cette fonctionnalité. Sans credentials valides, certaines opérations échoueront.
+ * 
+ * Exemple d'utilisation:
+ * ```
+ * const frenchTerminologyService = require('./french_terminology_service');
+ * frenchTerminologyService.configureAuth({
+ *   authEnabled: true,
+ *   clientId: 'VOTRE_CLIENT_ID',       // Généralement "user-api"
+ *   clientSecret: 'VOTRE_CLIENT_SECRET', 
+ *   apiKey: 'VOTRE_CLE_API'            // Clé fournie par l'ANS
+ * });
+ * ```
+ * 
  * @param {Object} config - Configuration de l'authentification
+ * @param {boolean} [config.authEnabled] - Activer ou désactiver l'authentification
+ * @param {string} [config.clientId] - ID client fourni par l'ANS
+ * @param {string} [config.clientSecret] - Secret client fourni par l'ANS
+ * @param {string} [config.apiKey] - Clé API fournie par l'ANS
  * @returns {Object} Résultat de la configuration
  */
 function configureAuth(config = {}) {
@@ -288,7 +339,7 @@ function configureAuth(config = {}) {
     SMT_API_CONFIG.authEnabled = true;
   }
   
-  // Réinitialiser le token
+  // Réinitialiser le token pour forcer une nouvelle authentification
   authToken = null;
   tokenExpiration = 0;
   
