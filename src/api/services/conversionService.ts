@@ -4,21 +4,9 @@
  */
 
 import * as simpleHL7 from 'simple-hl7';
-import * as fhir from 'fhir';
 
 // Initialisation du parser HL7
 const hl7Parser = new simpleHL7.Parser();
-
-// Version simplifiée pour la validation sans utiliser Validator
-class SimpleValidator {
-  validate(message: any): boolean {
-    // Vérification basique : présence du segment MSH
-    return message && message.segments && message.segments.length > 0 && 
-           message.segments[0] && message.segments[0].name === 'MSH';
-  }
-}
-
-const hl7Validator = new SimpleValidator();
 
 /**
  * Vérifie si un message HL7 est valide
@@ -29,12 +17,23 @@ export function isValidHL7(hl7Message: string): boolean {
   try {
     // Vérification basique de la structure du message
     if (!hl7Message.includes('MSH|')) {
+      console.error('[HL7 Validation Error] Message ne contient pas de segment MSH');
       return false;
     }
     
-    // Essayer de parser le message
-    const parsedMessage = hl7Parser.parse(hl7Message);
-    return hl7Validator.validate(parsedMessage);
+    // Remplacer les \n par \r pour assurer la compatibilité avec HL7
+    // HL7 utilise CR comme séparateur de segment standard
+    const normalizedMessage = hl7Message.replace(/\n/g, '\r');
+    
+    try {
+      // Essayer de parser le message
+      const parsedMessage = hl7Parser.parse(normalizedMessage);
+      console.log('[HL7 Validation] Message parsé avec succès:', parsedMessage.segments.length, 'segments');
+      return true; // Si on arrive ici, c'est que le parsing a réussi
+    } catch (parseError) {
+      console.error('[HL7 Parsing Error]', parseError);
+      return false;
+    }
   } catch (error) {
     console.error('[HL7 Validation Error]', error);
     return false;
@@ -47,277 +46,237 @@ export function isValidHL7(hl7Message: string): boolean {
  * @returns Ressource FHIR générée
  */
 export function convertHL7ToFHIR(hl7Message: string): any {
-  // Parser le message HL7
-  const parsedHL7 = hl7Parser.parse(hl7Message);
-  
-  // Extraire les segments
-  // Adapter au format de simple-hl7
-  const segments = parsedHL7.segments;
-  const mshSegment = segments.find((s: any) => s.name === 'MSH');
-  const evnSegment = segments.find((s: any) => s.name === 'EVN');
-  const pidSegments = segments.filter((s: any) => s.name === 'PID');
-  const pd1Segments = segments.filter((s: any) => s.name === 'PD1');
-  const pv1Segments = segments.filter((s: any) => s.name === 'PV1');
-  const pv2Segments = segments.filter((s: any) => s.name === 'PV2');
-  
-  // Extraire les informations du patient (PID)
-  const patientResource = createPatientResource(pidSegments[0], pd1Segments[0]);
-  
-  // Extraire les informations de l'encounter (PV1/PV2)
-  const encounterResource = createEncounterResource(pv1Segments[0], pv2Segments[0], patientResource.id);
-  
-  // Créer le bundle FHIR
-  const fhirBundle = createFHIRBundle([patientResource, encounterResource], mshSegment);
-  
-  return fhirBundle;
-}
-
-/**
- * Crée une ressource Patient FHIR à partir d'un segment PID HL7
- * @param pidSegment Segment PID du message HL7
- * @param pd1Segment Segment PD1 du message HL7 (optionnel)
- * @returns Ressource Patient FHIR
- */
-function createPatientResource(pidSegment: any, pd1Segment?: any): any {
-  if (!pidSegment) {
-    throw new Error('Segment PID manquant dans le message HL7');
-  }
-  
-  // Générer un identifiant unique pour le patient
-  const patientId = `patient-${Date.now()}`;
-  
-  // Extraire les informations du patient
-  const patientIdentifier = extractPatientIdentifier(pidSegment);
-  const patientName = extractPatientName(pidSegment);
-  const patientBirthDate = extractPatientBirthDate(pidSegment);
-  const patientGender = extractPatientGender(pidSegment);
-  const patientAddress = extractPatientAddress(pidSegment);
-  const patientContact = extractPatientContact(pidSegment);
-  
-  // Créer la ressource Patient FHIR
-  const patientResource = {
-    resourceType: 'Patient',
-    id: patientId,
-    identifier: patientIdentifier,
-    name: patientName,
-    birthDate: patientBirthDate,
-    gender: patientGender,
-    address: patientAddress,
-    telecom: patientContact,
-    active: true
-  };
-  
-  // Ajouter le médecin traitant si présent dans PD1
-  if (pd1Segment) {
-    const primaryPhysician = extractPrimaryPhysician(pd1Segment);
-    if (primaryPhysician) {
-      patientResource['generalPractitioner'] = [primaryPhysician];
-    }
-  }
-  
-  return patientResource;
-}
-
-/**
- * Crée une ressource Encounter FHIR à partir d'un segment PV1 HL7
- * @param pv1Segment Segment PV1 du message HL7
- * @param pv2Segment Segment PV2 du message HL7 (optionnel)
- * @param patientId Identifiant de la ressource Patient associée
- * @returns Ressource Encounter FHIR
- */
-function createEncounterResource(pv1Segment: any, pv2Segment?: any, patientId?: string): any {
-  if (!pv1Segment) {
-    throw new Error('Segment PV1 manquant dans le message HL7');
-  }
-  
-  // Générer un identifiant unique pour l'encounter
-  const encounterId = `encounter-${Date.now()}`;
-  
-  // Extraire les informations de l'encounter
-  const encounterClass = extractEncounterClass(pv1Segment);
-  const encounterType = extractEncounterType(pv1Segment, pv2Segment);
-  const encounterStatus = extractEncounterStatus(pv1Segment);
-  const encounterPeriod = extractEncounterPeriod(pv1Segment);
-  const encounterLocation = extractEncounterLocation(pv1Segment);
-  const encounterParticipants = extractEncounterParticipants(pv1Segment);
-  
-  // Créer la ressource Encounter FHIR
-  const encounterResource = {
-    resourceType: 'Encounter',
-    id: encounterId,
-    status: encounterStatus,
-    class: encounterClass,
-    type: encounterType,
-    subject: {
-      reference: patientId ? `Patient/${patientId}` : undefined
-    },
-    period: encounterPeriod,
-    location: encounterLocation,
-    participant: encounterParticipants
-  };
-  
-  return encounterResource;
-}
-
-/**
- * Crée un Bundle FHIR à partir d'une liste de ressources
- * @param resources Liste des ressources FHIR à inclure dans le bundle
- * @param mshSegment Segment MSH du message HL7 d'origine (pour les métadonnées)
- * @returns Bundle FHIR
- */
-function createFHIRBundle(resources: any[], mshSegment: any): any {
-  // Générer un identifiant unique pour le bundle
-  const bundleId = `bundle-${Date.now()}`;
-  
-  // Extraire les métadonnées du MSH
-  const messageId = mshSegment.getField(10)?.toString() || `msg-${Date.now()}`;
-  const messageDatetime = mshSegment.getField(7)?.toString() || new Date().toISOString();
-  
-  // Créer les entrées du bundle
-  const entries = resources.map(resource => ({
-    fullUrl: `urn:uuid:${resource.id}`,
-    resource: resource,
-    request: {
-      method: 'POST',
-      url: resource.resourceType
-    }
-  }));
-  
-  // Créer le bundle FHIR
-  const fhirBundle = {
-    resourceType: 'Bundle',
-    id: bundleId,
-    type: 'transaction',
-    timestamp: new Date().toISOString(),
-    meta: {
-      lastUpdated: new Date().toISOString(),
-      profile: ['http://esante.gouv.fr/ci-sis/fhir/StructureDefinition/FrBundle']
-    },
-    identifier: {
-      system: 'urn:ietf:rfc:3986',
-      value: `urn:uuid:${messageId}`
-    },
-    entry: entries
-  };
-  
-  return fhirBundle;
-}
-
-// === Fonctions d'extraction pour Patient ===
-
-function extractPatientIdentifier(pidSegment: any): any[] {
   try {
-    const identifiers = [];
+    // Normaliser le message HL7 avant de le parser
+    const normalizedMessage = hl7Message.replace(/\n/g, '\r');
     
-    // Identifiant principal (Field 3)
-    const field3 = pidSegment.getField(3);
-    if (field3 && field3.length > 0) {
-      const id = field3.getComponent(0)?.toString();
-      const system = field3.getComponent(3)?.toString() || 'urn:oid:1.2.250.1.213.1.4.10';
-      
-      if (id) {
-        identifiers.push({
-          use: 'official',
-          system: system,
-          value: id
-        });
-      }
+    // Parser le message HL7
+    const parsedHL7 = hl7Parser.parse(normalizedMessage);
+    
+    console.log('[DEBUG] parsedHL7 structure:', JSON.stringify({
+      type: typeof parsedHL7,
+      hasSegments: parsedHL7.hasOwnProperty('segments'),
+      segmentsLength: parsedHL7.segments ? parsedHL7.segments.length : 'N/A',
+      segmentsType: parsedHL7.segments ? typeof parsedHL7.segments : 'N/A',
+      firstSegment: parsedHL7.segments && parsedHL7.segments.length > 0 ? 
+        JSON.stringify(parsedHL7.segments[0]) : 'N/A'
+    }));
+    
+    if (parsedHL7.segments && parsedHL7.segments.length > 0) {
+      console.log('[DEBUG] First segment name:', parsedHL7.segments[0].name);
+      console.log('[DEBUG] First segment parsed:', parsedHL7.segments[0].parsed);
     }
     
-    // Numéro de sécurité sociale (Field 19)
-    const field19 = pidSegment.getField(19);
-    if (field19 && field19.length > 0) {
-      const insuranceNumber = field19.getComponent(0)?.toString();
-      
-      if (insuranceNumber) {
-        identifiers.push({
-          use: 'official',
-          system: 'urn:oid:1.2.250.1.213.1.4.8',
-          value: insuranceNumber,
-          type: {
-            coding: [{
-              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-              code: 'SS',
-              display: 'Numéro de sécurité sociale'
-            }]
+    // Conversion directe en utilisant le message brut
+    // Diviser le message HL7 en segments
+    const segments = normalizedMessage.split('\r').filter(Boolean);
+    
+    console.log('[DEBUG] segments:', segments);
+    
+    // Trouver les segments par type
+    const mshSegment = segments.find(s => s.startsWith('MSH|')) || null;
+    const pidSegment = segments.find(s => s.startsWith('PID|')) || null;
+    const pd1Segment = segments.find(s => s.startsWith('PD1|')) || null;
+    const pv1Segment = segments.find(s => s.startsWith('PV1|')) || null;
+    const pv2Segment = segments.find(s => s.startsWith('PV2|')) || null;
+    
+    console.log('MSH:', mshSegment);
+    console.log('PID:', pidSegment);
+    
+    // Créer les ressources FHIR
+    const patientId = `patient-${Date.now()}`;
+    const encounterId = `encounter-${Date.now()}`;
+    
+    // Extraire les informations du patient
+    const patientResource = {
+      resourceType: 'Patient',
+      id: patientId,
+      identifier: extractPatientIdentifiers(pidSegment),
+      name: extractPatientNames(pidSegment),
+      gender: extractPatientGender(pidSegment),
+      birthDate: extractPatientBirthDate(pidSegment),
+      address: extractPatientAddress(pidSegment),
+      telecom: extractPatientTelecom(pidSegment),
+      active: true
+    };
+    
+    // Extraire les informations de l'encounter
+    const encounterResource = {
+      resourceType: 'Encounter',
+      id: encounterId,
+      status: 'in-progress',
+      class: {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+          code: 'AMB',
+          display: 'ambulatory'
+        }]
+      },
+      subject: {
+        reference: `Patient/${patientId}`
+      },
+      period: extractEncounterPeriod(pv1Segment),
+      participant: extractEncounterParticipants(pv1Segment)
+    };
+    
+    // Créer le bundle FHIR
+    const bundleId = `bundle-${Date.now()}`;
+    const fhirBundle = {
+      resourceType: 'Bundle',
+      id: bundleId,
+      type: 'transaction',
+      timestamp: new Date().toISOString(),
+      meta: {
+        lastUpdated: new Date().toISOString(),
+        profile: ['http://esante.gouv.fr/ci-sis/fhir/StructureDefinition/FrBundle']
+      },
+      identifier: {
+        system: 'urn:ietf:rfc:3986',
+        value: `urn:uuid:${bundleId}`
+      },
+      entry: [
+        {
+          fullUrl: `urn:uuid:${patientId}`,
+          resource: patientResource,
+          request: {
+            method: 'POST',
+            url: 'Patient'
           }
-        });
-      }
-    }
+        },
+        {
+          fullUrl: `urn:uuid:${encounterId}`,
+          resource: encounterResource,
+          request: {
+            method: 'POST',
+            url: 'Encounter'
+          }
+        }
+      ]
+    };
     
-    return identifiers;
+    return fhirBundle;
   } catch (error) {
-    console.error('[PatientIdentifier Error]', error);
-    return [];
+    console.error('[Conversion Error]', error);
+    throw error;
   }
 }
 
-function extractPatientName(pidSegment: any): any[] {
+/**
+ * Extrait un segment par son type
+ * @param segments Liste des segments
+ * @param type Type de segment recherché (MSH, PID, etc.)
+ */
+function extractSegmentByType(segments: string[], type: string): string | null {
+  return segments.find(s => s.startsWith(type + '|')) || null;
+}
+
+/**
+ * Extrait les identifiants du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientIdentifiers(pidSegment: string | null): any[] {
+  const identifiers = [];
+  
+  if (!pidSegment) return identifiers;
+  
   try {
-    const names = [];
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
     
-    // Champ 5 - Nom et prénom du patient
-    const field5 = pidSegment.getField(5);
-    if (field5 && field5.length > 0) {
-      const familyName = field5.getComponent(0)?.toString();
-      const givenName = field5.getComponent(1)?.toString();
+    // Champ 3 - ID patient
+    if (fields[3]) {
+      const idParts = fields[3].split('^');
+      const idValue = idParts[0];
+      // Format: ID^Namespace^Type^System
+      const idSystem = idParts[3] || 'urn:oid:1.2.250.1.213.1.4.10';
+      
+      identifiers.push({
+        use: 'official',
+        system: idSystem,
+        value: idValue
+      });
+    }
+    
+    // Numéro de Sécurité Sociale (champ 19)
+    if (fields[19]) {
+      const ssnParts = fields[19].split('^');
+      const ssnValue = ssnParts[0];
+      
+      identifiers.push({
+        use: 'official',
+        system: 'urn:oid:1.2.250.1.213.1.4.8',
+        value: ssnValue,
+        type: {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+            code: 'SS',
+            display: 'Numéro de sécurité sociale'
+          }]
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[PatientIdentifiers Error]', error);
+  }
+  
+  return identifiers;
+}
+
+/**
+ * Extrait les noms du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientNames(pidSegment: string | null): any[] {
+  const names = [];
+  
+  if (!pidSegment) return names;
+  
+  try {
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
+    
+    // Champ 5 - Nom du patient
+    if (fields[5]) {
+      const nameParts = fields[5].split('^');
+      const familyName = nameParts[0];
+      const givenName = nameParts[1];
+      const prefix = nameParts[4] || '';
       
       if (familyName) {
-        const nameParts = [];
-        
-        // Gérer les prénoms composés (spécifique à la France)
-        if (givenName) {
-          const givenNames = givenName.split(' ').filter(Boolean);
-          nameParts.push(...givenNames);
-        }
+        // Gérer les prénoms composés
+        const givenNames = givenName ? givenName.split(' ').filter(Boolean) : [];
         
         names.push({
           use: 'official',
           family: familyName,
-          given: nameParts.length > 0 ? nameParts : undefined,
-          prefix: field5.getComponent(4)?.toString() ? [field5.getComponent(4).toString()] : undefined
+          given: givenNames.length > 0 ? givenNames : undefined,
+          prefix: prefix ? [prefix] : undefined
         });
       }
     }
-    
-    return names;
   } catch (error) {
-    console.error('[PatientName Error]', error);
-    return [];
+    console.error('[PatientNames Error]', error);
   }
+  
+  return names;
 }
 
-function extractPatientBirthDate(pidSegment: any): string | undefined {
+/**
+ * Extrait le genre du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientGender(pidSegment: string | null): string | undefined {
+  if (!pidSegment) return undefined;
+  
   try {
-    // Champ 7 - Date de naissance
-    const field7 = pidSegment.getField(7);
-    if (field7 && field7.toString()) {
-      const birthDate = field7.toString();
-      
-      // Formater en YYYY-MM-DD (format FHIR)
-      if (birthDate.length >= 8) {
-        const year = birthDate.substring(0, 4);
-        const month = birthDate.substring(4, 6);
-        const day = birthDate.substring(6, 8);
-        return `${year}-${month}-${day}`;
-      }
-    }
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
     
-    return undefined;
-  } catch (error) {
-    console.error('[PatientBirthDate Error]', error);
-    return undefined;
-  }
-}
-
-function extractPatientGender(pidSegment: any): string | undefined {
-  try {
-    // Champ 8 - Genre
-    const field8 = pidSegment.getField(8);
-    if (field8 && field8.toString()) {
-      const gender = field8.toString();
+    // Champ 8 - Sexe
+    if (fields[8]) {
+      const gender = fields[8];
       
-      // Convertir le code HL7 en code FHIR
+      // Convertir en code FHIR
       switch (gender) {
         case 'M': return 'male';
         case 'F': return 'female';
@@ -326,25 +285,62 @@ function extractPatientGender(pidSegment: any): string | undefined {
         default: return 'unknown';
       }
     }
-    
-    return undefined;
   } catch (error) {
     console.error('[PatientGender Error]', error);
-    return undefined;
   }
+  
+  return undefined;
 }
 
-function extractPatientAddress(pidSegment: any): any[] {
+/**
+ * Extrait la date de naissance du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientBirthDate(pidSegment: string | null): string | undefined {
+  if (!pidSegment) return undefined;
+  
   try {
-    const addresses = [];
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
     
-    // Champ 11 - Adresse du patient
-    const field11 = pidSegment.getField(11);
-    if (field11 && field11.length > 0) {
-      const street = field11.getComponent(0)?.toString();
-      const city = field11.getComponent(2)?.toString();
-      const postalCode = field11.getComponent(4)?.toString();
-      const country = field11.getComponent(5)?.toString();
+    // Champ 7 - Date de naissance
+    if (fields[7] && fields[7].length >= 8) {
+      const birthDate = fields[7];
+      
+      // Formater en YYYY-MM-DD
+      const year = birthDate.substring(0, 4);
+      const month = birthDate.substring(4, 6);
+      const day = birthDate.substring(6, 8);
+      
+      return `${year}-${month}-${day}`;
+    }
+  } catch (error) {
+    console.error('[PatientBirthDate Error]', error);
+  }
+  
+  return undefined;
+}
+
+/**
+ * Extrait l'adresse du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientAddress(pidSegment: string | null): any[] {
+  const addresses = [];
+  
+  if (!pidSegment) return addresses;
+  
+  try {
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
+    
+    // Champ 11 - Adresse
+    if (fields[11]) {
+      const addressParts = fields[11].split('^');
+      const street = addressParts[0] || '';
+      const city = addressParts[2] || '';
+      const postalCode = addressParts[4] || '';
+      const country = addressParts[5] || 'FRA';
       
       if (street || city || postalCode) {
         addresses.push({
@@ -353,28 +349,35 @@ function extractPatientAddress(pidSegment: any): any[] {
           line: street ? [street] : undefined,
           city: city,
           postalCode: postalCode,
-          country: country || 'FRA'
+          country: country
         });
       }
     }
-    
-    return addresses;
   } catch (error) {
     console.error('[PatientAddress Error]', error);
-    return [];
   }
+  
+  return addresses;
 }
 
-function extractPatientContact(pidSegment: any): any[] {
+/**
+ * Extrait les informations de contact du patient
+ * @param pidSegment Segment PID (chaîne brute)
+ */
+function extractPatientTelecom(pidSegment: string | null): any[] {
+  const telecoms = [];
+  
+  if (!pidSegment) return telecoms;
+  
   try {
-    const telecoms = [];
+    // Découper le segment PID en champs
+    const fields = pidSegment.split('|');
     
-    // Champ 13 - Téléphone et email
-    const field13 = pidSegment.getField(13);
-    if (field13 && field13.toString()) {
-      const contactInfo = field13.toString().split('~');
+    // Champ 13 - Téléphone / Email
+    if (fields[13]) {
+      const contacts = fields[13].split('~');
       
-      contactInfo.forEach(contact => {
+      contacts.forEach(contact => {
         if (contact.includes('@')) {
           // Email
           telecoms.push({
@@ -384,265 +387,109 @@ function extractPatientContact(pidSegment: any): any[] {
           });
         } else if (contact.match(/\d+/)) {
           // Téléphone
-          let system = 'phone';
           let use = 'home';
           
           if (contact.includes('6') || contact.includes('7')) {
-            // Téléphone mobile en France (commence souvent par 06 ou 07)
-            system = 'phone';
+            // Probablement un mobile
             use = 'mobile';
           }
           
           telecoms.push({
-            system: system,
+            system: 'phone',
             value: contact,
             use: use
           });
         }
       });
     }
-    
-    return telecoms;
   } catch (error) {
-    console.error('[PatientContact Error]', error);
-    return [];
+    console.error('[PatientTelecom Error]', error);
   }
+  
+  return telecoms;
 }
 
-function extractPrimaryPhysician(pd1Segment: any): any | undefined {
+/**
+ * Extrait la période de l'encounter
+ * @param pv1Segment Segment PV1 (chaîne brute)
+ */
+function extractEncounterPeriod(pv1Segment: string | null): any | undefined {
+  const period: any = {};
+  
+  if (!pv1Segment) return undefined;
+  
   try {
-    // Champ 4 - Médecin traitant
-    const field4 = pd1Segment.getField(4);
-    if (field4 && field4.toString()) {
-      const physicianId = field4.getComponent(0)?.toString();
-      const physicianName = field4.getComponent(2)?.toString();
-      
-      if (physicianId || physicianName) {
-        return {
-          reference: physicianId ? `Practitioner/${physicianId}` : undefined,
-          display: physicianName || 'Médecin traitant'
-        };
-      }
-    }
-    
-    return undefined;
-  } catch (error) {
-    console.error('[PrimaryPhysician Error]', error);
-    return undefined;
-  }
-}
-
-// === Fonctions d'extraction pour Encounter ===
-
-function extractEncounterClass(pv1Segment: any): any {
-  try {
-    // Champ 2 - Type d'admission
-    const field2 = pv1Segment.getField(2);
-    if (field2 && field2.toString()) {
-      const patientClass = field2.toString();
-      
-      // Convertir le code HL7 en code FHIR
-      const classCoding = {
-        system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode'
-      };
-      
-      switch (patientClass) {
-        case 'I': 
-          return { coding: [{ ...classCoding, code: 'IMP', display: 'inpatient' }] };
-        case 'O': 
-          return { coding: [{ ...classCoding, code: 'AMB', display: 'ambulatory' }] };
-        case 'E': 
-          return { coding: [{ ...classCoding, code: 'EMER', display: 'emergency' }] };
-        case 'P': 
-          return { coding: [{ ...classCoding, code: 'PRENC', display: 'pre-admission' }] };
-        case 'R': 
-          return { coding: [{ ...classCoding, code: 'ACUTE', display: 'recurring patient' }] };
-        case 'B': 
-          return { coding: [{ ...classCoding, code: 'OBSENC', display: 'obstetrics' }] };
-        case 'C': 
-          return { coding: [{ ...classCoding, code: 'SS', display: 'day medicine' }] };
-        case 'N': 
-          return { coding: [{ ...classCoding, code: 'NONAC', display: 'non-acute' }] };
-        default:
-          return { coding: [{ ...classCoding, code: 'AMB', display: 'ambulatory' }] };
-      }
-    }
-    
-    return { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'AMB', display: 'ambulatory' }] };
-  } catch (error) {
-    console.error('[EncounterClass Error]', error);
-    return { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'AMB', display: 'ambulatory' }] };
-  }
-}
-
-function extractEncounterType(pv1Segment: any, pv2Segment?: any): any[] {
-  try {
-    const types = [];
-    
-    // PV1 Champ 10 - Type d'hospitalisation
-    const field10 = pv1Segment.getField(10);
-    if (field10 && field10.toString()) {
-      const encounterType = field10.toString();
-      
-      types.push({
-        coding: [{
-          system: 'http://terminology.hl7.org/CodeSystem/v2-0007',
-          code: encounterType,
-          display: getEncounterTypeDisplay(encounterType)
-        }]
-      });
-    }
-    
-    // PV2 Champ 3 - Motif d'admission
-    if (pv2Segment) {
-      const field3 = pv2Segment.getField(3);
-      if (field3 && field3.toString()) {
-        const admissionReason = field3.toString();
-        
-        types.push({
-          text: admissionReason
-        });
-      }
-    }
-    
-    return types;
-  } catch (error) {
-    console.error('[EncounterType Error]', error);
-    return [];
-  }
-}
-
-function getEncounterTypeDisplay(typeCode: string): string {
-  switch (typeCode) {
-    case 'A': return 'Accident';
-    case 'E': return 'Urgence';
-    case 'L': return 'Consultation';
-    case 'R': return 'Consultation de routine';
-    case 'C': return 'Contrôle';
-    case 'G': return 'Grossesse';
-    case 'N': return 'Naissance';
-    case 'S': return 'Chirurgie';
-    case 'O': return 'Autre';
-    default: return 'Non spécifié';
-  }
-}
-
-function extractEncounterStatus(pv1Segment: any): string {
-  try {
-    // On pourrait dériver cela d'autres champs, mais par défaut on met "in-progress"
-    // car la plupart des messages ADT concernent des admissions en cours
-    return 'in-progress';
-  } catch (error) {
-    console.error('[EncounterStatus Error]', error);
-    return 'unknown';
-  }
-}
-
-function extractEncounterPeriod(pv1Segment: any): any {
-  try {
-    const period: any = {};
+    // Découper le segment PV1 en champs
+    const fields = pv1Segment.split('|');
     
     // Champ 44 - Date d'admission
-    const field44 = pv1Segment.getField(44);
-    if (field44 && field44.toString()) {
-      const admitDate = field44.toString();
+    if (fields[44] && fields[44].length >= 8) {
+      const admitDate = fields[44];
       
-      // Formater en YYYY-MM-DDTHH:mm:ss+TZ (format FHIR)
-      if (admitDate.length >= 8) {
-        const year = admitDate.substring(0, 4);
-        const month = admitDate.substring(4, 6);
-        const day = admitDate.substring(6, 8);
-        let time = 'T00:00:00+00:00';
-        
-        if (admitDate.length >= 14) {
-          const hour = admitDate.substring(8, 10);
-          const minute = admitDate.substring(10, 12);
-          const second = admitDate.substring(12, 14);
-          time = `T${hour}:${minute}:${second}+00:00`;
-        }
-        
-        period.start = `${year}-${month}-${day}${time}`;
+      // Formater en YYYY-MM-DD
+      const year = admitDate.substring(0, 4);
+      const month = admitDate.substring(4, 6);
+      const day = admitDate.substring(6, 8);
+      
+      let time = 'T00:00:00+00:00';
+      
+      if (admitDate.length >= 14) {
+        const hour = admitDate.substring(8, 10);
+        const minute = admitDate.substring(10, 12);
+        const second = admitDate.substring(12, 14);
+        time = `T${hour}:${minute}:${second}+00:00`;
       }
+      
+      period.start = `${year}-${month}-${day}${time}`;
     }
     
     // Champ 45 - Date de sortie
-    const field45 = pv1Segment.getField(45);
-    if (field45 && field45.toString()) {
-      const dischargeDate = field45.toString();
+    if (fields[45] && fields[45].length >= 8) {
+      const dischargeDate = fields[45];
       
-      // Formater en YYYY-MM-DDTHH:mm:ss+TZ (format FHIR)
-      if (dischargeDate.length >= 8) {
-        const year = dischargeDate.substring(0, 4);
-        const month = dischargeDate.substring(4, 6);
-        const day = dischargeDate.substring(6, 8);
-        let time = 'T00:00:00+00:00';
-        
-        if (dischargeDate.length >= 14) {
-          const hour = dischargeDate.substring(8, 10);
-          const minute = dischargeDate.substring(10, 12);
-          const second = dischargeDate.substring(12, 14);
-          time = `T${hour}:${minute}:${second}+00:00`;
-        }
-        
-        period.end = `${year}-${month}-${day}${time}`;
+      // Formater en YYYY-MM-DD
+      const year = dischargeDate.substring(0, 4);
+      const month = dischargeDate.substring(4, 6);
+      const day = dischargeDate.substring(6, 8);
+      
+      let time = 'T00:00:00+00:00';
+      
+      if (dischargeDate.length >= 14) {
+        const hour = dischargeDate.substring(8, 10);
+        const minute = dischargeDate.substring(10, 12);
+        const second = dischargeDate.substring(12, 14);
+        time = `T${hour}:${minute}:${second}+00:00`;
       }
+      
+      period.end = `${year}-${month}-${day}${time}`;
     }
-    
-    return Object.keys(period).length ? period : undefined;
   } catch (error) {
     console.error('[EncounterPeriod Error]', error);
-    return undefined;
   }
+  
+  return Object.keys(period).length > 0 ? period : undefined;
 }
 
-function extractEncounterLocation(pv1Segment: any): any[] {
+/**
+ * Extrait les participants à l'encounter
+ * @param pv1Segment Segment PV1 (chaîne brute)
+ */
+function extractEncounterParticipants(pv1Segment: string | null): any[] {
+  const participants = [];
+  
+  if (!pv1Segment) return participants;
+  
   try {
-    const locations = [];
-    
-    // Champ 3 - Localisation du patient
-    const field3 = pv1Segment.getField(3);
-    if (field3 && field3.length > 0) {
-      const point = field3.getComponent(0)?.toString();
-      const room = field3.getComponent(1)?.toString();
-      const bed = field3.getComponent(2)?.toString();
-      const facility = field3.getComponent(3)?.toString();
-      
-      if (point || room || bed || facility) {
-        let locationDisplay = '';
-        
-        if (facility) locationDisplay += facility;
-        if (point) locationDisplay += (locationDisplay ? ' - ' : '') + 'Service: ' + point;
-        if (room) locationDisplay += (locationDisplay ? ', ' : '') + 'Chambre: ' + room;
-        if (bed) locationDisplay += (locationDisplay ? ', ' : '') + 'Lit: ' + bed;
-        
-        locations.push({
-          status: 'active',
-          location: {
-            reference: `Location/${point || 'unknown'}`,
-            display: locationDisplay || 'Emplacement non spécifié'
-          }
-        });
-      }
-    }
-    
-    return locations;
-  } catch (error) {
-    console.error('[EncounterLocation Error]', error);
-    return [];
-  }
-}
-
-function extractEncounterParticipants(pv1Segment: any): any[] {
-  try {
-    const participants = [];
+    // Découper le segment PV1 en champs
+    const fields = pv1Segment.split('|');
     
     // Champ 7 - Médecin référent
-    const field7 = pv1Segment.getField(7);
-    if (field7 && field7.length > 0) {
-      const id = field7.getComponent(0)?.toString();
-      const lastName = field7.getComponent(1)?.toString();
-      const firstName = field7.getComponent(2)?.toString();
-      const title = field7.getComponent(5)?.toString();
+    if (fields[7]) {
+      const docParts = fields[7].split('^');
+      const id = docParts[0] || '';
+      const lastName = docParts[1] || '';
+      const firstName = docParts[2] || '';
+      const title = docParts[5] || '';
       
       if (id || lastName) {
         let display = '';
@@ -668,12 +515,12 @@ function extractEncounterParticipants(pv1Segment: any): any[] {
     }
     
     // Champ 8 - Médecin consultant
-    const field8 = pv1Segment.getField(8);
-    if (field8 && field8.length > 0) {
-      const id = field8.getComponent(0)?.toString();
-      const lastName = field8.getComponent(1)?.toString();
-      const firstName = field8.getComponent(2)?.toString();
-      const title = field8.getComponent(5)?.toString();
+    if (fields[8]) {
+      const docParts = fields[8].split('^');
+      const id = docParts[0] || '';
+      const lastName = docParts[1] || '';
+      const firstName = docParts[2] || '';
+      const title = docParts[5] || '';
       
       if (id || lastName) {
         let display = '';
@@ -697,12 +544,11 @@ function extractEncounterParticipants(pv1Segment: any): any[] {
         });
       }
     }
-    
-    return participants;
   } catch (error) {
     console.error('[EncounterParticipants Error]', error);
-    return [];
   }
+  
+  return participants;
 }
 
 /**
