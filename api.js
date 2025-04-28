@@ -306,6 +306,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // Traiter les noms français composés avec notre service structuré
     result = processFhirNames(result, hl7Content);
     
+    // Enrichir le résultat pour l'affichage complet dans l'interface
+    if (result.success && result.fhirData) {
+      // Importer le module d'enrichissement
+      const { enrichApiResult } = require('./src/utils/apiResultEnricher');
+      result = enrichApiResult(result);
+    }
+    
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {
       try {
@@ -331,6 +338,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       message: result.message,
       conversionId: result.conversionId,
       fhirData: result.success ? result.fhirData : null,
+      bundleInfo: result.bundleInfo || null,
       outputPath: result.success ? path.basename(result.outputPath) : null
     });
   } catch (error) {

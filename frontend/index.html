@@ -225,11 +225,49 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Correctifs pour les bugs d'interface -->
+  <script src="js/fieldFocusFix.js"></script>
+  <script src="js/tabNavigationFix.js"></script>
+  <!-- Scripts de l'application -->
   <script src="src/services/api.js"></script>
   <script src="src/components/Dashboard.js"></script>
   <script src="src/components/FileUpload.js"></script>
   <script src="src/components/ConversionHistory.js"></script>
   <script src="src/components/FhirViewer.js"></script>
   <script src="src/App.js"></script>
+  
+  <!-- Initialisation de l'interface -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("FHIRHub Interface initialisée");
+      
+      // Textareas avec bug de focus
+      const textareaSelectors = ['#hl7TextArea', '.hl7-input', '#message-input', '.conversion-input'];
+      window.fieldFocusFix.apply(textareaSelectors);
+      
+      // Nettoyage de l'historique lors de la navigation
+      const loadHistoryBtn = document.getElementById('history-tab');
+      if (loadHistoryBtn) {
+        loadHistoryBtn.addEventListener('click', function() {
+          const historyContent = document.getElementById('historyContent');
+          const conversionList = document.getElementById('conversionList');
+          
+          // Vider l'historique pour éviter les rémanences
+          if (conversionList) {
+            conversionList.innerHTML = '';
+          }
+          
+          // Afficher le chargement
+          const historyLoading = document.getElementById('historyLoading');
+          if (historyLoading) {
+            historyLoading.style.display = 'block';
+          }
+          if (historyContent) {
+            historyContent.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
