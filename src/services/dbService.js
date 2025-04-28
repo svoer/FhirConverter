@@ -125,25 +125,69 @@ async function createTables() {
     )`
   ];
   
-  // Exécuter chaque requête de création de table
-  for (const tableQuery of tables) {
-    await run(tableQuery);
-  }
-  
-  // Vérifier si l'utilisateur admin existe, sinon le créer
-  const adminExists = await get('SELECT id FROM users WHERE username = ?', ['admin']);
-  
-  if (!adminExists) {
-    console.log('[DB] Création de l\'utilisateur administrateur par défaut');
+  try {
+    // Exécuter chaque requête de création de table
+    for (const tableQuery of tables) {
+      console.log('[DB] Création de table:', tableQuery.split('\n')[0]);
+      await run(tableQuery);
+    }
+
+    // Vérifier si les tables existent réellement en exécutant une requête directe
+    const tableCheck = await run("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    console.log('[DB] Vérification des tables créées:', tableCheck);
     
-    // Hasher le mot de passe (dans une application réelle, utiliser bcrypt)
-    const bcrypt = require('bcrypt');
-    const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+    try {
+      // Vérifier si l'utilisateur admin existe, sinon le créer
+      const adminCheck = await get('SELECT id FROM users WHERE username = ?', ['admin']);
+      
+      if (!adminCheck) {
+        console.log('[DB] Création de l\'utilisateur administrateur par défaut');
+        
+        // Hasher le mot de passe avec bcrypt
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+        
+        await run(
+          'INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
+          ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
+        );
+      }
+    } catch (err) {
+      console.error('[DB] Erreur lors de la vérification/création de l\'utilisateur admin:', err);
+      
+      // Création d'urgence de l'utilisateur admin sans vérification préalable
+      console.log('[DB] Tentative de création directe de l\'utilisateur admin');
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+      
+      try {
+        await run(
+          'INSERT OR IGNORE INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
+          ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
+        );
+      } catch (insertErr) {
+        console.error('[DB] Erreur lors de la création directe de l\'utilisateur admin:', insertErr);
+      }
+    }
     
-    await run(
-      'INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
-      ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
-    );
+    // Création de l'application par défaut et de la clé API de développement
+    console.log('[DB] Création de l\'application par défaut et de la clé API de développement');
+    try {
+      await run(
+        'INSERT OR IGNORE INTO applications (name, description, owner_id) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
+        ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
+      );
+      
+      await run(
+        'INSERT OR IGNORE INTO api_keys (application_id, key, name) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?',
+        ['Application par défaut', 'dev-key', 'Clé de développement']
+      );
+    } catch (appErr) {
+      console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
+    }
+  } catch (error) {
+    console.error('[DB] Erreur lors de la création des tables:', error);
+    throw error;
   }
 }
 

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "LOINC",
+    "url": "http://loinc.org",
+    "description": "Logical Observation Identifiers Names and Codes"
+  },
+  {
+    "name": "SNOMED CT",
+    "url": "http://snomed.info/sct",
+    "description": "Systematized Nomenclature of Medicine - Clinical Terms"
+  },
+  {
+    "name": "CVX",
+    "url": "http://hl7.org/fhir/sid/cvx",
+    "description": "Codes de vaccins"
+  },
+  {
+    "name": "RxNorm",
+    "url": "http://www.nlm.nih.gov/research/umls/rxnorm",
+    "description": "Nomenclature de médicaments"
+  }
+]
