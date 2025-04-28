@@ -60,6 +60,7 @@ function parseHl7Message(hl7Message) {
       IN1: [],
       IN2: [],
       ZBE: [],
+      ZFD: [],
       ZFP: [],
       ZFV: [],
       ZFM: []
@@ -619,6 +620,16 @@ function parseHl7Message(hl7Message) {
           result.ZFV.push({
             visitComplementaryData: fields[1] || '',          // ZFV-1: Données complémentaires de visite
             customData: fields.slice(2).join('|')             // Données supplémentaires
+          });
+          break;
+        case 'ZFD':
+          // ZFD: Segment spécifique français pour les données d'identité/assurance
+          result.ZFD.push({
+            insuranceType: fields[1] || '',                   // ZFD-1: Type d'assurance/identifiant
+            verificationDate: fields[2] || '',                // ZFD-2: Date de vérification
+            verificationStatus: fields[3] || '',              // ZFD-3: Statut de vérification
+            additionalInfo: fields[4] || '',                  // ZFD-4: Informations supplémentaires
+            customData: fields.slice(5).join('|')             // Données supplémentaires
           });
           break;
         case 'ZFM':
