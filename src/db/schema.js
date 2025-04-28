@@ -39,7 +39,10 @@ function initializeDatabase() {
       description TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      settings TEXT DEFAULT '{}'
+      settings TEXT DEFAULT '{}',
+      active INTEGER DEFAULT 1,
+      retention_days INTEGER DEFAULT 30,
+      created_by INTEGER DEFAULT 1
     )
   `).run();
 
@@ -48,12 +51,27 @@ function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS api_keys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       app_id INTEGER NOT NULL,
-      key TEXT UNIQUE NOT NULL,
+      api_key TEXT UNIQUE NOT NULL,
       description TEXT,
+      environment TEXT DEFAULT 'development',
+      expires_at TEXT DEFAULT NULL,
+      revoked INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       last_used TEXT DEFAULT NULL,
-      is_active INTEGER DEFAULT 1,
       FOREIGN KEY (app_id) REFERENCES applications(id)
+    )
+  `).run();
+  
+  // Création de la table des paramètres d'application
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS app_params (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      param_key TEXT NOT NULL,
+      param_value TEXT,
+      FOREIGN KEY (app_id) REFERENCES applications(id),
+      UNIQUE(app_id, param_key)
     )
   `).run();
 
@@ -122,9 +140,9 @@ function initializeDatabase() {
     }));
     
     // Création d'une clé API pour cette application
-    const apiKey = 'dev-key-' + Math.random().toString(36).substring(2, 10);
+    const apiKey = 'dev-key';
     db.prepare(`
-      INSERT INTO api_keys (app_id, key, description)
+      INSERT INTO api_keys (app_id, api_key, description)
       VALUES (?, ?, ?)
     `).run(result.lastInsertRowid, apiKey, 'Clé API par défaut');
     

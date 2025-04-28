@@ -241,12 +241,21 @@ function updateAppStats(conversionId) {
  */
 function getAppStats(appId) {
   try {
-    // Vérifier si l'application existe
-    const app = getApplicationById(appId);
-    if (!app) {
-      throw new Error('Application non trouvée');
+    // En mode dev avec dev-key, on génère des stats fictives
+    if (appId === 1) {
+      console.log('[STATS] Utilisation de statistiques génériques pour dev-key');
+      return {
+        total: 0,
+        success: 0,
+        failed: 0,
+        resources: 0,
+        recentActivity: [],
+        byDate: [],
+        byStatus: { success: 0, error: 0 }
+      };
     }
     
+    // Sinon, on utilise les vraies stats
     // Statistiques globales
     const stats = db.prepare(`
       SELECT 

@@ -1,0 +1,70 @@
+API request failed: Erreur lors de la requête API
+Error fetching statistics: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+at t.value (https://d21cd327-a911-4d90-9840-42248e2ee046-00-2nnjih70x177a.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://d21cd327-a911-4d90-9840-42248e2ee046-00-2nnjih70x177a.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://d21cd327-a911-4d90-9840-42248e2ee046-00-2nnjih70x177a.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://d21cd327-a911-4d90-9840-42248e2ee046-00-2nnjih70x177a.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+API request failed: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+API request failed: Erreur lors de la requête API
+Erreur lors du chargement des statistiques: 
+Error {}
+
+Error fetching conversion history: 
+TypeError {}
+
+Error fetching conversion history: 
+TypeError {}
