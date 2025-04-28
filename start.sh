@@ -99,7 +99,7 @@ node -e "try { require('./src/utils/historyFix').applyHistoryFixes(); } catch(e)
 
 # Exécuter le script de test pour le nom français
 echo "Test du correctif d'extraction des noms français..."
-node test_french_names.js
+node test_data/test_french_names.js
 
 # Supprimer tous les fichiers temporaires
 echo "Nettoyage des fichiers temporaires..."

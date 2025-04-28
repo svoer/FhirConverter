@@ -12,7 +12,7 @@ const fs = require('fs');
 const multer = require('multer');
 
 // Modules internes
-const converter = require('./hl7ToFhirConverter');
+const converter = require('./src/converters/hl7ToFhirConverter');
 const frenchTerminologyAdapter = require('./french_terminology_adapter');
 const fhirCleaner = require('./fhir_cleaner');
 const dbService = require('./src/db/dbService');
