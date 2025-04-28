@@ -2,13 +2,10 @@
  * Convertisseur avancé HL7 v2.5 vers FHIR R4
  * Spécialement optimisé pour les messages ADT français
  * Compatible avec les exigences de l'ANS
- * 
- * Utilise simple-hl7 pour le parsing avancé des messages HL7
- * et fhir.js pour la manipulation des ressources FHIR
  */
 
 const uuid = require('uuid');
-const hl7 = require('simple-hl7');
+const hl7Parser = require('./hl7Parser');
 
 /**
  * Convertit un message HL7 en bundle FHIR
@@ -19,40 +16,20 @@ function convertHL7ToFHIR(hl7Message) {
   try {
     console.log('[CONVERTER] Démarrage de la conversion HL7 vers FHIR');
     
-    // Parser le message HL7 avec simple-hl7
-    // Format du message à analyser
-    // 1. Remplacer \n par \r si nécessaire pour obtenir un format valide
-    const normalizedMessage = hl7Message.replace(/\n/g, '\r');
+    // Parser le message HL7 avec notre module de parsing optimisé
+    const parsedMessage = hl7Parser.parseHL7Message(hl7Message);
     
-    // 2. Créer le parser et parser le message
-    const parser = new hl7.Parser();
-    const parsedMessage = parser.parse(normalizedMessage);
-    
-    // 3. Vérifier la validité du message parsé
-    if (!parsedMessage) {
+    if (!parsedMessage || !parsedMessage.segments) {
       throw new Error('Message HL7 invalide ou vide');
     }
     
-    console.log('[CONVERTER] Structure parsée:', JSON.stringify(parsedMessage).substring(0, 100) + '...');
-    
-    // 4. Extraire les segments du message
-    const segments = {};
-    // Extraire le segment MSH
-    if (parsedMessage.header && parsedMessage.header.name === 'MSH') {
-      if (!segments['MSH']) segments['MSH'] = [];
-      segments['MSH'].push(parsedMessage.header);
+    // Vérifier que les segments essentiels sont présents
+    const segments = parsedMessage.segments;
+    if (!segments.MSH) {
+      throw new Error('Segment MSH requis manquant dans le message HL7');
     }
     
-    // Extraire les autres segments
-    if (parsedMessage.segments && Array.isArray(parsedMessage.segments)) {
-      parsedMessage.segments.forEach(segment => {
-        const segmentName = segment.name;
-        if (!segments[segmentName]) {
-          segments[segmentName] = [];
-        }
-        segments[segmentName].push(segment);
-      });
-    }
+    console.log(`[CONVERTER] Message HL7 parsé avec succès: ${Object.keys(segments).length} types de segments`);
     
     console.log(`[CONVERTER] Message HL7 parsé avec succès: ${Object.keys(segments).length} types de segments`);
     
@@ -254,17 +231,22 @@ function convertHL7ToFHIR(hl7Message) {
 
 /**
  * Crée une ressource Patient FHIR à partir du segment PID
- * @param {Object} pidSegment - Segment PID parsé
- * @param {Object} pd1Segment - Segment PD1 parsé (optionnel)
+ * @param {Array} pidSegmentFields - Champs du segment PID parsé
+ * @param {Array} pd1SegmentFields - Champs du segment PD1 parsé (optionnel)
  * @returns {Object} Entrée de bundle pour un Patient
  */
-function createPatientResource(pidSegment, pd1Segment) {
-  // PID-3 (Patient Identifiers)
-  const patientIdentifiers = extractIdentifiers(pidSegment.fields[3]);
+function createPatientResource(pidSegmentFields, pd1SegmentFields) {
+  // PID-3 (Patient Identifiers) - Champ 3
+  const patientIdentifiers = extractIdentifiers(pidSegmentFields[3]);
   
   // Extraction d'un ID simple pour l'URI
+  const mainId = pidSegmentFields[3] ? (Array.isArray(pidSegmentFields[3]) ? 
+    (pidSegmentFields[3][0] || '') : pidSegmentFields[3]) : '';
+  
   let patientId = `patient-${Date.now()}`;
-  if (patientIdentifiers.length > 0 && patientIdentifiers[0].value) {
+  if (mainId && typeof mainId === 'string') {
+    patientId = `patient-${mainId.split('^')[0]}`;
+  } else if (patientIdentifiers.length > 0 && patientIdentifiers[0].value) {
     patientId = `patient-${patientIdentifiers[0].value}`;
   }
   
@@ -273,18 +255,18 @@ function createPatientResource(pidSegment, pd1Segment) {
     resourceType: 'Patient',
     id: patientId,
     identifier: patientIdentifiers,
-    name: extractNames(pidSegment.fields[5]),
-    gender: determineGender(pidSegment.fields[8]),
-    birthDate: formatBirthDate(pidSegment.fields[7]),
-    telecom: extractTelecoms(pidSegment.fields[13], pidSegment.fields[14]),
-    address: extractAddresses(pidSegment.fields[11]),
-    maritalStatus: determineMaritalStatus(pidSegment.fields[16]),
+    name: extractNames(pidSegmentFields[5]),
+    gender: determineGender(pidSegmentFields[8]),
+    birthDate: formatBirthDate(pidSegmentFields[7]),
+    telecom: extractTelecoms(pidSegmentFields[13], pidSegmentFields[14]),
+    address: extractAddresses(pidSegmentFields[11]),
+    maritalStatus: determineMaritalStatus(pidSegmentFields[16]),
     contact: []
   };
   
   // Ajouter les extensions françaises si PD1 est disponible
-  if (pd1Segment) {
-    addFrenchExtensions(patientResource, pd1Segment);
+  if (pd1SegmentFields) {
+    addFrenchExtensions(patientResource, pd1SegmentFields);
   }
   
   return {
@@ -299,88 +281,63 @@ function createPatientResource(pidSegment, pd1Segment) {
 
 /**
  * Extrait les identifiants du patient à partir du champ PID-3
- * @param {Array} identifierFields - Tableau de champs d'identifiants
+ * @param {Array|string} identifierField - Champ d'identifiants
  * @returns {Array} Tableau d'identifiants FHIR
  */
-function extractIdentifiers(identifierFields) {
-  if (!identifierFields || !Array.isArray(identifierFields)) {
+function extractIdentifiers(identifierField) {
+  if (!identifierField) {
     return [];
   }
   
   const identifiers = [];
   
-  identifierFields.forEach(field => {
-    if (!field) return;
+  // Si nous avons une chaîne, traiter directement
+  if (typeof identifierField === 'string') {
+    const components = identifierField.split('^');
+    const idValue = components[0];
+    const idType = components[4] || 'PI';
+    const assigningAuthority = components[3] || '';
     
-    const components = field.components || [];
-    
-    // ID (component 1)
-    const idValue = components[0] ? components[0].value : '';
-    if (!idValue) return;
-    
-    // Type d'identifiant (component 5)
-    const idType = components[4] ? components[4].value : 'PI';
-    
-    // Autorité d'assignation (component 4)
-    const assigningAuthority = components[3] ? components[3].value : '';
-    
-    // Configuration standard conforme à l'ANS
-    let system = '';
-    let isOfficialIdentifier = false;
-    let officialType = '';
-    
-    // Analyse détaillée de l'assigningAuthority pour extraire l'OID conforme ANS
-    if (assigningAuthority) {
-      // Format: NAME&OID&TYPE - Extraction précise des sous-composants
-      const authComponents = assigningAuthority.split('&');
+    if (idValue) {
+      // Configuration standard
+      let system = 'urn:system:unknown';
+      let officialType = '';
       
-      if (authComponents.length >= 2) {
-        const namespaceName = authComponents[0] || '';
-        const oid = authComponents[1] || '';
-        const namespaceType = authComponents.length > 2 ? authComponents[2] : '';
+      // Traiter l'autorité d'assignation et l'OID
+      if (assigningAuthority) {
+        const authParts = assigningAuthority.split('&');
+        const namespaceName = authParts[0] || '';
+        const oid = authParts.length > 1 ? authParts[1] : '';
         
-        // Standardisation des OIDs selon ANS
         if (oid) {
-          // Format conforme ANS qui utilise urn:oid: pour les identifiants standards
           system = `urn:oid:${oid}`;
           
-          // Détection et traitement spécifiques pour les identifiants français officiels
-          if (namespaceName.includes('ASIP-SANTE-INS-C') || oid === '1.2.250.1.213.1.4.2') {
-            isOfficialIdentifier = true;
-            officialType = 'INS-C';
-          } else if (namespaceName.includes('ASIP-SANTE-INS-NIR') || namespaceName.includes('ASIP-SANTE-INS') || oid === '1.2.250.1.213.1.4.8') {
-            isOfficialIdentifier = true;
+          // Détection des identifiants français
+          if (namespaceName.includes('ASIP-SANTE-INS-NIR') || oid === '1.2.250.1.213.1.4.8') {
             officialType = 'INS';
-          } else if (oid.startsWith('1.2.250.1.71.') || oid.startsWith('1.2.250.1.213.')) {
-            // Autres OIDs ANS standards
-            isOfficialIdentifier = true;
+          } else if (namespaceName.includes('ASIP-SANTE-INS-C') || oid === '1.2.250.1.213.1.4.2') {
+            officialType = 'INS-C';
           }
-        } else if (namespaceName) {
-          // Fallback pour les systèmes non standards
+        } else {
           system = `urn:system:${namespaceName}`;
         }
-      } else {
-        // Si le format n'inclut pas les sous-composants, utiliser comme système
-        system = `urn:system:${assigningAuthority}`;
       }
-    }
-    
-    // Valeurs par défaut si non spécifiés
-    if (!system) {
-      system = 'urn:system:unknown';
-    }
-    
-    // Créer l'identifiant FHIR avec la structure conforme ANS
-    const identifier = {
-      value: idValue,
-      system: system,
-      assigner: assigningAuthority ? { display: assigningAuthority.split('&')[0] } : undefined
-    };
-    
-    // Application du typage conforme ANS
-    if (isOfficialIdentifier) {
+      
+      // Créer l'identifiant de base
+      const identifier = {
+        value: idValue,
+        system: system
+      };
+      
+      // Ajouter l'établissement d'assignation si disponible
+      if (assigningAuthority) {
+        identifier.assigner = { 
+          display: assigningAuthority.split('&')[0] 
+        };
+      }
+      
+      // Traitement spécial pour les identifiants français
       if (officialType === 'INS') {
-        // Structure d'identifiant INS selon le cadre d'interopérabilité ANS
         identifier.system = 'urn:oid:1.2.250.1.213.1.4.8';
         identifier.type = {
           coding: [{
@@ -390,13 +347,12 @@ function extractIdentifiers(identifierFields) {
           }]
         };
         
-        // Ajout de l'extension de validité INS
+        // Extension de validation INS
         identifier.extension = [{
           url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Status',
-          valueCode: 'VALI' // VALI=validé, PROV=provisoire, REFU=refusé
+          valueCode: 'VALI'
         }];
       } else if (officialType === 'INS-C') {
-        // Structure d'identifiant INS-C selon le cadre d'interopérabilité ANS
         identifier.system = 'urn:oid:1.2.250.1.213.1.4.2';
         identifier.type = {
           coding: [{
@@ -406,7 +362,7 @@ function extractIdentifiers(identifierFields) {
           }]
         };
       } else {
-        // Autres identifiants officiels français
+        // Identifiants standard
         identifier.type = {
           coding: [{
             system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
@@ -415,19 +371,27 @@ function extractIdentifiers(identifierFields) {
           }]
         };
       }
-    } else {
-      // Identifiants non-officiels
-      identifier.type = {
-        coding: [{
-          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-          code: idType,
-          display: getIdentifierTypeDisplay(idType)
-        }]
-      };
+      
+      identifiers.push(identifier);
     }
-    
-    identifiers.push(identifier);
-  });
+  }
+  // Si nous avons un tableau, traiter chaque élément
+  else if (Array.isArray(identifierField)) {
+    // Traiter chaque élément comme un identifiant potentiel
+    identifierField.forEach(item => {
+      if (typeof item === 'string') {
+        const ids = extractIdentifiers(item);
+        identifiers.push(...ids);
+      } else if (Array.isArray(item)) {
+        item.forEach(subItem => {
+          if (typeof subItem === 'string') {
+            const ids = extractIdentifiers(subItem);
+            identifiers.push(...ids);
+          }
+        });
+      }
+    });
+  }
   
   return identifiers;
 }
@@ -453,83 +417,134 @@ function getIdentifierTypeDisplay(idType) {
 
 /**
  * Extrait les noms du patient à partir du champ PID-5
- * @param {Array} nameFields - Tableau de champs de noms
+ * @param {Array|string} nameFields - Tableau ou chaîne de noms
  * @returns {Array} Tableau de noms FHIR
  */
 function extractNames(nameFields) {
-  if (!nameFields || !Array.isArray(nameFields)) {
+  if (!nameFields) {
     return [];
   }
   
   const names = [];
   
-  nameFields.forEach(field => {
-    if (!field) return;
+  // Si nous avons une chaîne, c'est un seul nom
+  if (typeof nameFields === 'string') {
+    const parts = nameFields.split('^');
+    const familyName = parts[0] || '';
+    const givenName = parts[1] || '';
     
-    const components = field.components || [];
-    
-    // Nom de famille (component 1)
-    const familyName = components[0] ? components[0].value : '';
-    
-    // Prénom(s) (composants 2+)
-    const givenNames = [];
-    
-    // Prénom principal (component 2)
-    if (components[1] && components[1].value) {
-      if (components[1].value.includes(' ')) {
-        // Gérer les prénoms composés à la française
-        givenNames.push(...components[1].value.split(' ').filter(Boolean));
-      } else {
-        givenNames.push(components[1].value);
-      }
-    }
-    
-    // Prénom additionnel (component 3)
-    if (components[2] && components[2].value) {
-      if (components[2].value.includes(' ')) {
-        // Gérer les prénoms composés additionnels
-        components[2].value.split(' ').filter(Boolean).forEach(name => {
-          if (!givenNames.includes(name)) {
-            givenNames.push(name);
-          }
-        });
-      } else if (!givenNames.includes(components[2].value)) {
-        givenNames.push(components[2].value);
-      }
-    }
-    
-    // Type d'utilisation du nom (component 7)
-    let nameUse = 'official';
-    if (components[6] && components[6].value) {
-      nameUse = mapNameUseToFHIR(components[6].value);
-    }
-    
-    if (familyName || givenNames.length > 0) {
+    if (familyName || givenName) {
       const nameObj = {
-        use: nameUse
+        use: 'official'
       };
       
       if (familyName) {
         nameObj.family = familyName;
       }
       
-      if (givenNames.length > 0) {
+      if (givenName) {
+        // Traiter les prénoms composés (spécificité française)
+        const givenNames = [];
+        if (givenName.includes(' ')) {
+          givenNames.push(...givenName.split(' ').filter(Boolean));
+        } else {
+          givenNames.push(givenName);
+        }
         nameObj.given = givenNames;
       }
       
-      // Préfixe (titre) si disponible (component 5)
-      if (components[4] && components[4].value) {
-        nameObj.prefix = [components[4].value];
+      // Autres composants si disponibles
+      if (parts[4]) { // Préfixe
+        nameObj.prefix = [parts[4]];
       }
-      
-      // Suffixe si disponible (component 6)
-      if (components[5] && components[5].value) {
-        nameObj.suffix = [components[5].value];
+      if (parts[5]) { // Suffixe
+        nameObj.suffix = [parts[5]];
       }
       
       names.push(nameObj);
     }
-  });
+    
+    return names;
+  }
+  
+  // Si nous avons un tableau
+  if (Array.isArray(nameFields)) {
+    nameFields.forEach(field => {
+      if (!field) return;
+      
+      // Si c'est une chaîne dans un tableau
+      if (typeof field === 'string') {
+        const fieldNames = extractNames(field);
+        names.push(...fieldNames);
+      }
+      // Si c'est un objet avec des composants (format habituel de simple-hl7)
+      else if (field.components) {
+        const components = field.components;
+        
+        // Nom de famille (component 1)
+        const familyName = components[0] ? components[0].value : '';
+        
+        // Prénom(s) (composants 2+)
+        const givenNames = [];
+        
+        // Prénom principal (component 2)
+        if (components[1] && components[1].value) {
+          if (components[1].value.includes(' ')) {
+            // Gérer les prénoms composés à la française
+            givenNames.push(...components[1].value.split(' ').filter(Boolean));
+          } else {
+            givenNames.push(components[1].value);
+          }
+        }
+        
+        // Prénom additionnel (component 3)
+        if (components[2] && components[2].value) {
+          if (components[2].value.includes(' ')) {
+            // Gérer les prénoms composés additionnels
+            components[2].value.split(' ').filter(Boolean).forEach(name => {
+              if (!givenNames.includes(name)) {
+                givenNames.push(name);
+              }
+            });
+          } else if (!givenNames.includes(components[2].value)) {
+            givenNames.push(components[2].value);
+          }
+        }
+        
+        // Type d'utilisation du nom (component 7)
+        let nameUse = 'official';
+        if (components[6] && components[6].value) {
+          nameUse = mapNameUseToFHIR(components[6].value);
+        }
+        
+        if (familyName || givenNames.length > 0) {
+          const nameObj = {
+            use: nameUse
+          };
+          
+          if (familyName) {
+            nameObj.family = familyName;
+          }
+          
+          if (givenNames.length > 0) {
+            nameObj.given = givenNames;
+          }
+          
+          // Préfixe (titre) si disponible (component 5)
+          if (components[4] && components[4].value) {
+            nameObj.prefix = [components[4].value];
+          }
+          
+          // Suffixe si disponible (component 6)
+          if (components[5] && components[5].value) {
+            nameObj.suffix = [components[5].value];
+          }
+          
+          names.push(nameObj);
+        }
+      }
+    });
+  }
   
   return names;
 }
