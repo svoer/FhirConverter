@@ -354,6 +354,55 @@ router.get('/terminology/codesystem/:id', async (req, res) => {
 });
 
 /**
+ * GET /api/terminology/systems
+ * Récupérer tous les systèmes de terminologie disponibles
+ */
+router.get('/terminology/systems', (req, res) => {
+  try {
+    const frenchTerminologyAdapter = require('./french_terminology_adapter');
+    const systems = frenchTerminologyAdapter.getAllTerminologySystems();
+    
+    res.json({
+      status: 'ok',
+      data: systems
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: `Erreur lors de la récupération des systèmes de terminologie: ${error.message}`
+    });
+  }
+});
+
+/**
+ * GET /api/terminology/oid/:oid
+ * Récupérer un système de terminologie par son OID
+ */
+router.get('/terminology/oid/:oid', (req, res) => {
+  try {
+    const frenchTerminologyAdapter = require('./french_terminology_adapter');
+    const system = frenchTerminologyAdapter.getCodeSystemByOid(req.params.oid);
+    
+    if (!system) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Système de terminologie non trouvé pour cet OID'
+      });
+    }
+    
+    res.json({
+      status: 'ok',
+      data: system
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: `Erreur lors de la récupération du système de terminologie: ${error.message}`
+    });
+  }
+});
+
+/**
  * GET /api/terminology/search
  * Rechercher dans les systèmes de terminologie
  */

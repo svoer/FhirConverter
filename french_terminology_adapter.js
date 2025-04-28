@@ -534,6 +534,59 @@ function getCodeSystemByOid(oid) {
   return null;
 }
 
+/**
+ * Récupérer tous les systèmes de terminologie disponibles
+ * @returns {Object} Objet contenant tous les systèmes de terminologie
+ */
+function getAllTerminologySystems() {
+  // Initialiser si ce n'est pas déjà fait
+  if (!frenchSystems) {
+    initialize();
+  }
+  
+  const result = {
+    identifier_systems: {},
+    code_systems: {},
+    french_systems: {}
+  };
+  
+  // Ajouter les systèmes d'identifiants
+  for (const [key, value] of Object.entries(IDENTIFIER_SYSTEMS)) {
+    result.identifier_systems[key] = {
+      system: value,
+      display: `Identifiant ${key}`,
+      type: 'identifier'
+    };
+  }
+  
+  // Ajouter les systèmes de codes standards
+  for (const [key, value] of Object.entries(CODE_SYSTEMS)) {
+    result.code_systems[key] = {
+      system: value,
+      display: key,
+      type: 'code'
+    };
+  }
+  
+  // Ajouter les systèmes de terminologie français
+  if (frenchSystems && frenchSystems.french_terminology_systems) {
+    for (const [key, system] of Object.entries(frenchSystems.french_terminology_systems)) {
+      result.french_systems[key] = {
+        id: key,
+        name: system.name || key,
+        title: system.title,
+        description: system.description,
+        system: system.url || (system.oid ? `urn:oid:${system.oid}` : null),
+        oid: system.oid,
+        version: system.version,
+        type: 'terminology'
+      };
+    }
+  }
+  
+  return result;
+}
+
 // Exporter les fonctions publiques
 module.exports = {
   initialize,
@@ -546,5 +599,6 @@ module.exports = {
   validateResourceCodes,
   getIdentifierMappings,
   getCodeSystemMappings,
-  getCodeSystemByOid
+  getCodeSystemByOid,
+  getAllTerminologySystems
 };
