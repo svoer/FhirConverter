@@ -555,15 +555,37 @@ function mapNameUseToFHIR(hl7NameUse) {
 
 /**
  * Détermine le genre du patient à partir du champ PID-8
- * @param {Object} genderField - Champ de genre
+ * @param {Object|string} genderField - Champ de genre
  * @returns {string} Genre FHIR
  */
 function determineGender(genderField) {
-  if (!genderField || !genderField.value) {
+  console.log('[CONVERTER] Gender field received:', typeof genderField, genderField);
+  
+  if (!genderField) {
     return 'unknown';
   }
   
-  const gender = genderField.value.toUpperCase();
+  // Extraire la valeur du champ selon son type
+  let genderValue = '';
+  
+  if (typeof genderField === 'string') {
+    // Si c'est une chaîne, l'utiliser directement
+    genderValue = genderField;
+  } else if (typeof genderField === 'object') {
+    // Si c'est un objet, essayer différentes façons d'extraire la valeur
+    if (genderField.value) {
+      genderValue = genderField.value;
+    } else if (genderField.toString && typeof genderField.toString === 'function') {
+      genderValue = genderField.toString();
+    }
+  }
+  
+  // Normaliser et traiter la valeur du genre
+  if (!genderValue) {
+    return 'unknown';
+  }
+  
+  const gender = genderValue.toString().toUpperCase().trim();
   
   switch (gender) {
     case 'M':
@@ -583,15 +605,32 @@ function determineGender(genderField) {
 
 /**
  * Formate la date de naissance à partir du champ PID-7
- * @param {Object} birthDateField - Champ de date de naissance
+ * @param {Object|string} birthDateField - Champ de date de naissance
  * @returns {string} Date de naissance au format YYYY-MM-DD
  */
 function formatBirthDate(birthDateField) {
-  if (!birthDateField || !birthDateField.value) {
+  if (!birthDateField) {
     return null;
   }
   
-  const dateValue = birthDateField.value;
+  // Extraire la valeur du champ selon son type
+  let dateValue = '';
+  
+  if (typeof birthDateField === 'string') {
+    // Si c'est une chaîne, l'utiliser directement
+    dateValue = birthDateField;
+  } else if (typeof birthDateField === 'object') {
+    // Si c'est un objet, essayer différentes façons d'extraire la valeur
+    if (birthDateField.value) {
+      dateValue = birthDateField.value;
+    } else if (birthDateField.toString && typeof birthDateField.toString === 'function') {
+      dateValue = birthDateField.toString();
+    }
+  }
+  
+  if (!dateValue) {
+    return null;
+  }
   
   // Format attendu: YYYYMMDD ou YYYYMMDDHHMMSS
   if (/^\d{8}/.test(dateValue)) {
@@ -607,15 +646,36 @@ function formatBirthDate(birthDateField) {
 
 /**
  * Détermine l'état civil à partir du champ PID-16
- * @param {Object} maritalStatusField - Champ d'état civil
+ * @param {Object|string} maritalStatusField - Champ d'état civil
  * @returns {Object} État civil FHIR
  */
 function determineMaritalStatus(maritalStatusField) {
-  if (!maritalStatusField || !maritalStatusField.value) {
+  if (!maritalStatusField) {
     return null;
   }
   
-  const maritalStatus = maritalStatusField.value;
+  // Extraire la valeur du champ selon son type
+  let maritalStatus = '';
+  
+  if (typeof maritalStatusField === 'string') {
+    // Si c'est une chaîne, l'utiliser directement
+    maritalStatus = maritalStatusField;
+  } else if (typeof maritalStatusField === 'object') {
+    // Si c'est un objet, essayer différentes façons d'extraire la valeur
+    if (maritalStatusField.value) {
+      maritalStatus = maritalStatusField.value;
+    } else if (maritalStatusField.toString && typeof maritalStatusField.toString === 'function') {
+      maritalStatus = maritalStatusField.toString();
+    }
+  }
+  
+  if (!maritalStatus) {
+    return null;
+  }
+  
+  // Normaliser pour le traitement
+  maritalStatus = maritalStatus.toString().trim().toUpperCase().charAt(0);
+  
   const maritalStatusMap = {
     'A': { code: 'A', display: 'Annulé' },
     'D': { code: 'D', display: 'Divorcé' },
