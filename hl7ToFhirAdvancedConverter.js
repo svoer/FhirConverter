@@ -948,7 +948,7 @@ function addFrenchExtensions(patientResource, pd1Segment) {
 
 /**
  * Crée une ressource Encounter FHIR à partir du segment PV1
- * @param {Object} pv1Segment - Segment PV1 parsé
+ * @param {Array} pv1Segment - Segment PV1 parsé
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object} Entrée de bundle pour un Encounter
  */
@@ -960,21 +960,21 @@ function createEncounterResource(pv1Segment, patientReference) {
   const encounterId = `encounter-${Date.now()}`;
   
   // Déterminer la classe d'encounter (PV1-2)
-  const patientClass = pv1Segment.fields[2] ? pv1Segment.fields[2].value : '';
+  const patientClass = pv1Segment[2] || '';
   const encounterClass = mapPatientClassToFHIR(patientClass);
   
   // Statut de l'encounter (PV1-36 = disposition)
-  const dischargeDisposition = pv1Segment.fields[36] ? pv1Segment.fields[36].value : '';
+  const dischargeDisposition = pv1Segment.length > 36 ? pv1Segment[36] || '' : '';
   const encounterStatus = determineEncounterStatus(dischargeDisposition);
   
   // Période de l'encounter
   let admitDate = null;
-  if (pv1Segment.fields[44] && pv1Segment.fields[44].value) {
-    admitDate = formatHL7DateTime(pv1Segment.fields[44].value);
+  if (pv1Segment.length > 44 && pv1Segment[44]) {
+    admitDate = formatHL7DateTime(pv1Segment[44]);
   }
   
   // Numéro de visite/séjour (PV1-19 = visit number)
-  const visitNumber = pv1Segment.fields[19] ? pv1Segment.fields[19].value : null;
+  const visitNumber = pv1Segment.length > 19 ? pv1Segment[19] || null : null;
   
   // Créer la ressource Encounter
   const encounterResource = {
@@ -1088,37 +1088,48 @@ function formatHL7DateTime(dateValue) {
 
 /**
  * Crée une ressource Organization FHIR à partir d'un champ MSH
- * @param {Object} mshSegment - Segment MSH parsé
+ * @param {Array} mshSegment - Segment MSH parsé
  * @param {number} fieldIndex - Index du champ (4 pour sending, 6 pour receiving)
  * @returns {Object|null} Entrée de bundle pour une Organization ou null si non disponible
  */
 function createOrganizationResource(mshSegment, fieldIndex) {
-  if (!mshSegment || !mshSegment.fields[fieldIndex]) {
+  if (!mshSegment || mshSegment.length <= fieldIndex) {
     return null;
   }
   
-  const field = mshSegment.fields[fieldIndex];
-  const components = field.components || [];
-  
-  // Identifier et nom (component 1)
-  const orgName = components[0] ? components[0].value : '';
-  if (!orgName) {
+  const field = mshSegment[fieldIndex];
+  if (!field) {
     return null;
   }
   
-  // Identifiant comme OID s'il existe (component 2)
-  let orgId = orgName.replace(/[^a-zA-Z0-9]/g, '');
+  // Si le champ est une chaîne, le traiter
+  let orgName = '';
+  let orgId = '';
   let oid = null;
   
-  if (components[1] && components[1].value) {
-    orgId = components[1].value;
-  }
-  
-  // Namespace (component 3)
-  if (components[2] && components[2].value && components[2].value.includes('&')) {
-    const namespaceComponents = components[2].value.split('&');
-    if (namespaceComponents.length > 1) {
-      oid = namespaceComponents[1];
+  if (typeof field === 'string') {
+    // Parser les composants s'il y en a
+    const fieldParts = field.split('^');
+    
+    // Identifier et nom (component 1)
+    orgName = fieldParts[0] || '';
+    if (!orgName) {
+      return null;
+    }
+    
+    // Identifiant comme OID s'il existe (component 2)
+    orgId = orgName.replace(/[^a-zA-Z0-9]/g, '');
+    
+    if (fieldParts.length > 1 && fieldParts[1]) {
+      orgId = fieldParts[1];
+    }
+    
+    // Namespace (component 3)
+    if (fieldParts.length > 2 && fieldParts[2] && fieldParts[2].includes('&')) {
+      const namespaceComponents = fieldParts[2].split('&');
+      if (namespaceComponents.length > 1) {
+        oid = namespaceComponents[1];
+      }
     }
   }
   
@@ -1159,46 +1170,51 @@ function createOrganizationResource(mshSegment, fieldIndex) {
 
 /**
  * Crée une ressource Practitioner FHIR à partir du segment ROL
- * @param {Object} rolSegment - Segment ROL parsé
+ * @param {Array} rolSegment - Segment ROL parsé
  * @returns {Object|null} Entrée de bundle pour un Practitioner ou null si non disponible
  */
 function createPractitionerResource(rolSegment) {
-  if (!rolSegment) {
+  if (!rolSegment || rolSegment.length <= 4) {
     return null;
   }
   
   // ROL-4 (Role Person)
-  const rolePerson = rolSegment.fields[4];
+  const rolePerson = rolSegment[4];
   if (!rolePerson) {
     return null;
   }
   
-  const components = rolePerson.components || [];
+  let idValue = '';
+  let familyName = '';
+  let givenName = '';
+  let oid = '1.2.250.1.71.4.2.1'; // OID par défaut
   
-  // Identifiant (component 1)
-  const idValue = components[0] ? components[0].value : '';
-  
-  // Nom (components 2-3)
-  const familyName = components[1] ? components[1].value : '';
-  const givenName = components[2] ? components[2].value : '';
+  // Si c'est une chaîne, parser les composants
+  if (typeof rolePerson === 'string') {
+    const rolePersonParts = rolePerson.split('^');
+    
+    // Identifiant (component 1)
+    idValue = rolePersonParts[0] || '';
+    
+    // Nom (components 2-3)
+    familyName = rolePersonParts.length > 1 ? rolePersonParts[1] || '' : '';
+    givenName = rolePersonParts.length > 2 ? rolePersonParts[2] || '' : '';
+    
+    // ROL-4.4 (Assigning Authority)
+    if (rolePersonParts.length > 3 && rolePersonParts[3] && rolePersonParts[3].includes('&')) {
+      const assigningAuthority = rolePersonParts[3];
+      const authorityComponents = assigningAuthority.split('&');
+      if (authorityComponents.length > 1 && authorityComponents[1]) {
+        oid = authorityComponents[1];
+      }
+    }
+  }
   
   if (!idValue && !familyName && !givenName) {
     return null;
   }
   
   const practitionerId = `practitioner-${idValue || uuid.v4()}`;
-  
-  // Récupérer l'OID pour l'identifiant professionnel
-  let oid = '1.2.250.1.71.4.2.1'; // OID par défaut
-  
-  // ROL-4.4 (Assigning Authority)
-  if (components[3] && components[3].value && components[3].value.includes('&')) {
-    const assigningAuthority = components[3].value;
-    const authorityComponents = assigningAuthority.split('&');
-    if (authorityComponents.length > 1 && authorityComponents[1]) {
-      oid = authorityComponents[1];
-    }
-  }
   
   // Créer la ressource Practitioner
   const practitionerResource = {
@@ -1255,15 +1271,15 @@ function createPractitionerResource(rolSegment) {
 /**
  * Ajoute les extensions françaises au praticien
  * @param {Object} practitionerResource - Ressource Practitioner FHIR
- * @param {Object} rolSegment - Segment ROL parsé
+ * @param {Array} rolSegment - Segment ROL parsé
  */
 function addFrenchPractitionerExtensions(practitionerResource, rolSegment) {
   // Ajouter les extensions spécifiques aux praticiens français
   practitionerResource.extension = practitionerResource.extension || [];
   
   // Extension pour la spécialité médicale
-  if (rolSegment.fields[3] && rolSegment.fields[3].value) {
-    const roleCode = rolSegment.fields[3].value;
+  if (rolSegment.length > 3 && rolSegment[3]) {
+    const roleCode = rolSegment[3];
     
     practitionerResource.extension.push({
       url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/practitionerRole-Specialty',
@@ -1299,7 +1315,7 @@ function getRoleTypeDisplay(roleType) {
 
 /**
  * Crée une ressource PractitionerRole FHIR à partir du segment ROL
- * @param {Object} rolSegment - Segment ROL parsé
+ * @param {Array} rolSegment - Segment ROL parsé
  * @param {string} practitionerReference - Référence à la ressource Practitioner
  * @param {string} encounterReference - Référence à la ressource Encounter
  * @returns {Object|null} Entrée de bundle pour un PractitionerRole ou null si non disponible
@@ -1312,7 +1328,7 @@ function createPractitionerRoleResource(rolSegment, practitionerReference, encou
   const practitionerRoleId = `practitionerrole-${uuid.v4()}`;
   
   // ROL-3 (Role Code)
-  const roleCode = rolSegment.fields[3] ? rolSegment.fields[3].value : null;
+  const roleCode = rolSegment.length > 3 ? rolSegment[3] : null;
   
   if (!roleCode) {
     return null;
@@ -1356,24 +1372,30 @@ function createPractitionerRoleResource(rolSegment, practitionerReference, encou
 
 /**
  * Crée une ressource RelatedPerson FHIR à partir du segment NK1
- * @param {Object} nk1Segment - Segment NK1 parsé
+ * @param {Array} nk1Segment - Segment NK1 parsé
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object|null} Entrée de bundle pour un RelatedPerson ou null si non disponible
  */
 function createRelatedPersonResource(nk1Segment, patientReference) {
-  if (!nk1Segment || !patientReference) {
+  if (!nk1Segment || !patientReference || nk1Segment.length <= 2) {
     return null;
   }
   
   // NK1-2 (Nom)
-  const nameField = nk1Segment.fields[2];
+  const nameField = nk1Segment[2];
   if (!nameField) {
     return null;
   }
   
-  const components = nameField.components || [];
-  const familyName = components[0] ? components[0].value : '';
-  const givenName = components[1] ? components[1].value : '';
+  let familyName = '';
+  let givenName = '';
+  
+  // Si le champ est une chaîne, analyser les composants
+  if (typeof nameField === 'string') {
+    const nameParts = nameField.split('^');
+    familyName = nameParts[0] || '';
+    givenName = nameParts.length > 1 ? nameParts[1] || '' : '';
+  }
   
   if (!familyName && !givenName) {
     return null;
@@ -1414,18 +1436,28 @@ function createRelatedPersonResource(nk1Segment, patientReference) {
   }
   
   // NK1-3 (Relation)
-  const relationshipField = nk1Segment.fields[3];
-  if (relationshipField) {
-    const relationComponents = relationshipField.components || [];
+  if (nk1Segment.length > 3 && nk1Segment[3]) {
+    const relationshipField = nk1Segment[3];
     let relationshipCode = '';
     
-    // Trouver le code de relation (souvent à l'index 3 ou 4)
-    for (let i = 0; i < relationComponents.length; i++) {
-      const component = relationComponents[i];
-      if (component && component.value && 
-          ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'].includes(component.value)) {
-        relationshipCode = component.value;
-        break;
+    // Si c'est une chaîne, traiter directement
+    if (typeof relationshipField === 'string') {
+      // Essayer de trouver un code standard
+      const relationCodes = ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'];
+      
+      // Chercher dans les composants (séparés par ^)
+      const relationParts = relationshipField.split('^');
+      
+      for (const part of relationParts) {
+        if (relationCodes.includes(part)) {
+          relationshipCode = part;
+          break;
+        }
+      }
+      
+      // Si aucun code standard n'est trouvé, utiliser le premier composant
+      if (!relationshipCode && relationParts.length > 0) {
+        relationshipCode = relationParts[0];
       }
     }
     
@@ -1571,7 +1603,7 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
 
 /**
  * Traite les données du segment ZBE (spécifique français)
- * @param {Object} zbeSegment - Segment ZBE parsé
+ * @param {Array} zbeSegment - Segment ZBE parsé
  * @returns {Object} Données extraites du segment ZBE
  */
 function processZBESegment(zbeSegment) {
@@ -1582,26 +1614,30 @@ function processZBESegment(zbeSegment) {
   const zbeData = {};
   
   // ZBE-1 (Mouvement : EH_xxxx)
-  if (zbeSegment.fields[1]) {
-    zbeData.movementId = zbeSegment.fields[1].value;
+  if (zbeSegment.length > 1 && zbeSegment[1]) {
+    zbeData.movementId = zbeSegment[1];
   }
   
   // ZBE-2 (Date d'effet)
-  if (zbeSegment.fields[2]) {
-    zbeData.effectiveDate = formatHL7DateTime(zbeSegment.fields[2].value);
+  if (zbeSegment.length > 2 && zbeSegment[2]) {
+    zbeData.effectiveDate = formatHL7DateTime(zbeSegment[2]);
   }
   
   // ZBE-4 (Type de mouvement)
-  if (zbeSegment.fields[4]) {
-    zbeData.movementType = zbeSegment.fields[4].value;
+  if (zbeSegment.length > 4 && zbeSegment[4]) {
+    zbeData.movementType = zbeSegment[4];
   }
   
   // ZBE-7 (Unité fonctionnelle)
-  if (zbeSegment.fields[7]) {
-    const ufComponents = zbeSegment.fields[7].components || [];
-    if (ufComponents.length > 8) {
-      zbeData.functionalUnit = ufComponents[8].value;
-      zbeData.functionalUnitDisplay = ufComponents[9] ? ufComponents[9].value : null;
+  if (zbeSegment.length > 7 && zbeSegment[7]) {
+    const unitField = zbeSegment[7];
+    
+    if (typeof unitField === 'string' && unitField.includes('^')) {
+      const ufComponents = unitField.split('^');
+      if (ufComponents.length > 8) {
+        zbeData.functionalUnit = ufComponents[8];
+        zbeData.functionalUnitDisplay = ufComponents.length > 9 ? ufComponents[9] : null;
+      }
     }
   }
   
@@ -1628,7 +1664,7 @@ function getMovementTypeDisplay(movementType) {
 
 /**
  * Traite les données du segment ZFP (spécifique français - infos patient)
- * @param {Object} zfpSegment - Segment ZFP parsé
+ * @param {Array} zfpSegment - Segment ZFP parsé
  * @returns {Object} Données extraites du segment ZFP
  */
 function processZFPSegment(zfpSegment) {
@@ -1639,13 +1675,13 @@ function processZFPSegment(zfpSegment) {
   const zfpData = {};
   
   // ZFP-1 (Informations administratives patient)
-  if (zfpSegment.fields[1]) {
-    zfpData.administrativeInfo = zfpSegment.fields[1].value;
+  if (zfpSegment.length > 1 && zfpSegment[1]) {
+    zfpData.administrativeInfo = zfpSegment[1];
   }
   
   // ZFP-2 (Informations complémentaires patient)
-  if (zfpSegment.fields[2]) {
-    zfpData.additionalInfo = zfpSegment.fields[2].value;
+  if (zfpSegment.length > 2 && zfpSegment[2]) {
+    zfpData.additionalInfo = zfpSegment[2];
   }
   
   return zfpData;
