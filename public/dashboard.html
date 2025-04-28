@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord - FHIRHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/logo.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
+      </div>
+      
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/applications.html"><i class="fas fa-cogs"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="container">
+      <h1>Tableau de bord</h1>
+      
+      <div class="dashboard-cards">
+        <div class="stat-card">
+          <div class="stat-value" id="conversionsCount">0</div>
+          <div class="stat-label">Conversions totales</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-value" id="applicationsCount">0</div>
+          <div class="stat-label">Applications</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-value" id="apiKeysCount">0</div>
+          <div class="stat-label">Clés API</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Métriques système</h2>
+        </div>
+        
+        <div class="system-metrics">
+          <div>
+            <canvas id="cpuChart"></canvas>
+          </div>
+          <div>
+            <canvas id="memoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="#">Documentation</a></li>
+        <li><a href="#">API</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      // Gestion de la déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+      
+      // Récupérer les statistiques
+      fetchStats();
+      
+      // Récupérer le nombre d'applications
+      fetchApplicationsCount();
+      
+      // Récupérer le nombre de clés API
+      fetchApiKeysCount();
+      
+      // Initialiser les graphiques de métriques système
+      initCharts();
+    });
+    
+    function fetchStats() {
+      fetch('/api/stats', {
+        method: 'GET'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('conversionsCount').textContent = data.data.conversions;
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la récupération des statistiques:', error);
+      });
+    }
+    
+    function fetchApplicationsCount() {
+      fetch('/api/applications', {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': 'dev-key'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('applicationsCount').textContent = data.data.length;
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la récupération des applications:', error);
+      });
+    }
+    
+    function fetchApiKeysCount() {
+      fetch('/api/api-keys', {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': 'dev-key'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('apiKeysCount').textContent = data.data.length;
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la récupération des clés API:', error);
+      });
+    }
+    
+    function initCharts() {
+      // Données fictives pour la démo
+      const cpuData = {
+        labels: ['Il y a 1 min', 'Il y a 2 min', 'Il y a 3 min', 'Il y a 4 min', 'Il y a 5 min'],
+        datasets: [{
+          label: 'Utilisation CPU (%)',
+          data: [15, 20, 18, 25, 22],
+          backgroundColor: 'rgba(231, 76, 60, 0.2)',
+          borderColor: '#e74c3c',
+          borderWidth: 2
+        }]
+      };
+      
+      const memoryData = {
+        labels: ['Il y a 1 min', 'Il y a 2 min', 'Il y a 3 min', 'Il y a 4 min', 'Il y a 5 min'],
+        datasets: [{
+          label: 'Utilisation mémoire (MB)',
+          data: [120, 125, 130, 128, 135],
+          backgroundColor: 'rgba(52, 152, 219, 0.2)',
+          borderColor: '#3498db',
+          borderWidth: 2
+        }]
+      };
+      
+      // Configuration commune
+      const options = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      };
+      
+      // Créer les graphiques
+      new Chart(document.getElementById('cpuChart'), {
+        type: 'line',
+        data: cpuData,
+        options: options
+      });
+      
+      new Chart(document.getElementById('memoryChart'), {
+        type: 'line',
+        data: memoryData,
+        options: options
+      });
+    }
+  </script>
+</body>
+</html>
