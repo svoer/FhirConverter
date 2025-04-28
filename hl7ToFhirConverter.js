@@ -1384,13 +1384,15 @@ function convertHl7ToFhir(hl7Message) {
         }
       }
       
-      // Ajouter les téléphones
+      // Ajouter les téléphones et emails avec prise en charge améliorée
       patientResource.telecom = [];
       
       // Map pour suivre les téléphones uniques par "use" (pour éviter les doublons)
       const uniqueTelecoms = new Map();
       
-      // Ajouter les numéros personnels
+      // AMÉLIORATION: Traitement détaillé des numéros dans PID-13 et PID-14
+      // PID-13 contient souvent les numéros personnels et PID-14 les numéros professionnels
+      // Format: [type]^[telecom type]^[equipment type]^[email/area code]^[phone]^[extension]^[any text]
       if (hl7Data.PID.phones && hl7Data.PID.phones.length > 0) {
         hl7Data.PID.phones.forEach(phone => {
           // Vérifier si le numéro est valide
@@ -1398,13 +1400,43 @@ function convertHl7ToFhir(hl7Message) {
             return; // Ignorer les numéros vides
           }
           
+          // Déterminer le système (phone, email, fax, etc.) et l'usage (home, work, mobile)
+          let system = 'phone';
           let use = 'home';
+          
+          // Traiter les différents types de télécommunications (PID-13.2 et PID-13.3)
+          if (phone.telecomType) {
+            if (phone.telecomType.toUpperCase() === 'NET' && phone.internetAddress) {
+              // C'est une adresse email
+              system = 'email';
+              use = 'home';
+              
+              const telecomObj = {
+                system: system,
+                value: phone.internetAddress,
+                use: use
+              };
+              
+              const key = `${system}:${use}:${phone.internetAddress}`;
+              if (!uniqueTelecoms.has(key)) {
+                uniqueTelecoms.set(key, telecomObj);
+              }
+              return; // Continuer avec l'itération suivante
+            }
+            
+            if (phone.telecomType.toUpperCase() === 'FAX') {
+              system = 'fax';
+            }
+          }
+          
+          // Déterminer l'usage (maison, travail, mobile)
           if (phone.useCode) {
             switch (phone.useCode.toUpperCase()) {
               case 'WPN': use = 'work'; break;
               case 'PRN': use = 'home'; break;
               case 'NET': use = 'mobile'; break;
               case 'ORN': use = 'old'; break;
+              case 'ASN': use = 'temp'; break; // Temporary
               default: use = 'home';
             }
           }
@@ -1421,7 +1453,7 @@ function convertHl7ToFhir(hl7Message) {
             
             // Ajouter une extension pour le format d'affichage français
             const telecomObj = {
-              system: 'phone',
+              system: system,
               value: formattedNumber,
               use: use,
               extension: [{
@@ -1431,16 +1463,16 @@ function convertHl7ToFhir(hl7Message) {
             };
             
             // Vérifier si nous avons déjà un téléphone du même type avec le même numéro
-            const key = `phone:${use}:${formattedNumber}`;
+            const key = `${system}:${use}:${formattedNumber}`;
             if (!uniqueTelecoms.has(key)) {
               uniqueTelecoms.set(key, telecomObj);
             }
           } else {
             // Format non français - conserver tel quel
-            const key = `phone:${use}:${phone.number}`;
+            const key = `${system}:${use}:${phone.number}`;
             if (!uniqueTelecoms.has(key)) {
               uniqueTelecoms.set(key, {
-                system: 'phone',
+                system: system,
                 value: phone.number,
                 use: use
               });
@@ -1455,6 +1487,19 @@ function convertHl7ToFhir(hl7Message) {
           value: hl7Data.PID.phone,
           use: 'home'
         });
+      }
+      
+      // AMÉLIORATION: Prise en charge explicite des emails dans PID-13
+      // Traiter l'adresse email si disponible dans le format structuré
+      if (hl7Data.PID.emailAddress && hl7Data.PID.emailAddress.trim() !== '') {
+        const key = `email:home:${hl7Data.PID.emailAddress}`;
+        if (!uniqueTelecoms.has(key)) {
+          uniqueTelecoms.set(key, {
+            system: 'email',
+            value: hl7Data.PID.emailAddress,
+            use: 'home'
+          });
+        }
       }
       
       // Ajouter les numéros professionnels
@@ -1488,6 +1533,72 @@ function convertHl7ToFhir(hl7Message) {
       // Ajouter tous les téléphones uniques à la ressource patient
       for (const telecom of uniqueTelecoms.values()) {
         patientResource.telecom.push(telecom);
+      }
+      
+      // AMÉLIORATION: Traitement du lieu de naissance (PID-23)
+      if (hl7Data.PID.birthPlace && hl7Data.PID.birthPlace.trim() !== '') {
+        patientResource.extension = patientResource.extension || [];
+        patientResource.extension.push({
+          url: 'http://hl7.org/fhir/StructureDefinition/patient-birthPlace',
+          valueString: hl7Data.PID.birthPlace
+        });
+      }
+      
+      // AMÉLIORATION: Traitement du médecin traitant (PID-48 dans certaines implémentations françaises)
+      if (hl7Data.PID.primaryCareProvider || hl7Data.PID.primaryCarePractitioner) {
+        const gpCode = hl7Data.PID.primaryCareProvider || hl7Data.PID.primaryCarePractitioner;
+        const gpParts = gpCode.split('^');
+        
+        if (gpParts.length > 1) {
+          // Créer une ressource Practitioner pour le médecin traitant
+          const gpId = uuidv4();
+          const gpFullUrl = `${baseUrl}/Practitioner/${gpId}`;
+          
+          // Déterminer le système d'identification
+          let identifierSystem = 'http://terminology.hl7.org/CodeSystem/v2-0203';
+          
+          // Vérifier si c'est un identifiant RPPS ou ADELI (spécifique à la France)
+          if (gpCode.includes('RPPS') || gpCode.includes('1.2.250.1.71.4.2.1')) {
+            identifierSystem = 'urn:oid:1.2.250.1.71.4.2.1'; // RPPS
+          } else if (gpCode.includes('ADELI') || gpCode.includes('1.2.250.1.71.4.2.2')) {
+            identifierSystem = 'urn:oid:1.2.250.1.71.4.2.2'; // ADELI
+          }
+          
+          const practitionerResource = {
+            resourceType: 'Practitioner',
+            id: gpId,
+            identifier: [
+              {
+                system: identifierSystem,
+                value: gpParts[0]
+              }
+            ],
+            name: [
+              {
+                family: gpParts[1] || '',
+                given: gpParts[2] ? [gpParts[2]] : [],
+                prefix: gpParts[3] ? [gpParts[3]] : []
+              }
+            ]
+          };
+          
+          // Ajouter la ressource Practitioner au Bundle
+          fhirBundle.entry.push({
+            fullUrl: gpFullUrl,
+            resource: practitionerResource,
+            request: {
+              method: 'POST',
+              url: 'Practitioner'
+            }
+          });
+          
+          // Référencer le médecin traitant dans la ressource Patient
+          patientResource.generalPractitioner = [
+            {
+              reference: gpFullUrl
+            }
+          ];
+        }
       }
       
       // Ajouter la ressource Patient au Bundle avec fullUrl obligatoire en R4
