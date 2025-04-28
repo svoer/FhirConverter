@@ -349,6 +349,63 @@ function getGlobalStats() {
   }
 }
 
+/**
+ * Enregistrer une conversion complète (création et mise à jour en une seule opération)
+ * @param {Object} conversionData - Données de la conversion
+ * @returns {Object} Log de conversion créé
+ */
+function logConversion(conversionData) {
+  try {
+    const conversionId = conversionData.conversionId || uuidv4();
+    
+    // Créer un nouveau log ou récupérer l'existant
+    let conversionLog;
+    
+    // Vérifier si un log existe déjà avec cet ID
+    const existingLog = getConversionLogByUuid(conversionId);
+    
+    if (existingLog) {
+      // Mise à jour du log existant
+      conversionLog = updateConversionLog(conversionId, {
+        status: conversionData.status,
+        errorMessage: conversionData.errorMessage,
+        resourceCount: conversionData.resourceCount
+      });
+    } else {
+      // Création d'un nouveau log
+      const result = db.prepare(`
+        INSERT INTO conversions (
+          conversion_id, app_id, api_key_id, source_type, 
+          source_name, source_size, status, resource_count, error_message
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        conversionId,
+        conversionData.appId || null,
+        conversionData.apiKeyId || null,
+        conversionData.sourceType || 'API',
+        conversionData.sourceName || null,
+        conversionData.sourceSize || null,
+        conversionData.status || 'pending',
+        conversionData.resourceCount || 0,
+        conversionData.errorMessage || null
+      );
+      
+      conversionLog = getConversionLogById(result.lastInsertRowid);
+      
+      // Mettre à jour les statistiques si le statut est final
+      if (conversionData.status === 'success' || conversionData.status === 'error') {
+        updateAppStats(conversionId);
+      }
+    }
+    
+    return conversionLog;
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement de la conversion:', error);
+    throw new Error(`Impossible d'enregistrer la conversion: ${error.message}`);
+  }
+}
+
 module.exports = {
   createConversionLog,
   updateConversionLog,
@@ -357,5 +414,6 @@ module.exports = {
   getConversionLogs,
   getAppStats,
   cleanupOldConversionLogs,
-  getGlobalStats
+  getGlobalStats,
+  logConversion
 };

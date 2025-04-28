@@ -172,4 +172,75 @@ router.delete('/:id', (req, res) => {
   }
 });
 
+/**
+ * POST /api/applications/:id/keys
+ * Générer une nouvelle clé API pour une application
+ */
+router.post('/:id/keys', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, error: 'ID invalide' });
+    }
+    
+    // Vérifier si l'application existe
+    if (!applicationService.applicationExists(id)) {
+      return res.status(404).json({ success: false, error: 'Application non trouvée' });
+    }
+    
+    const { name, description, environment, expiresAt } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Le nom de la clé est requis' });
+    }
+    
+    // Créer la clé API
+    const apiKey = apiKeyService.createApiKey(id, {
+      name,
+      description,
+      environment,
+      expires_at: expiresAt
+    });
+    
+    res.status(201).json({ success: true, data: apiKey });
+  } catch (error) {
+    console.error('Erreur lors de la création de la clé API:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/applications/:id/keys/:keyId
+ * Révoquer une clé API d'une application
+ */
+router.delete('/:id/keys/:keyId', (req, res) => {
+  try {
+    const appId = parseInt(req.params.id);
+    const keyId = parseInt(req.params.keyId);
+    
+    if (isNaN(appId) || isNaN(keyId)) {
+      return res.status(400).json({ success: false, error: 'ID invalide' });
+    }
+    
+    // Vérifier si l'application existe
+    if (!applicationService.applicationExists(appId)) {
+      return res.status(404).json({ success: false, error: 'Application non trouvée' });
+    }
+    
+    // Vérifier si la clé appartient à l'application
+    const apiKey = apiKeyService.getApiKeyById(keyId);
+    if (!apiKey || apiKey.app_id !== appId) {
+      return res.status(404).json({ success: false, error: 'Clé API non trouvée pour cette application' });
+    }
+    
+    // Révoquer la clé
+    const result = apiKeyService.revokeApiKey(keyId);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur lors de la révocation de la clé API:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
