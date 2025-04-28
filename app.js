@@ -603,8 +603,21 @@ app.get('/api/stats', (req, res) => {
   }
 });
 
-// Démarrage de l'application
+// Initialiser la base de données
 initDb();
+
+// Partager la connexion à la base de données avec les routes
+app.locals.db = db;
+
+// Importation des routes
+const applicationsRoutes = require('./routes/applications');
+const apiKeysRoutes = require('./routes/api-keys');
+
+// Enregistrement des routes
+app.use('/api/applications', applicationsRoutes);
+app.use('/api/api-keys', apiKeysRoutes);
+
+// Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`[SERVER] FHIRHub démarré sur le port ${PORT}`);
 });
