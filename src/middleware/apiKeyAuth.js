@@ -1,171 +1,221 @@
 /**
  * Middleware d'authentification par clé API pour FHIRHub
- * Vérifie et valide les clés API fournies dans les requêtes
+ * Vérifie la validité de la clé API fournie dans les requêtes
  */
 
-const dbService = require('../services/dbService');
+const apiKeyService = require('../services/apiKeyService');
 
 /**
- * Valider une clé API
- * @param {string} apiKey - Clé API à valider
- * @returns {Promise<Object|null>} Informations sur la clé API ou null si invalide
+ * Middleware pour vérifier l'authentification par clé API
+ * @returns {Function} Middleware Express
  */
-async function validateApiKey(apiKey) {
-  if (!apiKey) {
-    return null;
-  }
-  
-  try {
-    // Rechercher la clé API dans la base de données
-    const apiKeyInfo = await dbService.get(
-      `SELECT 
-         k.id, k.key, k.name, k.environment, k.active,
-         a.id as application_id, a.name as application_name
-       FROM api_keys k
-       JOIN applications a ON k.application_id = a.id
-       WHERE k.key = ? AND k.active = 1`,
-      [apiKey]
-    );
-    
-    if (!apiKeyInfo) {
-      return null;
+function apiKeyAuth() {
+  return async (req, res, next) => {
+    try {
+      // Récupérer la clé API depuis les paramètres de requête, les en-têtes ou le corps de la requête
+      const apiKey = req.query.apiKey || req.query.api_key || 
+                    req.headers['x-api-key'] || req.body.apiKey;
+      
+      // Si aucune clé API n'est fournie, renvoyer une erreur
+      if (!apiKey) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentification requise',
+          message: 'Une clé API valide est requise pour accéder à cette ressource'
+        });
+      }
+      
+      // Vérifier la validité de la clé API
+      const keyInfo = await apiKeyService.verifyApiKey(apiKey);
+      
+      // Si la clé API n'est pas valide, renvoyer une erreur
+      if (!keyInfo) {
+        return res.status(401).json({
+          success: false,
+          error: 'Clé API invalide',
+          message: 'La clé API fournie est invalide, expirée ou a dépassé les limites d\'utilisation'
+        });
+      }
+      
+      // Stocker les informations de la clé API dans la requête pour une utilisation ultérieure
+      req.apiKey = keyInfo;
+      
+      // Continuer le traitement de la requête
+      next();
+    } catch (error) {
+      console.error('[API-KEY-AUTH] Erreur lors de la vérification de la clé API:', error);
+      
+      // En mode développement, autoriser les requêtes avec la clé de développement malgré les erreurs
+      if ((req.query.apiKey === 'dev-key' || req.headers['x-api-key'] === 'dev-key') && 
+          process.env.NODE_ENV !== 'production') {
+        console.log('[API-KEY-AUTH] Mode développement: authentification contournée malgré l\'erreur');
+        
+        req.apiKey = {
+          id: 0,
+          key: 'dev-key',
+          name: 'Clé de développement',
+          environment: 'development',
+          application_id: 1,
+          active: true,
+          isDevKey: true,
+          error: error.message
+        };
+        
+        return next();
+      }
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur d\'authentification',
+        message: 'Une erreur est survenue lors de la vérification de la clé API'
+      });
     }
-    
-    // Mettre à jour la date de dernière utilisation
-    await dbService.run(
-      'UPDATE api_keys SET last_used = datetime("now") WHERE id = ?',
-      [apiKeyInfo.id]
-    );
-    
-    return apiKeyInfo;
-  } catch (error) {
-    console.error('[API-KEY] Erreur lors de la validation de la clé API:', error);
-    return null;
-  }
+  };
 }
 
 /**
- * Middleware d'authentification par clé API
- * Recherche la clé API dans les en-têtes HTTP (x-api-key) ou les paramètres de requête (apiKey)
- * @param {Object} req - Requête Express
- * @param {Object} res - Réponse Express
- * @param {Function} next - Fonction suivante
+ * Middleware pour vérifier l'environnement de la clé API
+ * @param {string|string[]} allowedEnvironments - Environnement(s) autorisé(s)
+ * @returns {Function} Middleware Express
  */
-async function apiKeyAuth(req, res, next) {
-  try {
-    // En mode développement, autoriser les requêtes sans authentification
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[API-KEY] Mode développement: authentification contournée`);
-      
-      // Ajouter les informations d'API par défaut à la requête
-      req.apiKey = {
-        id: 1,
-        key: 'dev-key',
-        name: 'Clé de développement',
-        environment: 'development',
-        active: true,
-        application_id: 1,
-        application_name: 'Application de développement'
-      };
-      
-      return next();
-    }
-    
-    // Extraire la clé API des en-têtes HTTP ou des paramètres de requête
-    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
-    
-    // Valider la clé API
-    const apiKeyInfo = await validateApiKey(apiKey);
-    
-    if (!apiKeyInfo) {
+function requireEnvironment(allowedEnvironments) {
+  // Convertir un seul environnement en tableau
+  const environments = Array.isArray(allowedEnvironments) ? allowedEnvironments : [allowedEnvironments];
+  
+  return (req, res, next) => {
+    // Vérifier si la requête a une clé API valide
+    if (!req.apiKey) {
       return res.status(401).json({
         success: false,
-        error: 'Clé API invalide',
-        message: 'La clé API fournie est invalide ou inactive'
+        error: 'Authentification requise',
+        message: 'Une clé API valide est requise pour accéder à cette ressource'
       });
     }
     
-    // Ajouter les informations d'API à la requête
-    req.apiKey = apiKeyInfo;
-    
-    next();
-  } catch (error) {
-    console.error('[API-KEY] Erreur dans le middleware d\'authentification:', error);
-    
-    // En mode développement, autoriser même en cas d'erreur
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[API-KEY] Mode développement: erreur ignorée, accès autorisé');
-      
-      req.apiKey = {
-        id: 1,
-        key: 'dev-key',
-        name: 'Clé de développement (secours)',
-        environment: 'development',
-        active: true,
-        application_id: 1,
-        application_name: 'Application de développement'
-      };
-      
-      return next();
+    // Vérifier si l'environnement de la clé API est autorisé
+    if (!environments.includes(req.apiKey.environment)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Environnement non autorisé',
+        message: `Cette ressource nécessite une clé API d'environnement ${environments.join(' ou ')}`
+      });
     }
     
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur',
-      message: 'Une erreur est survenue lors de la validation de la clé API'
-    });
-  }
+    // Environnement autorisé, continuer le traitement de la requête
+    next();
+  };
 }
 
 /**
- * S'assurer que la clé de développement existe
- * @param {string} devKey - Clé de développement
+ * Middleware pour vérifier les limites de taux d'utilisation de la clé API
+ * @param {Object} options - Options de limitation de taux
+ * @returns {Function} Middleware Express
  */
-async function ensureDevKey(devKey) {
-  try {
-    // Vérifier si la clé de développement existe déjà
-    const keyExists = await dbService.get('SELECT id FROM api_keys WHERE key = ?', [devKey]);
+function rateLimit(options = {}) {
+  const defaultOptions = {
+    windowMs: 15 * 60 * 1000,  // 15 minutes par défaut
+    max: 100,                  // 100 requêtes par fenêtre par défaut
+    message: 'Trop de requêtes, veuillez réessayer plus tard'
+  };
+  
+  // Fusionner les options par défaut avec les options fournies
+  const opts = { ...defaultOptions, ...options };
+  
+  // Stocker les compteurs d'utilisation dans la mémoire
+  const requestCounts = new Map();
+  
+  // Nettoyer les compteurs expirés toutes les minutes
+  setInterval(() => {
+    const now = Date.now();
     
-    if (keyExists) {
-      return;
+    for (const [key, value] of requestCounts.entries()) {
+      if (now - value.startTime > opts.windowMs) {
+        requestCounts.delete(key);
+      }
+    }
+  }, 60 * 1000);
+  
+  return (req, res, next) => {
+    // Vérifier si la requête a une clé API valide
+    if (!req.apiKey) {
+      return next();
     }
     
-    console.log('[API-KEY] Création de la clé de développement...');
+    // Utiliser l'ID de la clé API comme clé pour le compteur
+    const keyId = req.apiKey.id || req.apiKey.key;
     
-    // Vérifier si l'application de développement existe
-    let appId = await dbService.get('SELECT id FROM applications WHERE name = ?', ['Application de développement']);
+    // Récupérer ou initialiser le compteur pour cette clé API
+    if (!requestCounts.has(keyId)) {
+      requestCounts.set(keyId, {
+        count: 0,
+        startTime: Date.now()
+      });
+    }
     
-    if (!appId) {
-      // Obtenir l'ID de l'utilisateur admin
-      const adminUser = await dbService.get('SELECT id FROM users WHERE username = ?', ['admin']);
-      
-      if (!adminUser) {
-        console.error('[API-KEY] Utilisateur admin non trouvé. Impossible de créer l\'application de développement.');
+    const counter = requestCounts.get(keyId);
+    
+    // Réinitialiser le compteur si la fenêtre est passée
+    if (Date.now() - counter.startTime > opts.windowMs) {
+      counter.count = 0;
+      counter.startTime = Date.now();
+    }
+    
+    // Incrémenter le compteur
+    counter.count++;
+    
+    // Vérifier si la limite est dépassée
+    if (counter.count > opts.max) {
+      return res.status(429).json({
+        success: false,
+        error: 'Limite de taux dépassée',
+        message: opts.message
+      });
+    }
+    
+    // Ajouter les en-têtes de limitation de taux
+    res.setHeader('X-RateLimit-Limit', opts.max);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, opts.max - counter.count));
+    res.setHeader('X-RateLimit-Reset', counter.startTime + opts.windowMs);
+    
+    // Continue le traitement de la requête
+    next();
+  };
+}
+
+/**
+ * Middleware pour journaliser les requêtes API
+ * @returns {Function} Middleware Express
+ */
+function apiActivityLogger() {
+  return (req, res, next) => {
+    // Stocker l'heure de début de la requête
+    const startTime = Date.now();
+    
+    // Enregistrer la requête une fois terminée
+    res.on('finish', () => {
+      // Ne rien faire si la requête n'a pas de clé API
+      if (!req.apiKey) {
         return;
       }
       
-      // Créer l'application de développement
-      const appResult = await dbService.run(
-        'INSERT INTO applications (name, description, owner_id) VALUES (?, ?, ?)',
-        ['Application de développement', 'Application automatique pour le développement', adminUser.id]
-      );
+      // Calculer le temps de réponse
+      const responseTime = Date.now() - startTime;
       
-      appId = { id: appResult.lastID };
-    }
+      // Journaliser l'activité dans la console
+      console.log(`[API-ACTIVITY] ${req.method} ${req.path} - ${res.statusCode} - ${responseTime}ms`);
+      
+      // TODO: Ajouter l'enregistrement dans la base de données
+      // Cette fonctionnalité sera implémentée ultérieurement avec le service de journalisation API
+    });
     
-    // Créer la clé API de développement
-    await dbService.run(
-      'INSERT INTO api_keys (application_id, key, name, environment) VALUES (?, ?, ?, ?)',
-      [appId.id, devKey, 'Clé de développement', 'development']
-    );
-    
-    console.log('[API-KEY] Clé de développement créée avec succès');
-  } catch (error) {
-    console.error('[API-KEY] Erreur lors de la création de la clé de développement:', error);
-  }
+    // Continuer le traitement de la requête
+    next();
+  };
 }
 
 module.exports = {
   apiKeyAuth,
-  validateApiKey
+  requireEnvironment,
+  rateLimit,
+  apiActivityLogger
 };

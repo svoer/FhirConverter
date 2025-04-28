@@ -61,69 +61,13 @@ async function initialize() {
  * @returns {Promise<void>}
  */
 async function createTables() {
+  // Importer les schémas
+  const { ALL_SCHEMAS } = require('../db/schema');
+  
   // Création des tables principales
-  const tables = [
-    // Table des utilisateurs
-    `CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
-      email TEXT,
-      role TEXT NOT NULL DEFAULT 'user',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      last_login TEXT
-    )`,
-    
-    // Table des applications
-    `CREATE TABLE IF NOT EXISTS applications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      owner_id INTEGER NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
-    )`,
-    
-    // Table des clés API
-    `CREATE TABLE IF NOT EXISTS api_keys (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      application_id INTEGER NOT NULL,
-      key TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      environment TEXT NOT NULL DEFAULT 'development',
-      active BOOLEAN NOT NULL DEFAULT 1,
-      last_used TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
-    )`,
-    
-    // Table des journaux de conversion
-    `CREATE TABLE IF NOT EXISTS conversion_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      api_key_id INTEGER NOT NULL,
-      application_id INTEGER NOT NULL,
-      source_type TEXT NOT NULL,
-      hl7_content TEXT NOT NULL,
-      fhir_content TEXT,
-      status TEXT NOT NULL,
-      processing_time INTEGER,
-      error_message TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE,
-      FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
-    )`,
-    
-    // Table des métriques de système
-    `CREATE TABLE IF NOT EXISTS system_metrics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      cpu_usage REAL,
-      memory_usage REAL,
-      disk_usage REAL,
-      active_users INTEGER,
-      recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )`
-  ];
+  const tables = ALL_SCHEMAS.map(schema => 
+    `CREATE TABLE IF NOT EXISTS ${schema.tableName} (${schema.columns})`
+  );
   
   try {
     // Exécuter chaque requête de création de table

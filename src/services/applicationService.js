@@ -1,289 +1,386 @@
 /**
- * Service pour la gestion des applications
- * Fournit des fonctions pour créer, récupérer, mettre à jour et supprimer des applications
- * ainsi que pour gérer leurs paramètres
+ * Service de gestion des applications pour FHIRHub
+ * Permet la création, modification et suppression des applications
  */
 
-const { db } = require('../db/schema');
-
-/**
- * Récupérer toutes les applications
- * @returns {Array} Liste des applications
- */
-function getAllApplications() {
-  return db.prepare(`
-    SELECT a.*, 
-           COUNT(DISTINCT k.id) as api_key_count, 
-           COUNT(DISTINCT c.id) as conversion_count
-    FROM applications a
-    LEFT JOIN api_keys k ON a.id = k.app_id
-    LEFT JOIN conversions c ON a.id = c.app_id
-    GROUP BY a.id
-    ORDER BY a.created_at DESC
-  `).all();
-}
-
-/**
- * Récupérer une application par son ID
- * @param {number} id - ID de l'application
- * @returns {Object|null} Application ou null si non trouvée
- */
-function getApplicationById(id) {
-  const app = db.prepare(`
-    SELECT * FROM applications WHERE id = ?
-  `).get(id);
-  
-  if (!app) {
-    return null;
-  }
-  
-  // Récupérer les paramètres de l'application
-  const params = db.prepare(`
-    SELECT param_key, param_value FROM app_params WHERE app_id = ?
-  `).all(id);
-  
-  // Convertir les paramètres en objet
-  const parameters = {};
-  params.forEach(param => {
-    parameters[param.param_key] = param.param_value;
-  });
-  
-  return {
-    ...app,
-    parameters
-  };
-}
-
-/**
- * Récupérer une application par son nom
- * @param {string} name - Nom de l'application
- * @returns {Object|null} Application ou null si non trouvée
- */
-function getApplicationByName(name) {
-  return db.prepare(`
-    SELECT * FROM applications WHERE name = ?
-  `).get(name);
-}
+const dbService = require('./dbService');
+const apiKeyService = require('./apiKeyService');
 
 /**
  * Créer une nouvelle application
  * @param {Object} appData - Données de l'application
- * @param {string} appData.name - Nom de l'application
- * @param {string} [appData.description] - Description de l'application
- * @param {number} [appData.retention_days=30] - Durée de rétention des logs en jours
- * @param {Object} [appData.parameters={}] - Paramètres personnalisés
- * @param {number} [userId] - ID de l'utilisateur qui crée l'application
- * @returns {Object} Application créée
- * @throws {Error} Si le nom est déjà utilisé
+ * @returns {Promise<Object>} Application créée
  */
-function createApplication(appData, userId = 1) {
-  // Valider les données
-  if (!appData.name) {
-    throw new Error('Le nom de l\'application est obligatoire');
+async function createApplication(appData) {
+  try {
+    // S'assurer que les champs obligatoires sont présents
+    if (!appData.name || !appData.owner_id) {
+      throw new Error('Le nom de l\'application et l\'identifiant du propriétaire sont obligatoires');
+    }
+    
+    // Vérifier si une application avec le même nom existe déjà
+    const existingApp = await dbService.get(
+      'SELECT id FROM applications WHERE name = ?',
+      [appData.name]
+    );
+    
+    if (existingApp) {
+      throw new Error(`Une application avec le nom "${appData.name}" existe déjà`);
+    }
+    
+    // Insérer l'application dans la base de données
+    const result = await dbService.run(
+      `INSERT INTO applications (
+        name, description, owner_id, status
+      ) VALUES (?, ?, ?, ?)`,
+      [
+        appData.name,
+        appData.description || '',
+        appData.owner_id,
+        appData.status || 'active'
+      ]
+    );
+    
+    // Récupérer l'application créée
+    const createdApp = await getApplication(result.lastID);
+    
+    // Créer une clé API par défaut pour cette application
+    if (createdApp) {
+      const defaultKey = await apiKeyService.createApiKey({
+        application_id: createdApp.id,
+        name: 'Clé par défaut',
+        environment: 'development'
+      });
+      
+      createdApp.default_key = defaultKey;
+    }
+    
+    return createdApp;
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la création de l\'application:', error);
+    throw error;
   }
-  
-  // Vérifier si le nom est déjà utilisé
-  const existingApp = getApplicationByName(appData.name);
-  if (existingApp) {
-    throw new Error(`Une application avec le nom "${appData.name}" existe déjà`);
+}
+
+/**
+ * Obtenir une application par son ID
+ * @param {number} id - ID de l'application
+ * @returns {Promise<Object|null>} Application ou null si non trouvée
+ */
+async function getApplication(id) {
+  try {
+    const app = await dbService.get(
+      `SELECT a.*, u.username as owner_name
+      FROM applications a
+      LEFT JOIN users u ON a.owner_id = u.id
+      WHERE a.id = ?`,
+      [id]
+    );
+    
+    if (!app) {
+      return null;
+    }
+    
+    // Récupérer les clés API de l'application
+    const apiKeys = await apiKeyService.getApiKeysByApplication(id);
+    
+    return {
+      ...app,
+      api_keys: apiKeys
+    };
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la récupération de l\'application:', error);
+    return null;
   }
-  
-  // Créer l'application
-  const result = db.prepare(`
-    INSERT INTO applications (name, description, retention_days, created_by)
-    VALUES (?, ?, ?, ?)
-  `).run(
-    appData.name,
-    appData.description || null,
-    appData.retention_days || 30,
-    userId
-  );
-  
-  const appId = result.lastInsertRowid;
-  
-  // Ajouter les paramètres de l'application
-  const parameters = appData.parameters || {};
-  
-  const insertParam = db.prepare(`
-    INSERT INTO app_params (app_id, param_key, param_value)
-    VALUES (?, ?, ?)
-  `);
-  
-  for (const [key, value] of Object.entries(parameters)) {
-    insertParam.run(appId, key, value);
+}
+
+/**
+ * Obtenir toutes les applications
+ * @param {Object} options - Options de filtrage
+ * @returns {Promise<Array>} Liste des applications
+ */
+async function getAllApplications(options = {}) {
+  try {
+    let query = `
+      SELECT a.*, u.username as owner_name,
+        (SELECT COUNT(*) FROM api_keys WHERE application_id = a.id) as key_count,
+        (SELECT SUM(usage_count) FROM api_keys WHERE application_id = a.id) as total_usage
+      FROM applications a
+      LEFT JOIN users u ON a.owner_id = u.id
+    `;
+    
+    const whereConditions = [];
+    const queryParams = [];
+    
+    // Filtrer par propriétaire
+    if (options.owner_id) {
+      whereConditions.push('a.owner_id = ?');
+      queryParams.push(options.owner_id);
+    }
+    
+    // Filtrer par statut
+    if (options.status) {
+      whereConditions.push('a.status = ?');
+      queryParams.push(options.status);
+    }
+    
+    // Filtrer par recherche
+    if (options.search) {
+      whereConditions.push('(a.name LIKE ? OR a.description LIKE ?)');
+      queryParams.push(`%${options.search}%`, `%${options.search}%`);
+    }
+    
+    // Construire la clause WHERE si nécessaire
+    if (whereConditions.length > 0) {
+      query += ` WHERE ${whereConditions.join(' AND ')}`;
+    }
+    
+    // Ajouter l'ordre par défaut
+    query += ` ORDER BY ${options.orderBy || 'a.created_at'} ${options.order || 'DESC'}`;
+    
+    // Ajouter la pagination si spécifiée
+    if (options.limit) {
+      query += ' LIMIT ?';
+      queryParams.push(options.limit);
+      
+      if (options.offset) {
+        query += ' OFFSET ?';
+        queryParams.push(options.offset);
+      }
+    }
+    
+    return await dbService.query(query, queryParams);
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la récupération des applications:', error);
+    return [];
   }
-  
-  // Retourner l'application créée
-  return getApplicationById(appId);
 }
 
 /**
  * Mettre à jour une application
  * @param {number} id - ID de l'application
- * @param {Object} appData - Données à mettre à jour
- * @returns {Object} Application mise à jour
- * @throws {Error} Si l'application n'existe pas
+ * @param {Object} updateData - Données à mettre à jour
+ * @returns {Promise<boolean>} True si la mise à jour a réussi
  */
-function updateApplication(id, appData) {
-  // Vérifier si l'application existe
-  const app = getApplicationById(id);
-  if (!app) {
-    throw new Error(`L'application avec l'ID ${id} n'existe pas`);
-  }
-  
-  // Mettre à jour les champs de base de l'application
-  if (appData.name || appData.description || appData.retention_days || appData.active !== undefined) {
-    const fields = [];
-    const values = [];
+async function updateApplication(id, updateData) {
+  try {
+    // Vérifier si l'application existe
+    const existingApp = await dbService.get(
+      'SELECT id FROM applications WHERE id = ?',
+      [id]
+    );
     
-    if (appData.name) {
-      fields.push('name = ?');
-      values.push(appData.name);
+    if (!existingApp) {
+      return false;
     }
     
-    if (appData.description !== undefined) {
-      fields.push('description = ?');
-      values.push(appData.description);
-    }
-    
-    if (appData.retention_days) {
-      fields.push('retention_days = ?');
-      values.push(appData.retention_days);
-    }
-    
-    if (appData.active !== undefined) {
-      fields.push('active = ?');
-      values.push(appData.active ? 1 : 0);
-    }
-    
-    if (fields.length > 0) {
-      fields.push('updated_at = CURRENT_TIMESTAMP');
+    // Vérifier si le nouveau nom est déjà utilisé par une autre application
+    if (updateData.name) {
+      const appWithSameName = await dbService.get(
+        'SELECT id FROM applications WHERE name = ? AND id != ?',
+        [updateData.name, id]
+      );
       
-      db.prepare(`
-        UPDATE applications
-        SET ${fields.join(', ')}
-        WHERE id = ?
-      `).run(...values, id);
+      if (appWithSameName) {
+        throw new Error(`Une application avec le nom "${updateData.name}" existe déjà`);
+      }
     }
+    
+    // Préparer les champs et valeurs à mettre à jour
+    const updateFields = [];
+    const updateValues = [];
+    
+    // Champs autorisés à mettre à jour
+    const allowedFields = ['name', 'description', 'status', 'owner_id'];
+    
+    // Construire la requête de mise à jour
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        updateFields.push(`${field} = ?`);
+        updateValues.push(updateData[field]);
+      }
+    }
+    
+    // Si aucun champ n'est à mettre à jour, retourner true
+    if (updateFields.length === 0) {
+      return true;
+    }
+    
+    // Ajouter l'ID à la fin des valeurs pour la clause WHERE
+    updateValues.push(id);
+    
+    // Exécuter la mise à jour
+    const result = await dbService.run(
+      `UPDATE applications SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      updateValues
+    );
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la mise à jour de l\'application:', error);
+    throw error;
   }
-  
-  // Mettre à jour les paramètres si fournis
-  if (appData.parameters) {
-    updateApplicationParameters(id, appData.parameters);
-  }
-  
-  // Retourner l'application mise à jour
-  return getApplicationById(id);
-}
-
-/**
- * Mettre à jour les paramètres d'une application
- * @param {number} appId - ID de l'application
- * @param {Object} parameters - Nouveaux paramètres
- * @returns {Object} Paramètres mis à jour
- * @throws {Error} Si l'application n'existe pas
- */
-function updateApplicationParameters(appId, parameters) {
-  // Vérifier si l'application existe
-  const app = db.prepare('SELECT id FROM applications WHERE id = ?').get(appId);
-  if (!app) {
-    throw new Error(`L'application avec l'ID ${appId} n'existe pas`);
-  }
-  
-  // Supprimer tous les paramètres actuels
-  db.prepare('DELETE FROM app_params WHERE app_id = ?').run(appId);
-  
-  // Ajouter les nouveaux paramètres
-  const insertParam = db.prepare(`
-    INSERT INTO app_params (app_id, param_key, param_value)
-    VALUES (?, ?, ?)
-  `);
-  
-  for (const [key, value] of Object.entries(parameters)) {
-    insertParam.run(appId, key, value);
-  }
-  
-  // Récupérer et retourner les paramètres mis à jour
-  const params = db.prepare(`
-    SELECT param_key, param_value FROM app_params WHERE app_id = ?
-  `).all(appId);
-  
-  const updatedParams = {};
-  params.forEach(param => {
-    updatedParams[param.param_key] = param.param_value;
-  });
-  
-  return updatedParams;
-}
-
-/**
- * Supprimer un paramètre d'une application
- * @param {number} appId - ID de l'application
- * @param {string} paramKey - Clé du paramètre à supprimer
- * @returns {boolean} True si le paramètre a été supprimé
- * @throws {Error} Si l'application n'existe pas
- */
-function deleteApplicationParameter(appId, paramKey) {
-  // Vérifier si l'application existe
-  const app = db.prepare('SELECT id FROM applications WHERE id = ?').get(appId);
-  if (!app) {
-    throw new Error(`L'application avec l'ID ${appId} n'existe pas`);
-  }
-  
-  // Supprimer le paramètre
-  const result = db.prepare(`
-    DELETE FROM app_params
-    WHERE app_id = ? AND param_key = ?
-  `).run(appId, paramKey);
-  
-  return result.changes > 0;
 }
 
 /**
  * Supprimer une application
  * @param {number} id - ID de l'application
- * @returns {boolean} True si l'application a été supprimée
+ * @returns {Promise<boolean>} True si la suppression a réussi
  */
-function deleteApplication(id) {
-  const result = db.prepare(`
-    DELETE FROM applications WHERE id = ?
-  `).run(id);
-  
-  return result.changes > 0;
+async function deleteApplication(id) {
+  try {
+    // Vérifier si l'application existe
+    const existingApp = await dbService.get(
+      'SELECT id FROM applications WHERE id = ?',
+      [id]
+    );
+    
+    if (!existingApp) {
+      return false;
+    }
+    
+    // Supprimer toutes les clés API associées à l'application
+    const apiKeys = await dbService.query(
+      'SELECT id FROM api_keys WHERE application_id = ?',
+      [id]
+    );
+    
+    for (const key of apiKeys) {
+      await apiKeyService.deleteApiKey(key.id);
+    }
+    
+    // Supprimer les limites d'utilisation des API
+    await dbService.run(
+      'DELETE FROM api_usage_limits WHERE application_id = ?',
+      [id]
+    );
+    
+    // Supprimer les journaux de conversion
+    await dbService.run(
+      'DELETE FROM conversion_logs WHERE application_id = ?',
+      [id]
+    );
+    
+    // Supprimer l'application
+    const result = await dbService.run(
+      'DELETE FROM applications WHERE id = ?',
+      [id]
+    );
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la suppression de l\'application:', error);
+    return false;
+  }
 }
 
 /**
- * Récupérer toutes les clés API d'une application
- * @param {number} appId - ID de l'application
- * @returns {Array} Liste des clés API
- */
-function getApplicationApiKeys(appId) {
-  return db.prepare(`
-    SELECT * FROM api_keys
-    WHERE app_id = ?
-    ORDER BY created_at DESC
-  `).all(appId);
-}
-
-/**
- * Vérifier si une application existe
+ * Obtenir les statistiques d'utilisation d'une application
  * @param {number} id - ID de l'application
- * @returns {boolean} True si l'application existe
+ * @returns {Promise<Object>} Statistiques d'utilisation
  */
-function applicationExists(id) {
-  const result = db.prepare('SELECT id FROM applications WHERE id = ?').get(id);
-  return !!result;
+async function getApplicationStats(id) {
+  try {
+    // Vérifier si l'application existe
+    const app = await dbService.get(
+      'SELECT id, name FROM applications WHERE id = ?',
+      [id]
+    );
+    
+    if (!app) {
+      throw new Error('Application non trouvée');
+    }
+    
+    // Récupérer les statistiques générales
+    const generalStats = await dbService.get(
+      `SELECT 
+        COUNT(k.id) as total_keys,
+        SUM(k.usage_count) as total_usage,
+        SUM(CASE WHEN k.active = 1 THEN 1 ELSE 0 END) as active_keys,
+        SUM(CASE WHEN k.active = 0 THEN 1 ELSE 0 END) as inactive_keys,
+        (SELECT COUNT(*) FROM conversion_logs WHERE application_id = ?) as total_conversions
+      FROM api_keys k
+      WHERE k.application_id = ?`,
+      [id, id]
+    );
+    
+    // Récupérer les statistiques des clés API
+    const keyStats = await dbService.query(
+      `SELECT 
+        k.id, k.key, k.name, k.environment, k.usage_count, k.active,
+        (SELECT COUNT(*) FROM conversion_logs WHERE api_key_id = k.id) as conversion_count
+      FROM api_keys k
+      WHERE k.application_id = ?
+      ORDER BY k.usage_count DESC`,
+      [id]
+    );
+    
+    // Récupérer les statistiques des conversions par jour (30 derniers jours)
+    const dailyStats = await dbService.query(
+      `SELECT 
+        date(c.created_at) as date,
+        COUNT(*) as total,
+        SUM(CASE WHEN c.status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN c.status != 'success' THEN 1 ELSE 0 END) as error_count,
+        AVG(c.processing_time) as avg_processing_time
+      FROM conversion_logs c
+      WHERE c.application_id = ? AND c.created_at > datetime('now', '-30 days')
+      GROUP BY date(c.created_at)
+      ORDER BY date(c.created_at) DESC`,
+      [id]
+    );
+    
+    // Récupérer les statistiques des conversions par type de source
+    const sourceTypeStats = await dbService.query(
+      `SELECT 
+        c.source_type,
+        COUNT(*) as count,
+        SUM(CASE WHEN c.status = 'success' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN c.status != 'success' THEN 1 ELSE 0 END) as error_count
+      FROM conversion_logs c
+      WHERE c.application_id = ?
+      GROUP BY c.source_type
+      ORDER BY count DESC`,
+      [id]
+    );
+    
+    return {
+      application: app,
+      generalStats: generalStats || {
+        total_keys: 0,
+        total_usage: 0,
+        active_keys: 0,
+        inactive_keys: 0,
+        total_conversions: 0
+      },
+      keyStats: keyStats || [],
+      dailyStats: dailyStats || [],
+      sourceTypeStats: sourceTypeStats || []
+    };
+  } catch (error) {
+    console.error('[APPLICATION] Erreur lors de la récupération des statistiques d\'application:', error);
+    
+    return {
+      application: { id, name: 'Application non trouvée' },
+      generalStats: {
+        total_keys: 0,
+        total_usage: 0,
+        active_keys: 0,
+        inactive_keys: 0,
+        total_conversions: 0
+      },
+      keyStats: [],
+      dailyStats: [],
+      sourceTypeStats: []
+    };
+  }
 }
 
 module.exports = {
-  getAllApplications,
-  getApplicationById,
-  getApplicationByName,
   createApplication,
+  getApplication,
+  getAllApplications,
   updateApplication,
-  updateApplicationParameters,
-  deleteApplicationParameter,
   deleteApplication,
-  getApplicationApiKeys,
-  applicationExists
+  getApplicationStats
 };
