@@ -2,9 +2,14 @@
  * Convertisseur avancé HL7 v2.5 vers FHIR R4
  * Spécialement optimisé pour les messages ADT français
  * Compatible avec les exigences de l'ANS
+ * 
+ * Utilise simple-hl7 pour le parsing avancé des messages HL7
+ * et fhir.js pour la manipulation des ressources FHIR
  */
+
 const uuid = require('uuid');
 const hl7 = require('simple-hl7');
+const parser = new hl7.Parser();
 
 /**
  * Convertit un message HL7 en bundle FHIR
@@ -15,10 +20,24 @@ function convertHL7ToFHIR(hl7Message) {
   try {
     console.log('[CONVERTER] Démarrage de la conversion HL7 vers FHIR');
     
-    // Normaliser les fins de ligne et parser le message HL7
-    const normalizedMessage = hl7Message.replace(/\n/g, '\r').replace(/\r+/g, '\r');
-    const parser = new hl7.Parser();
-    const parsedMessage = parser.parse(normalizedMessage);
+    // Parser le message HL7 avec simple-hl7
+    const parsedMessage = parser.parse(hl7Message);
+    
+    if (!parsedMessage || !parsedMessage.segments || parsedMessage.segments.length === 0) {
+      throw new Error('Message HL7 invalide ou vide');
+    }
+    
+    // Récupérer les segments par type
+    const segments = {};
+    parsedMessage.segments.forEach(segment => {
+      const segmentName = segment.name;
+      if (!segments[segmentName]) {
+        segments[segmentName] = [];
+      }
+      segments[segmentName].push(segment);
+    });
+    
+    console.log(`[CONVERTER] Message HL7 parsé avec succès: ${Object.keys(segments).length} types de segments`);
     
     // Créer un identifiant unique pour le Bundle
     const bundleId = `bundle-${Date.now()}`;
@@ -32,85 +51,84 @@ function convertHL7ToFHIR(hl7Message) {
       entry: []
     };
     
-    // Extraire les segments
-    const mshSegment = parsedMessage.getMSH();
-    const pidSegment = hl7.getSegmentOfType(parsedMessage, 'PID');
-    const pv1Segment = hl7.getSegmentOfType(parsedMessage, 'PV1');
-    const rolSegments = hl7.getSegmentsOfType(parsedMessage, 'ROL');
-    const nk1Segments = hl7.getSegmentsOfType(parsedMessage, 'NK1');
-    const in1Segments = hl7.getSegmentsOfType(parsedMessage, 'IN1');
-    
-    // Traiter le Patient
-    if (pidSegment) {
-      const patientResource = createPatientResource(pidSegment);
+    // Patient (à partir du segment PID)
+    if (segments.PID && segments.PID.length > 0) {
+      const patientResource = createPatientResource(segments.PID[0], segments.PD1 ? segments.PD1[0] : null);
       bundle.entry.push(patientResource);
       
-      // Traiter l'Encounter après le Patient pour avoir la référence
-      if (pv1Segment) {
-        const encounterResource = createEncounterResource(pv1Segment, patientResource.fullUrl);
+      // Encounter (à partir du segment PV1)
+      if (segments.PV1 && segments.PV1.length > 0) {
+        const encounterResource = createEncounterResource(segments.PV1[0], patientResource.fullUrl);
         bundle.entry.push(encounterResource);
-        
-        // Référence de l'encounter pour les autres ressources
-        const encounterReference = encounterResource.fullUrl;
-        
-        // Traiter les Organizations (établissements)
-        if (mshSegment) {
-          const sendingOrgResource = createOrganizationResource(mshSegment, 4); // MSH-4 (sending)
-          if (sendingOrgResource) {
-            bundle.entry.push(sendingOrgResource);
-          }
-          
-          const receivingOrgResource = createOrganizationResource(mshSegment, 6); // MSH-6 (receiving)
-          if (receivingOrgResource && sendingOrgResource && 
-              receivingOrgResource.resource.id !== sendingOrgResource.resource.id) {
-            bundle.entry.push(receivingOrgResource);
-          }
+      }
+      
+      // Organisation (à partir du segment MSH)
+      if (segments.MSH && segments.MSH.length > 0) {
+        const sendingOrganizationResource = createOrganizationResource(segments.MSH[0], 4); // Sending facility
+        if (sendingOrganizationResource) {
+          bundle.entry.push(sendingOrganizationResource);
         }
         
-        // Traiter les Practitioners (médecins)
-        if (rolSegments && rolSegments.length > 0) {
-          for (const rolSegment of rolSegments) {
-            const practitionerResource = createPractitionerResource(rolSegment);
-            if (practitionerResource) {
-              bundle.entry.push(practitionerResource);
-              
-              // Ajouter le lien PractitionerRole
+        const receivingOrganizationResource = createOrganizationResource(segments.MSH[0], 6); // Receiving facility
+        if (receivingOrganizationResource && 
+            (!sendingOrganizationResource || 
+             sendingOrganizationResource.resource.id !== receivingOrganizationResource.resource.id)) {
+          bundle.entry.push(receivingOrganizationResource);
+        }
+      }
+      
+      // Praticiens (à partir des segments ROL)
+      if (segments.ROL && segments.ROL.length > 0) {
+        segments.ROL.forEach(rolSegment => {
+          const practitionerResource = createPractitionerResource(rolSegment);
+          if (practitionerResource) {
+            bundle.entry.push(practitionerResource);
+            
+            // Créer aussi le PractitionerRole si un encounter existe
+            if (segments.PV1 && segments.PV1.length > 0) {
               const practitionerRoleResource = createPractitionerRoleResource(
                 rolSegment, 
                 practitionerResource.fullUrl, 
-                encounterReference
+                `urn:uuid:encounter-${Date.now()}`
               );
-              
               if (practitionerRoleResource) {
                 bundle.entry.push(practitionerRoleResource);
               }
             }
           }
-        }
+        });
       }
       
-      // Traiter les RelatedPersons (proches)
-      if (nk1Segments && nk1Segments.length > 0) {
-        for (const nk1Segment of nk1Segments) {
+      // Proches (à partir des segments NK1)
+      if (segments.NK1 && segments.NK1.length > 0) {
+        segments.NK1.forEach(nk1Segment => {
           const relatedPersonResource = createRelatedPersonResource(nk1Segment, patientResource.fullUrl);
           if (relatedPersonResource) {
             bundle.entry.push(relatedPersonResource);
           }
-        }
+        });
       }
       
-      // Traiter les Coverages (assurances)
-      if (in1Segments && in1Segments.length > 0) {
-        for (const in1Segment of in1Segments) {
-          const coverageResource = createCoverageResource(in1Segment, patientResource.fullUrl);
+      // Couverture d'assurance (à partir des segments IN1/IN2)
+      if (segments.IN1 && segments.IN1.length > 0) {
+        segments.IN1.forEach((in1Segment, index) => {
+          const in2Segment = segments.IN2 && segments.IN2.length > index ? segments.IN2[index] : null;
+          const coverageResource = createCoverageResource(in1Segment, in2Segment, patientResource.fullUrl);
           if (coverageResource) {
             bundle.entry.push(coverageResource);
           }
-        }
+        });
+      }
+      
+      // Traitement des segments Z (spécifiques français)
+      if (segments.ZBE && segments.ZBE.length > 0) {
+        const zbeData = processZBESegment(segments.ZBE[0]);
+        // Enrichir l'encounter avec ces données si nécessaire
+        // TODO: implémenter selon besoins spécifiques
       }
     }
     
-    console.log(`[CONVERTER] Conversion terminée avec ${bundle.entry.length} ressources`);
+    console.log(`[CONVERTER] Conversion terminée avec ${bundle.entry.length} ressources FHIR générées`);
     return bundle;
   } catch (error) {
     console.error('[CONVERTER] Erreur lors de la conversion:', error);
@@ -121,27 +139,37 @@ function convertHL7ToFHIR(hl7Message) {
 /**
  * Crée une ressource Patient FHIR à partir du segment PID
  * @param {Object} pidSegment - Segment PID parsé
+ * @param {Object} pd1Segment - Segment PD1 parsé (optionnel)
  * @returns {Object} Entrée de bundle pour un Patient
  */
-function createPatientResource(pidSegment) {
-  const idField = pidSegment.getField(3); // PID-3 (Patient ID)
-  const rawId = idField.value || `unknown-${Date.now()}`;
+function createPatientResource(pidSegment, pd1Segment) {
+  // PID-3 (Patient Identifiers)
+  const patientIdentifiers = extractIdentifiers(pidSegment.fields[3]);
   
-  // Extraction du premier ID numérique pour l'URI (sans les répétitions ou composants)
-  const simpleId = rawId.replace(/\^.*$/, '');
-  const patientId = `patient-${simpleId}`;
+  // Extraction d'un ID simple pour l'URI
+  let patientId = `patient-${Date.now()}`;
+  if (patientIdentifiers.length > 0 && patientIdentifiers[0].value) {
+    patientId = `patient-${patientIdentifiers[0].value}`;
+  }
   
   // Créer la ressource Patient
   const patientResource = {
     resourceType: 'Patient',
     id: patientId,
-    identifier: extractIdentifiers(idField),
-    name: extractNames(pidSegment),
-    gender: determineGender(pidSegment.getField(8)),
-    birthDate: formatBirthDate(pidSegment.getField(7)),
-    telecom: extractTelecoms(pidSegment),
-    address: extractAddresses(pidSegment)
+    identifier: patientIdentifiers,
+    name: extractNames(pidSegment.fields[5]),
+    gender: determineGender(pidSegment.fields[8]),
+    birthDate: formatBirthDate(pidSegment.fields[7]),
+    telecom: extractTelecoms(pidSegment.fields[13], pidSegment.fields[14]),
+    address: extractAddresses(pidSegment.fields[11]),
+    maritalStatus: determineMaritalStatus(pidSegment.fields[16]),
+    contact: []
   };
+  
+  // Ajouter les extensions françaises si PD1 est disponible
+  if (pd1Segment) {
+    addFrenchExtensions(patientResource, pd1Segment);
+  }
   
   return {
     fullUrl: `urn:uuid:${patientId}`,
@@ -154,53 +182,115 @@ function createPatientResource(pidSegment) {
 }
 
 /**
- * Extrait les identifiants du patient du champ PID-3
- * @param {Object} idField - Champ d'identifiant
+ * Extrait les identifiants du patient à partir du champ PID-3
+ * @param {Array} identifierFields - Tableau de champs d'identifiants
  * @returns {Array} Tableau d'identifiants FHIR
  */
-function extractIdentifiers(idField) {
-  if (!idField || !idField.value) {
+function extractIdentifiers(identifierFields) {
+  if (!identifierFields || !Array.isArray(identifierFields)) {
     return [];
   }
   
   const identifiers = [];
   
-  // Traiter chaque répétition comme un identifiant séparé
-  const repetitions = idField.getRepetitions();
-  
-  for (const repetition of repetitions) {
-    const components = repetition.getComponents();
+  identifierFields.forEach(field => {
+    if (!field) return;
+    
+    const components = field.components || [];
     
     // ID (component 1)
     const idValue = components[0] ? components[0].value : '';
-    
-    // Système d'identification (components 4-5)
-    let system = '';
-    let assigner = '';
-    
-    if (components[4]) {
-      assigner = components[4].value || '';
-    }
-    
-    if (components[3] && components[4]) {
-      // Format: namespace&OID&type
-      const namespaceComp = components[3].getComponents();
-      if (namespaceComp.length > 1 && namespaceComp[1].value) {
-        system = `urn:oid:${namespaceComp[1].value}`;
-      }
-    }
+    if (!idValue) return;
     
     // Type d'identifiant (component 5)
     const idType = components[4] ? components[4].value : 'PI';
     
-    if (idValue) {
-      const identifier = {
-        value: idValue,
-        system: system || `urn:system:${assigner || 'unknown'}`
-      };
+    // Autorité d'assignation (component 4)
+    const assigningAuthority = components[3] ? components[3].value : '';
+    
+    // Configuration standard conforme à l'ANS
+    let system = '';
+    let isOfficialIdentifier = false;
+    let officialType = '';
+    
+    // Analyse détaillée de l'assigningAuthority pour extraire l'OID conforme ANS
+    if (assigningAuthority) {
+      // Format: NAME&OID&TYPE - Extraction précise des sous-composants
+      const authComponents = assigningAuthority.split('&');
       
-      // Ajouter le type d'identifiant si disponible
-      if (idType) {
+      if (authComponents.length >= 2) {
+        const namespaceName = authComponents[0] || '';
+        const oid = authComponents[1] || '';
+        const namespaceType = authComponents.length > 2 ? authComponents[2] : '';
+        
+        // Standardisation des OIDs selon ANS
+        if (oid) {
+          // Format conforme ANS qui utilise urn:oid: pour les identifiants standards
+          system = `urn:oid:${oid}`;
+          
+          // Détection et traitement spécifiques pour les identifiants français officiels
+          if (namespaceName.includes('ASIP-SANTE-INS-C') || oid === '1.2.250.1.213.1.4.2') {
+            isOfficialIdentifier = true;
+            officialType = 'INS-C';
+          } else if (namespaceName.includes('ASIP-SANTE-INS-NIR') || namespaceName.includes('ASIP-SANTE-INS') || oid === '1.2.250.1.213.1.4.8') {
+            isOfficialIdentifier = true;
+            officialType = 'INS';
+          } else if (oid.startsWith('1.2.250.1.71.') || oid.startsWith('1.2.250.1.213.')) {
+            // Autres OIDs ANS standards
+            isOfficialIdentifier = true;
+          }
+        } else if (namespaceName) {
+          // Fallback pour les systèmes non standards
+          system = `urn:system:${namespaceName}`;
+        }
+      } else {
+        // Si le format n'inclut pas les sous-composants, utiliser comme système
+        system = `urn:system:${assigningAuthority}`;
+      }
+    }
+    
+    // Valeurs par défaut si non spécifiés
+    if (!system) {
+      system = 'urn:system:unknown';
+    }
+    
+    // Créer l'identifiant FHIR avec la structure conforme ANS
+    const identifier = {
+      value: idValue,
+      system: system,
+      assigner: assigningAuthority ? { display: assigningAuthority.split('&')[0] } : undefined
+    };
+    
+    // Application du typage conforme ANS
+    if (isOfficialIdentifier) {
+      if (officialType === 'INS') {
+        // Structure d'identifiant INS selon le cadre d'interopérabilité ANS
+        identifier.system = 'urn:oid:1.2.250.1.213.1.4.8';
+        identifier.type = {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+            code: 'INS',
+            display: 'Identifiant National de Santé'
+          }]
+        };
+        
+        // Ajout de l'extension de validité INS
+        identifier.extension = [{
+          url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Status',
+          valueCode: 'VALI' // VALI=validé, PROV=provisoire, REFU=refusé
+        }];
+      } else if (officialType === 'INS-C') {
+        // Structure d'identifiant INS-C selon le cadre d'interopérabilité ANS
+        identifier.system = 'urn:oid:1.2.250.1.213.1.4.2';
+        identifier.type = {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+            code: 'INS-C',
+            display: 'Identifiant National de Santé Calculé'
+          }]
+        };
+      } else {
+        // Autres identifiants officiels français
         identifier.type = {
           coding: [{
             system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
@@ -209,10 +299,19 @@ function extractIdentifiers(idField) {
           }]
         };
       }
-      
-      identifiers.push(identifier);
+    } else {
+      // Identifiants non-officiels
+      identifier.type = {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: idType,
+          display: getIdentifierTypeDisplay(idType)
+        }]
+      };
     }
-  }
+    
+    identifiers.push(identifier);
+  });
   
   return identifiers;
 }
@@ -227,52 +326,63 @@ function getIdentifierTypeDisplay(idType) {
     'PI': 'Patient internal identifier',
     'PPN': 'Passport number',
     'MR': 'Medical record number',
-    'INS': 'INS',
-    'INS-C': 'INS-C',
-    'NI': 'National identifier'
+    'INS': 'Identifiant National de Santé',
+    'INS-C': 'Identifiant National de Santé Calculé',
+    'NI': 'National identifier',
+    'NH': 'Numéro d\'hospitalisation'
   };
   
   return typeMap[idType] || idType;
 }
 
 /**
- * Extrait les noms du patient du segment PID
- * @param {Object} pidSegment - Segment PID parsé
+ * Extrait les noms du patient à partir du champ PID-5
+ * @param {Array} nameFields - Tableau de champs de noms
  * @returns {Array} Tableau de noms FHIR
  */
-function extractNames(pidSegment) {
+function extractNames(nameFields) {
+  if (!nameFields || !Array.isArray(nameFields)) {
+    return [];
+  }
+  
   const names = [];
   
-  // PID-5 (Patient Name)
-  const nameFields = pidSegment.getField(5).getRepetitions();
-  
-  for (const nameField of nameFields) {
-    const components = nameField.getComponents();
+  nameFields.forEach(field => {
+    if (!field) return;
+    
+    const components = field.components || [];
     
     // Nom de famille (component 1)
     const familyName = components[0] ? components[0].value : '';
     
-    // Prénom(s) (components 2-7)
+    // Prénom(s) (composants 2+)
     const givenNames = [];
     
-    // Prénom habituel (component 2)
+    // Prénom principal (component 2)
     if (components[1] && components[1].value) {
-      // Gérer les prénoms composés à la française (espaces)
       if (components[1].value.includes(' ')) {
-        givenNames.push(...components[1].value.split(' '));
+        // Gérer les prénoms composés à la française
+        givenNames.push(...components[1].value.split(' ').filter(Boolean));
       } else {
         givenNames.push(components[1].value);
       }
     }
     
-    // Autre(s) prénom(s) (components 3, 4, 5)
-    for (let i = 2; i <= 4; i++) {
-      if (components[i] && components[i].value) {
-        givenNames.push(components[i].value);
+    // Prénom additionnel (component 3)
+    if (components[2] && components[2].value) {
+      if (components[2].value.includes(' ')) {
+        // Gérer les prénoms composés additionnels
+        components[2].value.split(' ').filter(Boolean).forEach(name => {
+          if (!givenNames.includes(name)) {
+            givenNames.push(name);
+          }
+        });
+      } else if (!givenNames.includes(components[2].value)) {
+        givenNames.push(components[2].value);
       }
     }
     
-    // Type d'utilisation du nom (component 7 - code + component 8 - contexte)
+    // Type d'utilisation du nom (component 7)
     let nameUse = 'official';
     if (components[6] && components[6].value) {
       nameUse = mapNameUseToFHIR(components[6].value);
@@ -291,19 +401,19 @@ function extractNames(pidSegment) {
         nameObj.given = givenNames;
       }
       
-      // Préfixe (titre) - component 5
+      // Préfixe (titre) si disponible (component 5)
       if (components[4] && components[4].value) {
         nameObj.prefix = [components[4].value];
       }
       
-      // Suffixe - component 6
+      // Suffixe si disponible (component 6)
       if (components[5] && components[5].value) {
         nameObj.suffix = [components[5].value];
       }
       
       names.push(nameObj);
     }
-  }
+  });
   
   return names;
 }
@@ -337,7 +447,9 @@ function determineGender(genderField) {
     return 'unknown';
   }
   
-  switch (genderField.value.toUpperCase()) {
+  const gender = genderField.value.toUpperCase();
+  
+  switch (gender) {
     case 'M':
       return 'male';
     case 'F':
@@ -378,76 +490,110 @@ function formatBirthDate(birthDateField) {
 }
 
 /**
- * Extrait les coordonnées de contact du segment PID
- * @param {Object} pidSegment - Segment PID parsé
+ * Détermine l'état civil à partir du champ PID-16
+ * @param {Object} maritalStatusField - Champ d'état civil
+ * @returns {Object} État civil FHIR
+ */
+function determineMaritalStatus(maritalStatusField) {
+  if (!maritalStatusField || !maritalStatusField.value) {
+    return null;
+  }
+  
+  const maritalStatus = maritalStatusField.value;
+  const maritalStatusMap = {
+    'A': { code: 'A', display: 'Annulé' },
+    'D': { code: 'D', display: 'Divorcé' },
+    'M': { code: 'M', display: 'Marié' },
+    'S': { code: 'S', display: 'Célibataire' },
+    'W': { code: 'W', display: 'Veuf/Veuve' },
+    'P': { code: 'P', display: 'Partenaire' },
+    'I': { code: 'I', display: 'Séparé' },
+    'B': { code: 'B', display: 'Bénéficiaire' },
+    'C': { code: 'C', display: 'Enfant' },
+    'G': { code: 'G', display: 'Conjoint' },
+    'O': { code: 'O', display: 'Autre' },
+    'U': { code: 'U', display: 'Inconnu' }
+  };
+  
+  if (maritalStatusMap[maritalStatus]) {
+    return {
+      coding: [{
+        system: 'http://terminology.hl7.org/CodeSystem/v3-MaritalStatus',
+        code: maritalStatusMap[maritalStatus].code,
+        display: maritalStatusMap[maritalStatus].display
+      }]
+    };
+  }
+  
+  return null;
+}
+
+/**
+ * Extrait les coordonnées de contact à partir des champs PID-13 et PID-14
+ * @param {Array} homePhoneFields - Champs de téléphone personnel
+ * @param {Array} workPhoneFields - Champs de téléphone professionnel
  * @returns {Array} Tableau de coordonnées FHIR
  */
-function extractTelecoms(pidSegment) {
+function extractTelecoms(homePhoneFields, workPhoneFields) {
   const telecoms = [];
   
-  // PID-13 (Phone - Home)
-  const phoneFields = pidSegment.getField(13).getRepetitions();
-  
-  for (const phoneField of phoneFields) {
-    const components = phoneField.getComponents();
-    
-    // Numéro (component 1)
-    const phoneNumber = components[0] ? components[0].value : '';
-    
-    // Type d'utilisation (component 2)
-    const useCode = components[1] ? components[1].value : '';
-    
-    // Type d'équipement (component 3)
-    const equipCode = components[2] ? components[2].value : '';
-    
-    if (phoneNumber) {
+  // Traitement des téléphones personnels
+  if (homePhoneFields && Array.isArray(homePhoneFields)) {
+    homePhoneFields.forEach(field => {
+      if (!field) return;
+      
+      const components = field.components || [];
+      
+      // Numéro (component 1)
+      const phoneNumber = components[0] ? components[0].value : '';
+      if (!phoneNumber) return;
+      
       const telecom = {
-        value: phoneNumber
+        value: phoneNumber,
+        use: 'home'
       };
       
-      // Système de contact
-      if (equipCode) {
-        telecom.system = mapEquipmentTypeToFHIR(equipCode);
+      // Type d'utilisation (component 2)
+      if (components[1] && components[1].value) {
+        telecom.use = mapContactUseToFHIR(components[1].value);
+      }
+      
+      // Type d'équipement (component 3)
+      if (components[2] && components[2].value) {
+        telecom.system = mapEquipmentTypeToFHIR(components[2].value);
       } else {
         telecom.system = 'phone';
       }
       
-      // Utilisation du contact
-      if (useCode) {
-        telecom.use = mapContactUseToFHIR(useCode);
-      }
-      
       telecoms.push(telecom);
-    }
+    });
   }
   
-  // PID-14 (Phone - Business)
-  const businessPhoneFields = pidSegment.getField(14).getRepetitions();
-  
-  for (const phoneField of businessPhoneFields) {
-    const components = phoneField.getComponents();
-    
-    // Numéro (component 1)
-    const phoneNumber = components[0] ? components[0].value : '';
-    
-    // Type d'équipement (component 3)
-    const equipCode = components[2] ? components[2].value : '';
-    
-    if (phoneNumber) {
+  // Traitement des téléphones professionnels
+  if (workPhoneFields && Array.isArray(workPhoneFields)) {
+    workPhoneFields.forEach(field => {
+      if (!field) return;
+      
+      const components = field.components || [];
+      
+      // Numéro (component 1)
+      const phoneNumber = components[0] ? components[0].value : '';
+      if (!phoneNumber) return;
+      
       const telecom = {
         value: phoneNumber,
         use: 'work'
       };
       
-      // Système de contact
-      if (equipCode) {
-        telecom.system = mapEquipmentTypeToFHIR(equipCode);
+      // Type d'équipement (component 3)
+      if (components[2] && components[2].value) {
+        telecom.system = mapEquipmentTypeToFHIR(components[2].value);
       } else {
         telecom.system = 'phone';
       }
       
       telecoms.push(telecom);
-    }
+    });
   }
   
   return telecoms;
@@ -494,18 +640,21 @@ function mapContactUseToFHIR(useCode) {
 }
 
 /**
- * Extrait les adresses du segment PID
- * @param {Object} pidSegment - Segment PID parsé
+ * Extrait les adresses à partir du champ PID-11
+ * @param {Array} addressFields - Champs d'adresse
  * @returns {Array} Tableau d'adresses FHIR
  */
-function extractAddresses(pidSegment) {
+function extractAddresses(addressFields) {
+  if (!addressFields || !Array.isArray(addressFields)) {
+    return [];
+  }
+  
   const addresses = [];
   
-  // PID-11 (Patient Address)
-  const addressFields = pidSegment.getField(11).getRepetitions();
-  
-  for (const addressField of addressFields) {
-    const components = addressField.getComponents();
+  addressFields.forEach(field => {
+    if (!field) return;
+    
+    const components = field.components || [];
     
     // Informations d'adresse
     const street1 = components[0] ? components[0].value : '';
@@ -540,7 +689,7 @@ function extractAddresses(pidSegment) {
       
       addresses.push(address);
     }
-  }
+  });
   
   return addresses;
 }
@@ -582,25 +731,59 @@ function mapAddressTypeToFHIR(hl7AddressType) {
 }
 
 /**
+ * Ajoute les extensions françaises au patient
+ * @param {Object} patientResource - Ressource Patient FHIR
+ * @param {Object} pd1Segment - Segment PD1 parsé
+ */
+function addFrenchExtensions(patientResource, pd1Segment) {
+  // Si le patient est français, ajouter les extensions appropriées
+  // Exemple : INS de confiance
+  if (patientResource.identifier.some(id => id.system === 'urn:oid:1.2.250.1.213.1.4.8')) {
+    patientResource.extension = patientResource.extension || [];
+    
+    // Exemple d'extension pour l'INS vérifié (à adapter selon besoins spécifiques)
+    patientResource.extension.push({
+      url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INSi-Status',
+      valueCodeableConcept: {
+        coding: [{
+          system: 'https://mos.esante.gouv.fr/NOS/TRE_R338-ModaliteAccueil/FHIR/TRE-R338-ModaliteAccueil',
+          code: 'VALI',
+          display: 'Identité vérifiée'
+        }]
+      }
+    });
+  }
+}
+
+/**
  * Crée une ressource Encounter FHIR à partir du segment PV1
  * @param {Object} pv1Segment - Segment PV1 parsé
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object} Entrée de bundle pour un Encounter
  */
 function createEncounterResource(pv1Segment, patientReference) {
+  if (!pv1Segment) {
+    return null;
+  }
+  
   const encounterId = `encounter-${Date.now()}`;
   
-  // Déterminer la classe d'encounter
-  const patientClass = pv1Segment.getField(2).value || '';
+  // Déterminer la classe d'encounter (PV1-2)
+  const patientClass = pv1Segment.fields[2] ? pv1Segment.fields[2].value : '';
   const encounterClass = mapPatientClassToFHIR(patientClass);
   
-  // Statut de l'encounter
-  const dischargeDisposition = pv1Segment.getField(36).value || '';
+  // Statut de l'encounter (PV1-36 = disposition)
+  const dischargeDisposition = pv1Segment.fields[36] ? pv1Segment.fields[36].value : '';
   const encounterStatus = determineEncounterStatus(dischargeDisposition);
   
   // Période de l'encounter
-  const admitDate = formatHL7DateTime(pv1Segment.getField(44));
-  const dischargeDate = formatHL7DateTime(pv1Segment.getField(45));
+  let admitDate = null;
+  if (pv1Segment.fields[44] && pv1Segment.fields[44].value) {
+    admitDate = formatHL7DateTime(pv1Segment.fields[44].value);
+  }
+  
+  // Numéro de visite/séjour (PV1-19 = visit number)
+  const visitNumber = pv1Segment.fields[19] ? pv1Segment.fields[19].value : null;
   
   // Créer la ressource Encounter
   const encounterResource = {
@@ -618,20 +801,13 @@ function createEncounterResource(pv1Segment, patientReference) {
   };
   
   // Ajouter la période si disponible
-  if (admitDate || dischargeDate) {
-    encounterResource.period = {};
-    
-    if (admitDate) {
-      encounterResource.period.start = admitDate;
-    }
-    
-    if (dischargeDate) {
-      encounterResource.period.end = dischargeDate;
-    }
+  if (admitDate) {
+    encounterResource.period = {
+      start: admitDate
+    };
   }
   
-  // Numéro de visite/séjour
-  const visitNumber = pv1Segment.getField(19).value;
+  // Ajouter l'identifiant de visite si disponible
   if (visitNumber) {
     encounterResource.identifier = [{
       system: 'urn:oid:1.2.250.1.213.1.4.2',
@@ -687,15 +863,13 @@ function determineEncounterStatus(dischargeDisposition) {
 
 /**
  * Formate une date/heure HL7 au format ISO
- * @param {Object} dateField - Champ de date HL7
+ * @param {string} dateValue - Date au format HL7
  * @returns {string|null} Date au format ISO ou null si non disponible
  */
-function formatHL7DateTime(dateField) {
-  if (!dateField || !dateField.value) {
+function formatHL7DateTime(dateValue) {
+  if (!dateValue) {
     return null;
   }
-  
-  const dateValue = dateField.value;
   
   if (/^\d{8}/.test(dateValue)) {
     // Format YYYYMMDD
@@ -728,38 +902,59 @@ function formatHL7DateTime(dateField) {
  * @returns {Object|null} Entrée de bundle pour une Organization ou null si non disponible
  */
 function createOrganizationResource(mshSegment, fieldIndex) {
-  const orgField = mshSegment.getField(fieldIndex);
-  
-  if (!orgField || !orgField.value) {
+  if (!mshSegment || !mshSegment.fields[fieldIndex]) {
     return null;
   }
   
-  const orgComponents = orgField.getComponents();
-  const orgName = orgComponents[0] ? orgComponents[0].value : '';
+  const field = mshSegment.fields[fieldIndex];
+  const components = field.components || [];
   
+  // Identifier et nom (component 1)
+  const orgName = components[0] ? components[0].value : '';
   if (!orgName) {
     return null;
   }
   
-  // Identifier comme OID s'il existe un namespace
-  let orgId = orgName;
-  if (orgComponents.length > 1 && orgComponents[1].value) {
-    orgId = orgComponents[1].value;
+  // Identifiant comme OID s'il existe (component 2)
+  let orgId = orgName.replace(/[^a-zA-Z0-9]/g, '');
+  let oid = null;
+  
+  if (components[1] && components[1].value) {
+    orgId = components[1].value;
   }
   
-  const organizationId = `organization-${orgId.replace(/[^a-zA-Z0-9]/g, '')}`;
+  // Namespace (component 3)
+  if (components[2] && components[2].value && components[2].value.includes('&')) {
+    const namespaceComponents = components[2].value.split('&');
+    if (namespaceComponents.length > 1) {
+      oid = namespaceComponents[1];
+    }
+  }
+  
+  const organizationId = `organization-${orgId}`;
   
   // Créer la ressource Organization
   const organizationResource = {
     resourceType: 'Organization',
     id: organizationId,
     identifier: [{
-      system: 'urn:oid:1.2.250.1.71.4.2.2',
+      system: oid ? `urn:oid:${oid}` : 'urn:oid:1.2.250.1.71.4.2.2',
       value: orgId
     }],
     name: orgName,
     active: true
   };
+  
+  // Utiliser une extension française spécifique si disponible
+  if (oid) {
+    organizationResource.extension = [{
+      url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/Agency-NumberAssigningAuthority',
+      valueIdentifier: {
+        system: `urn:oid:${oid}`,
+        value: orgId
+      }
+    }];
+  }
   
   return {
     fullUrl: `urn:uuid:${organizationId}`,
@@ -777,26 +972,42 @@ function createOrganizationResource(mshSegment, fieldIndex) {
  * @returns {Object|null} Entrée de bundle pour un Practitioner ou null si non disponible
  */
 function createPractitionerResource(rolSegment) {
-  const rolePersonField = rolSegment.getField(4);
-  
-  if (!rolePersonField || !rolePersonField.value) {
+  if (!rolSegment) {
     return null;
   }
   
-  const components = rolePersonField.getComponents();
+  // ROL-4 (Role Person)
+  const rolePerson = rolSegment.fields[4];
+  if (!rolePerson) {
+    return null;
+  }
   
-  // Identifier du praticien (component 1)
+  const components = rolePerson.components || [];
+  
+  // Identifiant (component 1)
   const idValue = components[0] ? components[0].value : '';
   
-  // Nom du praticien (components 2-3)
+  // Nom (components 2-3)
   const familyName = components[1] ? components[1].value : '';
   const givenName = components[2] ? components[2].value : '';
   
-  if (!idValue || (!familyName && !givenName)) {
+  if (!idValue && !familyName && !givenName) {
     return null;
   }
   
-  const practitionerId = `practitioner-${idValue.replace(/[^a-zA-Z0-9]/g, '')}`;
+  const practitionerId = `practitioner-${idValue || uuid.v4()}`;
+  
+  // Récupérer l'OID pour l'identifiant professionnel
+  let oid = '1.2.250.1.71.4.2.1'; // OID par défaut
+  
+  // ROL-4.4 (Assigning Authority)
+  if (components[3] && components[3].value && components[3].value.includes('&')) {
+    const assigningAuthority = components[3].value;
+    const authorityComponents = assigningAuthority.split('&');
+    if (authorityComponents.length > 1 && authorityComponents[1]) {
+      oid = authorityComponents[1];
+    }
+  }
   
   // Créer la ressource Practitioner
   const practitionerResource = {
@@ -807,17 +1018,8 @@ function createPractitionerResource(rolSegment) {
   
   // Ajouter l'identifiant
   if (idValue) {
-    // Système d'identification (composants 5-6)
-    let system = '';
-    if (components[5] && components[6]) {
-      const namespaceComp = components[5].getComponents();
-      if (namespaceComp.length > 1 && namespaceComp[1].value) {
-        system = `urn:oid:${namespaceComp[1].value}`;
-      }
-    }
-    
     practitionerResource.identifier.push({
-      system: system || 'urn:oid:1.2.250.1.71.4.2.1',
+      system: `urn:oid:${oid}`,
       value: idValue
     });
   }
@@ -831,10 +1033,22 @@ function createPractitionerResource(rolSegment) {
     }
     
     if (givenName) {
-      humanName.given = [givenName];
+      // Gérer les prénoms composés
+      if (givenName.includes(' ')) {
+        humanName.given = givenName.split(' ').filter(Boolean);
+      } else {
+        humanName.given = [givenName];
+      }
     }
     
     practitionerResource.name = [humanName];
+  }
+  
+  // Traitement spécifique pour les médecins français
+  // Extensions pour RPPS, ADELI, spécialités, etc.
+  if (oid === '2.16.840.1.113883.3.31.2.2' || oid === '1.2.250.1.213.1.1.2') {
+    // ADELI ou RPPS
+    addFrenchPractitionerExtensions(practitionerResource, rolSegment);
   }
   
   return {
@@ -848,6 +1062,51 @@ function createPractitionerResource(rolSegment) {
 }
 
 /**
+ * Ajoute les extensions françaises au praticien
+ * @param {Object} practitionerResource - Ressource Practitioner FHIR
+ * @param {Object} rolSegment - Segment ROL parsé
+ */
+function addFrenchPractitionerExtensions(practitionerResource, rolSegment) {
+  // Ajouter les extensions spécifiques aux praticiens français
+  practitionerResource.extension = practitionerResource.extension || [];
+  
+  // Extension pour la spécialité médicale
+  if (rolSegment.fields[3] && rolSegment.fields[3].value) {
+    const roleCode = rolSegment.fields[3].value;
+    
+    practitionerResource.extension.push({
+      url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/practitionerRole-Specialty',
+      valueCodeableConcept: {
+        coding: [{
+          system: 'https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante',
+          code: roleCode,
+          display: getRoleTypeDisplay(roleCode)
+        }]
+      }
+    });
+  }
+}
+
+/**
+ * Récupère le libellé pour un type de rôle
+ * @param {string} roleType - Code du type de rôle
+ * @returns {string} Libellé du type de rôle
+ */
+function getRoleTypeDisplay(roleType) {
+  const roleTypeMap = {
+    'ODRP': 'Médecin',
+    'ODES': 'Sage-femme',
+    'ODPH': 'Pharmacien',
+    'ODCH': 'Chirurgien-dentiste',
+    'PSYL': 'Psychologue',
+    'INFI': 'Infirmier',
+    'KINE': 'Masseur-kinésithérapeute'
+  };
+  
+  return roleTypeMap[roleType] || roleType;
+}
+
+/**
  * Crée une ressource PractitionerRole FHIR à partir du segment ROL
  * @param {Object} rolSegment - Segment ROL parsé
  * @param {string} practitionerReference - Référence à la ressource Practitioner
@@ -855,13 +1114,18 @@ function createPractitionerResource(rolSegment) {
  * @returns {Object|null} Entrée de bundle pour un PractitionerRole ou null si non disponible
  */
 function createPractitionerRoleResource(rolSegment, practitionerReference, encounterReference) {
-  const roleType = rolSegment.getField(3).value;
-  
-  if (!roleType) {
+  if (!rolSegment || !practitionerReference) {
     return null;
   }
   
   const practitionerRoleId = `practitionerrole-${uuid.v4()}`;
+  
+  // ROL-3 (Role Code)
+  const roleCode = rolSegment.fields[3] ? rolSegment.fields[3].value : null;
+  
+  if (!roleCode) {
+    return null;
+  }
   
   // Créer la ressource PractitionerRole
   const practitionerRoleResource = {
@@ -870,15 +1134,24 @@ function createPractitionerRoleResource(rolSegment, practitionerReference, encou
     practitioner: {
       reference: practitionerReference
     },
-    code: [{
-      coding: [{
-        system: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
-        code: roleType,
-        display: getRoleTypeDisplay(roleType)
-      }]
-    }],
     active: true
   };
+  
+  // Ajouter le code de rôle
+  practitionerRoleResource.code = [{
+    coding: [{
+      system: 'https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial',
+      code: roleCode,
+      display: getRoleTypeDisplay(roleCode)
+    }]
+  }];
+  
+  // Lier à l'encounter si disponible
+  if (encounterReference) {
+    practitionerRoleResource.encounter = {
+      reference: encounterReference
+    };
+  }
   
   return {
     fullUrl: `urn:uuid:${practitionerRoleId}`,
@@ -891,49 +1164,23 @@ function createPractitionerRoleResource(rolSegment, practitionerReference, encou
 }
 
 /**
- * Récupère le libellé pour un type de rôle
- * @param {string} roleType - Code du type de rôle
- * @returns {string} Libellé du type de rôle
- */
-function getRoleTypeDisplay(roleType) {
-  const roleTypeMap = {
-    'CP': 'Consulting Provider',
-    'PP': 'Primary Care Provider',
-    'RP': 'Referring Provider',
-    'AP': 'Admitting Provider',
-    'ATND': 'Attending Provider',
-    'CALLBCK': 'Callback Provider',
-    'CON': 'Consultant',
-    'ADMDX': 'Admitting Diagnostician',
-    'ATTPHYS': 'Attending Physician',
-    'DISPHYS': 'Discharging Physician',
-    'FASST': 'First Assistant',
-    'ODRP': 'Ordering Provider',
-    'PRSCR': 'Prescriber',
-    'REFDR': 'Referring Doctor',
-    'SPCLST': 'Specialist'
-  };
-  
-  return roleTypeMap[roleType] || roleType;
-}
-
-/**
  * Crée une ressource RelatedPerson FHIR à partir du segment NK1
  * @param {Object} nk1Segment - Segment NK1 parsé
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object|null} Entrée de bundle pour un RelatedPerson ou null si non disponible
  */
 function createRelatedPersonResource(nk1Segment, patientReference) {
-  // NK1-2 (Nom)
-  const nameField = nk1Segment.getField(2);
-  // NK1-3 (Relation)
-  const relationshipField = nk1Segment.getField(3);
-  
-  if (!nameField || !nameField.value) {
+  if (!nk1Segment || !patientReference) {
     return null;
   }
   
-  const components = nameField.getComponents();
+  // NK1-2 (Nom)
+  const nameField = nk1Segment.fields[2];
+  if (!nameField) {
+    return null;
+  }
+  
+  const components = nameField.components || [];
   const familyName = components[0] ? components[0].value : '';
   const givenName = components[1] ? components[1].value : '';
   
@@ -964,17 +1211,32 @@ function createRelatedPersonResource(nk1Segment, patientReference) {
     }
     
     if (givenName) {
-      humanName.given = [givenName];
+      // Gérer les prénoms composés
+      if (givenName.includes(' ')) {
+        humanName.given = givenName.split(' ').filter(Boolean);
+      } else {
+        humanName.given = [givenName];
+      }
     }
     
     relatedPersonResource.name = [humanName];
   }
   
-  // Ajouter la relation
-  if (relationshipField && relationshipField.value) {
-    const relationship = relationshipField.getComponents();
-    const relationshipCode = relationship[1] ? relationship[1].value : '';
-    const relationshipSystem = relationship[0] ? relationship[0].value : '';
+  // NK1-3 (Relation)
+  const relationshipField = nk1Segment.fields[3];
+  if (relationshipField) {
+    const relationComponents = relationshipField.components || [];
+    let relationshipCode = '';
+    
+    // Trouver le code de relation (souvent à l'index 3 ou 4)
+    for (let i = 0; i < relationComponents.length; i++) {
+      const component = relationComponents[i];
+      if (component && component.value && 
+          ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'].includes(component.value)) {
+        relationshipCode = component.value;
+        break;
+      }
+    }
     
     if (relationshipCode) {
       relatedPersonResource.relationship = [{
@@ -1028,31 +1290,27 @@ function getRelationshipDisplay(relationshipCode) {
 }
 
 /**
- * Crée une ressource Coverage FHIR à partir du segment IN1
+ * Crée une ressource Coverage FHIR à partir des segments IN1/IN2
  * @param {Object} in1Segment - Segment IN1 parsé
+ * @param {Object} in2Segment - Segment IN2 parsé (optionnel)
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object|null} Entrée de bundle pour un Coverage ou null si non disponible
  */
-function createCoverageResource(in1Segment, patientReference) {
+function createCoverageResource(in1Segment, in2Segment, patientReference) {
+  if (!in1Segment || !patientReference) {
+    return null;
+  }
+  
   // IN1-2 (Plan ID)
-  const planIdField = in1Segment.getField(2);
-  
-  // IN1-3 (Insurance Company ID)
-  const insuranceCompanyField = in1Segment.getField(3);
-  
-  // IN1-8 (Group Name)
-  const groupNameField = in1Segment.getField(8);
+  const planId = in1Segment.fields[2] ? in1Segment.fields[2].value : '';
   
   // IN1-12 (Policy Expiration Date)
-  const expirationDateField = in1Segment.getField(12);
+  const expirationDate = in1Segment.fields[12] ? in1Segment.fields[12].value : '';
   
   // IN1-16 (Name of Insured)
-  const insuredNameField = in1Segment.getField(16);
+  const insuredNameField = in1Segment.fields[16];
   
-  // IN1-35 (Insurance Plan ID)
-  const insurancePlanField = in1Segment.getField(35);
-  
-  if (!planIdField && !insuranceCompanyField && !insurancePlanField) {
+  if (!planId && !insuredNameField) {
     return null;
   }
   
@@ -1069,33 +1327,45 @@ function createCoverageResource(in1Segment, patientReference) {
   };
   
   // Ajouter le type de couverture
-  if (planIdField && planIdField.value) {
+  if (planId) {
     coverageResource.type = {
       coding: [{
         system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-        code: planIdField.value,
+        code: planId,
         display: 'Insurance policy'
       }]
     };
   }
   
   // Ajouter la période de validité
-  if (expirationDateField && expirationDateField.value) {
-    const expirationDate = formatHL7DateTime(expirationDateField);
-    if (expirationDate) {
+  if (expirationDate) {
+    const expirationDateFormatted = formatHL7DateTime(expirationDate);
+    if (expirationDateFormatted) {
       coverageResource.period = {
-        end: expirationDate
+        end: expirationDateFormatted
       };
     }
   }
   
   // Ajouter le nom de l'assuré
-  if (insuredNameField && insuredNameField.value) {
-    const components = insuredNameField.getComponents();
+  if (insuredNameField) {
+    const components = insuredNameField.components || [];
     
     if (components[0] && components[0].value) {
       coverageResource.subscriberId = components[0].value;
     }
+  }
+  
+  // Extension française: numéro AMC/AMO
+  if (in1Segment.fields[36] && in1Segment.fields[36].value) {
+    const insuredId = in1Segment.fields[36].value;
+    coverageResource.extension = [{
+      url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/Coverage-InsuredID',
+      valueIdentifier: {
+        system: 'urn:oid:1.2.250.1.213.1.4.8',
+        value: insuredId
+      }
+    }];
   }
   
   return {
@@ -1106,6 +1376,36 @@ function createCoverageResource(in1Segment, patientReference) {
       url: 'Coverage'
     }
   };
+}
+
+/**
+ * Traite les données du segment ZBE (spécifique français)
+ * @param {Object} zbeSegment - Segment ZBE parsé
+ * @returns {Object} Données extraites du segment ZBE
+ */
+function processZBESegment(zbeSegment) {
+  if (!zbeSegment) {
+    return {};
+  }
+  
+  const zbeData = {};
+  
+  // ZBE-1 (Mouvement : EH_xxxx)
+  if (zbeSegment.fields[1]) {
+    zbeData.movementId = zbeSegment.fields[1].value;
+  }
+  
+  // ZBE-2 (Date d'effet)
+  if (zbeSegment.fields[2]) {
+    zbeData.effectiveDate = formatHL7DateTime(zbeSegment.fields[2].value);
+  }
+  
+  // ZBE-4 (Type de mouvement)
+  if (zbeSegment.fields[4]) {
+    zbeData.movementType = zbeSegment.fields[4].value;
+  }
+  
+  return zbeData;
 }
 
 module.exports = {

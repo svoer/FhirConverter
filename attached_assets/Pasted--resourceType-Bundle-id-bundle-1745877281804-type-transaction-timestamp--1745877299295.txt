@@ -1,0 +1,248 @@
+{
+  "resourceType": "Bundle",
+  "id": "bundle-1745877281804",
+  "type": "transaction",
+  "timestamp": "2025-04-28T21:54:41.804Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-1174024",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-1174024",
+        "identifier": [
+          {
+            "value": "1174024",
+            "system": "urn:system:MCK&1.2.250.1.211.10.200.1&ISO",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "1121717802492545833548",
+            "system": "urn:system:ASIP-SANTE-INS-C&1.2.250.1.213.1.4.2&ISO",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "160059932710027",
+            "system": "urn:system:ASIP-SANTE-INS-NIR&1.2.250.1.213.1.4.8&ISO",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS",
+              "JEAN",
+              "RICHARD",
+              "HERMAS JEAN RICHARD"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1960-05-09",
+        "telecom": [
+          {
+            "value": "0696039637",
+            "use": "home",
+            "system": "phone"
+          },
+          {
+            "value": "0596000093",
+            "use": "home",
+            "system": "phone"
+          },
+          {
+            "value": "0696039637",
+            "use": "home",
+            "system": "phone"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "type": "physical",
+            "line": [
+              "8  AVENUE CONDORCET"
+            ],
+            "city": "FORT DE FRANCE",
+            "postalCode": "97200",
+            "country": "FRA"
+          },
+          {
+            "use": "temp",
+            "type": "postal",
+            "country": "UNK"
+          },
+          {
+            "use": "home",
+            "type": "both",
+            "city": "PORTO NUEVO",
+            "postalCode": "99327",
+            "country": "BEN"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitioner-971219175",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-971219175",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.1",
+            "value": "971219175"
+          }
+        ],
+        "name": [
+          {
+            "family": "MERAUT SALOMON",
+            "given": [
+              "RENEE"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-1745877281804",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-1745877281804",
+        "status": "in-progress",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "IMP",
+          "display": "inpatient encounter"
+        },
+        "subject": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "period": {
+          "start": "2025-04-17T05:04:00"
+        },
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.2",
+            "value": "562102580^^^MCK&1.2.250.1.211.12.1.1&ISO^AN"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:organization-EAI",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "organization-EAI",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.2",
+            "value": "EAI"
+          }
+        ],
+        "name": "EAI",
+        "active": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:relatedperson-195278a3-55c6-4cd5-a9a8-6a5e46cba117",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "relatedperson-195278a3-55c6-4cd5-a9a8-6a5e46cba117",
+        "patient": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "YEHOUESSI",
+            "given": [
+              "ELENA"
+            ]
+          }
+        ],
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SPO",
+                "display": "Spouse"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:coverage-517bce43-ab5d-4d66-9187-1550326026f8",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "coverage-517bce43-ab5d-4d66-9187-1550326026f8",
+        "status": "active",
+        "beneficiary": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "972",
+              "display": "Insurance policy"
+            }
+          ]
+        },
+        "subscriberId": "YEHOUESSI"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    }
+  ]
+}
