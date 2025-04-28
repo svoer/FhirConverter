@@ -73,24 +73,48 @@ function convertHL7ToFHIR(hl7Message) {
       
       // Praticiens (à partir des segments ROL)
       if (segments.ROL && segments.ROL.length > 0) {
-        segments.ROL.forEach(rolSegment => {
+        console.log("[CONVERTER] Traitement de segments ROL:", segments.ROL.length, "segment(s) trouvé(s)");
+        
+        // Trouver l'Encounter existant s'il y en a un
+        let encounterReference = null;
+        if (bundle.entry.length > 1 && bundle.entry[1].resource && bundle.entry[1].resource.resourceType === 'Encounter') {
+          encounterReference = bundle.entry[1].fullUrl;
+          console.log("[CONVERTER] Référence d'Encounter trouvée:", encounterReference);
+        } else {
+          console.log("[CONVERTER] Pas de référence d'Encounter trouvée dans le bundle");
+        }
+        
+        segments.ROL.forEach((rolSegment, index) => {
+          console.log(`[CONVERTER] Traitement du segment ROL #${index + 1}:`, JSON.stringify(rolSegment).substring(0, 100) + "...");
+          
+          // Création du Praticien (Practitioner)
           const practitionerResource = createPractitionerResource(rolSegment);
           if (practitionerResource) {
+            console.log("[CONVERTER] Ressource Practitioner créée avec succès:", practitionerResource.fullUrl);
             bundle.entry.push(practitionerResource);
             
             // Créer aussi le PractitionerRole si un encounter existe
-            if (segments.PV1 && segments.PV1.length > 0) {
+            if (encounterReference) {
               const practitionerRoleResource = createPractitionerRoleResource(
                 rolSegment, 
                 practitionerResource.fullUrl, 
-                `urn:uuid:encounter-${Date.now()}`
+                encounterReference
               );
               if (practitionerRoleResource) {
+                console.log("[CONVERTER] Ressource PractitionerRole créée avec succès");
                 bundle.entry.push(practitionerRoleResource);
+              } else {
+                console.log("[CONVERTER] Échec de création de la ressource PractitionerRole");
               }
+            } else {
+              console.log("[CONVERTER] Pas de création de PractitionerRole (pas d'Encounter)");
             }
+          } else {
+            console.log("[CONVERTER] Échec de création de la ressource Practitioner");
           }
         });
+      } else {
+        console.log("[CONVERTER] Aucun segment ROL trouvé dans le message");
       }
       
       // Proches (à partir des segments NK1)
@@ -1174,13 +1198,17 @@ function createOrganizationResource(mshSegment, fieldIndex) {
  * @returns {Object|null} Entrée de bundle pour un Practitioner ou null si non disponible
  */
 function createPractitionerResource(rolSegment) {
+  console.log('[CONVERTER] Création de ressource Practitioner à partir de:', JSON.stringify(rolSegment).substring(0, 200));
+  
   if (!rolSegment || rolSegment.length <= 4) {
+    console.log('[CONVERTER] Échec: segment ROL trop court');
     return null;
   }
   
   // ROL-4 (Role Person)
   const rolePerson = rolSegment[4];
   if (!rolePerson) {
+    console.log('[CONVERTER] Échec: ROL-4 (Role Person) manquant');
     return null;
   }
   
@@ -1191,6 +1219,7 @@ function createPractitionerResource(rolSegment) {
   
   // Si c'est une chaîne, parser les composants
   if (typeof rolePerson === 'string') {
+    console.log('[CONVERTER] Parsing de ROL-4 (chaîne):', rolePerson);
     const rolePersonParts = rolePerson.split('^');
     
     // Identifiant (component 1)
@@ -1208,6 +1237,8 @@ function createPractitionerResource(rolSegment) {
         oid = authorityComponents[1];
       }
     }
+    
+    console.log('[CONVERTER] Données extraites - ID:', idValue, 'Nom:', familyName, 'Prénom:', givenName);
   }
   
   if (!idValue && !familyName && !givenName) {
