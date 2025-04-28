@@ -1391,11 +1391,16 @@ function convertHl7ToFhir(hl7Message) {
             // Traiter les répétitions (noms multiples séparés par ~)
             const nameValues = pid5Field.value.split('~');
             
+            console.log(`TRAITEMENT AVANCÉ DES NOMS FRANÇAIS: ${nameValues.length} valeurs trouvées`);
+            
             // Analyser chaque répétition du nom
-            nameValues.forEach(nameVal => {
+            nameValues.forEach((nameVal, index) => {
+              console.log(`Traitement du nom #${index + 1}: '${nameVal}'`);
+              
               const parts = nameVal.split('^');
               // Vérifier si nous avons au moins un nom de famille
               if (parts.length > 0 && parts[0].trim() !== '') {
+                // Déterminer l'usage du nom avec priorité pour le type L (légal)
                 const nameUse = (parts.length > 6) 
                   ? (parts[6] === 'L' ? 'official' 
                     : parts[6] === 'D' ? 'usual'
@@ -1404,18 +1409,20 @@ function convertHl7ToFhir(hl7Message) {
                     : 'official')
                   : 'official';
                 
+                console.log(`Type de nom: '${nameUse}' (${parts.length > 6 ? parts[6] : 'défaut'})`);
+                
                 const givenNames = [];
                 // Prénom principal (composant 1)
                 if (parts.length > 1 && parts[1].trim() !== '') {
                   givenNames.push(parts[1].trim());
+                  console.log(`Prénom principal: '${parts[1].trim()}'`);
                 }
+                
                 // Autres prénoms (composant 2) - CORRECTION POUR NOMS FRANÇAIS
                 if (parts.length > 2 && parts[2].trim() !== '') {
-                  // Pour les noms français, on vérifie si c'est un prénom composé comme "MARYSE BERTHE ALICE"
-                  // donc on doit s'assurer de traiter correctement ces prénoms multiples
-                  console.log(`TRAITEMENT PRÉNOMS COMPOSÉS: '${parts[2].trim()}'`);
+                  console.log(`PRÉNOMS COMPOSÉS DÉTECTÉS: '${parts[2].trim()}'`);
                   
-                  // Extraction optimisée des prénoms composés français
+                  // Extraction optimisée des prénoms composés français en les séparant par espaces
                   const middleNames = parts[2].trim().split(' ');
                   middleNames.forEach(name => {
                     // Ignorer les noms vides et ne pas ajouter de doublons
