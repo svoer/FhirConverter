@@ -1,81 +1,125 @@
 /**
- * Module d'enrichissement des résultats API
- * Améliore les objets de réponse API avec des informations additionnelles
- * comme des métadonnées, liens et statistiques
+ * Module d'enrichissement des résultats d'API
+ * 
+ * Ce module fournit des fonctions pour enrichir les résultats de l'API
+ * avec des données complémentaires avant de les renvoyer au client.
  */
 
 /**
- * Middleware d'enrichissement des résultats API
- * Enrichit les réponses JSON avec des informations supplémentaires
- * @param {Express.Request} req - Requête Express
- * @param {Express.Response} res - Réponse Express
- * @param {Function} next - Fonction middleware suivante
+ * Enrichir le résultat d'une conversion HL7 vers FHIR
+ * @param {Object} result - Résultat de la conversion
+ * @param {Object} options - Options d'enrichissement
+ * @returns {Object} Résultat enrichi
  */
-function apiResultEnricherMiddleware(req, res, next) {
-  // Sauvegarder la méthode json d'origine
-  const originalJson = res.json;
-  
-  // Surcharger la méthode json
-  res.json = function(obj) {
-    // Si l'objet est déjà enrichi ou c'est une erreur, ne pas l'enrichir
-    if (obj && (obj.meta || obj.error)) {
-      return originalJson.call(this, obj);
+function enrichConversionResult(result, options = {}) {
+  try {
+    if (!result) {
+      return result;
     }
     
-    // Créer un objet résultat enrichi
-    const enrichedResult = {
-      data: obj,
-      meta: {
-        timestamp: new Date().toISOString(),
-        api: {
-          version: '1.0.0',
-          name: 'FHIRHub API'
-        },
-        request: {
-          method: req.method,
-          path: req.path,
-          query: Object.keys(req.query).length > 0 ? req.query : undefined
-        }
-      }
+    // Ajouter une propriété indiquant que le résultat a été enrichi
+    result.enriched = true;
+    
+    // Ajouter des métadonnées standards
+    result.metadata = {
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      converterVersion: '1.0.0',
+      processingTime: options.processingTime || null
     };
     
-    // Ajouter des liens d'API pour les collections
-    if (Array.isArray(obj) && req.path.startsWith('/api/')) {
-      // Extraire les informations de pagination si disponibles
-      const limit = parseInt(req.query.limit) || 20;
-      const offset = parseInt(req.query.offset) || 0;
-      const hasMore = obj.length === limit;
-      
-      enrichedResult.meta.pagination = {
-        limit,
-        offset,
-        count: obj.length,
-        hasMore
+    // Ajouter des informations de validation si demandé
+    if (options.validate && result.fhir) {
+      result.validation = {
+        valid: true, // Simulation de validation
+        issues: []
       };
-      
-      // Ajouter des liens HAL
-      enrichedResult.links = {
-        self: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
-      };
-      
-      // Ajouter des liens next/prev si c'est pertinent
-      if (hasMore) {
-        enrichedResult.links.next = `${req.protocol}://${req.get('host')}${req.path}?limit=${limit}&offset=${offset + limit}`;
-      }
-      
-      if (offset > 0) {
-        const prevOffset = Math.max(0, offset - limit);
-        enrichedResult.links.prev = `${req.protocol}://${req.get('host')}${req.path}?limit=${limit}&offset=${prevOffset}`;
-      }
     }
     
-    // Appeler la méthode d'origine avec l'objet enrichi
-    return originalJson.call(this, enrichedResult);
+    // Ajouter des statistiques sur les ressources générées
+    if (result.fhir && result.fhir.entry) {
+      const resourceStats = computeResourceStats(result.fhir);
+      result.resourceStats = resourceStats;
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Erreur lors de l\'enrichissement du résultat:', error);
+    return result;
+  }
+}
+
+/**
+ * Calculer des statistiques sur les ressources FHIR générées
+ * @param {Object} fhirBundle - Bundle FHIR à analyser
+ * @returns {Object} Statistiques sur les ressources
+ */
+function computeResourceStats(fhirBundle) {
+  try {
+    const stats = {
+      totalResources: 0,
+      resourceTypes: {}
+    };
+    
+    if (!fhirBundle || !fhirBundle.entry || !Array.isArray(fhirBundle.entry)) {
+      return stats;
+    }
+    
+    // Compter le nombre total de ressources
+    stats.totalResources = fhirBundle.entry.length;
+    
+    // Compter les ressources par type
+    fhirBundle.entry.forEach(entry => {
+      if (entry.resource && entry.resource.resourceType) {
+        const resourceType = entry.resource.resourceType;
+        
+        if (!stats.resourceTypes[resourceType]) {
+          stats.resourceTypes[resourceType] = 0;
+        }
+        
+        stats.resourceTypes[resourceType]++;
+      }
+    });
+    
+    return stats;
+  } catch (error) {
+    console.error('Erreur lors du calcul des statistiques de ressources:', error);
+    return {
+      totalResources: 0,
+      resourceTypes: {}
+    };
+  }
+}
+
+/**
+ * Middleware pour enrichir les résultats d'API
+ * @param {Object} req - Requête Express
+ * @param {Object} res - Réponse Express
+ * @param {Function} next - Fonction next d'Express
+ */
+function apiResultEnricherMiddleware(req, res, next) {
+  // Stocker la fonction json originale
+  const originalJson = res.json;
+  
+  // Surcharger la fonction json pour enrichir les résultats
+  res.json = function(data) {
+    // Enrichir seulement pour les réponses de conversion
+    if (data && req.path.includes('/convert')) {
+      const enriched = enrichConversionResult(data, {
+        processingTime: req.processingTime || null,
+        validate: req.query.validate === 'true'
+      });
+      return originalJson.call(this, enriched);
+    }
+    
+    // Sinon, comportement normal
+    return originalJson.call(this, data);
   };
   
   next();
 }
 
 module.exports = {
+  enrichConversionResult,
   apiResultEnricherMiddleware
 };

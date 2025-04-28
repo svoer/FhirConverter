@@ -25,6 +25,7 @@
     "drizzle-kit": "^0.31.0",
     "drizzle-orm": "^0.43.1",
     "express": "^5.1.0",
+    "hl7": "^0.0.0",
     "hl7-dictionary": "^1.0.1",
     "hl7-parser": "^0.2.1",
     "hl7-standard": "^1.0.4",

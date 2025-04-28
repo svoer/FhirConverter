@@ -1,0 +1,35 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-755c3edc",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "1174024"
+          }
+        ],
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS JEAN RICHARD",
+              "HERMAS",
+              "JEAN",
+              "RICHARD"
+            ],
+            "use": "official",
+            "_compositeGiven": "HERMAS JEAN RICHARD"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    }
+  ]
+}
