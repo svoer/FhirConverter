@@ -77,8 +77,9 @@
       <h3>FHIRHub</h3>
       <div>
         <div class="input-group">
-          <input type="text" id="apiKeyInput" class="form-control" placeholder="API Key" value="demo-api-key">
-          <button class="btn btn-outline-secondary" type="button" id="saveApiKey">Save</button>
+          <label for="apiKeyInput" class="visually-hidden">API Key</label>
+          <input type="text" id="apiKeyInput" name="apiKeyInput" class="form-control" placeholder="API Key" value="demo-api-key">
+          <button class="btn btn-outline-secondary" type="button" id="saveApiKey" aria-controls="apiKeyInput">Save</button>
         </div>
       </div>
     </div>
@@ -155,11 +156,11 @@
           <div class="tab-pane fade" id="upload" role="tabpanel" aria-labelledby="upload-tab">
             <div class="p-3">
               <h4>Upload HL7 File</h4>
-              <div class="file-drop-area mt-3" id="dropZone">
-                <p class="mb-2">Drag & drop your HL7 file here</p>
+              <div class="file-drop-area mt-3" id="dropZone" aria-labelledby="dropZoneInstructions">
+                <p class="mb-2" id="dropZoneInstructions">Drag & drop your HL7 file here</p>
                 <p>or</p>
-                <input type="file" id="fileInput" class="d-none">
-                <button class="btn btn-primary" id="browseBtn">Browse Files</button>
+                <input type="file" id="fileInput" name="fileInput" class="d-none" accept=".hl7,.txt">
+                <button class="btn btn-primary" id="browseBtn" aria-controls="fileInput">Browse Files</button>
               </div>
               
               <div class="form-group mt-3">

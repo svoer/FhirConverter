@@ -1,314 +1,358 @@
 /**
  * Service de base de données pour FHIRHub
- * Ce module fournit des fonctions pour interagir avec la base de données SQLite
+ * Gère la persistance des conversions, clés API et statistiques
+ * Utilise SQLite pour stocker les données localement
  */
 
-const { db } = require('./schema');
-const { v4: uuidv4 } = require('uuid');
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
-/**
- * Récupérer une application par son ID
- * @param {number} appId - ID de l'application
- * @returns {Object|null} Application trouvée ou null
- */
-function getApplicationById(appId) {
-  try {
-    return db.prepare('SELECT * FROM applications WHERE id = ?').get(appId);
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération de l\'application:', error);
-    return null;
-  }
+// Vérifier que le dossier data existe
+const dataDir = path.join(__dirname, '../../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
-/**
- * Récupérer une application par le nom
- * @param {string} name - Nom de l'application
- * @returns {Object|null} Application trouvée ou null
- */
-function getApplicationByName(name) {
-  try {
-    return db.prepare('SELECT * FROM applications WHERE name = ?').get(name);
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération de l\'application par nom:', error);
-    return null;
-  }
-}
+// Connexion à la base de données SQLite
+const dbPath = path.join(dataDir, 'fhirhub.db');
+const db = new Database(dbPath);
 
-/**
- * Vérifier si une clé API est valide
- * @param {string} apiKey - Clé API à vérifier
- * @returns {Object|null} Informations sur la clé API et l'application associée ou null
- */
-function validateApiKey(apiKey) {
-  try {
-    const query = `
-      SELECT 
-        k.id as key_id, 
-        k.app_id, 
-        k.key, 
-        k.is_active,
-        a.name as app_name, 
-        a.settings
-      FROM api_keys k
-      JOIN applications a ON k.app_id = a.id
-      WHERE k.key = ? AND k.is_active = 1
-    `;
+// Initialiser la base de données
+function initDatabase() {
+  console.log('[DB] Initialisation de la base de données');
+
+  // Activer les clés étrangères
+  db.pragma('foreign_keys = ON');
+
+  // Créer la table des applications
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS applications (
+      app_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      settings TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Créer la table des clés API
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      key_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      api_key TEXT NOT NULL UNIQUE,
+      description TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(app_id)
+    )
+  `);
+
+  // Créer la table des conversions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS conversions (
+      conversion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id INTEGER NOT NULL,
+      source_name TEXT,
+      source_content TEXT,
+      status TEXT,
+      message TEXT,
+      resource_count INTEGER DEFAULT 0,
+      result_content TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(app_id)
+    )
+  `);
+
+  // Créer la table des utilisateurs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      full_name TEXT,
+      email TEXT,
+      role TEXT DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_login TIMESTAMP
+    )
+  `);
+
+  // Récupérer le nombre d'applications
+  const appCount = db.prepare('SELECT COUNT(*) as count FROM applications').get().count;
+  
+  // Insérer l'application par défaut si aucune application n'existe
+  if (appCount === 0) {
+    console.log('[DB] Création de l\'application par défaut');
+    const insertAppStmt = db.prepare(`
+      INSERT INTO applications (name, description, settings)
+      VALUES ('Application par défaut', 'Application créée automatiquement', '{"maxHistoryDays":30,"enableLogging":true}')
+    `);
+    insertAppStmt.run();
+  }
+
+  // Récupérer l'ID de l'application par défaut
+  const defaultApp = db.prepare('SELECT app_id FROM applications WHERE name = ?').get('Application par défaut');
+  
+  if (defaultApp) {
+    // Insérer la clé API de développement si elle n'existe pas
+    const keyCount = db.prepare('SELECT COUNT(*) as count FROM api_keys WHERE api_key = ?').get('dev-key').count;
     
-    const apiKeyInfo = db.prepare(query).get(apiKey);
-    
-    if (apiKeyInfo) {
-      // Mettre à jour la date de dernière utilisation
-      db.prepare('UPDATE api_keys SET last_used = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(apiKeyInfo.key_id);
-      
-      // Essayer de parser les paramètres JSON
-      try {
-        apiKeyInfo.settings = JSON.parse(apiKeyInfo.settings);
-      } catch (e) {
-        apiKeyInfo.settings = {};
-      }
+    if (keyCount === 0) {
+      console.log('[DB] Création de la clé API de développement');
+      const insertKeyStmt = db.prepare(`
+        INSERT INTO api_keys (app_id, api_key, description)
+        VALUES (?, 'dev-key', 'Clé API de développement')
+      `);
+      insertKeyStmt.run(defaultApp.app_id);
     }
-    
-    return apiKeyInfo;
-  } catch (error) {
-    console.error('[DB] Erreur lors de la validation de la clé API:', error);
-    return null;
   }
+
+  // Insérer l'utilisateur administrateur si aucun utilisateur n'existe
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  if (userCount === 0) {
+    console.log('[DB] Création de l\'utilisateur admin par défaut');
+    const insertUserStmt = db.prepare(`
+      INSERT INTO users (username, password, full_name, role)
+      VALUES ('admin', '$2b$10$7JQR79Tln7vxJ15XQgEiY.cgAWkh/ipdRRZKzGcVzmAM.nP3vCvjW', 'Administrateur FHIRHub', 'admin')
+    `);
+    insertUserStmt.run();
+  }
+
+  console.log('[DB] Base de données initialisée avec succès');
 }
 
-/**
- * Enregistrer une conversion dans l'historique
- * @param {Object} conversion - Données de la conversion
- * @returns {string} ID de la conversion créée
- */
-function saveConversion(conversion) {
+// Récupérer les informations d'une clé API
+function validateApiKey(apiKey) {
+  const stmt = db.prepare(`
+    SELECT api_keys.key_id, api_keys.app_id, applications.name as app_name, applications.settings
+    FROM api_keys
+    JOIN applications ON api_keys.app_id = applications.app_id
+    WHERE api_keys.api_key = ? AND api_keys.is_active = 1
+  `);
+  
+  const result = stmt.get(apiKey);
+  
+  if (result && result.settings) {
+    try {
+      result.settings = JSON.parse(result.settings);
+    } catch (error) {
+      result.settings = {};
+    }
+  }
+  
+  return result;
+}
+
+// Récupérer la liste des conversions
+function getConversionHistory(options = {}) {
+  const { appId = 1, limit = 20 } = options;
+  
+  const stmt = db.prepare(`
+    SELECT conversion_id, app_id, source_name, status, message, resource_count, created_at
+    FROM conversions
+    WHERE app_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `);
+  
+  return stmt.all(appId, limit);
+}
+
+// Récupérer une conversion par ID
+function getConversionById(id) {
+  const stmt = db.prepare(`
+    SELECT * FROM conversions
+    WHERE conversion_id = ?
+  `);
+  
+  return stmt.get(id);
+}
+
+// Enregistrer une conversion
+function saveConversion(data) {
   try {
-    const conversionId = conversion.conversion_id || uuidv4();
-    
     const stmt = db.prepare(`
-      INSERT INTO conversions (
-        conversion_id, app_id, source_name, source_content,
-        result_content, status, message, resource_count
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO conversions (app_id, source_name, source_content, status, message, resource_count, result_content)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     
-    stmt.run(
-      conversionId,
-      conversion.app_id || null,
-      conversion.source_name,
-      conversion.source_content,
-      conversion.result_content,
-      conversion.status,
-      conversion.message || '',
-      conversion.resource_count || 0
+    const info = stmt.run(
+      data.app_id || 1,
+      data.source_name || 'Conversion directe',
+      data.source_content || '',
+      data.status || 'unknown',
+      data.message || '',
+      data.resource_count || 0,
+      data.result_content || ''
     );
     
-    // Mettre à jour les statistiques pour l'application
-    if (conversion.app_id) {
-      updateAppStats(conversion.app_id, conversion.status, conversion.resource_count || 0);
-    }
-    
-    return conversionId;
+    return info.lastInsertRowid;
   } catch (error) {
     console.error('[DB] Erreur lors de l\'enregistrement de la conversion:', error);
     return null;
   }
 }
 
-/**
- * Récupérer l'historique des conversions
- * @param {Object} options - Options de filtrage
- * @returns {Array} Liste des conversions
- */
-function getConversionHistory(options = {}) {
-  try {
-    let query = `
-      SELECT 
-        id, conversion_id, app_id, source_name, 
-        status, message, resource_count, created_at
-      FROM conversions
-    `;
-    
-    const params = [];
-    const conditions = [];
-    
-    if (options.appId) {
-      conditions.push('app_id = ?');
-      params.push(options.appId);
-    }
-    
-    if (options.status) {
-      conditions.push('status = ?');
-      params.push(options.status);
-    }
-    
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    
-    if (options.limit) {
-      query += ' LIMIT ?';
-      params.push(options.limit);
-    }
-    
-    return db.prepare(query).all(...params);
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération de l\'historique:', error);
-    return [];
-  }
+// Récupérer les statistiques d'une application
+function getAppStats(appId = 1, days = 30) {
+  const statsStmt = db.prepare(`
+    SELECT 
+      COUNT(*) as total_count,
+      SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+      SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+      AVG(resource_count) as avg_resources
+    FROM conversions
+    WHERE app_id = ? 
+    AND created_at >= datetime('now', '-' || ? || ' days')
+  `);
+  
+  const result = statsStmt.get(appId, days);
+  
+  // Récupérer les conversions par jour
+  const dailyStmt = db.prepare(`
+    SELECT 
+      date(created_at) as date,
+      COUNT(*) as count
+    FROM conversions
+    WHERE app_id = ?
+    AND created_at >= datetime('now', '-' || ? || ' days')
+    GROUP BY date(created_at)
+    ORDER BY date(created_at) ASC
+  `);
+  
+  const dailyData = dailyStmt.all(appId, days);
+  
+  return {
+    ...result,
+    dailyData
+  };
 }
 
-/**
- * Récupérer une conversion par son ID
- * @param {string} conversionId - ID de la conversion
- * @returns {Object|null} Conversion trouvée ou null
- */
-function getConversionById(conversionId) {
-  try {
-    return db.prepare('SELECT * FROM conversions WHERE conversion_id = ?').get(conversionId);
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération de la conversion:', error);
-    return null;
-  }
-}
-
-/**
- * Mettre à jour les statistiques d'une application
- * @param {number} appId - ID de l'application
- * @param {string} status - Statut de la conversion (success/error)
- * @param {number} resourceCount - Nombre de ressources générées
- * @returns {boolean} Succès de la mise à jour
- */
-function updateAppStats(appId, status, resourceCount) {
-  try {
-    // Obtenir la date du jour au format YYYY-MM-DD
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Vérifier si une entrée existe déjà pour cette date
-    const existing = db.prepare('SELECT id FROM app_stats WHERE app_id = ? AND date = ?')
-      .get(appId, today);
-    
-    if (existing) {
-      // Mettre à jour les statistiques existantes
-      db.prepare(`
-        UPDATE app_stats SET
-          conversion_count = conversion_count + 1,
-          success_count = success_count + CASE WHEN ? = 'success' THEN 1 ELSE 0 END,
-          error_count = error_count + CASE WHEN ? = 'error' THEN 1 ELSE 0 END,
-          resource_count = resource_count + ?
-        WHERE id = ?
-      `).run(status, status, resourceCount, existing.id);
-    } else {
-      // Créer une nouvelle entrée pour aujourd'hui
-      db.prepare(`
-        INSERT INTO app_stats (
-          app_id, date, conversion_count,
-          success_count, error_count, resource_count
-        )
-        VALUES (?, ?, 1, ?, ?, ?)
-      `).run(
-        appId,
-        today,
-        status === 'success' ? 1 : 0,
-        status === 'error' ? 1 : 0,
-        resourceCount
-      );
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('[DB] Erreur lors de la mise à jour des statistiques:', error);
-    return false;
-  }
-}
-
-/**
- * Récupérer les statistiques d'une application
- * @param {number} appId - ID de l'application
- * @param {number} days - Nombre de jours à considérer
- * @returns {Array} Statistiques de l'application
- */
-function getAppStats(appId, days = 30) {
-  try {
-    // Calculer la date limite
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    const limitDate = date.toISOString().split('T')[0];
-    
-    return db.prepare(`
-      SELECT * FROM app_stats
-      WHERE app_id = ? AND date >= ?
-      ORDER BY date ASC
-    `).all(appId, limitDate);
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération des statistiques:', error);
-    return [];
-  }
-}
-
-/**
- * Supprimer les anciennes conversions
- * @param {number} days - Supprimer les conversions plus anciennes que ce nombre de jours
- * @returns {number} Nombre d'entrées supprimées
- */
-function purgeOldConversions(days = 30) {
-  try {
-    // Calculer la date limite
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    const limitDate = date.toISOString();
-    
-    const result = db.prepare(`
-      DELETE FROM conversions
-      WHERE created_at < ?
-    `).run(limitDate);
-    
-    return result.changes;
-  } catch (error) {
-    console.error('[DB] Erreur lors de la purge des anciennes conversions:', error);
-    return 0;
-  }
-}
-
-/**
- * Récupérer les informations système
- * @returns {Object} Informations sur le système
- */
+// Récupérer les informations du système
 function getSystemInfo() {
-  try {
-    const dbInfo = {
-      conversionCount: db.prepare('SELECT COUNT(*) as count FROM conversions').get().count,
-      successCount: db.prepare('SELECT COUNT(*) as count FROM conversions WHERE status = ?').get('success').count,
-      errorCount: db.prepare('SELECT COUNT(*) as count FROM conversions WHERE status = ?').get('error').count,
-      appCount: db.prepare('SELECT COUNT(*) as count FROM applications').get().count,
-      apiKeyCount: db.prepare('SELECT COUNT(*) as count FROM api_keys').get().count
-    };
-    
-    return dbInfo;
-  } catch (error) {
-    console.error('[DB] Erreur lors de la récupération des informations système:', error);
-    return {
-      conversionCount: 0,
-      successCount: 0,
-      errorCount: 0,
-      appCount: 0,
-      apiKeyCount: 0
-    };
-  }
+  const dbSize = fs.statSync(dbPath).size / (1024 * 1024); // Taille en Mo
+  
+  // Compter les entrées dans les tables principales
+  const conversionsCount = db.prepare('SELECT COUNT(*) as count FROM conversions').get().count;
+  const appsCount = db.prepare('SELECT COUNT(*) as count FROM applications').get().count;
+  const apiKeysCount = db.prepare('SELECT COUNT(*) as count FROM api_keys').get().count;
+  
+  return {
+    db: {
+      path: dbPath,
+      size: Math.round(dbSize * 100) / 100, // Arrondi à 2 décimales
+      tables: {
+        conversions: conversionsCount,
+        applications: appsCount,
+        apiKeys: apiKeysCount
+      }
+    },
+    system: {
+      platform: os.platform(),
+      release: os.release(),
+      totalMemory: Math.round(os.totalmem() / (1024 * 1024 * 1024) * 100) / 100, // Go
+      freeMemory: Math.round(os.freemem() / (1024 * 1024 * 1024) * 100) / 100, // Go
+      uptime: Math.round(os.uptime() / 3600 * 10) / 10 // Heures
+    }
+  };
 }
+
+// Nettoyer l'historique des conversions
+function cleanupHistory() {
+  console.log('[DB] Nettoyage de l\'historique des conversions');
+  
+  // Récupérer toutes les applications
+  const apps = db.prepare('SELECT app_id, settings FROM applications').all();
+  
+  let totalDeleted = 0;
+  let appsProcessed = 0;
+  
+  apps.forEach(app => {
+    let settings = {};
+    
+    try {
+      settings = JSON.parse(app.settings);
+    } catch (error) {
+      // Utiliser les paramètres par défaut
+      settings = { maxHistoryDays: 30 };
+    }
+    
+    // Supprimer les conversions anciennes
+    const maxDays = settings.maxHistoryDays || 30;
+    
+    const deleteStmt = db.prepare(`
+      DELETE FROM conversions
+      WHERE app_id = ?
+      AND created_at < datetime('now', '-' || ? || ' days')
+    `);
+    
+    const info = deleteStmt.run(app.app_id, maxDays);
+    totalDeleted += info.changes;
+    appsProcessed++;
+  });
+  
+  console.log(`[DB] Nettoyage terminé : ${totalDeleted} conversion(s) supprimée(s) pour ${appsProcessed} application(s)`);
+  return { deletedCount: totalDeleted, appsProcessed };
+}
+
+// Corriger les problèmes dans l'historique des conversions
+function fixHistory() {
+  console.log('[DB] Recherche de problèmes dans l\'historique des conversions');
+  
+  // Supprimer les conversions avec des contenus JSON mal formatés
+  const corruptedRows = db.prepare(`
+    SELECT conversion_id FROM conversions
+    WHERE (result_content IS NOT NULL AND result_content != '')
+    AND (
+      result_content NOT LIKE '{%}'
+      OR result_content = '{}'
+      OR length(result_content) < 5
+    )
+  `).all();
+  
+  let deletedCount = 0;
+  
+  if (corruptedRows.length > 0) {
+    const deleteStmt = db.prepare('DELETE FROM conversions WHERE conversion_id = ?');
+    
+    corruptedRows.forEach(row => {
+      deleteStmt.run(row.conversion_id);
+      deletedCount++;
+    });
+  }
+  
+  // Recalculer les statistiques pour chaque application
+  const apps = db.prepare('SELECT app_id FROM applications').all();
+  let statsUpdated = false;
+  
+  // Dans une base de données de production, on aurait une table de statistiques à mettre à jour
+  // Pour notre cas simplifié, nous ne faisons rien de plus
+  
+  console.log(`[DB] Corrections appliquées à l'historique:
+      - ${deletedCount} entrées corrompues supprimées
+      - Statistiques régénérées: ${statsUpdated ? 'Oui' : 'Non'}`);
+  
+  return {
+    deletedCount,
+    statsUpdated
+  };
+}
+
+// Initialiser la base de données
+initDatabase();
 
 module.exports = {
-  getApplicationById,
-  getApplicationByName,
   validateApiKey,
-  saveConversion,
   getConversionHistory,
   getConversionById,
-  updateAppStats,
+  saveConversion,
   getAppStats,
-  purgeOldConversions,
-  getSystemInfo
+  getSystemInfo,
+  cleanupHistory,
+  fixHistory
 };

@@ -17,6 +17,24 @@ const frenchTerminologyAdapter = require('./french_terminology_adapter');
 const fhirCleaner = require('./fhir_cleaner');
 const dbService = require('./src/db/dbService');
 
+// Créer les répertoires nécessaires s'ils n'existent pas
+const requiredDirs = [
+  'data', 
+  'data/uploads', 
+  'data/conversions', 
+  'data/in', 
+  'data/out',
+  'french_terminology/cache'
+];
+
+requiredDirs.forEach(dir => {
+  const dirPath = path.join(__dirname, dir);
+  if (!fs.existsSync(dirPath)) {
+    console.log(`Création du répertoire ${dir}`);
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+});
+
 // Configuration du middleware de téléchargement
 const upload = multer({ dest: 'data/uploads/' });
 

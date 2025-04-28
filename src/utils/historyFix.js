@@ -1,129 +1,89 @@
 /**
- * Module de correction pour l'historique des conversions
- * Ce module nettoie l'historique des conversions pour éviter les rémanences
- * et restaure le fonctionnement correct de l'interface d'historique
+ * Module de correction des problèmes dans l'historique des conversions
+ * Ce module contient des fonctions utilitaires pour nettoyer et corriger
+ * les données d'historique des conversions HL7 -> FHIR
  */
 
-const { db } = require('../db/schema');
+const path = require('path');
+const fs = require('fs');
+const dbService = require('../db/dbService');
 
 /**
- * Nettoyer les entrées d'historique corrompues ou incomplètes
- * @returns {number} Nombre d'entrées nettoyées
- */
-function cleanupCorruptedHistory() {
-  try {
-    // Supprimer les entrées d'historique qui n'ont pas toutes les informations nécessaires
-    const result = db.prepare(`
-      DELETE FROM conversions
-      WHERE source_name IS NULL 
-         OR status IS NULL
-         OR conversion_id IS NULL
-    `).run();
-    
-    console.log(`Nettoyage de l'historique: ${result.changes} entrée(s) corrompue(s) supprimée(s)`);
-    return result.changes;
-  } catch (error) {
-    console.error('Erreur lors du nettoyage de l\'historique corrompu:', error);
-    return 0;
-  }
-}
-
-/**
- * Régénérer les statistiques de conversion à partir de l'historique
- * @returns {boolean} Succès de la régénération
- */
-function regenerateConversionStats() {
-  try {
-    // Supprimer toutes les statistiques existantes
-    db.prepare('DELETE FROM app_stats').run();
-    
-    // Récupérer tous les IDs d'application distincts
-    const apps = db.prepare('SELECT DISTINCT app_id FROM conversions WHERE app_id IS NOT NULL').all();
-    
-    // Pour chaque application, recalculer les statistiques
-    apps.forEach(app => {
-      // Obtenir la date du jour au format YYYY-MM-DD
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Calculer les statistiques pour cette application
-      const stats = db.prepare(`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
-          SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
-          SUM(resource_count) as resource_count
-        FROM conversions
-        WHERE app_id = ?
-      `).get(app.app_id);
-      
-      // Insérer les nouvelles statistiques
-      db.prepare(`
-        INSERT INTO app_stats (
-          app_id, date, conversion_count, 
-          success_count, error_count, resource_count
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        app.app_id,
-        today,
-        stats.total || 0,
-        stats.success_count || 0,
-        stats.error_count || 0,
-        stats.resource_count || 0
-      );
-    });
-    
-    console.log(`Statistiques régénérées pour ${apps.length} application(s)`);
-    return true;
-  } catch (error) {
-    console.error('Erreur lors de la régénération des statistiques:', error);
-    return false;
-  }
-}
-
-/**
- * Réinitialiser complètement l'historique des conversions
- * @returns {boolean} Succès de la réinitialisation
- */
-function resetConversionHistory() {
-  try {
-    // Supprimer toutes les conversions
-    db.prepare('DELETE FROM conversions').run();
-    
-    // Supprimer toutes les statistiques
-    db.prepare('DELETE FROM app_stats').run();
-    
-    console.log('Historique des conversions réinitialisé avec succès');
-    return true;
-  } catch (error) {
-    console.error('Erreur lors de la réinitialisation de l\'historique:', error);
-    return false;
-  }
-}
-
-/**
- * Appliquer toutes les corrections à l'historique
+ * Appliquer des correctifs à l'historique des conversions
  */
 function applyHistoryFixes() {
+  console.log('Nettoyage de l\'historique: début');
+  
   try {
-    const cleanedEntries = cleanupCorruptedHistory();
-    const statsRegenerated = regenerateConversionStats();
+    // Supprimer les entrées corrompues et recalculer les statistiques
+    const fixResult = dbService.fixHistory();
     
-    console.log(`Corrections appliquées à l'historique:
-      - ${cleanedEntries} entrées corrompues supprimées
-      - Statistiques régénérées: ${statsRegenerated ? 'Oui' : 'Non'}
-    `);
+    // Nettoyer les anciennes conversions selon les paramètres de rétention
+    const cleanupResult = dbService.cleanupHistory();
     
-    return { cleanedEntries, statsRegenerated };
+    return {
+      success: true,
+      fixes: fixResult,
+      cleanup: cleanupResult
+    };
   } catch (error) {
-    console.error('Erreur lors de l\'application des corrections à l\'historique:', error);
-    return { cleanedEntries: 0, statsRegenerated: false, error: error.message };
+    console.error('Erreur lors de la correction de l\'historique:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
+}
+
+/**
+ * Nettoyer les ressources temporaires et fichiers obsolètes
+ */
+function cleanupTempResources() {
+  console.log('Nettoyage des ressources temporaires: début');
+  
+  const tempDirs = [
+    path.join(__dirname, '../../data/uploads'),
+    path.join(__dirname, '../../data/in')
+  ];
+  
+  const results = {
+    filesDeleted: 0,
+    errors: []
+  };
+  
+  // Parcourir les répertoires temporaires
+  tempDirs.forEach(dirPath => {
+    if (fs.existsSync(dirPath)) {
+      try {
+        const files = fs.readdirSync(dirPath);
+        
+        // Supprimer les fichiers datant de plus de 24 heures
+        files.forEach(file => {
+          try {
+            const filePath = path.join(dirPath, file);
+            const stats = fs.statSync(filePath);
+            
+            const fileAge = new Date() - stats.mtime;
+            const hoursOld = fileAge / (1000 * 60 * 60);
+            
+            if (hoursOld > 24) {
+              fs.unlinkSync(filePath);
+              results.filesDeleted++;
+            }
+          } catch (fileError) {
+            results.errors.push(`Erreur avec le fichier ${file}: ${fileError.message}`);
+          }
+        });
+      } catch (dirError) {
+        results.errors.push(`Erreur avec le répertoire ${dirPath}: ${dirError.message}`);
+      }
+    }
+  });
+  
+  return results;
 }
 
 module.exports = {
-  cleanupCorruptedHistory,
-  regenerateConversionStats,
-  resetConversionHistory,
-  applyHistoryFixes
+  applyHistoryFixes,
+  cleanupTempResources
 };
