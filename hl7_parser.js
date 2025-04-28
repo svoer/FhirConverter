@@ -228,10 +228,25 @@ function extractPatientInfo(parsedMessage) {
         const identifiers = patientIdField.value.split('~');
         identifiers.forEach(identifier => {
           const parts = identifier.split('^');
+          // Traitement spécial pour les identifiants avec OID (format HL7 complet)
+          // Format complet: ID^Code^Libellé^System^Type
+          // Exemple INS-NIR: 248098060602525^^^ASIP-SANTE-INS-NIR&1.2.250.1.213.1.4.8&ISO^INS
+          let idSystem = parts[3] || '';
+          let idOID = '';
+          
+          // Vérifier si le système contient un OID (format avec &)
+          if (idSystem && idSystem.includes('&')) {
+            const systemParts = idSystem.split('&');
+            idOID = systemParts[1] || ''; // L'OID est généralement à la position 1
+          }
+          
           patientInfo.identifiers.push({
             value: parts[0] || '',
             type: parts[4] || '',
-            system: parts[3] || ''
+            system: idSystem || '',
+            oid: idOID || '',
+            // Ajouter la valeur brute complète pour un traitement plus détaillé
+            raw: identifier
           });
         });
       } else {
@@ -241,10 +256,19 @@ function extractPatientInfo(parsedMessage) {
         const idSystem = patientIdField.components.find(c => c.componentPosition === 4)?.value;
         
         if (idValue) {
+          // Extraction de l'OID du système si présent
+          let idOID = '';
+          if (idSystem && idSystem.includes('&')) {
+            const systemParts = idSystem.split('&');
+            idOID = systemParts[1] || ''; // L'OID est généralement à la position 1
+          }
+          
           patientInfo.identifiers.push({
             value: idValue,
             type: idType || '',
-            system: idSystem || ''
+            system: idSystem || '',
+            oid: idOID || '',
+            raw: patientIdField.value
           });
         }
       }
@@ -252,19 +276,44 @@ function extractPatientInfo(parsedMessage) {
     
     // Traiter les noms (PID.5)
     if (patientNameField) {
-      const family = patientNameField.components.find(c => c.componentPosition === 1)?.value;
-      const given = patientNameField.components.find(c => c.componentPosition === 2)?.value;
-      const middle = patientNameField.components.find(c => c.componentPosition === 3)?.value;
-      const suffix = patientNameField.components.find(c => c.componentPosition === 4)?.value;
-      const prefix = patientNameField.components.find(c => c.componentPosition === 5)?.value;
+      // Extraire les composants du nom
+      const family = patientNameField.components.find(c => c.componentPosition === 1)?.value || '';
+      const given = patientNameField.components.find(c => c.componentPosition === 2)?.value || '';
+      const middle = patientNameField.components.find(c => c.componentPosition === 3)?.value || '';
+      const suffix = patientNameField.components.find(c => c.componentPosition === 4)?.value || '';
+      const prefix = patientNameField.components.find(c => c.componentPosition === 5)?.value || '';
+      const nameType = patientNameField.components.find(c => c.componentPosition === 7)?.value || '';
+
+      // Stocker la valeur brute complète pour permettre un traitement plus détaillé
+      const rawValue = patientNameField.components.map(c => c.value || '').join('^');
       
       patientInfo.names.push({
         family,
         given,
         middle,
         prefix,
-        suffix
+        suffix,
+        nameType,
+        raw: rawValue
       });
+      
+      // Si le champ a des répétitions (format pour gérer plusieurs noms)
+      if (patientNameField.value && patientNameField.value.includes('~')) {
+        const additionalNames = patientNameField.value.split('~').slice(1); // Ignorer le premier, déjà traité
+        
+        for (const additionalName of additionalNames) {
+          const parts = additionalName.split('^');
+          patientInfo.names.push({
+            family: parts[0] || '',
+            given: parts[1] || '',
+            middle: parts[2] || '',
+            prefix: parts[4] || '',
+            suffix: parts[3] || '',
+            nameType: parts[6] || '',
+            raw: additionalName
+          });
+        }
+      }
     }
     
     // Traiter les adresses (PID.11)

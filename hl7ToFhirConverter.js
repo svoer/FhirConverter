@@ -1219,7 +1219,7 @@ function convertHl7ToFhir(hl7Message) {
       patientResource.name = [];
       
       // Traiter le nom principal (PID-5)
-      if (hl7Data.PID.patientName && hl7Data.PID.patientName.raw) {
+      if (hl7Data.PID.patientName && (hl7Data.PID.patientName.raw || hl7Data.PID.patientName.family)) {
         const nameObj = {
           family: hl7Data.PID.patientName.family || '',
           given: [],
@@ -1229,20 +1229,44 @@ function convertHl7ToFhir(hl7Message) {
         // Ajouter tous les prénoms disponibles
         const allGivenNames = new Set();
         
+        // Traitement plus complet du nom: 
+        // Analyser en profondeur toutes les parties du nom disponibles
+        
         // Ajouter le prénom principal
         if (hl7Data.PID.patientName.given && hl7Data.PID.patientName.given.trim() !== '') {
-          allGivenNames.add(hl7Data.PID.patientName.given);
+          allGivenNames.add(hl7Data.PID.patientName.given.trim());
         }
         
-        // Ajouter les autres prénoms s'ils sont différents du premier
-        if (hl7Data.PID.patientName.middle) {
+        // Ajouter les autres prénoms s'ils sont disponibles
+        if (hl7Data.PID.patientName.middle && hl7Data.PID.patientName.middle.trim() !== '') {
           // Diviser les prénoms multiples s'ils sont séparés par des espaces
           const middleNames = hl7Data.PID.patientName.middle.split(' ');
           middleNames.forEach(name => {
-            if (name.trim() !== '' && name !== hl7Data.PID.patientName.given) {
+            if (name.trim() !== '' && name.trim() !== hl7Data.PID.patientName.given) {
               allGivenNames.add(name.trim());
             }
           });
+        }
+        
+        // Si nous avons la valeur brute, l'analyser pour des informations supplémentaires
+        if (hl7Data.PID.patientName.raw) {
+          const nameParts = hl7Data.PID.patientName.raw.split('^');
+          // Vérifier si nous avons des parties de nom qui pourraient contenir des prénoms
+          if (nameParts.length > 1 && nameParts[1].trim() !== '' && 
+              !allGivenNames.has(nameParts[1].trim())) {
+            allGivenNames.add(nameParts[1].trim());
+          }
+          
+          // Vérifier les prénoms supplémentaires (partie 3 du format HL7)
+          if (nameParts.length > 2 && nameParts[2].trim() !== '') {
+            // Diviser les prénoms supplémentaires s'ils sont séparés par des espaces
+            const additionalGivenNames = nameParts[2].trim().split(' ');
+            additionalGivenNames.forEach(name => {
+              if (name.trim() !== '' && !allGivenNames.has(name.trim())) {
+                allGivenNames.add(name.trim());
+              }
+            });
+          }
         }
         
         // Convertir le Set en tableau
