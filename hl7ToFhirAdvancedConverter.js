@@ -2,6 +2,9 @@
  * Convertisseur avancé HL7 v2.5 vers FHIR R4
  * Spécialement optimisé pour les messages ADT français
  * Compatible avec les exigences de l'ANS
+ * 
+ * Intègre les terminologies et systèmes de codification français
+ * Conforme au guide d'implémentation FHIR de l'ANS
  */
 
 // Module UUID pour générer des identifiants uniques
@@ -14,6 +17,9 @@ const uuid = {
     });
   }
 };
+
+// Import de l'adaptateur de terminologie française
+const frenchTerminology = require('./french_terminology_adapter');
 const hl7Parser = require('./hl7Parser');
 
 /**
@@ -522,52 +528,68 @@ function extractIdentifiers(identifierField) {
             officialType = 'INS';
           } else if (namespaceName.includes('ASIP-SANTE-INS-C') || oid === '1.2.250.1.213.1.4.2') {
             officialType = 'INS-C';
+          } else if (namespaceName.includes('ADELI') || oid === '1.2.250.1.71.4.2.1') {
+            officialType = 'ADELI';
+          } else if (namespaceName.includes('RPPS') || oid === '1.2.250.1.71.4.2.1') {
+            officialType = 'RPPS';
+          } else if (namespaceName.includes('FINESS') || oid === '1.2.250.1.71.4.2.2') {
+            officialType = 'FINESS';
+          } else if (namespaceName.includes('SIRET') || oid === '1.2.250.1.71.4.2.2') {
+            officialType = 'SIRET';
           }
         } else {
           system = `urn:system:${namespaceName}`;
         }
       }
       
-      // Créer l'identifiant de base
-      const identifier = {
-        value: idValue,
-        system: system
-      };
-      
-      // Ajouter l'établissement d'assignation si disponible
-      if (assigningAuthority) {
-        identifier.assigner = { 
-          display: assigningAuthority.split('&')[0] 
-        };
-      }
-      
-      // Traitement spécial pour les identifiants français
-      if (officialType === 'INS') {
-        identifier.system = 'urn:oid:1.2.250.1.213.1.4.8';
-        identifier.type = {
-          coding: [{
-            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-            code: 'INS',
-            display: 'Identifiant National de Santé'
-          }]
+      // Utiliser les mappings de terminologie française
+      if (officialType) {
+        const idInfo = frenchTerminology.getIdentifierInfo(officialType);
+        
+        // Créer l'identifiant avec les informations françaises
+        const identifier = {
+          value: idValue,
+          system: idInfo.system,
+          type: {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: idInfo.typeCode,
+              display: idInfo.display
+            }]
+          }
         };
         
-        // Extension de validation INS
-        identifier.extension = [{
-          url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Status',
-          valueCode: 'VALI'
-        }];
-      } else if (officialType === 'INS-C') {
-        identifier.system = 'urn:oid:1.2.250.1.213.1.4.2';
-        identifier.type = {
-          coding: [{
-            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-            code: 'INS-C',
-            display: 'Identifiant National de Santé Calculé'
-          }]
-        };
+        // Ajouter l'établissement d'assignation si disponible
+        if (assigningAuthority) {
+          identifier.assigner = { 
+            display: assigningAuthority.split('&')[0] 
+          };
+        }
+        
+        // Extensions spécifiques françaises
+        if (officialType === 'INS') {
+          identifier.extension = [{
+            url: frenchTerminology.FRENCH_EXTENSIONS.INS_STATUS,
+            valueCode: 'VALI'
+          }];
+        }
+        
+        identifiers.push(identifier);
       } else {
-        // Identifiants standard
+        // Identifiants standard (non français)
+        const identifier = {
+          value: idValue,
+          system: system
+        };
+        
+        // Ajouter l'établissement d'assignation si disponible
+        if (assigningAuthority) {
+          identifier.assigner = { 
+            display: assigningAuthority.split('&')[0] 
+          };
+        }
+        
+        // Ajouter le type d'identifiant
         identifier.type = {
           coding: [{
             system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
@@ -575,9 +597,9 @@ function extractIdentifiers(identifierField) {
             display: getIdentifierTypeDisplay(idType)
           }]
         };
+        
+        identifiers.push(identifier);
       }
-      
-      identifiers.push(identifier);
     }
   }
   // Si nous avons un tableau, traiter chaque élément
