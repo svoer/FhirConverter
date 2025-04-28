@@ -1184,7 +1184,8 @@ function createEncounterResource(pv1Segment, patientReference) {
     return null;
   }
   
-  const encounterId = `encounter-${Date.now()}`;
+  // Utiliser un UUID v4 conforme aux recommandations de l'ANS
+  const encounterId = uuid.v4();
   
   // Déterminer la classe d'encounter (PV1-2)
   const patientClass = pv1Segment[2] || '';
@@ -1203,7 +1204,7 @@ function createEncounterResource(pv1Segment, patientReference) {
   // Numéro de visite/séjour (PV1-19 = visit number)
   const visitNumber = pv1Segment.length > 19 ? pv1Segment[19] || null : null;
   
-  // Créer la ressource Encounter
+  // Créer la ressource Encounter avec extensions françaises
   const encounterResource = {
     resourceType: 'Encounter',
     id: encounterId,
@@ -1215,8 +1216,36 @@ function createEncounterResource(pv1Segment, patientReference) {
     },
     subject: {
       reference: patientReference
-    }
+    },
+    // Extensions françaises selon les spécifications ANS
+    extension: []
   };
+  
+  // Extension pour le mode de prise en charge (spécification française)
+  if (patientClass) {
+    const frenchClassMapping = {
+      'I': { code: 'HOSPITALT', display: 'Hospitalisation traditionnelle' },
+      'O': { code: 'CONSULT', display: 'Consultation externe' },
+      'E': { code: 'URMG', display: 'Urgences' },
+      'P': { code: 'CONSULT', display: 'Consultation externe' },
+      'R': { code: 'HOSPITALT', display: 'Hospitalisation traditionnelle' },
+      'B': { code: 'CONSULT', display: 'Consultation externe' },
+      'N': { code: 'HOSPITALT', display: 'Hospitalisation traditionnelle' }
+    };
+    
+    if (frenchClassMapping[patientClass]) {
+      encounterResource.extension.push({
+        url: "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/fr-mode-prise-en-charge",
+        valueCodeableConcept: {
+          coding: [{
+            system: frenchTerminology.FRENCH_SYSTEMS.MODE_PRISE_EN_CHARGE,
+            code: frenchClassMapping[patientClass].code,
+            display: frenchClassMapping[patientClass].display
+          }]
+        }
+      });
+    }
+  }
   
   // Ajouter la période si disponible
   if (admitDate) {
@@ -1225,12 +1254,24 @@ function createEncounterResource(pv1Segment, patientReference) {
     };
   }
   
-  // Ajouter l'identifiant de visite si disponible
+  // Ajouter l'identifiant de visite si disponible avec format français
   if (visitNumber) {
     encounterResource.identifier = [{
-      system: 'urn:oid:1.2.250.1.213.1.4.2',
-      value: visitNumber
+      system: 'urn:oid:1.2.250.1.71.4.2.1', // OID français conforme à l'ANS
+      value: visitNumber,
+      type: {
+        coding: [{
+          system: "http://terminology.hl7.org/CodeSystem/v2-0203",
+          code: "VN",
+          display: "Numéro de visite"
+        }]
+      }
     }];
+  }
+  
+  // Si pas d'extensions ajoutées, supprimer le tableau vide
+  if (encounterResource.extension && encounterResource.extension.length === 0) {
+    delete encounterResource.extension;
   }
   
   return {
@@ -1551,17 +1592,52 @@ function addFrenchPractitionerExtensions(practitionerResource, rolSegment) {
   // Extension pour la spécialité médicale
   if (rolSegment.length > 3 && rolSegment[3]) {
     const roleCode = rolSegment[3];
+    const roleInfo = frenchTerminology.getProfessionInfo(roleCode);
     
+    // Extension pour la profession selon la nomenclature ANS
     practitionerResource.extension.push({
-      url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/practitionerRole-Specialty',
+      url: frenchTerminology.FRENCH_EXTENSIONS.PRACTITIONER_PROFESSION,
       valueCodeableConcept: {
         coding: [{
-          system: 'https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante',
-          code: roleCode,
-          display: getRoleTypeDisplay(roleCode)
+          system: frenchTerminology.FRENCH_SYSTEMS.PROFESSION,
+          code: roleInfo.code,
+          display: roleInfo.display
         }]
       }
     });
+  }
+  
+  // Extension pour la nationalité (par défaut française)
+  practitionerResource.extension.push({
+    url: frenchTerminology.FRENCH_EXTENSIONS.NATIONALITY,
+    valueCodeableConcept: {
+      coding: [{
+        system: frenchTerminology.FRENCH_SYSTEMS.PAYS,
+        code: "FRA",
+        display: "France"
+      }]
+    }
+  });
+  
+  // Identifier l'ID (RPPS ou ADELI) dans les identifiants et l'ajouter comme extension
+  const rppsId = practitionerResource.identifier.find(id => 
+    id.system && (id.system.includes('1.2.250.1.71.4.2.1') || id.system.includes('1.2.250.1.213.1.1.1')));
+  
+  if (rppsId) {
+    // Créer l'extension avec la qualification selon ANS
+    practitionerResource.qualification = [{
+      identifier: [{
+        system: rppsId.system,
+        value: rppsId.value
+      }],
+      code: {
+        coding: [{
+          system: frenchTerminology.FRENCH_SYSTEMS.PROFESSION,
+          code: rolSegment.length > 3 ? rolSegment[3] : "ODRP",
+          display: rolSegment.length > 3 ? getRoleTypeDisplay(rolSegment[3]) : "Médecin"
+        }]
+      }
+    }];
   }
 }
 
