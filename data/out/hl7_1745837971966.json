@@ -1,0 +1,463 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "36b2f934-03de-47ab-9e17-3186def37230",
+  "timestamp": "2025-04-28T10:59:31.971Z",
+  "meta": {
+    "profile": [
+      "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
+    ],
+    "security": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+        "code": "N",
+        "display": "Normal"
+      }
+    ],
+    "tag": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+        "code": "urn:ans:ci-sis:hl7:v2.5",
+        "display": "HL7 v2.5 converti en FHIR R4 (ANS)"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "e158bd6d-5e02-4483-8991-38d5e00a769b",
+        "identifier": [
+          {
+            "system": "urn:ADT1",
+            "value": "583295",
+            "assigner": {
+              "display": "ADT1"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "DOE",
+            "given": [
+              "JANE"
+            ],
+            "use": "official"
+          }
+        ],
+        "birthDate": "1961-06-15",
+        "gender": "unknown",
+        "address": [
+          {
+            "line": [
+              "123 MAIN STREET"
+            ],
+            "city": "GREENSBORO",
+            "state": "NC",
+            "postalCode": "27401-1020",
+            "country": "FRA"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(919)379-1212",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(919)271-3434",
+            "use": "work"
+          },
+          {
+            "system": "phone",
+            "value": "(919)277-3114",
+            "use": "work"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Person/c520b37e-d2c5-4d50-9243-aaaf5e63882e",
+      "resource": {
+        "resourceType": "Person",
+        "id": "c520b37e-d2c5-4d50-9243-aaaf5e63882e",
+        "name": [
+          {
+            "family": "DOE",
+            "given": [
+              "JANE"
+            ],
+            "use": "official"
+          }
+        ],
+        "gender": "unknown",
+        "birthDate": "1961-06-15",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(919)379-1212",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(919)271-3434",
+            "use": "work"
+          },
+          {
+            "system": "phone",
+            "value": "(919)277-3114",
+            "use": "work"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "123 MAIN STREET"
+            ],
+            "city": "GREENSBORO",
+            "state": "NC",
+            "postalCode": "27401-1020",
+            "country": "FRA"
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/193a478b-535f-4f99-8c28-ec7bc5c5e88f",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "193a478b-535f-4f99-8c28-ec7bc5c5e88f",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "E",
+          "display": "Emergency"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        },
+        "period": {
+          "start": "2000-07-01T08:00:00+00:00"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Observation/688dafb2-0e48-4fd3-9a0b-654851c295b7",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "688dafb2-0e48-4fd3-9a0b-654851c295b7",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "SR Instance UID"
+            }
+          ]
+        },
+        "valueString": "1.123456.2.2000.31.2.1",
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/193a478b-535f-4f99-8c28-ec7bc5c5e88f"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Condition/143cb394-3350-44c5-b0f0-56aebb8b73fa",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "143cb394-3350-44c5-b0f0-56aebb8b73fa",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "code": "1550",
+              "display": "Unknown Diagnosis"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/193a478b-535f-4f99-8c28-ec7bc5c5e88f"
+        },
+        "recordedDate": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/AllergyIntolerance/94a18f12-ce5c-4956-a948-97c49345b183",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "94a18f12-ce5c-4956-a948-97c49345b183",
+        "type": "allergy",
+        "criticality": "low",
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-AllergyIntolerance",
+              "code": "UNSP",
+              "display": "PENICILLIN"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/AllergyIntolerance/fb1dc094-6360-4b2d-bcce-9289bf2ef62f",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "fb1dc094-6360-4b2d-bcce-9289bf2ef62f",
+        "type": "allergy",
+        "criticality": "low",
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-AllergyIntolerance",
+              "code": "UNSP",
+              "display": "CAT DANDER"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/36703773-bf03-4c84-8793-3db71bb70c9c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "36703773-bf03-4c84-8793-3db71bb70c9c",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
+            "value": "XYZ_ADMITTING"
+          }
+        ],
+        "name": "XYZ_ADMITTING"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/3a2aeb4f-b931-49c1-8184-7a114b5639ee",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "3a2aeb4f-b931-49c1-8184-7a114b5639ee",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.6.7",
+            "value": "1234"
+          }
+        ],
+        "name": "BCMD",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_G08-TypeOrganisme/FHIR/TRE-G08-TypeOrganisme",
+                "code": "CPAM",
+                "display": "Caisse Primaire d'Assurance Maladie"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Coverage/e6ce8399-16c8-4bf5-8541-aa9bd50351a9",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "e6ce8399-16c8-4bf5-8541-aa9bd50351a9",
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "https://mos.esante.gouv.fr/NOS/JDV_J65-TypeMutuelles/FHIR/JDV-J65-TypeMutuelles",
+              "code": "AMO",
+              "display": "Assurance Maladie Obligatoire"
+            }
+          ]
+        },
+        "subscriberId": "",
+        "beneficiary": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        },
+        "period": {},
+        "payor": [
+          {
+            "reference": "Organization/3a2aeb4f-b931-49c1-8184-7a114b5639ee"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/64a63b08-ca31-484f-985c-dbc817f4fa53",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "64a63b08-ca31-484f-985c-dbc817f4fa53",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SPS",
+                "display": "SPO"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "BATES",
+            "given": [
+              "RONALD",
+              "L"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/92050b0f-cabf-42f4-b9f9-9ad8d6b507dd",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "92050b0f-cabf-42f4-b9f9-9ad8d6b507dd",
+        "identifier": [
+          {
+            "system": "urn:oid:http://example.org/fhir/sid/provider-id",
+            "value": "KATE",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "unknown",
+                  "display": "Provider Number"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "SMITH",
+            "given": [
+              "ELLEN"
+            ]
+          }
+        ],
+        "active": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/PractitionerRole/a3283c96-e35f-4083-bc87-f63c4477a036",
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "a3283c96-e35f-4083-bc87-f63c4477a036",
+        "practitioner": {
+          "reference": "Practitioner/92050b0f-cabf-42f4-b9f9-9ad8d6b507dd"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+                "code": "S",
+                "display": "Médecin"
+              },
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                "code": "CP",
+                "display": "Unknown Role"
+              }
+            ]
+          }
+        ],
+        "active": true,
+        "period": {
+          "start": "1995-05-01T12:01:00+00:00"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/e158bd6d-5e02-4483-8991-38d5e00a769b"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "PractitionerRole"
+      }
+    }
+  ]
+}
