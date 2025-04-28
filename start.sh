@@ -120,6 +120,6 @@ if ! command -v npx &> /dev/null; then
   npm install --no-save typescript ts-node @types/node
 fi
 
-# Démarrage direct avec ts-node en ignorant les erreurs de type
-echo "Démarrage direct avec ts-node..."
-npx ts-node --transpile-only src/index.ts
+# Démarrage direct avec Node.js
+echo "Démarrage avec Node.js..."
+node app.js

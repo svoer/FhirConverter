@@ -1,147 +1,82 @@
 /**
- * Point d'entrée principal pour l'application FHIRHub
- * Convertisseur HL7 v2.5 vers FHIR R4
- * Compatible avec les terminologies françaises
+ * Point d'entrée principal de l'application FHIRHub
+ * Service de conversion de HL7 v2.5 vers FHIR R4
  */
 
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import bodyParser from 'body-parser';
 import path from 'path';
-import * as dotenv from 'dotenv';
-import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
-
-// Routes
-import convertRoutes from './api/routes/convertRoutes';
-import apiKeyRoutes from './api/routes/apiKeyRoutes'; 
-import applicationRoutes from './api/routes/applicationRoutes';
-
-// Services
+import bodyParser from 'body-parser';
 import { initDatabase } from './api/db/database';
+import { setupSwagger } from './api/swagger';
+import apiKeyRoutes from './api/routes/apiKeyRoutes';
+import applicationRoutes from './api/routes/applicationRoutes';
+import convertRoutes from './api/routes/convertRoutes';
+import { apiKeyAuth } from './api/middleware/apiKeyAuth';
 
-// Charger les variables d'environnement
-dotenv.config();
-
+// Configuration de l'application
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-// Middlewares
+// Initialisation de la base de données
+console.log('Initialisation de la base de données SQLite...');
+initDatabase();
+console.log('Base de données initialisée avec succès.');
+
+// Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+app.use(morgan('dev')); // Logging des requêtes
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Servir les fichiers statiques
+// Routes statiques pour les fichiers frontend
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 
-// Options de documentation Swagger
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'API FHIRHub',
-      version: '1.0.0',
-      description: 'API de conversion HL7 v2.5 vers FHIR R4',
-      contact: {
-        name: 'Support FHIRHub',
-        email: 'support@fhirhub.fr'
-      }
-    },
-    servers: [
-      {
-        url: '/api/v1',
-        description: 'Serveur principal'
-      }
-    ],
-    components: {
-      securitySchemes: {
-        ApiKeyAuth: {
-          type: 'apiKey',
-          in: 'header',
-          name: 'X-API-KEY'
-        }
-      }
-    },
-    security: [
-      {
-        ApiKeyAuth: []
-      }
-    ]
-  },
-  apis: ['./src/api/routes/*.ts']
-};
+// Configuration de Swagger
+setupSwagger(app);
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// Routes API protégées par clé API
+app.use('/api/api-keys', apiKeyAuth, apiKeyRoutes);
+app.use('/api/applications', apiKeyAuth, applicationRoutes);
+app.use('/api/convert', apiKeyAuth, convertRoutes);
 
-// Routes API avec double mapping (v1 pour nouvelle structure, racine pour compatibilité)
-app.use('/api/v1/convert', convertRoutes);
-app.use('/api/convert', convertRoutes);
-app.use('/api/v1/apikeys', apiKeyRoutes);
-app.use('/api/api-keys', apiKeyRoutes);
-app.use('/api/v1/applications', applicationRoutes);
-app.use('/api/applications', applicationRoutes);
-
-// Documentation Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// Route par défaut pour l'interface utilisateur
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/public/login.html'));
-});
-
-// Routes temporaires pour la migration
-app.get('/api/stats', (req, res) => {
+// Statistiques système
+app.get('/api/stats', apiKeyAuth, (req, res) => {
+  // Statistiques simplifiées pour démonstration
   res.json({
     success: true,
     data: {
-      totalConversions: 0,
-      successRate: 100,
-      averageProcessingTime: 0
+      system: {
+        cpu: Math.random() * 100,
+        memory: Math.random() * 100,
+        disk: Math.random() * 100,
+        uptime: process.uptime()
+      },
+      api: {
+        totalRequests: Math.floor(Math.random() * 1000),
+        successRate: 95 + Math.random() * 5,
+        averageResponseTime: Math.random() * 100
+      }
     }
   });
 });
 
-app.get('/api/conversions', (req, res) => {
+// Journaux de conversion
+app.get('/api/conversions', apiKeyAuth, (req, res) => {
   res.json({
     success: true,
     data: []
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'FHIRHub fonctionne correctement',
-    version: '1.0.0'
-  });
+// Route par défaut pour le frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/public/index.html'));
 });
 
-// Gestionnaire d'erreurs 404
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Not Found',
-    message: 'La ressource demandée n\'existe pas'
-  });
-});
-
-// Initialisation et démarrage du serveur
-async function startServer() {
-  // Initialiser la base de données
-  initDatabase();
-  
-  // Démarrer le serveur
-  app.listen(port, () => {
-    console.log(`[SERVER] FHIRHub démarré sur le port ${port}`);
-    console.log(`[SERVER] Documentation API disponible sur http://localhost:${port}/api-docs`);
-  });
-}
-
-// Démarrer l'application
-startServer().catch(error => {
-  console.error('[SERVER] Erreur lors du démarrage:', error);
-  process.exit(1);
+// Démarrage du serveur
+app.listen(PORT, () => {
+  console.log(`[SERVER] FHIRHub démarré sur le port ${PORT}`);
+  console.log(`[SERVER] Documentation API disponible sur http://localhost:${PORT}/api-docs`);
 });

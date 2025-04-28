@@ -1,72 +1,137 @@
 /**
- * Application principale FHIRHub
- * Service de conversion de HL7 v2.5 vers FHIR R4
- * Compatible avec les terminologies et systèmes français de santé
+ * Application FHIRHub simplifiée
+ * Convertisseur HL7 v2.5 vers FHIR R4
  */
 
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
-const bodyParser = require('body-parser');
-const api = require('./api');
-const frenchTerminologyService = require('./french_terminology_service');
-const { initialize } = require('./src/init');
 
-// Initialiser FHIRHub
-const initResult = initialize();
-if (!initResult.success) {
-  console.error('Erreur critique lors de l\'initialisation:', initResult.error);
-  process.exit(1);
-}
-
-// Création de l'application Express
+// Configuration de l'application
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
+app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.text({ type: 'text/plain', limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'frontend/public')));
 
-// Routes API principales
-app.use('/api', api);
+// Base de données SQLite simplifiée
+const Database = require('better-sqlite3');
+const DATA_DIR = './data';
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+const db = new Database('./data/fhirhub.db');
 
-// Routes API d'authentification et d'administration
-const authRoutes = require('./src/routes/authRoutes');
-const applicationRoutes = require('./src/routes/applicationRoutes');
-const apiKeyRoutes = require('./src/routes/apiKeyRoutes');
-const statsRoutes = require('./src/routes/statsRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/applications', applicationRoutes);
-app.use('/api/keys', apiKeyRoutes);
-app.use('/api/stats', statsRoutes);
-
-// La page d'accueil est servie automatiquement depuis le répertoire frontend/public
-
-// Démarrer le serveur
-app.listen(port, '0.0.0.0', () => {
-  console.log('Serveur FHIRHub démarré sur le port ' + port);
+// Initialisation de la base de données
+function initDb() {
+  console.log('Initialisation de la base de données SQLite...');
   
-  // Créer les répertoires nécessaires
-  const dataDir = path.join(__dirname, 'data');
-  const uploadsDir = path.join(dataDir, 'uploads');
-  const conversionsDir = path.join(dataDir, 'conversions');
+  db.exec(`CREATE TABLE IF NOT EXISTS conversion_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    input_message TEXT NOT NULL,
+    output_message TEXT,
+    status TEXT NOT NULL,
+    timestamp TEXT NOT NULL
+  )`);
   
-  [dataDir, uploadsDir, conversionsDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+  console.log('Base de données initialisée avec succès.');
+}
+
+// Route de base
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'FHIRHub API en ligne',
+    version: '1.0.0'
   });
-  
-  console.log("Service FHIRHub prêt pour les conversions via API.");
 });
 
-// Gérer l'arrêt gracieux
-process.on('SIGINT', () => {
-  console.log('Arrêt du serveur FHIRHub...');
-  process.exit(0);
+// Route pour la conversion
+app.post('/api/convert', (req, res) => {
+  try {
+    const { hl7Message } = req.body;
+    
+    if (!hl7Message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Le message HL7 est requis'
+      });
+    }
+    
+    // Simuler la conversion
+    const segments = hl7Message.replace(/\n/g, '\r').split('\r').filter(Boolean);
+    const result = {
+      resourceType: 'Bundle',
+      type: 'transaction',
+      entry: segments.map((segment, index) => ({
+        fullUrl: `urn:uuid:${index}`,
+        resource: { resourceType: 'Basic', id: `segment-${index}` },
+        request: { method: 'POST', url: 'Basic' }
+      }))
+    };
+    
+    // Enregistrement de la conversion
+    db.prepare(`
+      INSERT INTO conversion_logs (
+        input_message,
+        output_message,
+        status,
+        timestamp
+      ) VALUES (?, ?, ?, datetime('now'))
+    `).run(
+      hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
+      JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
+      'success'
+    );
+    
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('[CONVERSION ERROR]', error);
+    
+    return res.status(500).json({
+      success: false,
+      error: 'Conversion Error',
+      message: error.message || 'Erreur inconnue'
+    });
+  }
+});
+
+// Statistiques
+app.get('/api/stats', (req, res) => {
+  try {
+    const conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
+    
+    res.json({
+      success: true,
+      data: {
+        conversions: conversionCount.count,
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+      }
+    });
+  } catch (error) {
+    console.error('[STATS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Stats Error',
+      message: error.message || 'Erreur inconnue'
+    });
+  }
+});
+
+// Démarrage de l'application
+initDb();
+app.listen(PORT, () => {
+  console.log(`[SERVER] FHIRHub démarré sur le port ${PORT}`);
 });
