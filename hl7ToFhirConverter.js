@@ -1415,10 +1415,13 @@ function convertHl7ToFhir(hl7Message) {
                   // donc on doit s'assurer de traiter correctement ces prénoms multiples
                   console.log(`TRAITEMENT PRÉNOMS COMPOSÉS: '${parts[2].trim()}'`);
                   
+                  // Extraction optimisée des prénoms composés français
                   const middleNames = parts[2].trim().split(' ');
                   middleNames.forEach(name => {
+                    // Ignorer les noms vides et ne pas ajouter de doublons
                     if (name.trim() !== '' && !givenNames.includes(name.trim())) {
                       givenNames.push(name.trim());
+                      console.log(`  → Prénom extrait: '${name.trim()}'`);
                     }
                   });
                 }
