@@ -1957,16 +1957,8 @@ function processZBESegment(zbeSegment) {
  * @returns {string} Libellé du type de mouvement
  */
 function getMovementTypeDisplay(movementType) {
-  const movementTypeMap = {
-    'INSERT': 'Entrée',
-    'ADMIT': 'Admission',
-    'TRANSFER': 'Transfert',
-    'DISCHARGE': 'Sortie',
-    'CANCEL': 'Annulation',
-    'UPDATE': 'Mise à jour'
-  };
-  
-  return movementTypeMap[movementType] || movementType;
+  // Utiliser l'adaptateur de terminologie française pour la conformité ANS
+  return frenchTerminology.getMovementTypeInfo(movementType).display;
 }
 
 /**
@@ -2010,18 +2002,46 @@ function processZFVSegment(zfvSegment) {
   if (zfvSegment.length > 1 && zfvSegment[1]) {
     const encounterClassValue = zfvSegment[1];
     
-    // Mapping des codes français vers les classes FHIR
+    // Mapping des codes français vers les classes FHIR conformes à l'ANS
     const classMappings = {
-      'H': { code: 'IMP', display: 'Hospitalisation' },
-      'U': { code: 'EMER', display: 'Urgences' },
-      'C': { code: 'AMB', display: 'Consultation' },
-      'E': { code: 'AMB', display: 'Consultation externe' }
+      'H': { 
+        code: 'IMP', 
+        display: 'Hospitalisation',
+        frenchSystem: frenchTerminology.FRENCH_SYSTEMS.MODE_PRISE_EN_CHARGE,
+        frenchCode: 'HOSPITALT'
+      },
+      'U': { 
+        code: 'EMER', 
+        display: 'Urgences',
+        frenchSystem: frenchTerminology.FRENCH_SYSTEMS.MODE_PRISE_EN_CHARGE,
+        frenchCode: 'URMG'
+      },
+      'C': { 
+        code: 'AMB', 
+        display: 'Consultation externe',
+        frenchSystem: frenchTerminology.FRENCH_SYSTEMS.MODE_PRISE_EN_CHARGE,
+        frenchCode: 'CONSULT'
+      },
+      'E': { 
+        code: 'AMB', 
+        display: 'Consultation externe',
+        frenchSystem: frenchTerminology.FRENCH_SYSTEMS.MODE_PRISE_EN_CHARGE,
+        frenchCode: 'CONSULT'
+      }
     };
     
     if (encounterClassValue && classMappings[encounterClassValue]) {
+      // Structure standard pour le code de classe d'encounter
       zfvData.encounterClass = {
         system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
         code: classMappings[encounterClassValue].code,
+        display: classMappings[encounterClassValue].display
+      };
+      
+      // Extension française avec les codes de la terminologie ANS
+      zfvData.modePriseEnCharge = {
+        system: classMappings[encounterClassValue].frenchSystem,
+        code: classMappings[encounterClassValue].frenchCode,
         display: classMappings[encounterClassValue].display
       };
     }
