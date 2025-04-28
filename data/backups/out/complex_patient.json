@@ -1,0 +1,639 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "296a6222-fc17-4b86-b9ae-f1cd6fe6d91d",
+  "timestamp": "2025-04-27T16:14:29.637Z",
+  "meta": {
+    "profile": [
+      "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
+    ],
+    "security": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+        "code": "N",
+        "display": "Normal"
+      }
+    ],
+    "tag": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+        "code": "urn:ans:ci-sis:hl7:v2.5",
+        "display": "HL7 v2.5 converti en FHIR R4 (ANS)"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "57025e13-4c09-4dee-b4ad-53bb13df3d61",
+        "identifier": [
+          {
+            "system": "urn:FACILITY",
+            "value": "PR12345",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "MRN",
+                  "display": "MRN"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "FACILITY"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "MUSTER",
+            "given": [
+              "PATRICK",
+              "J"
+            ],
+            "suffix": [
+              "JR"
+            ],
+            "prefix": [
+              "DR"
+            ]
+          }
+        ],
+        "birthDate": "1980-05-12",
+        "gender": "male",
+        "address": [
+          {
+            "line": [
+              "123 MAIN ST",
+              "APT 4B"
+            ],
+            "city": "ANYTOWN",
+            "state": "NY",
+            "postalCode": "12345",
+            "country": "USA",
+            "use": "home"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555)555-1234",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)555-5678",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)555-9012",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)777-5678",
+            "use": "work"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Person/35055f86-5b33-4538-b85b-689b777f4593",
+      "resource": {
+        "resourceType": "Person",
+        "id": "35055f86-5b33-4538-b85b-689b777f4593",
+        "name": [
+          {
+            "family": "MUSTER",
+            "given": [
+              "PATRICK",
+              "J"
+            ],
+            "suffix": [
+              "JR"
+            ],
+            "prefix": [
+              "DR"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1980-05-12",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555)555-1234",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)555-5678",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)555-9012",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "(555)777-5678",
+            "use": "work"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "123 MAIN ST",
+              "APT 4B"
+            ],
+            "city": "ANYTOWN",
+            "state": "NY",
+            "postalCode": "12345",
+            "country": "USA",
+            "use": "home"
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/6343c172-b2a8-4d69-bbf6-86038a145f81",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "6343c172-b2a8-4d69-bbf6-86038a145f81",
+        "identifier": [
+          {
+            "system": "http://example.org/fhir/sid/provider-id",
+            "value": "004777"
+          }
+        ],
+        "name": [
+          {
+            "family": "ATTEND",
+            "given": [
+              "AARON"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "405048c1-5f3b-453d-bfd7-ea3c3bbd1358",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "I",
+          "display": "Inpatient"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "period": {
+          "start": "2023-04-25T00:00:00+00:00",
+          "end": "2023-04-27T00:00:00+00:00"
+        },
+        "location": [
+          {
+            "location": {
+              "display": "2000^2012^01"
+            }
+          }
+        ],
+        "participant": [
+          {
+            "individual": {
+              "reference": "https://fhir.org/FHIRHub/Practitioner/6343c172-b2a8-4d69-bbf6-86038a145f81"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Observation/8bed8acb-5955-4341-8627-d7c0725a052d",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "8bed8acb-5955-4341-8627-d7c0725a052d",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "13457-7",
+              "display": "LDL CHOLESTEROL"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "valueQuantity": {
+          "value": 142,
+          "unit": "MG/DL",
+          "system": "http://unitsofmeasure.org",
+          "code": "MG/DL"
+        },
+        "effectiveDateTime": "2023-04-26T00:00:00+00:00",
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "H"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Observation/1686c665-09db-4136-b1cc-f1f792a2b92d",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "1686c665-09db-4136-b1cc-f1f792a2b92d",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2093-3",
+              "display": "TOTAL CHOLESTEROL"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "valueQuantity": {
+          "value": 220,
+          "unit": "MG/DL",
+          "system": "http://unitsofmeasure.org",
+          "code": "MG/DL"
+        },
+        "effectiveDateTime": "2023-04-26T00:00:00+00:00",
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "H",
+                "display": "H"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Observation/23aab7d1-145f-4c91-8e81-58c573120d49",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "23aab7d1-145f-4c91-8e81-58c573120d49",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2085-9",
+              "display": "HDL CHOLESTEROL"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "valueQuantity": {
+          "value": 36,
+          "unit": "MG/DL",
+          "system": "http://unitsofmeasure.org",
+          "code": "MG/DL"
+        },
+        "effectiveDateTime": "2023-04-26T00:00:00+00:00",
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "L",
+                "display": "L"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Observation/26769fa4-8fbc-4dbb-83b4-34baf1919b0c",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "26769fa4-8fbc-4dbb-83b4-34baf1919b0c",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2571-8",
+              "display": "TRIGLYCERIDES"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "valueQuantity": {
+          "value": 110,
+          "unit": "MG/DL",
+          "system": "http://unitsofmeasure.org",
+          "code": "MG/DL"
+        },
+        "effectiveDateTime": "2023-04-26T00:00:00+00:00",
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "N"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Condition/5d07abaf-80d3-4963-91a7-1f5768d1401b",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "5d07abaf-80d3-4963-91a7-1f5768d1401b",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "code": "E78.5",
+              "display": "HYPERLIPIDEMIA"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "recordedDate": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Condition/c1013ad9-90c7-492e-9ab6-4096ddfd5a61",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "c1013ad9-90c7-492e-9ab6-4096ddfd5a61",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "code": "I10",
+              "display": "HYPERTENSION"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "recordedDate": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "Condition"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/AllergyIntolerance/e6948e32-110d-4b0d-a425-2b71d8bd77a7",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "e6948e32-110d-4b0d-a425-2b71d8bd77a7",
+        "type": "allergy",
+        "criticality": "high",
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-AllergyIntolerance",
+              "code": "J0171",
+              "display": "ADRENALIN"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/AllergyIntolerance/a5a7229f-47fb-43f1-92f8-0a224029eb76",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "a5a7229f-47fb-43f1-92f8-0a224029eb76",
+        "type": "allergy",
+        "criticality": "moderate",
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-AllergyIntolerance",
+              "code": "1649",
+              "display": "Unspecified Allergy"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "AllergyIntolerance"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/743d45d8-88db-47ec-ab22-f075ffcefd14",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "743d45d8-88db-47ec-ab22-f075ffcefd14",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
+            "value": "SENDING_FACILITY"
+          }
+        ],
+        "name": "SENDING_FACILITY"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/eb3e77e2-3f96-41cd-a167-af6febbdb181",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "eb3e77e2-3f96-41cd-a167-af6febbdb181",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SPS",
+                "display": "SPO"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "MUSTER",
+            "given": [
+              "MARIE"
+            ]
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "(555)222-3333",
+            "use": "work"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "43 SPOUSE ST"
+            ],
+            "city": "SOMETOWN",
+            "state": "NY",
+            "postalCode": "16789",
+            "country": ""
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Procedure/173b5e1e-8e13-40bf-a988-b6608021616d",
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "173b5e1e-8e13-40bf-a988-b6608021616d",
+        "status": "completed",
+        "code": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "80061^LIPID PANEL^CPT4",
+              "display": "80061^LIPID PANEL^CPT4"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/57025e13-4c09-4dee-b4ad-53bb13df3d61"
+        },
+        "encounter": {
+          "reference": "https://fhir.org/FHIRHub/Encounter/405048c1-5f3b-453d-bfd7-ea3c3bbd1358"
+        },
+        "performedDateTime": "2023-04-26T00:00:00+00:00"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Procedure"
+      }
+    }
+  ]
+}

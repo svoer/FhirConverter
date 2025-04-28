@@ -1,0 +1,371 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "b53841e4-7de1-42b2-a8d4-62fa5a257d3b",
+  "timestamp": "2025-04-27T01:24:37.558Z",
+  "entry": [
+    {
+      "fullUrl": "http://example.org/fhir/Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3c88698b-64cc-42d6-b2ea-44336053e6ef",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.211.10.200.1",
+            "value": "1174024",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "MCK"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.2",
+            "value": "1121717802492545833548",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS-C",
+                  "display": "Insurance Card"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "ASIP-SANTE-INS-C"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "160059932710027",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS",
+                  "display": "INS"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "ASIP-SANTE-INS-NIR"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS JEAN RICHARD"
+            ]
+          }
+        ],
+        "birthDate": "1960-05-09T00:00:00Z",
+        "gender": "male",
+        "address": [
+          {
+            "line": [
+              "8  AVENUE CONDORCET"
+            ],
+            "city": "FORT DE FRANCE",
+            "state": "",
+            "postalCode": "97200",
+            "country": "FRA",
+            "use": "home"
+          }
+        ],
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "0696039637",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "0596000093",
+            "use": "home"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/Person/62b80bfd-b5f8-4980-ad44-3bd436c8b174",
+      "resource": {
+        "resourceType": "Person",
+        "id": "62b80bfd-b5f8-4980-ad44-3bd436c8b174",
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "HERMAS JEAN RICHARD"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1960-05-09T00:00:00Z",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "0696039637",
+            "use": "home"
+          },
+          {
+            "system": "phone",
+            "value": "0596000093",
+            "use": "home"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "8  AVENUE CONDORCET"
+            ],
+            "city": "FORT DE FRANCE",
+            "state": "",
+            "postalCode": "97200",
+            "country": "FRA",
+            "use": "home"
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/Encounter/44ce9ab8-ad60-4cd1-b078-b86f19243e7a",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "44ce9ab8-ad60-4cd1-b078-b86f19243e7a",
+        "status": "completed",
+        "class": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+            "code": "I",
+            "display": "Inpatient"
+          }
+        ],
+        "subject": {
+          "reference": "Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef"
+        },
+        "period": {
+          "start": "2025-04-17T05:04:00Z"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/Organization/6d165291-07df-410e-a19f-68a8342a996d",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "6d165291-07df-410e-a19f-68a8342a996d",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
+            "value": "EAI"
+          }
+        ],
+        "name": "EAI"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/Coverage/84ad5b93-270d-4a2d-aee8-71ab303c1103",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "84ad5b93-270d-4a2d-aee8-71ab303c1103",
+        "status": "active",
+        "kind": "insurance",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "EHCPOL",
+              "display": "Extended healthcare"
+            }
+          ]
+        },
+        "subscriberId": [
+          "160059932710027"
+        ],
+        "beneficiary": {
+          "reference": "Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef"
+        },
+        "period": {
+          "end": "2025-12-31"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/RelatedPerson/a8c4d83a-c8b4-477b-a278-66babe1448bd",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "a8c4d83a-c8b4-477b-a278-66babe1448bd",
+        "active": true,
+        "patient": {
+          "reference": "Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "EXT",
+                "display": "Contact"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "YEHOUESSI",
+            "given": [
+              "ELENA"
+            ]
+          }
+        ],
+        "telecom": [],
+        "address": [
+          {
+            "line": [],
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "UNK",
+            "use": "home"
+          },
+          {
+            "line": [],
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "UNK",
+            "use": "home"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/Practitioner/8ef8cc58-476b-4e8d-91e9-1144214d1198",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "8ef8cc58-476b-4e8d-91e9-1144214d1198",
+        "identifier": [
+          {
+            "system": "urn:oid:http://example.org/fhir/sid/provider-id",
+            "value": "971219175",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "unknown",
+                  "display": "Provider Number"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "MERAUT SALOMON",
+            "given": [
+              "RENEE"
+            ],
+            "prefix": []
+          }
+        ],
+        "active": true,
+        "qualification": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                  "code": "ODRP",
+                  "display": "Unknown Qualification"
+                }
+              ]
+            }
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "8    AVECONDORCET"
+            ],
+            "city": "",
+            "state": "",
+            "postalCode": "97200",
+            "country": "UNK"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "http://example.org/fhir/PractitionerRole/9f3f8b5a-b468-41cf-8e82-aa7c3e2df2ed",
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "9f3f8b5a-b468-41cf-8e82-aa7c3e2df2ed",
+        "practitioner": {
+          "reference": "Practitioner/8ef8cc58-476b-4e8d-91e9-1144214d1198"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                "code": "ODRP"
+              }
+            ]
+          }
+        ],
+        "active": true,
+        "period": {},
+        "subject": {
+          "reference": "Patient/3c88698b-64cc-42d6-b2ea-44336053e6ef"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "PractitionerRole"
+      }
+    }
+  ]
+}
