@@ -4,7 +4,7 @@
  * avec les formats de noms composés français
  */
 
-const frenchNameExtractor = require('./src/utils/frenchNameExtractor');
+const frenchNameExtractor = require('../src/utils/frenchNameExtractor');
 
 // Cas de test 1: Format avec deux occurrences
 const testCase1 = `MSH|^~\\&|LAB|GENERAL_HOSPITAL|LAB|CLINIC|20230512094327||ORU^R01|20230512094327|P|2.5.1|||||FRA|8859/1

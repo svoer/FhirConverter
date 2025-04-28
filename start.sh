@@ -1,51 +1,32 @@
 #!/bin/bash
 
-# Script de démarrage pour FHIRHub
-# Lance tous les composants nécessaires pour le convertisseur HL7 vers FHIR R4
-# avec support pour les terminologies françaises
+# Script de démarrage de FHIRHub
+# Ce script initialise les répertoires nécessaires et lance l'application
 
 echo "Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
 
-# Création des répertoires nécessaires
-mkdir -p data/uploads data/conversions data/history test_data/hl7_samples test_data/fhir_results
-
-# Déplacer les fichiers de test dans les bons répertoires
-find . -name "test_*.hl7" -not -path "./test_data/*" -exec mv {} test_data/hl7_samples/ \; 2>/dev/null
-find . -name "test_*.json" -not -path "./test_data/*" -exec mv {} test_data/fhir_results/ \; 2>/dev/null
-
-# Initialisation du nouveau système de conversion
+# Initialiser le convertisseur HL7 vers FHIR
 echo "Initialisation du nouveau système de conversion HL7 vers FHIR..."
 
-# Appliquer les correctifs nécessaires
-if [ -f fix_converter.patch.js ]; then
-  echo "Application du correctif pour l'extraction des noms français..."
-  node fix_converter.patch.js
+# Vérifier si les dossiers nécessaires existent et les créer sinon
+if [ ! -d "src/converters" ]; then
+  mkdir -p src/converters
 fi
 
-# Corriger les erreurs de syntaxe dans le convertisseur HL7
-echo "Correction du fichier hl7ToFhirConverter.js..."
-cat > tmp_fix.js << EOF
-/**
- * Script pour corriger les erreurs de syntaxe dans le convertisseur HL7 vers FHIR
- */
-const fs = require('fs');
-const converter = 'hl7ToFhirConverter.js';
+if [ ! -d "src/utils" ]; then
+  mkdir -p src/utils
+fi
 
-console.log('Tentative de correction de ' + converter);
-let content = fs.readFileSync(converter, 'utf8');
+if [ ! -d "src/db" ]; then
+  mkdir -p src/db
+fi
 
-// Remplacer la partie problématique pour corriger l'erreur de syntaxe à la ligne 1500
-const pattern = /                }\n              }\n          } catch \(error\) \{\n            console.error\("\[CONVERTER_FIX\] Erreur dans le traitement des noms:", error\);\n          }\n            \}\)\;/g;
-const replacement = "                }\n              }\n            });\n          } catch (error) {\n            console.error(\"[CONVERTER_FIX] Erreur dans le traitement des noms:\", error);\n          }";
+if [ ! -d "test_data" ]; then
+  mkdir -p test_data
+fi
 
-content = content.replace(pattern, replacement);
-
-fs.writeFileSync(converter, content, 'utf8');
-console.log('Correction terminée');
-EOF
-
-node tmp_fix.js
-rm tmp_fix.js
+# Les fichiers de conversion ont été restructurés, il n'est plus nécessaire d'appliquer des fixes directs
+echo "Utilisation du convertisseur HL7 vers FHIR optimisé..."
 
 # Créer les répertoires nécessaires s'ils n'existent pas
 mkdir -p data/in data/out data/test french_terminology/cache

@@ -103,8 +103,8 @@ app.get('/api/info', (req, res) => {
 
 // Récupérer la liste des conversions
 app.get('/api/conversions', (req, res) => {
-  const limit = parseInt(req.query.limit) || 20;
-  const appId = req.app.id;
+  const limit = req.query.limit ? parseInt(req.query.limit) : 20;
+  const appId = req.app && req.app.id ? req.app.id : 1;
   
   const conversions = dbService.getConversionHistory({
     appId,
@@ -126,7 +126,7 @@ app.get('/api/conversions/:id', (req, res) => {
   }
   
   // Vérifier que la conversion appartient à l'application actuelle
-  if (conversion.app_id && conversion.app_id !== req.app.id) {
+  if (conversion.app_id && req.app && req.app.id && conversion.app_id !== req.app.id) {
     return res.status(403).json({ 
       error: 'Accès refusé', 
       message: 'Cette conversion appartient à une autre application'
@@ -157,8 +157,8 @@ app.get('/api/conversions/:id', (req, res) => {
 
 // Statistiques
 app.get('/api/stats', (req, res) => {
-  const days = parseInt(req.query.days) || 30;
-  const appId = req.app.id;
+  const days = req.query.days ? parseInt(req.query.days) : 30;
+  const appId = req.app && req.app.id ? req.app.id : 1;
   
   const stats = dbService.getAppStats(appId, days);
   const systemInfo = dbService.getSystemInfo();
@@ -262,7 +262,7 @@ app.post('/api/convert', async (req, res) => {
   
   // Enregistrer la conversion dans l'historique
   const conversionId = dbService.saveConversion({
-    app_id: req.app.id,
+    app_id: req.app && req.app.id ? req.app.id : 1,
     source_name: 'API Direct',
     source_content: hl7Content,
     result_content: JSON.stringify(result),
@@ -302,7 +302,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     
     // Enregistrer la conversion dans l'historique
     const conversionId = dbService.saveConversion({
-      app_id: req.app.id,
+      app_id: req.app && req.app.id ? req.app.id : 1,
       source_name: req.file.originalname,
       source_content: hl7Content,
       result_content: JSON.stringify(result),
