@@ -1,272 +1,658 @@
 /**
- * Module de traitement des segments HL7 en ressources FHIR
- * 
- * Chaque processeur prend un segment HL7 en entrée et retourne une ressource FHIR.
- * Ce module implémente principalement le traitement des segments PID, PV1, OBR et OBX.
+ * Processeurs de segments HL7 pour la conversion vers FHIR
+ * Chaque fonction traite un type de segment HL7 spécifique
  */
 
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * Traiter un segment PID en ressource Patient FHIR
- * @param {Object} pidSegment - Segment PID parsé
- * @param {number} index - Index du segment
- * @returns {Object} Ressource Patient FHIR
+ * Traiter un segment MSH (Message Header)
+ * @param {Array} segment - Segment MSH
+ * @param {Object} options - Options de conversion
+ * @returns {Object} Ressource FHIR MessageHeader
  */
-function processPidSegment(pidSegment, index = 0) {
-  try {
-    // Vérifier que le segment est complet
-    if (!pidSegment || !pidSegment.fields || pidSegment.fields.length < 6) {
-      console.warn('Segment PID incomplet ou invalide');
-      return null;
-    }
-    
-    // Extraire les données de base du patient
-    const patientId = pidSegment.fields[3] || '';
-    const patientName = pidSegment.fields[5] || '';
-    const birthDate = pidSegment.fields[7] || '';
-    const gender = pidSegment.fields[8] || '';
-    const address = pidSegment.fields[11] || '';
-    const phone = pidSegment.fields[13] || '';
-    
-    // Créer un identifiant FHIR unique
-    const fhirId = `patient-${uuidv4().substring(0, 8)}`;
-    
-    // Traiter le nom
-    let name = [];
-    if (patientName) {
-      // Format HL7 standard: family^given1^given2^...
-      const nameParts = patientName.split('^');
-      
-      if (nameParts.length > 0) {
+function processMSH(segment, options = {}) {
+  const messageID = segment[10] ? segment[10][0] : uuidv4();
+  const eventType = segment[9] ? segment[9][0] : '';
+  const timestamp = segment[7] ? segment[7][0] : new Date().toISOString();
+  
+  // Créer une ressource MessageHeader
+  const messageHeader = {
+    resourceType: 'MessageHeader',
+    id: `message-${messageID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/MessageHeader']
+    },
+    eventCoding: {
+      system: 'http://terminology.hl7.org/CodeSystem/v2-0003',
+      code: eventType
+    },
+    source: {
+      name: segment[3] ? segment[3][0] : 'Unknown',
+      software: segment[3] ? segment[3][0] : 'Unknown',
+      endpoint: `urn:oid:${segment[4] ? segment[4][0] : '0.0.0.0'}`
+    },
+    timestamp: timestamp
+  };
+  
+  return messageHeader;
+}
+
+/**
+ * Traiter un segment PID (Patient Identification)
+ * @param {Array} segment - Segment PID
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR Patient
+ */
+function processPID(segment, context = {}) {
+  const { names } = context;
+  const patientID = segment[3] && segment[3].length > 0 ? segment[3][0][0] : uuidv4();
+  const patientIdentifiers = [];
+  
+  // Gestion des identifiants
+  if (segment[3]) {
+    segment[3].forEach(id => {
+      if (id.length > 0) {
+        const identifier = {
+          system: id[4] ? `http://terminology.hl7.org/CodeSystem/v2-0203/${id[4]}` : 'http://example.org/identifiers',
+          value: id[0]
+        };
+        patientIdentifiers.push(identifier);
+      }
+    });
+  }
+  
+  // Obtenir les noms depuis l'extracteur de noms français ou créer un nom par défaut
+  let humanNames = names || [];
+  
+  // Si aucun nom n'a été extrait, essayer de le faire à partir du segment PID
+  if (humanNames.length === 0 && segment[5]) {
+    segment[5].forEach(name => {
+      if (name.length > 1) {
         const nameObj = {
-          family: nameParts[0] || '',
-          given: [],
+          family: name[0],
+          given: name[1] ? [name[1]] : [],
           use: 'official'
         };
         
-        // Ajouter les prénoms
-        for (let i = 1; i < nameParts.length; i++) {
-          if (nameParts[i]) {
-            nameObj.given.push(nameParts[i]);
-          }
+        if (name[6] === 'D') {
+          nameObj.use = 'maiden';
         }
         
-        name.push(nameObj);
+        humanNames.push(nameObj);
       }
+    });
+  }
+  
+  // Extraire la date de naissance
+  let birthDate = null;
+  if (segment[7] && segment[7][0]) {
+    const dateStr = segment[7][0];
+    // Format AAAAMMJJ
+    if (dateStr.length === 8) {
+      birthDate = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
     }
-    
-    // Traiter le genre
-    let genderFhir = 'unknown';
-    if (gender) {
-      // Mapping HL7 vers FHIR
-      switch (gender.toUpperCase()) {
-        case 'M':
-          genderFhir = 'male';
-          break;
-        case 'F':
-          genderFhir = 'female';
-          break;
-        case 'O':
-          genderFhir = 'other';
-          break;
-        case 'U':
-          genderFhir = 'unknown';
-          break;
-        default:
-          genderFhir = 'unknown';
-      }
+  }
+  
+  // Extraire le sexe
+  let gender = 'unknown';
+  if (segment[8] && segment[8][0]) {
+    const genderCode = segment[8][0];
+    switch (genderCode) {
+      case 'M': gender = 'male'; break;
+      case 'F': gender = 'female'; break;
+      case 'O': gender = 'other'; break;
+      case 'U': gender = 'unknown'; break;
+      default: gender = 'unknown';
     }
-    
-    // Traiter la date de naissance
-    let birthDateFhir = null;
-    if (birthDate) {
-      // Format HL7: YYYYMMDD
-      if (birthDate.length >= 8) {
-        const year = birthDate.substring(0, 4);
-        const month = birthDate.substring(4, 6);
-        const day = birthDate.substring(6, 8);
-        
-        birthDateFhir = `${year}-${month}-${day}`;
-      }
-    }
-    
-    // Traiter l'adresse
-    let addressFhir = [];
-    if (address) {
-      // Format HL7: street^city^state^zip^country
-      const addressParts = address.split('^');
-      
-      if (addressParts.length > 0) {
-        const addressObj = {
-          line: [addressParts[0] || ''],
-          city: addressParts[1] || '',
-          state: addressParts[2] || '',
-          postalCode: addressParts[3] || '',
-          country: addressParts[4] || '',
-          use: 'home'
+  }
+  
+  // Adresses
+  const addresses = [];
+  if (segment[11]) {
+    segment[11].forEach(addr => {
+      if (addr.length > 0) {
+        const address = {
+          line: [addr[0] || '', addr[1] || ''],
+          city: addr[2] || '',
+          state: addr[3] || '',
+          postalCode: addr[4] || '',
+          country: addr[5] || ''
         };
-        
-        addressFhir.push(addressObj);
+        addresses.push(address);
       }
-    }
-    
-    // Traiter le téléphone
-    let telecomFhir = [];
-    if (phone) {
-      // Format HL7: number^type^...
-      const phoneParts = phone.split('^');
-      
-      if (phoneParts.length > 0 && phoneParts[0]) {
-        const telecomObj = {
+    });
+  }
+  
+  // Téléphones
+  const telecoms = [];
+  if (segment[13]) {
+    segment[13].forEach(phone => {
+      if (phone.length > 0) {
+        const telecom = {
           system: 'phone',
-          value: phoneParts[0],
+          value: phone[0] || '',
           use: 'home'
         };
-        
-        telecomFhir.push(telecomObj);
+        telecoms.push(telecom);
+      }
+    });
+  }
+  
+  // Créer la ressource Patient
+  const patient = {
+    resourceType: 'Patient',
+    id: `patient-${patientID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/Patient']
+    },
+    identifier: patientIdentifiers,
+    name: humanNames,
+    gender: gender,
+    telecom: telecoms,
+    address: addresses
+  };
+  
+  // Ajouter la date de naissance si disponible
+  if (birthDate) {
+    patient.birthDate = birthDate;
+  }
+  
+  return patient;
+}
+
+/**
+ * Traiter un segment PV1 (Patient Visit)
+ * @param {Array} segment - Segment PV1
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR Encounter
+ */
+function processPV1(segment, context = {}) {
+  const { resources } = context;
+  const encounterID = segment[1] ? segment[1][0] : uuidv4();
+  
+  // Patient référence (à partir des ressources existantes)
+  let patientReference = null;
+  if (resources) {
+    const patient = resources.find(r => r.resourceType === 'Patient');
+    if (patient) {
+      patientReference = { reference: `Patient/${patient.id}` };
+    }
+  }
+  
+  // Type de rencontre
+  let classCode = 'AMB';
+  let classDisplay = 'Ambulatoire';
+  
+  if (segment[2]) {
+    switch (segment[2][0]) {
+      case 'I': 
+        classCode = 'IMP'; 
+        classDisplay = 'Hospitalisation'; 
+        break;
+      case 'O': 
+        classCode = 'AMB'; 
+        classDisplay = 'Ambulatoire'; 
+        break;
+      case 'E': 
+        classCode = 'EMER'; 
+        classDisplay = 'Urgences'; 
+        break;
+      default: 
+        classCode = 'AMB'; 
+        classDisplay = 'Ambulatoire';
+    }
+  }
+  
+  // Emplacement
+  const locations = [];
+  if (segment[3]) {
+    const locationRef = {
+      location: {
+        reference: `Location/${uuidv4()}`,
+        display: segment[3][0]
+      }
+    };
+    locations.push(locationRef);
+  }
+  
+  // Médecin traitant
+  const practitioners = [];
+  if (segment[7]) {
+    const doctor = segment[7][0].split('^');
+    const practitionerRef = {
+      type: [{
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
+          code: 'PPRF',
+          display: 'Médecin responsable'
+        }]
+      }],
+      individual: {
+        reference: `Practitioner/${uuidv4()}`,
+        display: doctor.length > 1 ? `${doctor[1]} ${doctor[0]}` : doctor[0]
+      }
+    };
+    practitioners.push(practitionerRef);
+  }
+  
+  // Déterminer le statut de la rencontre
+  let status = 'in-progress';
+  if (segment[36]) {
+    switch (segment[36][0]) {
+      case 'A': status = 'arrived'; break;
+      case 'P': status = 'planned'; break;
+      case 'C': status = 'cancelled'; break;
+      case 'D': status = 'finished'; break;
+      default: status = 'in-progress';
+    }
+  }
+  
+  // Date de début
+  let period = {};
+  if (segment[44]) {
+    const startDate = segment[44][0];
+    period.start = startDate;
+  }
+  
+  // Créer la ressource Encounter
+  const encounter = {
+    resourceType: 'Encounter',
+    id: `encounter-${encounterID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/Encounter']
+    },
+    status: status,
+    class: {
+      system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+      code: classCode,
+      display: classDisplay
+    },
+    subject: patientReference,
+    participant: practitioners,
+    location: locations
+  };
+  
+  // Ajouter la période si disponible
+  if (Object.keys(period).length > 0) {
+    encounter.period = period;
+  }
+  
+  return encounter;
+}
+
+/**
+ * Traiter un segment NK1 (Next of Kin)
+ * @param {Array} segment - Segment NK1
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR RelatedPerson
+ */
+function processNK1(segment, context = {}) {
+  const { resources } = context;
+  const nk1ID = segment[1] ? segment[1][0] : uuidv4();
+  
+  // Patient référence
+  let patientReference = null;
+  if (resources) {
+    const patient = resources.find(r => r.resourceType === 'Patient');
+    if (patient) {
+      patientReference = { reference: `Patient/${patient.id}` };
+    }
+  }
+  
+  // Nom
+  const humanName = {
+    use: 'official'
+  };
+  
+  if (segment[2]) {
+    const nameComponents = segment[2][0].split('^');
+    if (nameComponents.length > 0) {
+      humanName.family = nameComponents[0];
+      if (nameComponents.length > 1) {
+        humanName.given = [nameComponents[1]];
       }
     }
+  }
+  
+  // Relation
+  const relationship = [];
+  if (segment[3]) {
+    relationship.push({
+      coding: [{
+        system: 'http://terminology.hl7.org/CodeSystem/v3-RoleCode',
+        code: 'FAMMEMB',
+        display: segment[3][0]
+      }]
+    });
+  }
+  
+  // Adresse
+  const addresses = [];
+  if (segment[4]) {
+    const addrComponents = segment[4][0].split('^');
+    const address = {
+      line: [addrComponents[0] || ''],
+      city: addrComponents[2] || '',
+      state: addrComponents[3] || '',
+      postalCode: addrComponents[4] || '',
+      country: addrComponents[5] || ''
+    };
+    addresses.push(address);
+  }
+  
+  // Téléphone
+  const telecoms = [];
+  if (segment[5]) {
+    const phoneNum = segment[5][0].split('^');
+    if (phoneNum.length > 0) {
+      telecoms.push({
+        system: 'phone',
+        value: phoneNum[phoneNum.length - 1],
+        use: 'home'
+      });
+    }
+  }
+  
+  // Créer la ressource RelatedPerson
+  const relatedPerson = {
+    resourceType: 'RelatedPerson',
+    id: `related-person-${nk1ID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/RelatedPerson']
+    },
+    patient: patientReference,
+    relationship: relationship,
+    name: [humanName],
+    telecom: telecoms,
+    address: addresses,
+    active: true
+  };
+  
+  return relatedPerson;
+}
+
+/**
+ * Traiter un segment OBR (Observation Request)
+ * @param {Array} segment - Segment OBR
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR ServiceRequest
+ */
+function processOBR(segment, context = {}) {
+  const { resources, segments } = context;
+  const obrID = segment[1] ? segment[1][0] : uuidv4();
+  
+  // Références
+  let patientReference = null;
+  let encounterReference = null;
+  
+  if (resources) {
+    const patient = resources.find(r => r.resourceType === 'Patient');
+    if (patient) {
+      patientReference = { reference: `Patient/${patient.id}` };
+    }
     
-    // Traiter l'identifiant
-    let identifierFhir = [];
-    if (patientId) {
-      // Format HL7: id^type^...
-      const idParts = patientId.split('^');
-      
-      if (idParts.length > 0 && idParts[0]) {
-        const identifierObj = {
-          system: 'urn:oid:1.2.250.1.213.1.4.8', // INS-NIR par défaut (France)
-          value: idParts[0],
-          use: 'official'
-        };
-        
-        // Si un type d'identifiant est spécifié
-        if (idParts.length > 1 && idParts[1]) {
-          // Adapter le système en fonction du type
-          switch (idParts[1].toUpperCase()) {
-            case 'INS-NIR':
-            case 'INS':
-              identifierObj.system = 'urn:oid:1.2.250.1.213.1.4.8';
-              break;
-            case 'NDA':
-              identifierObj.system = 'urn:oid:1.2.250.1.213.1.4.10';
-              break;
-            default:
-              identifierObj.system = `urn:oid:${idParts[1]}`;
-              break;
+    const encounter = resources.find(r => r.resourceType === 'Encounter');
+    if (encounter) {
+      encounterReference = { reference: `Encounter/${encounter.id}` };
+    }
+  }
+  
+  // Code de la demande
+  const coding = [];
+  if (segment[4]) {
+    const codeComponents = segment[4][0].split('^');
+    if (codeComponents.length > 1) {
+      coding.push({
+        system: 'http://loinc.org',
+        code: codeComponents[0],
+        display: codeComponents[1]
+      });
+    } else {
+      coding.push({
+        code: codeComponents[0],
+        display: codeComponents[0]
+      });
+    }
+  }
+  
+  // Date de la demande
+  let authoredOn = null;
+  if (segment[6]) {
+    authoredOn = segment[6][0];
+  }
+  
+  // Médecin demandeur
+  const requester = {};
+  if (segment[16]) {
+    const doctor = segment[16][0].split('^');
+    requester.reference = `Practitioner/${uuidv4()}`;
+    requester.display = doctor.length > 1 ? `${doctor[1]} ${doctor[0]}` : doctor[0];
+  }
+  
+  // Créer la ressource ServiceRequest
+  const serviceRequest = {
+    resourceType: 'ServiceRequest',
+    id: `service-request-${obrID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/ServiceRequest']
+    },
+    status: 'active',
+    intent: 'order',
+    code: {
+      coding: coding
+    },
+    subject: patientReference,
+    encounter: encounterReference,
+    requester: requester
+  };
+  
+  // Ajouter la date de la demande si disponible
+  if (authoredOn) {
+    serviceRequest.authoredOn = authoredOn;
+  }
+  
+  return serviceRequest;
+}
+
+/**
+ * Traiter un segment OBX (Observation/Result)
+ * @param {Array} segment - Segment OBX
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR Observation
+ */
+function processOBX(segment, context = {}) {
+  const { resources, segments } = context;
+  const obxID = segment[1] ? segment[1][0] : uuidv4();
+  
+  // Références
+  let patientReference = null;
+  let encounterReference = null;
+  let serviceRequestReference = null;
+  
+  if (resources) {
+    const patient = resources.find(r => r.resourceType === 'Patient');
+    if (patient) {
+      patientReference = { reference: `Patient/${patient.id}` };
+    }
+    
+    const encounter = resources.find(r => r.resourceType === 'Encounter');
+    if (encounter) {
+      encounterReference = { reference: `Encounter/${encounter.id}` };
+    }
+    
+    const serviceRequest = resources.find(r => r.resourceType === 'ServiceRequest');
+    if (serviceRequest) {
+      serviceRequestReference = { reference: `ServiceRequest/${serviceRequest.id}` };
+    }
+  }
+  
+  // Code de l'observation
+  const coding = [];
+  if (segment[3]) {
+    const codeComponents = segment[3][0].split('^');
+    if (codeComponents.length > 1) {
+      coding.push({
+        system: 'http://loinc.org',
+        code: codeComponents[0],
+        display: codeComponents[1]
+      });
+    } else {
+      coding.push({
+        code: codeComponents[0],
+        display: codeComponents[0]
+      });
+    }
+  }
+  
+  // Valeur de l'observation
+  let value = null;
+  let valueType = segment[2] ? segment[2][0] : '';
+  
+  if (segment[5]) {
+    switch (valueType) {
+      case 'NM': // Numérique
+        value = {
+          valueQuantity: {
+            value: parseFloat(segment[5][0]),
+            unit: segment[6] ? segment[6][0] : '',
+            system: 'http://unitsofmeasure.org',
+            code: segment[6] ? segment[6][0] : ''
           }
-        }
-        
-        identifierFhir.push(identifierObj);
-      }
+        };
+        break;
+      case 'ST': // Chaîne
+      case 'TX': // Texte
+        value = {
+          valueString: segment[5][0]
+        };
+        break;
+      case 'CE': // Concept codé
+        const codeComponents = segment[5][0].split('^');
+        value = {
+          valueCodeableConcept: {
+            coding: [{
+              code: codeComponents[0],
+              display: codeComponents.length > 1 ? codeComponents[1] : codeComponents[0],
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0078'
+            }]
+          }
+        };
+        break;
+      default:
+        value = {
+          valueString: segment[5][0]
+        };
     }
-    
-    // Créer la ressource Patient
-    const patientResource = {
-      resourceType: 'Patient',
-      id: fhirId,
-      identifier: identifierFhir,
-      name: name,
-      gender: genderFhir,
-      birthDate: birthDateFhir,
-      address: addressFhir,
-      telecom: telecomFhir
-    };
-    
-    return patientResource;
-  } catch (error) {
-    console.error('Erreur lors du traitement du segment PID:', error);
-    return null;
   }
+  
+  // Statut
+  let status = 'final';
+  if (segment[11]) {
+    switch (segment[11][0]) {
+      case 'P': status = 'preliminary'; break;
+      case 'F': status = 'final'; break;
+      case 'X': status = 'cancelled'; break;
+      case 'R': status = 'registered'; break;
+      default: status = 'final';
+    }
+  }
+  
+  // Date de l'observation
+  let effectiveDateTime = null;
+  if (segment[14]) {
+    effectiveDateTime = segment[14][0];
+  }
+  
+  // Créer la ressource Observation
+  const observation = {
+    resourceType: 'Observation',
+    id: `observation-${obxID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/Observation']
+    },
+    status: status,
+    code: {
+      coding: coding
+    },
+    subject: patientReference,
+    encounter: encounterReference,
+    basedOn: serviceRequestReference ? [serviceRequestReference] : undefined
+  };
+  
+  // Ajouter la valeur si disponible
+  if (value) {
+    Object.assign(observation, value);
+  }
+  
+  // Ajouter la date si disponible
+  if (effectiveDateTime) {
+    observation.effectiveDateTime = effectiveDateTime;
+  }
+  
+  return observation;
 }
 
 /**
- * Traiter un segment PV1 en ressource Encounter FHIR
- * @param {Object} pv1Segment - Segment PV1 parsé
- * @param {Object} context - Contexte de conversion (références au patient, etc.)
- * @returns {Object} Ressource Encounter FHIR
+ * Traiter un segment SPM (Specimen)
+ * @param {Array} segment - Segment SPM
+ * @param {Object} context - Contexte de conversion
+ * @returns {Object} Ressource FHIR Specimen
  */
-function processPv1Segment(pv1Segment, context = {}) {
-  try {
-    // Vérifier que le segment est complet
-    if (!pv1Segment || !pv1Segment.fields || pv1Segment.fields.length < 44) {
-      console.warn('Segment PV1 incomplet ou invalide');
-      return null;
+function processSPM(segment, context = {}) {
+  const { resources } = context;
+  const spmID = segment[1] ? segment[1][0] : uuidv4();
+  
+  // Patient référence
+  let patientReference = null;
+  if (resources) {
+    const patient = resources.find(r => r.resourceType === 'Patient');
+    if (patient) {
+      patientReference = { reference: `Patient/${patient.id}` };
     }
-    
-    // Extraire les données de base de la visite
-    const patientClass = pv1Segment.fields[2] || '';
-    const assignedLocation = pv1Segment.fields[3] || '';
-    const admissionType = pv1Segment.fields[4] || '';
-    const attendingDoctor = pv1Segment.fields[7] || '';
-    const visitNumber = pv1Segment.fields[19] || '';
-    
-    // Créer un identifiant FHIR unique
-    const fhirId = `encounter-${uuidv4().substring(0, 8)}`;
-    
-    // Convertir la classe du patient
-    let classFhir = 'outpatient';
-    if (patientClass) {
-      // Mapping HL7 vers FHIR
-      switch (patientClass) {
-        case 'I':
-          classFhir = 'inpatient';
-          break;
-        case 'O':
-          classFhir = 'outpatient';
-          break;
-        case 'E':
-          classFhir = 'emergency';
-          break;
-        default:
-          classFhir = 'outpatient';
-      }
-    }
-    
-    // Créer la ressource Encounter
-    const encounterResource = {
-      resourceType: 'Encounter',
-      id: fhirId,
-      status: 'in-progress',
-      class: {
-        system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-        code: classFhir,
-        display: classFhir.charAt(0).toUpperCase() + classFhir.slice(1)
-      }
-    };
-    
-    // Ajouter la référence au patient si disponible
-    if (context.patientId) {
-      encounterResource.subject = {
-        reference: `Patient/${context.patientId}`
-      };
-    }
-    
-    // Ajouter l'identifiant de la visite si disponible
-    if (visitNumber) {
-      // Format HL7: id^type^...
-      const visitParts = visitNumber.split('^');
-      
-      if (visitParts.length > 0 && visitParts[0]) {
-        encounterResource.identifier = [{
-          system: 'urn:oid:1.2.250.1.213.1.4.10', // NDA par défaut (France)
-          value: visitParts[0]
-        }];
-      }
-    }
-    
-    return encounterResource;
-  } catch (error) {
-    console.error('Erreur lors du traitement du segment PV1:', error);
-    return null;
   }
+  
+  // Type d'échantillon
+  const type = {
+    coding: []
+  };
+  
+  if (segment[4]) {
+    const typeComponents = segment[4][0].split('^');
+    type.coding.push({
+      code: typeComponents[0],
+      display: typeComponents.length > 1 ? typeComponents[1] : typeComponents[0],
+      system: 'http://terminology.hl7.org/CodeSystem/v2-0487'
+    });
+  }
+  
+  // Date de collecte
+  let collection = {};
+  if (segment[17]) {
+    collection.collectedDateTime = segment[17][0];
+  }
+  
+  // Créer la ressource Specimen
+  const specimen = {
+    resourceType: 'Specimen',
+    id: `specimen-${spmID}`,
+    meta: {
+      profile: ['http://hl7.org/fhir/StructureDefinition/Specimen']
+    },
+    subject: patientReference,
+    type: type,
+    collection: collection
+  };
+  
+  return specimen;
 }
 
-/**
- * Exporter les processeurs de segments
- */
 module.exports = {
-  processPidSegment,
-  processPv1Segment
+  processMSH,
+  processPID,
+  processPV1,
+  processNK1,
+  processOBR,
+  processOBX,
+  processSPM
 };

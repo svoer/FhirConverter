@@ -1,148 +1,299 @@
 /**
  * Routeur API pour FHIRHub
- * Fournit les routes pour l'API REST
+ * Gère toutes les routes API de l'application
  */
 
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { apiKeyAuth } = require('../middleware/apiKeyAuth');
+const conversionLogService = require('../services/conversionLogService');
+const nameExtractor = require('../utils/nameExtractor');
 const { v4: uuidv4 } = require('uuid');
 
-// Services
-const terminologyService = require('../services/terminologyService');
-const conversionService = require('../services/conversionService');
-const conversionLogService = require('../services/conversionLogService');
+// Simple-HL7 pour la conversion HL7
+const hl7 = require('simple-hl7');
+// Segments processors
+const segmentProcessors = require('../services/segmentProcessors');
 
-// Middleware
-const apiKeyAuth = require('../middleware/apiKeyAuth');
-const { apiResultEnricherMiddleware } = require('../utils/apiResultEnricher');
-
-// Configuration pour le téléchargement de fichiers
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      const uploadDir = path.join(__dirname, '../../data/uploads');
-      
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      
-      cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-      const uniqueFilename = `${Date.now()}_${uuidv4()}_${file.originalname}`;
-      cb(null, uniqueFilename);
-    }
-  }),
-  limits: {
-    fileSize: 1024 * 1024 * 10 // 10MB limite
-  }
-});
-
-// Middleware
+// Middleware d'authentification par clé API
 router.use(apiKeyAuth);
-router.use(apiResultEnricherMiddleware);
 
 /**
- * GET /health
- * Point d'entrée pour vérifier la santé du serveur
+ * Route de vérification de l'état du serveur
+ * GET /api/health
  */
 router.get('/health', (req, res) => {
   res.json({
-    status: 'ok',
-    service: 'FHIRHub API',
+    success: true,
+    status: 'healthy',
     version: '1.0.0',
     timestamp: new Date().toISOString()
   });
 });
 
 /**
- * GET /info
- * Informations sur le serveur
+ * Route de conversion HL7 vers FHIR
+ * POST /api/convert
  */
-router.get('/info', (req, res) => {
-  res.json({
-    name: 'FHIRHub API',
-    description: 'Convertisseur HL7 v2.5 vers FHIR R4',
-    version: '1.0.0',
-    fhirVersion: '4.0.1',
-    hl7Version: '2.5',
-    terminologyService: terminologyService.getServiceInfo(),
-    apiKey: req.apiKey ? { 
-      description: req.apiKey.description,
-      application: req.application.name
-    } : null
-  });
+router.post('/convert', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    // Vérifier si le contenu HL7 est présent
+    if (!req.body.content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Contenu HL7 manquant',
+        message: 'Le contenu HL7 à convertir est requis'
+      });
+    }
+    
+    const hl7Content = req.body.content;
+    const options = req.body.options || {};
+    
+    console.log(`[CONVERT] Début de conversion HL7 vers FHIR. Taille: ${hl7Content.length} caractères`);
+    
+    // Parser le message HL7
+    const parser = new hl7.Parser();
+    let parsedMessage;
+    
+    try {
+      parsedMessage = parser.parse(hl7Content);
+    } catch (parseError) {
+      console.error('[CONVERT] Erreur lors du parsing HL7:', parseError);
+      
+      await conversionLogService.logConversion({
+        apiKeyId: req.apiKey.id,
+        applicationId: req.apiKey.application_id,
+        sourceType: 'direct',
+        hl7Content: hl7Content,
+        status: 'error',
+        errorMessage: `Erreur de parsing HL7: ${parseError.message}`,
+        processingTime: Date.now() - startTime
+      });
+      
+      return res.status(400).json({
+        success: false,
+        error: 'Erreur de parsing HL7',
+        message: parseError.message
+      });
+    }
+    
+    // Convertir le message HL7 en FHIR
+    let fhirResources = [];
+    let fhirBundle = null;
+    
+    try {
+      // Extraire les noms français du message HL7
+      const frenchNames = nameExtractor.extractFrenchNames(hl7Content);
+      
+      // Traiter chaque segment pour créer des ressources FHIR
+      const segments = parsedMessage.segments;
+      
+      // Traitement des segments MSH (Message Header)
+      const mshSegments = segments.filter(s => s.name === 'MSH');
+      if (mshSegments.length > 0) {
+        const messageHeader = segmentProcessors.processMSH(mshSegments[0].fields);
+        fhirResources.push(messageHeader);
+      }
+      
+      // Traitement des segments PID (Patient Identification)
+      const pidSegments = segments.filter(s => s.name === 'PID');
+      if (pidSegments.length > 0) {
+        const patient = segmentProcessors.processPID(pidSegments[0].fields, { names: frenchNames });
+        fhirResources.push(patient);
+      }
+      
+      // Traitement des segments PV1 (Patient Visit)
+      const pv1Segments = segments.filter(s => s.name === 'PV1');
+      if (pv1Segments.length > 0) {
+        const encounter = segmentProcessors.processPV1(pv1Segments[0].fields, { resources: fhirResources });
+        fhirResources.push(encounter);
+      }
+      
+      // Traitement des segments NK1 (Next of Kin)
+      const nk1Segments = segments.filter(s => s.name === 'NK1');
+      for (const nk1Segment of nk1Segments) {
+        const relatedPerson = segmentProcessors.processNK1(nk1Segment.fields, { resources: fhirResources });
+        fhirResources.push(relatedPerson);
+      }
+      
+      // Traitement des segments OBR (Observation Request)
+      const obrSegments = segments.filter(s => s.name === 'OBR');
+      for (const obrSegment of obrSegments) {
+        const serviceRequest = segmentProcessors.processOBR(obrSegment.fields, { resources: fhirResources, segments });
+        fhirResources.push(serviceRequest);
+      }
+      
+      // Traitement des segments OBX (Observation)
+      const obxSegments = segments.filter(s => s.name === 'OBX');
+      for (const obxSegment of obxSegments) {
+        const observation = segmentProcessors.processOBX(obxSegment.fields, { resources: fhirResources, segments });
+        fhirResources.push(observation);
+      }
+      
+      // Traitement des segments SPM (Specimen)
+      const spmSegments = segments.filter(s => s.name === 'SPM');
+      for (const spmSegment of spmSegments) {
+        const specimen = segmentProcessors.processSPM(spmSegment.fields, { resources: fhirResources });
+        fhirResources.push(specimen);
+      }
+      
+      // Créer un Bundle FHIR avec toutes les ressources
+      fhirBundle = {
+        resourceType: 'Bundle',
+        id: `bundle-${uuidv4()}`,
+        type: 'transaction',
+        entry: fhirResources.map(resource => ({
+          fullUrl: `urn:uuid:${resource.id}`,
+          resource: resource,
+          request: {
+            method: 'POST',
+            url: resource.resourceType
+          }
+        }))
+      };
+      
+      // Ajouter des méta-informations au Bundle
+      fhirBundle.meta = {
+        lastUpdated: new Date().toISOString(),
+        source: 'FHIRHub Converter'
+      };
+      
+      // Si l'option de validation est activée
+      if (options.validate) {
+        // TODO: Implémenter la validation FHIR
+        console.log('[CONVERT] Validation FHIR non implémentée');
+      }
+      
+      const processingTime = Date.now() - startTime;
+      
+      // Journaliser la conversion réussie
+      await conversionLogService.logConversion({
+        apiKeyId: req.apiKey.id,
+        applicationId: req.apiKey.application_id,
+        sourceType: 'direct',
+        hl7Content: hl7Content,
+        fhirContent: JSON.stringify(fhirBundle),
+        status: 'success',
+        processingTime: processingTime
+      });
+      
+      // Renvoyer le résultat
+      res.json({
+        success: true,
+        message: 'Conversion réussie',
+        processingTime: processingTime,
+        data: fhirBundle,
+        resourceCount: fhirResources.length
+      });
+    } catch (conversionError) {
+      console.error('[CONVERT] Erreur lors de la conversion:', conversionError);
+      
+      await conversionLogService.logConversion({
+        apiKeyId: req.apiKey.id,
+        applicationId: req.apiKey.application_id,
+        sourceType: 'direct',
+        hl7Content: hl7Content,
+        status: 'error',
+        errorMessage: `Erreur de conversion: ${conversionError.message}`,
+        processingTime: Date.now() - startTime
+      });
+      
+      res.status(500).json({
+        success: false,
+        error: 'Erreur de conversion',
+        message: conversionError.message
+      });
+    }
+  } catch (error) {
+    console.error('[CONVERT] Erreur interne du serveur:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur interne du serveur',
+      message: error.message
+    });
+  }
 });
 
 /**
- * GET /stats
- * Retourne des statistiques simples pour le dashboard
+ * Route pour obtenir les statistiques de conversion
+ * GET /api/stats
  */
 router.get('/stats', async (req, res) => {
   try {
-    const stats = await conversionLogService.getAppStats(req.application.id);
+    const applicationId = req.apiKey.application_id;
+    const stats = await conversionLogService.getAppStats(applicationId);
+    
     res.json({
       success: true,
-      stats
+      data: stats
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des statistiques:', error);
+    console.error('[API] Erreur lors de la récupération des statistiques:', error);
+    
     res.status(500).json({
       success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible de récupérer les statistiques'
+      error: 'Erreur interne du serveur',
+      message: error.message
     });
   }
 });
 
 /**
- * GET /conversions
- * Retourne l'historique des conversions
+ * Route pour obtenir l'historique des conversions
+ * GET /api/conversions
  */
 router.get('/conversions', async (req, res) => {
   try {
+    const applicationId = req.apiKey.application_id;
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
     
-    const conversions = await conversionLogService.getConversions(
-      req.application.id,
-      limit,
-      page
-    );
+    const conversions = await conversionLogService.getConversions(applicationId, limit, page);
     
     res.json({
       success: true,
-      data: conversions
+      data: conversions,
+      page: page,
+      limit: limit
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des conversions:', error);
+    console.error('[API] Erreur lors de la récupération de l\'historique des conversions:', error);
+    
     res.status(500).json({
       success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible de récupérer l\'historique des conversions'
+      error: 'Erreur interne du serveur',
+      message: error.message
     });
   }
 });
 
 /**
- * GET /conversions/:id
- * Obtenir une conversion spécifique par ID
+ * Route pour obtenir les détails d'une conversion
+ * GET /api/conversions/:id
  */
 router.get('/conversions/:id', async (req, res) => {
   try {
-    const conversion = await conversionLogService.getConversion(
-      req.params.id,
-      req.application.id
-    );
+    const applicationId = req.apiKey.application_id;
+    const conversionId = parseInt(req.params.id);
+    
+    if (!conversionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID de conversion invalide',
+        message: 'L\'ID de conversion doit être un nombre entier'
+      });
+    }
+    
+    const conversion = await conversionLogService.getConversion(conversionId, applicationId);
     
     if (!conversion) {
       return res.status(404).json({
         success: false,
-        error: 'Non trouvé',
-        message: 'Conversion non trouvée'
+        error: 'Conversion non trouvée',
+        message: 'La conversion demandée n\'existe pas ou n\'appartient pas à votre application'
       });
     }
     
@@ -151,294 +302,12 @@ router.get('/conversions/:id', async (req, res) => {
       data: conversion
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération de la conversion:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible de récupérer la conversion'
-    });
-  }
-});
-
-/**
- * POST /convert
- * Convertir du contenu HL7 en FHIR
- */
-router.post('/convert', async (req, res) => {
-  try {
-    const startTime = Date.now();
-    let hl7Content = '';
-    let options = {};
-    
-    // Déterminer le format d'entrée (texte brut ou JSON avec options)
-    if (typeof req.body === 'string') {
-      hl7Content = req.body;
-    } else if (req.body && req.body.content) {
-      hl7Content = req.body.content;
-      options = req.body.options || {};
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: 'Format invalide',
-        message: 'Le corps de la requête doit être du texte HL7 brut ou un objet JSON avec une propriété "content"'
-      });
-    }
-    
-    // Appliquer la validation selon les options/paramètres
-    options.validate = options.validate || req.query.validate === 'true';
-    
-    // Convertir le contenu HL7 en FHIR
-    const result = await conversionService.convertHL7ToFHIR(hl7Content, options);
-    
-    // Calculer le temps de traitement
-    const processingTime = Date.now() - startTime;
-    req.processingTime = processingTime;
-    
-    // Journaliser la conversion
-    await conversionLogService.logConversion({
-      apiKeyId: req.apiKey.id,
-      applicationId: req.application.id,
-      sourceType: 'direct',
-      hl7Content,
-      fhirContent: JSON.stringify(result),
-      status: 'success',
-      processingTime
-    });
-    
-    res.json({
-      success: true,
-      data: result,
-      processingTime
-    });
-  } catch (error) {
-    console.error('Erreur lors de la conversion:', error);
-    
-    // Journaliser l'erreur
-    if (req.body && (typeof req.body === 'string' || req.body.content)) {
-      const hl7Content = typeof req.body === 'string' ? req.body : req.body.content;
-      
-      await conversionLogService.logConversion({
-        apiKeyId: req.apiKey.id,
-        applicationId: req.application.id,
-        sourceType: 'direct',
-        hl7Content,
-        status: 'error',
-        errorMessage: error.message
-      });
-    }
+    console.error('[API] Erreur lors de la récupération des détails de la conversion:', error);
     
     res.status(500).json({
       success: false,
-      error: 'Erreur de conversion',
-      message: error.message,
-      details: error.details || null
-    });
-  }
-});
-
-/**
- * POST /upload
- * Télécharger et convertir un fichier HL7
- */
-router.post('/upload', upload.single('file'), async (req, res) => {
-  try {
-    const startTime = Date.now();
-    
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'Fichier manquant',
-        message: 'Aucun fichier n\'a été téléchargé'
-      });
-    }
-    
-    // Lire le contenu du fichier
-    const hl7Content = fs.readFileSync(req.file.path, 'utf8');
-    
-    // Options de conversion
-    const options = {
-      validate: req.query.validate === 'true',
-      fileInfo: {
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      }
-    };
-    
-    // Convertir le contenu HL7 en FHIR
-    const result = await conversionService.convertHL7ToFHIR(hl7Content, options);
-    
-    // Calculer le temps de traitement
-    const processingTime = Date.now() - startTime;
-    
-    // Générer un fichier de sortie FHIR
-    const fhirContent = JSON.stringify(result, null, 2);
-    const fhirFileName = path.basename(req.file.originalname, path.extname(req.file.originalname)) + '.fhir.json';
-    const fhirFilePath = path.join(__dirname, '../../data/outputs', fhirFileName);
-    
-    // Créer le répertoire de sortie s'il n'existe pas
-    const outputDir = path.dirname(fhirFilePath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-    
-    // Écrire le fichier de sortie
-    fs.writeFileSync(fhirFilePath, fhirContent);
-    
-    // Journaliser la conversion
-    await conversionLogService.logConversion({
-      apiKeyId: req.apiKey.id,
-      applicationId: req.application.id,
-      sourceType: 'file',
-      hl7Content,
-      fhirContent,
-      status: 'success',
-      processingTime
-    });
-    
-    res.json({
-      success: true,
-      data: result,
-      file: {
-        original: req.file.originalname,
-        output: fhirFileName,
-        outputPath: `/api/files/fhir/${fhirFileName}`
-      },
-      processingTime
-    });
-  } catch (error) {
-    console.error('Erreur lors de la conversion du fichier:', error);
-    
-    // Journaliser l'erreur
-    if (req.file) {
-      try {
-        const hl7Content = fs.readFileSync(req.file.path, 'utf8');
-        
-        await conversionLogService.logConversion({
-          apiKeyId: req.apiKey.id,
-          applicationId: req.application.id,
-          sourceType: 'file',
-          hl7Content,
-          status: 'error',
-          errorMessage: error.message
-        });
-      } catch (logError) {
-        console.error('Erreur lors de la journalisation:', logError);
-      }
-    }
-    
-    res.status(500).json({
-      success: false,
-      error: 'Erreur de conversion',
-      message: error.message,
-      details: error.details || null
-    });
-  } finally {
-    // Nettoyer le fichier téléchargé
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-  }
-});
-
-/**
- * GET /files/fhir/:filename
- * Récupérer un fichier FHIR
- */
-router.get('/files/fhir/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, '../../data/outputs', filename);
-  
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({
-      success: false,
-      error: 'Fichier non trouvé',
-      message: `Le fichier ${filename} n'existe pas`
-    });
-  }
-  
-  res.download(filePath, filename);
-});
-
-/**
- * GET /terminology/systems
- * Récupérer tous les systèmes de terminologie disponibles
- */
-router.get('/terminology/systems', (req, res) => {
-  try {
-    const systems = terminologyService.getAllTerminologySystems();
-    res.json({
-      success: true,
-      data: systems
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération des systèmes de terminologie:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible de récupérer les systèmes de terminologie'
-    });
-  }
-});
-
-/**
- * GET /terminology/oid/:oid
- * Récupérer un système de terminologie par son OID
- */
-router.get('/terminology/oid/:oid', (req, res) => {
-  try {
-    const system = terminologyService.getCodeSystemByOid(req.params.oid);
-    
-    if (!system) {
-      return res.status(404).json({
-        success: false,
-        error: 'Non trouvé',
-        message: `Système de terminologie avec OID ${req.params.oid} non trouvé`
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: system
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération du système de terminologie:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible de récupérer le système de terminologie'
-    });
-  }
-});
-
-/**
- * GET /terminology/search
- * Rechercher dans les systèmes de terminologie
- */
-router.get('/terminology/search', (req, res) => {
-  try {
-    const query = req.query.q;
-    
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        error: 'Requête invalide',
-        message: 'Paramètre de recherche "q" manquant'
-      });
-    }
-    
-    const results = terminologyService.searchTerminology(query);
-    
-    res.json({
-      success: true,
-      data: results
-    });
-  } catch (error) {
-    console.error('Erreur lors de la recherche dans les terminologies:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur',
-      message: 'Impossible d\'effectuer la recherche dans les terminologies'
+      error: 'Erreur interne du serveur',
+      message: error.message
     });
   }
 });

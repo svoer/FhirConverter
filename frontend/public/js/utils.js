@@ -100,3 +100,64 @@ async function apiRequest(endpoint, options = {}) {
     throw error;
   }
 }
+
+/**
+ * Formater une date au format français
+ * @param {string|Date} date - Date à formater
+ * @returns {string} Date formatée
+ */
+function formatDate(date) {
+  if (!date) return '';
+  
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  
+  return d.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * Tronquer un texte à une longueur maximale
+ * @param {string} text - Texte à tronquer
+ * @param {number} maxLength - Longueur maximale
+ * @returns {string} Texte tronqué
+ */
+function truncateText(text, maxLength = 100) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  
+  return text.substring(0, maxLength) + '...';
+}
+
+/**
+ * Échapper les caractères HTML
+ * @param {string} html - HTML à échapper
+ * @returns {string} HTML échappé
+ */
+function escapeHtml(html) {
+  if (!html) return '';
+  
+  const div = document.createElement('div');
+  div.textContent = html;
+  return div.innerHTML;
+}
+
+/**
+ * Générer un identifiant unique
+ * @returns {string} Identifiant unique
+ */
+function generateUniqueId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+// Exporter les fonctions pour les rendre disponibles globalement
+window.apiRequest = apiRequest;
+window.formatDate = formatDate;
+window.truncateText = truncateText;
+window.escapeHtml = escapeHtml;
+window.generateUniqueId = generateUniqueId;

@@ -1,317 +1,305 @@
 /**
- * Script principal d'initialisation pour FHIRHub
- * Gère la navigation entre les onglets et l'initialisation des composants
+ * Script principal de l'interface FHIRHub
+ * Gère les interactions de l'interface utilisateur
  */
 
-(function() {
-  'use strict';
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialisation
+  console.log('FHIRHub Interface initialisée');
   
-  // Objets pour stocker les états des différents modules
-  const state = {
-    currentTab: null,
-    modulesInitialized: {
-      apiTester: false,
-      applications: false
-    }
-  };
+  // Éléments DOM
+  const convertButton = document.getElementById('convertButton');
+  const copyButton = document.getElementById('copyButton');
+  const downloadButton = document.getElementById('downloadButton');
+  const fileInput = document.getElementById('fileInput');
+  const hl7Input = document.getElementById('hl7Input');
+  const fhirOutput = document.getElementById('fhirOutput');
+  const conversionLogs = document.getElementById('conversionLogs');
+  const tabs = document.querySelectorAll('li[data-tab]');
+  const tabContents = document.querySelectorAll('.tab-content');
   
-  // Initialisation au chargement de la page
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser la navigation et les onglets
-    initTabNavigation();
-    
-    // Activer l'onglet par défaut (convertisseur)
-    const defaultTab = document.querySelector('.tab[data-tab="convert"]');
-    if (defaultTab) defaultTab.click();
-    
-    console.log('FHIRHub Interface initialisée');
+  // Navigation entre les onglets
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Désactiver tous les onglets
+      tabs.forEach(t => t.classList.remove('tab-active'));
+      tabs.forEach(t => t.classList.add('border-transparent'));
+      
+      // Activer l'onglet cliqué
+      tab.classList.add('tab-active');
+      tab.classList.remove('border-transparent');
+      
+      // Masquer tous les contenus d'onglet
+      tabContents.forEach(content => content.classList.add('hidden'));
+      
+      // Afficher le contenu de l'onglet sélectionné
+      const tabId = tab.getAttribute('data-tab');
+      document.getElementById(tabId).classList.remove('hidden');
+    });
   });
   
-  // Initialiser la navigation par onglets
-  function initTabNavigation() {
-    // Ajouter les événements de clic aux onglets
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        // Ne pas continuer si l'onglet est déjà actif
-        if (this.classList.contains('active')) return;
-        
-        // Supprimer la classe active de tous les onglets
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        
-        // Ajouter la classe active à l'onglet cliqué
-        this.classList.add('active');
-        
-        // Masquer tous les contenus d'onglet
-        document.querySelectorAll('.tab-content').forEach(content => {
-          content.style.display = 'none';
-        });
-        
-        // Afficher le contenu de l'onglet cliqué
-        const tabId = this.getAttribute('data-tab');
-        const tabContent = document.getElementById(tabId + '-tab');
-        if (tabContent) {
-          tabContent.style.display = 'block';
-          state.currentTab = tabId;
-          
-          // Initialiser le module spécifique à l'onglet si nécessaire
-          initModuleForTab(tabId);
+  // Appliquer un correctif pour éviter la perte de focus des champs texte
+  // (Problème identifié dans les tests précédents)
+  function applyInputFieldsFix() {
+    console.log('Application du correctif pour les champs texte');
+    const textareas = document.querySelectorAll('textarea');
+    const inputs = document.querySelectorAll('input[type="text"]');
+    
+    const elements = [...textareas, ...inputs];
+    let fixedCount = 0;
+    
+    elements.forEach(element => {
+      // Sauvegarder la position du curseur avant le clic
+      element.addEventListener('mousedown', function(e) {
+        if (this === document.activeElement) {
+          e.stopPropagation();
         }
       });
+      
+      // Éviter la perte de focus sur les clics dans le champ
+      element.addEventListener('click', function(e) {
+        if (this === document.activeElement) {
+          e.stopPropagation();
+        }
+      });
+      
+      fixedCount++;
+    });
+    
+    console.log('Correctif appliqué à ' + fixedCount + ' champs de saisie');
+  }
+  
+  // Correctif de navigation pour les onglets
+  function applyTabNavigationFix() {
+    console.log('Application du correctif de navigation des onglets');
+    tabs.forEach(tab => {
+      tab.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          tab.click();
+        }
+      });
+      
+      // Ajouter des attributs d'accessibilité
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('tabindex', '0');
     });
   }
   
-  // Initialiser les modules spécifiques à chaque onglet
-  function initModuleForTab(tabId) {
-    switch (tabId) {
-      case 'api-tester':
-        if (!state.modulesInitialized.apiTester) {
-          console.log('Initialisation du module testeur d\'API');
-          
-          // Vérifie si la fonction d'initialisation existe
-          if (typeof window.initializeApiTesterTab === 'function') {
-            window.initializeApiTesterTab();
-            state.modulesInitialized.apiTester = true;
-            
-            // Charger explicitement les applications pour l'onglet API Tester
-            // avec un délai pour s'assurer que tout est initialisé
-            setTimeout(() => {
-              if (typeof window.reloadApiTesterApplications === 'function') {
-                window.reloadApiTesterApplications();
-              }
-            }, 500);
-          } else {
-            console.error('Fonction initializeApiTesterTab non trouvée');
-          }
-        } else {
-          // Même si déjà initialisé, recharger les applications quand on 
-          // revient à cet onglet
-          if (typeof window.reloadApiTesterApplications === 'function') {
-            window.reloadApiTesterApplications();
-          }
+  // Gérer la conversion via l'API
+  async function convertHL7ToFHIR(hl7Content) {
+    updateLogs('Début de la conversion...');
+    
+    try {
+      // Afficher un aperçu du contenu HL7
+      const preview = hl7Content.length > 100 
+        ? hl7Content.substring(0, 100) + '...' 
+        : hl7Content;
+      updateLogs(`Contenu HL7 à convertir (aperçu): ${preview}`);
+      
+      // Préparer les données pour l'API
+      const data = {
+        content: hl7Content,
+        options: {
+          validate: true
         }
-        break;
-        
-      case 'applications':
-        if (!state.modulesInitialized.applications) {
-          console.log('Initialisation du module applications');
-          
-          // Vérifie si la fonction d'initialisation existe
-          if (typeof window.initApplicationsTab === 'function') {
-            window.initApplicationsTab();
-            state.modulesInitialized.applications = true;
-          } else {
-            console.error('Fonction initApplicationsTab non trouvée');
-          }
-        }
-        break;
-        
-      // Ajouter d'autres cas pour les autres onglets au besoin
+      };
+      
+      // Appeler l'API de conversion
+      updateLogs('Appel de l\'API de conversion...');
+      const result = await apiRequest('convert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      // Afficher le résultat
+      if (result.success) {
+        updateLogs(`Conversion réussie en ${result.processingTime || 'N/A'} ms`);
+        fhirOutput.value = JSON.stringify(result.data, null, 2);
+        return result.data;
+      } else {
+        updateLogs(`Erreur de conversion: ${result.message || 'Erreur inconnue'}`);
+        fhirOutput.value = JSON.stringify(result, null, 2);
+        return null;
+      }
+    } catch (error) {
+      updateLogs(`Erreur lors de la conversion: ${error.message}`);
+      fhirOutput.value = `Erreur: ${error.message}`;
+      return null;
     }
   }
   
-  // Exposer quelques fonctions utiles globalement
-  window.refreshAllTabs = function() {
-    // Rafraîchir tous les composants de l'interface
-    console.log('Rafraîchissement de tous les composants');
+  // Mettre à jour les logs de conversion
+  function updateLogs(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    conversionLogs.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+    conversionLogs.scrollTop = conversionLogs.scrollHeight;
+  }
+  
+  // Charger le contenu d'un fichier
+  function loadFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        resolve(e.target.result);
+      };
+      
+      reader.onerror = (e) => {
+        reject(new Error('Erreur lors de la lecture du fichier'));
+      };
+      
+      reader.readAsText(file);
+    });
+  }
+  
+  // Télécharger le résultat FHIR
+  function downloadFHIR() {
+    const content = fhirOutput.value;
     
-    // Rafraîchir les statistiques si disponible
-    if (typeof refreshStats === 'function') {
-      refreshStats();
+    if (!content) {
+      updateLogs('Rien à télécharger');
+      return;
     }
     
-    // Rafraîchir l'historique si disponible
-    if (typeof refreshHistory === 'function') {
-      refreshHistory();
+    const blob = new Blob([content], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = `conversion_fhir_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Nettoyer
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+    
+    updateLogs('Téléchargement du fichier FHIR');
+  }
+  
+  // Copier le résultat FHIR dans le presse-papier
+  function copyFHIR() {
+    const content = fhirOutput.value;
+    
+    if (!content) {
+      updateLogs('Rien à copier');
+      return;
     }
     
-    // Rafraîchir les applications si l'onglet est initialisé
-    if (state.modulesInitialized.applications && typeof refreshApplications === 'function') {
-      refreshApplications();
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        updateLogs('Contenu FHIR copié dans le presse-papier');
+      })
+      .catch(err => {
+        updateLogs(`Erreur lors de la copie: ${err.message}`);
+      });
+  }
+  
+  // Event listeners
+  convertButton.addEventListener('click', async () => {
+    const content = hl7Input.value.trim();
+    
+    if (!content) {
+      updateLogs('Veuillez entrer un message HL7');
+      return;
     }
     
-    // Rafraîchir le testeur d'API si l'onglet est initialisé
-    if (state.modulesInitialized.apiTester) {
-      if (typeof window.reloadApiTesterApplications === 'function') {
-        window.reloadApiTesterApplications();
-      } else if (typeof loadApplications === 'function') {
-        loadApplications();
+    await convertHL7ToFHIR(content);
+  });
+  
+  copyButton.addEventListener('click', copyFHIR);
+  downloadButton.addEventListener('click', downloadFHIR);
+  
+  fileInput.addEventListener('change', async (e) => {
+    if (e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    updateLogs(`Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} Ko)`);
+    
+    try {
+      const content = await loadFile(file);
+      hl7Input.value = content;
+      updateLogs('Fichier chargé avec succès');
+    } catch (error) {
+      updateLogs(`Erreur lors du chargement du fichier: ${error.message}`);
+    }
+  });
+  
+  // Appliquer les correctifs
+  applyInputFieldsFix();
+  applyTabNavigationFix();
+  
+  // Charger les statistiques pour le dashboard
+  async function loadStats() {
+    try {
+      const stats = await apiRequest('stats');
+      console.log('Statistiques chargées:', stats);
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
+    }
+  }
+  
+  // Charger l'historique des conversions
+  async function loadHistory() {
+    try {
+      const history = await apiRequest('conversions');
+      console.log('Historique chargé:', history);
+    } catch (error) {
+      console.error('Error fetching conversion history:', error);
+    }
+  }
+  
+  // Charger les données initiales
+  loadStats();
+  loadHistory();
+  
+  // Vérifier la santé de l'API
+  apiRequest('health')
+    .then(response => {
+      console.log('API health check:', response);
+    })
+    .catch(error => {
+      console.error('API request failed:', error.message);
+    });
+  
+  // Définir un exemple HL7 pour faciliter les tests
+  const exampleHL7 = `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230815131519||ADT^A01|MSG00001|P|2.5.1
+EVN|A01|20230815131519
+PID|1||123456789^^^^PI||DUPONT^JEAN PIERRE MARIE^JEAN PIERRE MARIE^^^^L||19800101|M|||1 RUE DE LA PAIX^^PARIS^^75001^FRA^H||^PRN^PH^^^33^0123456789|||M|||||||||||
+NK1|1|DUPONT^MARIE^^^^^L|ÉPOUSE|1 RUE DE LA PAIX^^PARIS^^75001^FRA^H|^PRN^PH^^^33^0123456789
+PV1|1|I|MED^1001^01||||002^MARTIN^SOPHIE^^^^MD^^^DRSN||||||||||||V100|||||||||||||||||||||||20230815131519
+OBR|1|12345|67890|80048^BASIC METABOLIC PANEL^CPT4|||20230815131519||||||||002^MARTIN^SOPHIE^^^^MD^^^DRSN||||||||LAB||||F
+OBX|1|NM|2160-0^CREATININE^LN||1.2|mg/dL|0.7-1.5|N|||F|||20230815131519
+OBX|2|NM|2951-2^SODIUM^LN||140|mmol/L|135-145|N|||F|||20230815131519
+OBX|3|NM|3094-0^UREA NITROGEN^LN||18|mg/dL|8-25|N|||F|||20230815131519`;
+  
+  // Ajouter un exemple HL7 par défaut si le champ est vide
+  if (!hl7Input.value) {
+    hl7Input.value = exampleHL7;
+    updateLogs('Exemple HL7 chargé pour faciliter les tests');
+  }
+  
+  // Activer la validation des formulaires
+  const forms = document.querySelectorAll('form');
+  forms.forEach(form => {
+    form.addEventListener('submit', (e) => {
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
       }
-    }
-  };
+      form.classList.add('was-validated');
+    });
+  });
   
-  // Cette fonction sera appelée quand certains événements nécessitent
-  // un rafraîchissement de l'interface (création d'application, etc.)
-  window.refreshCurrentTab = function() {
-    switch (state.currentTab) {
-      case 'applications':
-        if (typeof refreshApplications === 'function') {
-          refreshApplications();
-        }
-        break;
-        
-      case 'api-tester':
-        if (typeof loadApplications === 'function') {
-          loadApplications();
-        }
-        break;
-        
-      case 'history':
-        if (typeof refreshHistory === 'function') {
-          refreshHistory();
-        }
-        break;
-    }
-  };
-  
-  // Fonction ajoutée pour charger manuellement les applications dans l'onglet API Tester
-  window.reloadApiTesterApplications = function() {
-    // Assurons-nous que tous les éléments nécessaires sont disponibles
-    const appSelect = document.getElementById('test-app-select');
-    if (!appSelect) {
-      console.error("Sélecteur d'applications non trouvé dans l'onglet API Tester");
-      return;
-    }
-    
-    console.log("Chargement manuel des applications pour l'onglet API Tester");
-    
-    // Afficher un message de chargement
-    appSelect.innerHTML = '<option value="">Chargement...</option>';
-    appSelect.disabled = true;
-    
-    // Effectuer une requête API directe pour obtenir les applications
-    // Assurons-nous que la clé API est fournie
-    const apiKey = localStorage.getItem('apiKey') || 'dev-key';
-    fetch(`/api/applications?apiKey=${apiKey}`, {
-        headers: {
-          'x-api-key': apiKey
-        }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(result => {
-        // Réinitialiser le sélecteur
-        appSelect.innerHTML = '<option value="">Sélectionnez une application</option>';
-        appSelect.disabled = false;
-        
-        if (!result || !result.data) {
-          console.error("Aucune donnée d'application reçue");
-          return;
-        }
-        
-        // Forcer la conversion en tableau si nécessaire
-        const apps = Array.isArray(result.data) ? result.data : [result.data];
-        
-        // Créer les options pour chaque application
-        apps.forEach(app => {
-          if (!app || !app.id) return;
-          
-          const option = document.createElement('option');
-          option.value = app.id;
-          option.textContent = app.name || `Application #${app.id}`;
-          appSelect.appendChild(option);
-        });
-        
-        // Configurer l'événement de changement d'application pour charger les clés
-        if (!appSelect.getAttribute('data-event-attached')) {
-          appSelect.addEventListener('change', function() {
-            const appId = this.value;
-            if (appId) {
-              window.loadApiKeys(appId);
-            }
-          });
-          appSelect.setAttribute('data-event-attached', 'true');
-        }
-        
-        console.log(`${apps.length} applications chargées avec succès`);
-      })
-      .catch(error => {
-        console.error('Erreur lors du chargement des applications:', error);
-        appSelect.innerHTML = '<option value="">Erreur de chargement</option>';
-        appSelect.disabled = false;
-      });
-  };
-  
-  // Fonction pour charger les clés API d'une application
-  window.loadApiKeys = function(appId) {
-    if (!appId) return;
-    
-    const keySelect = document.getElementById('test-key-select');
-    if (!keySelect) {
-      console.error("Sélecteur de clés API non trouvé");
-      return;
-    }
-    
-    // Message de chargement
-    keySelect.innerHTML = '<option value="">Chargement...</option>';
-    keySelect.disabled = true;
-    
-    // Effectuer la requête API avec authentification
-    const apiKey = localStorage.getItem('apiKey') || 'dev-key';
-    fetch(`/api/keys?appId=${appId}&apiKey=${apiKey}`, {
-        headers: {
-          'x-api-key': apiKey
-        }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(result => {
-        // Réinitialiser le sélecteur
-        keySelect.innerHTML = '<option value="">Sélectionnez une clé API</option>';
-        keySelect.disabled = false;
-        
-        if (!result || !result.data) {
-          console.error("Aucune donnée de clé API reçue");
-          keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
-          return;
-        }
-        
-        // Forcer la conversion en tableau si nécessaire
-        const keys = Array.isArray(result.data) ? result.data : [result.data];
-        
-        if (keys.length === 0) {
-          keySelect.innerHTML = '<option value="">Aucune clé disponible</option>';
-          return;
-        }
-        
-        // Ajouter les options
-        keys.forEach(key => {
-          if (!key) return;
-          
-          const keyValue = key.api_key || key.key || key.value;
-          if (!keyValue) return;
-          
-          const option = document.createElement('option');
-          option.value = keyValue;
-          option.textContent = key.name || key.description || 'Clé API';
-          keySelect.appendChild(option);
-        });
-        
-        console.log(`${keys.length} clés API chargées`);
-        
-        // Configurer l'événement de changement de clé
-        if (!keySelect.getAttribute('data-event-attached')) {
-          keySelect.addEventListener('change', function() {
-            // Mettre à jour l'en-tête API key si un élément avec cet ID existe
-            const apiKeyHeader = document.getElementById('api-key-header');
-            if (apiKeyHeader) {
-              apiKeyHeader.value = this.value;
-            }
-          });
-          keySelect.setAttribute('data-event-attached', 'true');
-        }
-      })
-      .catch(error => {
-        console.error('Erreur lors du chargement des clés API:', error);
-        keySelect.innerHTML = '<option value="">Erreur de chargement</option>';
-        keySelect.disabled = false;
-      });
-  };
-})();
+  // Mettre à jour les logs périodiquement pour montrer que l'interface est fonctionnelle
+  setInterval(() => {
+    applyTabNavigationFix();
+    applyInputFieldsFix();
+  }, 2000);
+});
