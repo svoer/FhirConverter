@@ -320,7 +320,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     
     // Enregistrer la conversion dans l'historique
     const conversionId = dbService.saveConversion({
-      app_id: req.app && req.app.id ? req.app.id : 1,
+      app_id: req.appInfo && req.appInfo.id ? req.appInfo.id : 1,
       source_name: req.file.originalname,
       source_content: hl7Content,
       result_content: JSON.stringify(result),
