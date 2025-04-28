@@ -1,0 +1,194 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "id": "b02133dd-c854-427d-b952-6e68314ecc93",
+  "timestamp": "2025-04-28T11:07:02.760Z",
+  "meta": {
+    "profile": [
+      "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
+    ],
+    "security": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+        "code": "N",
+        "display": "Normal"
+      }
+    ],
+    "tag": [
+      {
+        "system": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+        "code": "urn:ans:ci-sis:hl7:v2.5",
+        "display": "HL7 v2.5 converti en FHIR R4 (ANS)"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/0129ae8a-0412-456f-a9be-a72bb55abe06",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0129ae8a-0412-456f-a9be-a72bb55abe06",
+        "identifier": [
+          {
+            "system": "urn:CEGI",
+            "value": "442777",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "CEGI"
+            }
+          },
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "value": "248098060602525",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS",
+                  "display": "INS"
+                }
+              ]
+            },
+            "extension": [
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-NIR-Verifie",
+                "valueBoolean": true
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Source",
+                "valueCode": "RECUPERE"
+              },
+              {
+                "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-DateConsultation",
+                "valueDateTime": "2025-04-28"
+              }
+            ],
+            "assigner": {
+              "display": "ASIP-SANTE-INS-NIR"
+            }
+          },
+          {
+            "system": "urn:CEGI",
+            "value": "1000345108",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PIP",
+                  "display": "PIP"
+                }
+              ]
+            },
+            "assigner": {
+              "display": "CEGI"
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "SECLET",
+            "use": "official",
+            "prefix": [
+              "MME"
+            ]
+          }
+        ],
+        "birthDate": "1948-09-09",
+        "gender": "female",
+        "address": [
+          {
+            "line": [
+              "7 RUE DU BOUJONNIER"
+            ],
+            "city": "FORMERIE",
+            "postalCode": "60220",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "60000"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Person/20e819e8-0574-45d1-b23c-4f643503a3c1",
+      "resource": {
+        "resourceType": "Person",
+        "id": "20e819e8-0574-45d1-b23c-4f643503a3c1",
+        "name": [
+          {
+            "family": "SECLET",
+            "use": "official",
+            "prefix": [
+              "MME"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1948-09-09",
+        "address": [
+          {
+            "line": [
+              "7 RUE DU BOUJONNIER"
+            ],
+            "city": "FORMERIE",
+            "postalCode": "60220",
+            "country": "FRA",
+            "use": "home",
+            "extension": [
+              {
+                "url": "https://interop.esante.gouv.fr/ig/fhir/annuaire/StructureDefinition/commune-cog-code",
+                "valueString": "60000"
+              }
+            ]
+          }
+        ],
+        "link": [
+          {
+            "target": {
+              "reference": "https://fhir.org/FHIRHub/Patient/0129ae8a-0412-456f-a9be-a72bb55abe06"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Person"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/3fd5947a-fd38-4a6c-9e80-66a616ab8cb8",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "3fd5947a-fd38-4a6c-9e80-66a616ab8cb8",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
+            "value": "CEGI"
+          }
+        ],
+        "name": "CEGI"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    }
+  ]
+}
