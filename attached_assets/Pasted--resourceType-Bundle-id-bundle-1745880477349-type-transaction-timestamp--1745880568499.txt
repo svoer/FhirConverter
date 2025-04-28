@@ -1,0 +1,392 @@
+{
+  "resourceType": "Bundle",
+  "id": "bundle-1745880477349",
+  "type": "transaction",
+  "timestamp": "2025-04-28T22:47:57.349Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:patient-1174024",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-1174024",
+        "identifier": [
+          {
+            "value": "1174024",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "PI",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "1121717802492545833548",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "INS-C",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "20170215",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "160059932710027",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          },
+          {
+            "value": "INS",
+            "system": "urn:system:unknown",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI",
+                  "display": "Patient internal identifier"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "YEHOUESSI"
+          },
+          {
+            "use": "official",
+            "family": "HERMAS JEAN RICHARD"
+          },
+          {
+            "use": "official",
+            "family": "HERMAS JEAN RICHARD"
+          },
+          {
+            "use": "official",
+            "family": "L"
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1960-05-09",
+        "telecom": [],
+        "address": [],
+        "maritalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+              "code": "M",
+              "display": "Marié"
+            }
+          ]
+        },
+        "contact": [],
+        "extension": []
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:encounter-1745880477349",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-1745880477349",
+        "status": "in-progress",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "IMP",
+          "display": "inpatient encounter"
+        },
+        "subject": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "period": {
+          "start": "2025-04-17T05:04:00"
+        },
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.213.1.4.2",
+            "value": [
+              "562102580",
+              "",
+              "",
+              [
+                "MCK",
+                "1.2.250.1.211.12.1.1",
+                "ISO"
+              ],
+              "AN"
+            ]
+          }
+        ],
+        "extension": [
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-type",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre",
+                  "code": "INSERT",
+                  "display": "Entrée"
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-identifier",
+            "valueIdentifier": {
+              "system": "urn:oid:1.2.250.1.71.4.2.1",
+              "value": [
+                "EH_11549556_1",
+                "MCK"
+              ]
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:organization-EAI",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "organization-EAI",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.2",
+            "value": "EAI"
+          }
+        ],
+        "name": "EAI",
+        "active": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:organization-20250417050534",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "organization-20250417050534",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.2",
+            "value": "20250417050534"
+          }
+        ],
+        "name": "20250417050534",
+        "active": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitioner-971219175,MERAUT SALOMON,RENEE,,,,,,,ADELI,2.16.840.1.113883.3.31.2.2,ISO,,,ADELI",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-971219175,MERAUT SALOMON,RENEE,,,,,,,ADELI,2.16.840.1.113883.3.31.2.2,ISO,,,ADELI",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.1",
+            "value": [
+              "971219175",
+              "MERAUT SALOMON",
+              "RENEE",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              [
+                "ADELI",
+                "2.16.840.1.113883.3.31.2.2",
+                "ISO"
+              ],
+              "",
+              "",
+              "ADELI"
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": [
+              "1238140",
+              "MERAUT SALOMON",
+              "RENEE",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              [
+                "MCK",
+                "1.2.250.1.211.12.1.1",
+                "ISO"
+              ],
+              "",
+              "",
+              "EI"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:practitionerrole-68978989-de08-4887-ba6a-45cc62b9ab0f",
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "practitionerrole-68978989-de08-4887-ba6a-45cc62b9ab0f",
+        "practitioner": {
+          "reference": "urn:uuid:practitioner-971219175,MERAUT SALOMON,RENEE,,,,,,,ADELI,2.16.840.1.113883.3.31.2.2,ISO,,,ADELI"
+        },
+        "active": true,
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial",
+                "code": "ODRP",
+                "display": "Médecin"
+              }
+            ]
+          }
+        ],
+        "encounter": {
+          "reference": "urn:uuid:encounter-1745880477349"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "PractitionerRole"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:relatedperson-7b65856b-d90f-4a44-b956-f84b93ff4095",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "relatedperson-7b65856b-d90f-4a44-b956-f84b93ff4095",
+        "patient": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "YEHOUESSI",
+            "given": [
+              "ELENA"
+            ]
+          }
+        ],
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "SPO",
+                "display": "Spouse"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:coverage-1745880477352",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "coverage-1745880477352",
+        "status": "active",
+        "beneficiary": {
+          "reference": "urn:uuid:patient-1174024"
+        },
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+              "code": "972",
+              "display": "Insurance policy"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Coverage"
+      }
+    }
+  ]
+}

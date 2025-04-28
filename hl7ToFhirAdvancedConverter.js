@@ -4,7 +4,16 @@
  * Compatible avec les exigences de l'ANS
  */
 
-const uuid = require('uuid');
+// Module UUID pour générer des identifiants uniques
+const uuid = {
+  v4: function() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+};
 const hl7Parser = require('./hl7Parser');
 
 /**
@@ -90,10 +99,9 @@ function convertHL7ToFHIR(hl7Message) {
           try {
             console.log("[CONVERTER] Segment ROL complet:", JSON.stringify(rolSegment));
             
-            // Création directe d'un praticien robuste à partir du segment ROL
-            let idValue = '';
-            let familyName = '';
-            let givenName = '';
+            // 1. Traitement pour les systèmes d'identifiants français
+            let practitionerIdentifiers = [];
+            let practitionerName = {};
             
             // Récupérer le code du praticien (ROL-3)
             const roleCode = rolSegment[3] || 'UNKN';
@@ -101,44 +109,130 @@ function convertHL7ToFHIR(hl7Message) {
             // Récupérer les informations d'identification du praticien (ROL-4)
             if (rolSegment[4]) {
               const rolePerson = rolSegment[4];
+              console.log("[CONVERTER] Analyse du segment ROL-4 pour praticien:", typeof rolePerson);
               
-              if (typeof rolePerson === 'string') {
-                // Format chaîne: "987654321^DUPONT^JEAN^^DR^DR"
-                const parts = rolePerson.split('^');
-                idValue = parts[0] || '';
-                familyName = parts[1] || '';
-                givenName = parts[2] || '';
-              } else if (Array.isArray(rolePerson)) {
-                // Format tableau: ["987654321","DUPONT","JEAN","","DR","DR"]
-                idValue = rolePerson[0] || '';
-                familyName = rolePerson[1] || '';
-                givenName = rolePerson[2] || '';
-              } else if (typeof rolePerson === 'object') {
-                // Format objet potentiel
-                idValue = rolePerson.identifier || rolePerson.id || '';
-                familyName = rolePerson.familyName || rolePerson.family || '';
-                givenName = rolePerson.givenName || rolePerson.given || '';
+              // Gestion des identifiants français spécifiques (ADELI, RPPS)
+              try {
+                // Format tableau complexe pour les identifiants français:
+                if (Array.isArray(rolePerson)) {
+                  // Pour chaque identifiant dans le segment ROL-4
+                  rolePerson.forEach(id => {
+                    if (Array.isArray(id) && id.length > 2) {
+                      // Identifiant principal
+                      const idValue = id[0] || '';
+                      const familyName = id[1] || '';
+                      const givenName = id[2] || '';
+                      
+                      // Vérifier si l'identifiant contient une autorité (ADELI, RPPS, etc.)
+                      let system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID par défaut
+                      let typeCode = '';
+                      
+                      // Traitement des autorités d'assignation françaises
+                      if (id.length > 9 && Array.isArray(id[9])) {
+                        const authority = id[9];
+                        if (Array.isArray(authority) && authority.length > 1) {
+                          // Format: ["ADELI", "2.16.840.1.113883.3.31.2.2", "ISO"]
+                          typeCode = authority[0] || '';
+                          if (authority[1]) {
+                            system = `urn:oid:${authority[1]}`;
+                          }
+                        }
+                      }
+                      
+                      // Ajouter l'identifiant structuré
+                      if (idValue) {
+                        practitionerIdentifiers.push({
+                          system: system,
+                          value: idValue,
+                          type: typeCode ? {
+                            coding: [{
+                              system: "http://terminology.hl7.org/CodeSystem/v2-0203",
+                              code: typeCode
+                            }]
+                          } : undefined
+                        });
+                      }
+                      
+                      // Construire le nom
+                      if (familyName) {
+                        practitionerName = {
+                          family: familyName,
+                          given: givenName ? [givenName] : []
+                        };
+                      }
+                    } else if (typeof id === 'string') {
+                      // Format chaîne simple (cas plus rare)
+                      const parts = id.split('^');
+                      const idValue = parts[0] || '';
+                      
+                      if (idValue) {
+                        practitionerIdentifiers.push({
+                          system: "urn:oid:1.2.250.1.71.4.2.1",
+                          value: idValue
+                        });
+                      }
+                    }
+                  });
+                } else if (typeof rolePerson === 'string') {
+                  // Format chaîne pour compatibilité: "987654321^DUPONT^JEAN^^DR^DR"
+                  const parts = rolePerson.split('^');
+                  const idValue = parts[0] || '';
+                  const familyName = parts[1] || '';
+                  const givenName = parts[2] || '';
+                  
+                  if (idValue) {
+                    practitionerIdentifiers.push({
+                      system: "urn:oid:1.2.250.1.71.4.2.1",
+                      value: idValue
+                    });
+                  }
+                  
+                  if (familyName) {
+                    practitionerName = {
+                      family: familyName,
+                      given: givenName ? [givenName] : []
+                    };
+                  }
+                }
+              } catch (err) {
+                console.error("[CONVERTER] Erreur lors de l'extraction des identifiants:", err);
               }
             }
             
-            // Si aucune information n'a pu être extraite, utiliser des valeurs par défaut
-            if (!idValue) idValue = `practitioner-${Date.now()}`;
-            if (!familyName) familyName = 'Praticien';
+            // Si aucun identifiant n'a pu être extrait, créer un identifiant par défaut
+            if (practitionerIdentifiers.length === 0) {
+              practitionerIdentifiers.push({
+                system: "urn:oid:1.2.250.1.71.4.2.1",
+                value: `unknown-${Date.now()}`
+              });
+            }
             
-            // Créer une ressource Practitioner directement
-            const practitionerId = `practitioner-${idValue}`;
+            // Si aucun nom n'a pu être extrait, utiliser un nom par défaut
+            if (!practitionerName.family) {
+              practitionerName = {
+                family: "Praticien non spécifié"
+              };
+            }
+            
+            // 2. Création de la ressource Practitioner conforme au format français
+            const practitionerId = `practitioner-${uuid.v4()}`;
             const practitionerResource = {
               fullUrl: `urn:uuid:${practitionerId}`,
               resource: {
                 resourceType: 'Practitioner',
                 id: practitionerId,
-                identifier: [{
-                  system: 'urn:oid:1.2.250.1.71.4.2.1',
-                  value: idValue
-                }],
-                name: [{
-                  family: familyName,
-                  given: givenName ? [givenName] : []
+                identifier: practitionerIdentifiers,
+                name: [practitionerName],
+                // Extensions françaises recommandées par l'ANS
+                extension: [{
+                  url: "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/practitioner-nationality",
+                  valueCodeableConcept: {
+                    coding: [{
+                      system: "https://mos.esante.gouv.fr/NOS/TRE_R20-Pays/FHIR/TRE-R20-Pays",
+                      code: "FRA",
+                      display: "France"
+                    }]
+                  }
                 }]
               },
               request: {
@@ -153,7 +247,7 @@ function convertHL7ToFHIR(hl7Message) {
             
             // Créer aussi une ressource PractitionerRole si un encounter existe
             if (encounterReference) {
-              const practitionerRoleId = `practitionerrole-${Date.now()}`;
+              const practitionerRoleId = `practitionerrole-${uuid.v4()}`;
               const practitionerRoleResource = {
                 fullUrl: `urn:uuid:${practitionerRoleId}`,
                 resource: {
@@ -172,7 +266,18 @@ function convertHL7ToFHIR(hl7Message) {
                   }],
                   encounter: {
                     reference: encounterReference
-                  }
+                  },
+                  // Extensions spécifiques au format français
+                  extension: [{
+                    url: "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/practitionerRole-profession",
+                    valueCodeableConcept: {
+                      coding: [{
+                        system: "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+                        code: roleCode,
+                        display: getRoleTypeDisplay(roleCode)
+                      }]
+                    }
+                  }]
                 },
                 request: {
                   method: 'POST',
