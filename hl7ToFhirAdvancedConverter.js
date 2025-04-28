@@ -87,30 +87,64 @@ function convertHL7ToFHIR(hl7Message) {
         segments.ROL.forEach((rolSegment, index) => {
           console.log(`[CONVERTER] Traitement du segment ROL #${index + 1}:`, JSON.stringify(rolSegment).substring(0, 100) + "...");
           
-          // Création du Praticien (Practitioner)
-          const practitionerResource = createPractitionerResource(rolSegment);
-          if (practitionerResource) {
-            console.log("[CONVERTER] Ressource Practitioner créée avec succès:", practitionerResource.fullUrl);
-            bundle.entry.push(practitionerResource);
+          try {
+            // Création du Praticien (Practitioner)
+            console.log("[CONVERTER] Appel à createPractitionerResource");
+            const practitionerResource = createPractitionerResource(rolSegment);
+            console.log("[CONVERTER] Résultat de createPractitionerResource:", practitionerResource ? "Succès" : "Échec");
             
-            // Créer aussi le PractitionerRole si un encounter existe
-            if (encounterReference) {
-              const practitionerRoleResource = createPractitionerRoleResource(
-                rolSegment, 
-                practitionerResource.fullUrl, 
-                encounterReference
-              );
-              if (practitionerRoleResource) {
-                console.log("[CONVERTER] Ressource PractitionerRole créée avec succès");
-                bundle.entry.push(practitionerRoleResource);
+            if (practitionerResource) {
+              console.log("[CONVERTER] Ressource Practitioner créée avec succès:", practitionerResource.fullUrl);
+              bundle.entry.push(practitionerResource);
+              
+              // Ajout forcé du praticien pour debug
+              console.log("[CONVERTER] Nombre de ressources dans le bundle après ajout du praticien:", bundle.entry.length);
+              
+              // Créer aussi le PractitionerRole si un encounter existe
+              if (encounterReference) {
+                const practitionerRoleResource = createPractitionerRoleResource(
+                  rolSegment, 
+                  practitionerResource.fullUrl, 
+                  encounterReference
+                );
+                if (practitionerRoleResource) {
+                  console.log("[CONVERTER] Ressource PractitionerRole créée avec succès");
+                  bundle.entry.push(practitionerRoleResource);
+                } else {
+                  console.log("[CONVERTER] Échec de création de la ressource PractitionerRole");
+                }
               } else {
-                console.log("[CONVERTER] Échec de création de la ressource PractitionerRole");
+                console.log("[CONVERTER] Pas de création de PractitionerRole (pas d'Encounter)");
               }
             } else {
-              console.log("[CONVERTER] Pas de création de PractitionerRole (pas d'Encounter)");
+              console.log("[CONVERTER] Échec de création de la ressource Practitioner");
+              
+              // On crée une ressource Practitioner de secours
+              const practitionerId = `practitioner-fallback-${Date.now()}`;
+              const fallbackPractitioner = {
+                fullUrl: `urn:uuid:${practitionerId}`,
+                resource: {
+                  resourceType: 'Practitioner',
+                  id: practitionerId,
+                  identifier: [{
+                    system: 'urn:oid:1.2.250.1.71.4.2.1',
+                    value: rolSegment[3] ? `fallback-${rolSegment[3]}` : 'unknown'
+                  }],
+                  name: [{
+                    family: 'Nom non récupéré',
+                    given: ['Praticien']
+                  }]
+                },
+                request: {
+                  method: 'POST',
+                  url: 'Practitioner'
+                }
+              };
+              bundle.entry.push(fallbackPractitioner);
+              console.log("[CONVERTER] Ressource Practitioner de secours créée:", fallbackPractitioner.fullUrl);
             }
-          } else {
-            console.log("[CONVERTER] Échec de création de la ressource Practitioner");
+          } catch (error) {
+            console.error("[CONVERTER] Erreur lors du traitement du segment ROL:", error);
           }
         });
       } else {
@@ -1217,31 +1251,68 @@ function createPractitionerResource(rolSegment) {
   let givenName = '';
   let oid = '1.2.250.1.71.4.2.1'; // OID par défaut
   
-  // Si c'est une chaîne, parser les composants
-  if (typeof rolePerson === 'string') {
-    console.log('[CONVERTER] Parsing de ROL-4 (chaîne):', rolePerson);
-    const rolePersonParts = rolePerson.split('^');
-    
-    // Identifiant (component 1)
-    idValue = rolePersonParts[0] || '';
-    
-    // Nom (components 2-3)
-    familyName = rolePersonParts.length > 1 ? rolePersonParts[1] || '' : '';
-    givenName = rolePersonParts.length > 2 ? rolePersonParts[2] || '' : '';
-    
-    // ROL-4.4 (Assigning Authority)
-    if (rolePersonParts.length > 3 && rolePersonParts[3] && rolePersonParts[3].includes('&')) {
-      const assigningAuthority = rolePersonParts[3];
-      const authorityComponents = assigningAuthority.split('&');
-      if (authorityComponents.length > 1 && authorityComponents[1]) {
-        oid = authorityComponents[1];
+  console.log('[CONVERTER] Type de ROL-4:', typeof rolePerson, 'Valeur:', JSON.stringify(rolePerson));
+  
+  try {
+    // Si c'est une chaîne, parser les composants
+    if (typeof rolePerson === 'string') {
+      console.log('[CONVERTER] Parsing de ROL-4 (chaîne):', rolePerson);
+      const rolePersonParts = rolePerson.split('^');
+      
+      // Identifiant (component 1)
+      idValue = rolePersonParts[0] || '';
+      
+      // Nom (components 2-3)
+      familyName = rolePersonParts.length > 1 ? rolePersonParts[1] || '' : '';
+      givenName = rolePersonParts.length > 2 ? rolePersonParts[2] || '' : '';
+      
+      // ROL-4.4 (Assigning Authority)
+      if (rolePersonParts.length > 3 && rolePersonParts[3] && rolePersonParts[3].includes('&')) {
+        const assigningAuthority = rolePersonParts[3];
+        const authorityComponents = assigningAuthority.split('&');
+        if (authorityComponents.length > 1 && authorityComponents[1]) {
+          oid = authorityComponents[1];
+        }
+      }
+    }
+    // Si c'est un tableau (cas du nouveau parser)
+    else if (Array.isArray(rolePerson)) {
+      console.log('[CONVERTER] Parsing de ROL-4 (tableau):', JSON.stringify(rolePerson));
+      
+      // Identifiant (component 1)
+      idValue = rolePerson[0] || '';
+      
+      // Nom (components 2-3)
+      familyName = rolePerson.length > 1 ? rolePerson[1] || '' : '';
+      givenName = rolePerson.length > 2 ? rolePerson[2] || '' : '';
+      
+      // ROL-4.4 (Assigning Authority)
+      if (rolePerson.length > 3 && rolePerson[3] && typeof rolePerson[3] === 'string' && rolePerson[3].includes('&')) {
+        const assigningAuthority = rolePerson[3];
+        const authorityComponents = assigningAuthority.split('&');
+        if (authorityComponents.length > 1 && authorityComponents[1]) {
+          oid = authorityComponents[1];
+        }
+      } else if (rolePerson.length > 3 && rolePerson[3] && typeof rolePerson[3] === 'object') {
+        // Si c'est un objet complexe, essayons de trouver l'OID
+        const assigningAuth = rolePerson[3];
+        if (assigningAuth.namespaceId && assigningAuth.universalId) {
+          oid = assigningAuth.universalId;
+        }
       }
     }
     
     console.log('[CONVERTER] Données extraites - ID:', idValue, 'Nom:', familyName, 'Prénom:', givenName);
+  } catch (error) {
+    console.error('[CONVERTER] Erreur lors de l\'extraction des données du praticien:', error);
+    // Définir des valeurs par défaut en cas d'erreur
+    idValue = idValue || `unknown-${Date.now()}`;
+    familyName = familyName || 'Nom non spécifié';
   }
   
+  console.log('[CONVERTER] Tentative de création du praticien avec ID:', idValue, 'Nom:', familyName, 'Prénom:', givenName);
   if (!idValue && !familyName && !givenName) {
+    console.log('[CONVERTER] Données insuffisantes pour créer un praticien');
     return null;
   }
   
@@ -1408,24 +1479,39 @@ function createPractitionerRoleResource(rolSegment, practitionerReference, encou
  * @returns {Object|null} Entrée de bundle pour un RelatedPerson ou null si non disponible
  */
 function createRelatedPersonResource(nk1Segment, patientReference) {
+  console.log('[CONVERTER] Création de ressource RelatedPerson à partir de:', JSON.stringify(nk1Segment).substring(0, 200));
+  
   if (!nk1Segment || !patientReference || nk1Segment.length <= 2) {
+    console.log('[CONVERTER] Échec: segment NK1 trop court ou référence patient manquante');
     return null;
   }
   
   // NK1-2 (Nom)
   const nameField = nk1Segment[2];
   if (!nameField) {
+    console.log('[CONVERTER] Échec: NK1-2 (Nom) manquant');
     return null;
   }
   
   let familyName = '';
   let givenName = '';
   
+  console.log('[CONVERTER] Type de NK1-2:', typeof nameField, 'Valeur:', JSON.stringify(nameField));
+  
   // Si le champ est une chaîne, analyser les composants
   if (typeof nameField === 'string') {
+    console.log('[CONVERTER] Parsing de NK1-2 (chaîne):', nameField);
     const nameParts = nameField.split('^');
     familyName = nameParts[0] || '';
     givenName = nameParts.length > 1 ? nameParts[1] || '' : '';
+  }
+  // Si c'est un tableau (cas du nouveau parser)
+  else if (Array.isArray(nameField)) {
+    console.log('[CONVERTER] Parsing de NK1-2 (tableau):', JSON.stringify(nameField));
+    
+    // Nom (components 1-2)
+    familyName = nameField.length > 0 ? nameField[0] || '' : '';
+    givenName = nameField.length > 1 ? nameField[1] || '' : '';
   }
   
   if (!familyName && !givenName) {
@@ -1471,8 +1557,11 @@ function createRelatedPersonResource(nk1Segment, patientReference) {
     const relationshipField = nk1Segment[3];
     let relationshipCode = '';
     
+    console.log('[CONVERTER] Type de NK1-3:', typeof relationshipField, 'Valeur:', JSON.stringify(relationshipField));
+    
     // Si c'est une chaîne, traiter directement
     if (typeof relationshipField === 'string') {
+      console.log('[CONVERTER] Parsing de NK1-3 (chaîne):', relationshipField);
       // Essayer de trouver un code standard
       const relationCodes = ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'];
       
@@ -1489,6 +1578,25 @@ function createRelatedPersonResource(nk1Segment, patientReference) {
       // Si aucun code standard n'est trouvé, utiliser le premier composant
       if (!relationshipCode && relationParts.length > 0) {
         relationshipCode = relationParts[0];
+      }
+    }
+    // Si c'est un tableau (cas du nouveau parser)
+    else if (Array.isArray(relationshipField)) {
+      console.log('[CONVERTER] Parsing de NK1-3 (tableau):', JSON.stringify(relationshipField));
+      // Essayer de trouver un code standard dans le tableau
+      const relationCodes = ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'];
+      
+      // Parcourir le tableau à la recherche d'un code connu
+      for (const part of relationshipField) {
+        if (typeof part === 'string' && relationCodes.includes(part)) {
+          relationshipCode = part;
+          break;
+        }
+      }
+      
+      // Si aucun code standard n'est trouvé, utiliser le premier élément du tableau s'il existe
+      if (!relationshipCode && relationshipField.length > 0 && typeof relationshipField[0] === 'string') {
+        relationshipCode = relationshipField[0];
       }
     }
     
