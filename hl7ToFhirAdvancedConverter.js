@@ -88,60 +88,102 @@ function convertHL7ToFHIR(hl7Message) {
           console.log(`[CONVERTER] Traitement du segment ROL #${index + 1}:`, JSON.stringify(rolSegment).substring(0, 100) + "...");
           
           try {
-            // Création du Praticien (Practitioner)
-            console.log("[CONVERTER] Appel à createPractitionerResource");
-            const practitionerResource = createPractitionerResource(rolSegment);
-            console.log("[CONVERTER] Résultat de createPractitionerResource:", practitionerResource ? "Succès" : "Échec");
+            console.log("[CONVERTER] Segment ROL complet:", JSON.stringify(rolSegment));
             
-            if (practitionerResource) {
-              console.log("[CONVERTER] Ressource Practitioner créée avec succès:", practitionerResource.fullUrl);
-              bundle.entry.push(practitionerResource);
+            // Création directe d'un praticien robuste à partir du segment ROL
+            let idValue = '';
+            let familyName = '';
+            let givenName = '';
+            
+            // Récupérer le code du praticien (ROL-3)
+            const roleCode = rolSegment[3] || 'UNKN';
+            
+            // Récupérer les informations d'identification du praticien (ROL-4)
+            if (rolSegment[4]) {
+              const rolePerson = rolSegment[4];
               
-              // Ajout forcé du praticien pour debug
-              console.log("[CONVERTER] Nombre de ressources dans le bundle après ajout du praticien:", bundle.entry.length);
-              
-              // Créer aussi le PractitionerRole si un encounter existe
-              if (encounterReference) {
-                const practitionerRoleResource = createPractitionerRoleResource(
-                  rolSegment, 
-                  practitionerResource.fullUrl, 
-                  encounterReference
-                );
-                if (practitionerRoleResource) {
-                  console.log("[CONVERTER] Ressource PractitionerRole créée avec succès");
-                  bundle.entry.push(practitionerRoleResource);
-                } else {
-                  console.log("[CONVERTER] Échec de création de la ressource PractitionerRole");
-                }
-              } else {
-                console.log("[CONVERTER] Pas de création de PractitionerRole (pas d'Encounter)");
+              if (typeof rolePerson === 'string') {
+                // Format chaîne: "987654321^DUPONT^JEAN^^DR^DR"
+                const parts = rolePerson.split('^');
+                idValue = parts[0] || '';
+                familyName = parts[1] || '';
+                givenName = parts[2] || '';
+              } else if (Array.isArray(rolePerson)) {
+                // Format tableau: ["987654321","DUPONT","JEAN","","DR","DR"]
+                idValue = rolePerson[0] || '';
+                familyName = rolePerson[1] || '';
+                givenName = rolePerson[2] || '';
+              } else if (typeof rolePerson === 'object') {
+                // Format objet potentiel
+                idValue = rolePerson.identifier || rolePerson.id || '';
+                familyName = rolePerson.familyName || rolePerson.family || '';
+                givenName = rolePerson.givenName || rolePerson.given || '';
               }
-            } else {
-              console.log("[CONVERTER] Échec de création de la ressource Practitioner");
-              
-              // On crée une ressource Practitioner de secours
-              const practitionerId = `practitioner-fallback-${Date.now()}`;
-              const fallbackPractitioner = {
-                fullUrl: `urn:uuid:${practitionerId}`,
+            }
+            
+            // Si aucune information n'a pu être extraite, utiliser des valeurs par défaut
+            if (!idValue) idValue = `practitioner-${Date.now()}`;
+            if (!familyName) familyName = 'Praticien';
+            
+            // Créer une ressource Practitioner directement
+            const practitionerId = `practitioner-${idValue}`;
+            const practitionerResource = {
+              fullUrl: `urn:uuid:${practitionerId}`,
+              resource: {
+                resourceType: 'Practitioner',
+                id: practitionerId,
+                identifier: [{
+                  system: 'urn:oid:1.2.250.1.71.4.2.1',
+                  value: idValue
+                }],
+                name: [{
+                  family: familyName,
+                  given: givenName ? [givenName] : []
+                }]
+              },
+              request: {
+                method: 'POST',
+                url: 'Practitioner'
+              }
+            };
+            
+            // Ajouter la ressource Practitioner
+            bundle.entry.push(practitionerResource);
+            console.log("[CONVERTER] Ressource Practitioner créée avec succès:", practitionerResource.fullUrl);
+            
+            // Créer aussi une ressource PractitionerRole si un encounter existe
+            if (encounterReference) {
+              const practitionerRoleId = `practitionerrole-${Date.now()}`;
+              const practitionerRoleResource = {
+                fullUrl: `urn:uuid:${practitionerRoleId}`,
                 resource: {
-                  resourceType: 'Practitioner',
-                  id: practitionerId,
-                  identifier: [{
-                    system: 'urn:oid:1.2.250.1.71.4.2.1',
-                    value: rolSegment[3] ? `fallback-${rolSegment[3]}` : 'unknown'
+                  resourceType: 'PractitionerRole',
+                  id: practitionerRoleId,
+                  practitioner: {
+                    reference: practitionerResource.fullUrl
+                  },
+                  active: true,
+                  code: [{
+                    coding: [{
+                      system: 'https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial',
+                      code: roleCode,
+                      display: getRoleTypeDisplay(roleCode)
+                    }]
                   }],
-                  name: [{
-                    family: 'Nom non récupéré',
-                    given: ['Praticien']
-                  }]
+                  encounter: {
+                    reference: encounterReference
+                  }
                 },
                 request: {
                   method: 'POST',
-                  url: 'Practitioner'
+                  url: 'PractitionerRole'
                 }
               };
-              bundle.entry.push(fallbackPractitioner);
-              console.log("[CONVERTER] Ressource Practitioner de secours créée:", fallbackPractitioner.fullUrl);
+              
+              bundle.entry.push(practitionerRoleResource);
+              console.log("[CONVERTER] Ressource PractitionerRole créée avec succès");
+            } else {
+              console.log("[CONVERTER] Pas de création de PractitionerRole (pas d'Encounter)");
             }
           } catch (error) {
             console.error("[CONVERTER] Erreur lors du traitement du segment ROL:", error);
