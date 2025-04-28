@@ -9,7 +9,6 @@
 
 const uuid = require('uuid');
 const hl7 = require('simple-hl7');
-const parser = new hl7.Parser();
 
 /**
  * Convertit un message HL7 en bundle FHIR
@@ -21,21 +20,39 @@ function convertHL7ToFHIR(hl7Message) {
     console.log('[CONVERTER] Démarrage de la conversion HL7 vers FHIR');
     
     // Parser le message HL7 avec simple-hl7
-    const parsedMessage = parser.parse(hl7Message);
+    // Format du message à analyser
+    // 1. Remplacer \n par \r si nécessaire pour obtenir un format valide
+    const normalizedMessage = hl7Message.replace(/\n/g, '\r');
     
-    if (!parsedMessage || !parsedMessage.segments || parsedMessage.segments.length === 0) {
+    // 2. Créer le parser et parser le message
+    const parser = new hl7.Parser();
+    const parsedMessage = parser.parse(normalizedMessage);
+    
+    // 3. Vérifier la validité du message parsé
+    if (!parsedMessage) {
       throw new Error('Message HL7 invalide ou vide');
     }
     
-    // Récupérer les segments par type
+    console.log('[CONVERTER] Structure parsée:', JSON.stringify(parsedMessage).substring(0, 100) + '...');
+    
+    // 4. Extraire les segments du message
     const segments = {};
-    parsedMessage.segments.forEach(segment => {
-      const segmentName = segment.name;
-      if (!segments[segmentName]) {
-        segments[segmentName] = [];
-      }
-      segments[segmentName].push(segment);
-    });
+    // Extraire le segment MSH
+    if (parsedMessage.header && parsedMessage.header.name === 'MSH') {
+      if (!segments['MSH']) segments['MSH'] = [];
+      segments['MSH'].push(parsedMessage.header);
+    }
+    
+    // Extraire les autres segments
+    if (parsedMessage.segments && Array.isArray(parsedMessage.segments)) {
+      parsedMessage.segments.forEach(segment => {
+        const segmentName = segment.name;
+        if (!segments[segmentName]) {
+          segments[segmentName] = [];
+        }
+        segments[segmentName].push(segment);
+      });
+    }
     
     console.log(`[CONVERTER] Message HL7 parsé avec succès: ${Object.keys(segments).length} types de segments`);
     
@@ -121,10 +138,109 @@ function convertHL7ToFHIR(hl7Message) {
       }
       
       // Traitement des segments Z (spécifiques français)
+      // Ces segments peuvent contenir des informations essentielles pour le contexte français
+      
+      // ZBE - Mouvement hospitalier selon spécifications françaises
       if (segments.ZBE && segments.ZBE.length > 0) {
         const zbeData = processZBESegment(segments.ZBE[0]);
-        // Enrichir l'encounter avec ces données si nécessaire
-        // TODO: implémenter selon besoins spécifiques
+        
+        // Si nous avons un encounter et des données ZBE, enrichir l'encounter
+        const encounterEntry = bundle.entry.find(e => e.resource && e.resource.resourceType === 'Encounter');
+        if (encounterEntry && zbeData) {
+          // Ajouter les extensions ANS pour le mouvement hospitalier
+          if (!encounterEntry.resource.extension) {
+            encounterEntry.resource.extension = [];
+          }
+          
+          // Extension pour le type de mouvement (entrée, sortie, mutation)
+          if (zbeData.movementType) {
+            encounterEntry.resource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-type',
+              valueCodeableConcept: {
+                coding: [{
+                  system: 'https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre',
+                  code: zbeData.movementType,
+                  display: getMovementTypeDisplay(zbeData.movementType)
+                }]
+              }
+            });
+          }
+          
+          // Extension pour l'identifiant du mouvement
+          if (zbeData.movementId) {
+            encounterEntry.resource.extension.push({
+              url: 'https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-identifier',
+              valueIdentifier: {
+                system: 'urn:oid:1.2.250.1.71.4.2.1',
+                value: zbeData.movementId
+              }
+            });
+          }
+          
+          // Extension pour l'unité fonctionnelle
+          if (zbeData.functionalUnit) {
+            encounterEntry.resource.serviceProvider = {
+              identifier: {
+                system: 'urn:oid:1.2.250.1.71.4.2.2',
+                value: zbeData.functionalUnit
+              },
+              display: zbeData.functionalUnitDisplay || 'Unité fonctionnelle'
+            };
+          }
+        }
+      }
+      
+      // ZFP - Informations sur le séjour du patient selon spécifications françaises
+      if (segments.ZFP && segments.ZFP.length > 0) {
+        const zfpData = processZFPSegment(segments.ZFP[0]);
+        
+        // Enrichir le patient avec des informations de séjour si disponibles
+        const patientEntry = bundle.entry.find(e => e.resource && e.resource.resourceType === 'Patient');
+        if (patientEntry && zfpData) {
+          // Ajouter des extensions françaises au patient
+          if (!patientEntry.resource.extension) {
+            patientEntry.resource.extension = [];
+          }
+          
+          // Ajouter des informations spécifiques selon les données ZFP disponibles
+          // Implémentation selon les besoins spécifiques
+        }
+      }
+      
+      // ZFV - Informations de visite/séjour selon spécifications françaises
+      if (segments.ZFV && segments.ZFV.length > 0) {
+        const zfvData = processZFVSegment(segments.ZFV[0]);
+        
+        // Enrichir l'encounter avec des informations de visite
+        const encounterEntry = bundle.entry.find(e => e.resource && e.resource.resourceType === 'Encounter');
+        if (encounterEntry && zfvData) {
+          // Compléter l'encounter avec des informations françaises spécifiques
+          if (zfvData.encounterClass) {
+            encounterEntry.resource.class = zfvData.encounterClass;
+          }
+          
+          if (zfvData.priorityCode) {
+            encounterEntry.resource.priority = {
+              coding: [{
+                system: 'https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge',
+                code: zfvData.priorityCode,
+                display: zfvData.priorityDisplay || 'Mode de prise en charge'
+              }]
+            };
+          }
+        }
+      }
+      
+      // ZFM - Information médicale française
+      if (segments.ZFM && segments.ZFM.length > 0) {
+        const zfmData = processZFMSegment(segments.ZFM[0]);
+        
+        // Utiliser les données ZFM pour enrichir le bundle avec des informations médicales françaises
+        // Par exemple, ajouter des Conditions, des Observations, etc.
+        if (zfmData && Object.keys(zfmData).length > 0) {
+          // Implémentation selon besoins spécifiques
+          // Les segments ZFM peuvent contenir des informations importantes pour le contexte clinique français
+        }
       }
     }
     
@@ -1405,7 +1521,125 @@ function processZBESegment(zbeSegment) {
     zbeData.movementType = zbeSegment.fields[4].value;
   }
   
+  // ZBE-7 (Unité fonctionnelle)
+  if (zbeSegment.fields[7]) {
+    const ufComponents = zbeSegment.fields[7].components || [];
+    if (ufComponents.length > 8) {
+      zbeData.functionalUnit = ufComponents[8].value;
+      zbeData.functionalUnitDisplay = ufComponents[9] ? ufComponents[9].value : null;
+    }
+  }
+  
   return zbeData;
+}
+
+/**
+ * Récupère le libellé pour un type de mouvement
+ * @param {string} movementType - Code du type de mouvement
+ * @returns {string} Libellé du type de mouvement
+ */
+function getMovementTypeDisplay(movementType) {
+  const movementTypeMap = {
+    'INSERT': 'Entrée',
+    'ADMIT': 'Admission',
+    'TRANSFER': 'Transfert',
+    'DISCHARGE': 'Sortie',
+    'CANCEL': 'Annulation',
+    'UPDATE': 'Mise à jour'
+  };
+  
+  return movementTypeMap[movementType] || movementType;
+}
+
+/**
+ * Traite les données du segment ZFP (spécifique français - infos patient)
+ * @param {Object} zfpSegment - Segment ZFP parsé
+ * @returns {Object} Données extraites du segment ZFP
+ */
+function processZFPSegment(zfpSegment) {
+  if (!zfpSegment) {
+    return {};
+  }
+  
+  const zfpData = {};
+  
+  // ZFP-1 (Informations administratives patient)
+  if (zfpSegment.fields[1]) {
+    zfpData.administrativeInfo = zfpSegment.fields[1].value;
+  }
+  
+  // ZFP-2 (Informations complémentaires patient)
+  if (zfpSegment.fields[2]) {
+    zfpData.additionalInfo = zfpSegment.fields[2].value;
+  }
+  
+  return zfpData;
+}
+
+/**
+ * Traite les données du segment ZFV (spécifique français - infos visite)
+ * @param {Object} zfvSegment - Segment ZFV parsé
+ * @returns {Object} Données extraites du segment ZFV
+ */
+function processZFVSegment(zfvSegment) {
+  if (!zfvSegment) {
+    return {};
+  }
+  
+  const zfvData = {};
+  
+  // ZFV-1 (Encodage classe d'encounter)
+  if (zfvSegment.fields[1]) {
+    const encounterClassValue = zfvSegment.fields[1].value;
+    
+    // Mapping des codes français vers les classes FHIR
+    const classMappings = {
+      'H': { code: 'IMP', display: 'Hospitalisation' },
+      'U': { code: 'EMER', display: 'Urgences' },
+      'C': { code: 'AMB', display: 'Consultation' },
+      'E': { code: 'AMB', display: 'Consultation externe' }
+    };
+    
+    if (encounterClassValue && classMappings[encounterClassValue]) {
+      zfvData.encounterClass = {
+        system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+        code: classMappings[encounterClassValue].code,
+        display: classMappings[encounterClassValue].display
+      };
+    }
+  }
+  
+  return zfvData;
+}
+
+/**
+ * Traite les données du segment ZFM (spécifique français - infos médicales)
+ * @param {Object} zfmSegment - Segment ZFM parsé
+ * @returns {Object} Données extraites du segment ZFM
+ */
+function processZFMSegment(zfmSegment) {
+  if (!zfmSegment) {
+    return {};
+  }
+  
+  const zfmData = {};
+  
+  // ZFM-1 (Type d'hospitalisation)
+  if (zfmSegment.fields[1]) {
+    zfmData.hospitalizationType = zfmSegment.fields[1].value;
+  }
+  
+  // ZFM-2 (Mode d'entrée)
+  if (zfmSegment.fields[2]) {
+    zfmData.admissionMode = zfmSegment.fields[2].value;
+  }
+  
+  // ZFM-3 (Mode de sortie)
+  if (zfmSegment.fields[3]) {
+    zfmData.dischargeMode = zfmSegment.fields[3].value;
+  }
+  
+  return zfmData;
 }
 
 module.exports = {
