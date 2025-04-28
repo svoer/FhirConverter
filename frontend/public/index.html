@@ -1,146 +1,144 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .gradient-header {
-      background: linear-gradient(90deg, #e73c3e 0%, #f38b33 100%);
-    }
-    textarea:focus {
-      outline: none;
-      border-color: #f38b33;
-      box-shadow: 0 0 0 3px rgba(243, 139, 51, 0.2);
-    }
-    .tab-active {
-      border-color: #e73c3e;
-      color: #e73c3e;
-      font-weight: bold;
-    }
-    .btn-primary {
-      background: linear-gradient(90deg, #e73c3e 0%, #f38b33 100%);
-      color: white;
-      transition: all 0.3s;
-    }
-    .btn-primary:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHIRHub - Accueil</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="img/favicon.png">
 </head>
-<body class="bg-gray-100">
-  <!-- Bannière -->
-  <header class="gradient-header text-white p-4 shadow-md">
-    <div class="container mx-auto flex justify-between items-center">
-      <div class="flex items-center">
-        <h1 class="text-xl font-bold">FHIRHub</h1>
-        <span class="ml-2 text-sm bg-white text-red-600 px-2 py-1 rounded-full">v1.0</span>
-      </div>
-      <nav>
-        <span class="text-sm">Convertisseur HL7 v2.5 vers FHIR R4</span>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Navigation principale -->
-  <nav class="bg-white shadow-sm">
-    <div class="container mx-auto">
-      <ul class="flex">
-        <li class="p-4 border-b-2 tab-active" data-tab="conversion">Conversion</li>
-        <li class="p-4 border-b-2 border-transparent" data-tab="historique">Historique</li>
-        <li class="p-4 border-b-2 border-transparent" data-tab="terminologie">Terminologie</li>
-        <li class="p-4 border-b-2 border-transparent" data-tab="api">API</li>
-        <li class="p-4 border-b-2 border-transparent" data-tab="dashboard">Dashboard</li>
-      </ul>
-    </div>
-  </nav>
-
-  <!-- Contenu principal -->
-  <main class="container mx-auto p-4">
-    <!-- Onglet Conversion -->
-    <section id="conversion" class="tab-content">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">Conversion HL7 vers FHIR</h2>
-        
-        <div class="flex flex-col md:flex-row gap-4">
-          <div class="w-full md:w-1/2">
-            <label for="hl7Input" class="block text-sm font-medium text-gray-700 mb-2">Message HL7 v2.5</label>
-            <textarea id="hl7Input" name="hl7Input" rows="15" class="w-full p-3 border border-gray-300 rounded-md resize-none" placeholder="Collez votre message HL7 v2.5 ici..."></textarea>
-            <div class="flex justify-between mt-4">
-              <button type="button" class="btn-primary px-4 py-2 rounded-md" id="convertButton">Convertir</button>
-              <div>
-                <label for="fileInput" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md cursor-pointer">
-                  Importer un fichier
-                </label>
-                <input type="file" id="fileInput" class="hidden" accept=".hl7,.txt">
-              </div>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>FHIR<span>Hub</span></h1>
             </div>
-          </div>
-          
-          <div class="w-full md:w-1/2">
-            <label for="fhirOutput" class="block text-sm font-medium text-gray-700 mb-2">Résultat FHIR R4</label>
-            <textarea id="fhirOutput" name="fhirOutput" rows="15" class="w-full p-3 border border-gray-300 rounded-md resize-none bg-gray-50" readonly placeholder="Le résultat de la conversion FHIR apparaîtra ici..."></textarea>
-            <div class="flex justify-between mt-4">
-              <button type="button" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md" id="copyButton">Copier</button>
-              <button type="button" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-md" id="downloadButton">Télécharger</button>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="active">Accueil</a></li>
+                    <li><a href="converter.html">Convertisseur</a></li>
+                    <li><a href="dashboard.html">Tableau de bord</a></li>
+                    <li><a href="api-docs.html">Documentation API</a></li>
+                    <li><a href="login.html" id="login-btn">Connexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h2>Convertisseur HL7 vers FHIR optimisé pour le système de santé français</h2>
+                    <p>FHIRHub est une solution complète pour convertir vos messages HL7 v2.5 en ressources FHIR R4, spécialement adaptée pour les terminologies et systèmes français de santé.</p>
+                    <div class="hero-buttons">
+                        <a href="converter.html" class="btn primary">Essayer le convertisseur</a>
+                        <a href="dashboard.html" class="btn secondary">Accéder au tableau de bord</a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="img/hero-illustration.svg" alt="Illustration de conversion HL7 vers FHIR">
+                </div>
             </div>
-          </div>
-        </div>
-        
-        <div class="mt-6 p-4 border border-gray-300 rounded-md bg-gray-50">
-          <h3 class="text-md font-medium mb-2">Logs de conversion</h3>
-          <div id="conversionLogs" class="text-sm font-mono h-32 overflow-y-auto p-2 bg-gray-900 text-green-400 rounded">
-            Prêt à convertir...
-          </div>
-        </div>
-      </div>
-    </section>
-    
-    <!-- Autres onglets (masqués par défaut) -->
-    <section id="historique" class="tab-content hidden">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">Historique des conversions</h2>
-        <p>Cette page affichera l'historique des conversions effectuées.</p>
-      </div>
-    </section>
-    
-    <section id="terminologie" class="tab-content hidden">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">Terminologies françaises</h2>
-        <p>Cette page permettra d'explorer les terminologies françaises prises en charge.</p>
-      </div>
-    </section>
-    
-    <section id="api" class="tab-content hidden">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">Documentation API</h2>
-        <p>Cette page présentera la documentation de l'API REST.</p>
-      </div>
-    </section>
-    
-    <section id="dashboard" class="tab-content hidden">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">Dashboard</h2>
-        <p>Cette page affichera les statistiques d'utilisation et les métriques système.</p>
-      </div>
-    </section>
-  </main>
+        </section>
 
-  <!-- Pied de page -->
-  <footer class="mt-8 p-4 bg-gray-800 text-white text-center text-sm">
-    <div class="container mx-auto">
-      <p>FHIRHub - Convertisseur HL7 vers FHIR optimisé pour les systèmes de santé français</p>
-      <p class="mt-2 text-gray-400">© 2024 FHIRHub - Développé avec les standards de l'ANS</p>
-    </div>
-  </footer>
+        <section class="features">
+            <div class="container">
+                <h2 class="section-title">Fonctionnalités principales</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                            </svg>
+                        </div>
+                        <h3>Conversion HL7 vers FHIR</h3>
+                        <p>Conversion complète et sans perte d'information de vos messages HL7 v2.5 vers le format FHIR R4.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                            </svg>
+                        </div>
+                        <h3>API REST</h3>
+                        <p>Interface de programmation RESTful pour intégrer facilement la conversion dans vos systèmes existants.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <h3>Terminologies françaises</h3>
+                        <p>Support complet des terminologies françaises de santé, y compris TRE-R316, TRE-R51 et autres systèmes de l'ANS.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                        </div>
+                        <h3>Gestion des clés API</h3>
+                        <p>Système de gestion avancé des clés API pour sécuriser vos conversions et paramétrer des environnements distincts.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
+                        </div>
+                        <h3>Tableau de bord</h3>
+                        <p>Interface d'administration complète pour surveiller les conversions, gérer les applications et analyser les performances.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
+                            </svg>
+                        </div>
+                        <h3>Portable et autonome</h3>
+                        <p>Déploiement sans dépendances lourdes, fonctionnement entièrement hors-ligne avec terminologies préchargées.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-  <!-- Scripts -->
-  <script src="js/utils.js"></script>
-  <script src="js/main.js"></script>
+        <section class="cta">
+            <div class="container">
+                <h2>Prêt à transformer vos données de santé ?</h2>
+                <p>Commencez dès maintenant à convertir vos messages HL7 en ressources FHIR conformes aux standards français.</p>
+                <a href="converter.html" class="btn primary">Essayer le convertisseur</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 FHIRHub - Convertisseur HL7 vers FHIR</p>
+            <p>Version 1.0.0</p>
+        </div>
+    </footer>
+
+    <script>
+        // Script pour vérifier l'état d'authentification au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Vérifier si l'utilisateur est connecté (exemple simplifié)
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            
+            // Mettre à jour le bouton de connexion/déconnexion
+            const authBtn = document.getElementById('login-btn');
+            if (isLoggedIn) {
+                authBtn.textContent = 'Déconnexion';
+                authBtn.href = 'javascript:void(0)';
+                authBtn.addEventListener('click', function() {
+                    localStorage.removeItem('isLoggedIn');
+                    window.location.reload();
+                });
+            }
+        });
+    </script>
 </body>
 </html>
