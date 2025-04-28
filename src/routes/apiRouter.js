@@ -1,26 +1,21 @@
 /**
- * Routeur API pour FHIRHub
- * Gère toutes les routes API de l'application
+ * Router pour les API de FHIRHub
+ * Gère les routes d'API, y compris conversion, statistiques et historique
  */
 
 const express = require('express');
 const router = express.Router();
 const { apiKeyAuth } = require('../middleware/apiKeyAuth');
+const { convertHL7ToFHIR } = require('../services/conversionService');
 const conversionLogService = require('../services/conversionLogService');
-const nameExtractor = require('../utils/nameExtractor');
-const { v4: uuidv4 } = require('uuid');
-
-// Simple-HL7 pour la conversion HL7
-const hl7 = require('simple-hl7');
-// Segments processors
-const segmentProcessors = require('../services/segmentProcessors');
+const terminologyService = require('../services/terminologyService');
 
 // Middleware d'authentification par clé API
 router.use(apiKeyAuth);
 
 /**
- * Route de vérification de l'état du serveur
  * GET /api/health
+ * Vérifier l'état du serveur
  */
 router.get('/health', (req, res) => {
   res.json({
@@ -32,199 +27,42 @@ router.get('/health', (req, res) => {
 });
 
 /**
- * Route de conversion HL7 vers FHIR
  * POST /api/convert
+ * Convertir un message HL7 en FHIR
  */
 router.post('/convert', async (req, res) => {
-  const startTime = Date.now();
-  
   try {
-    // Vérifier si le contenu HL7 est présent
-    if (!req.body.content) {
+    const { content, options = {} } = req.body;
+    
+    if (!content) {
       return res.status(400).json({
         success: false,
         error: 'Contenu HL7 manquant',
-        message: 'Le contenu HL7 à convertir est requis'
+        message: 'Le corps de la requête doit contenir un champ "content" avec le message HL7 à convertir'
       });
     }
     
-    const hl7Content = req.body.content;
-    const options = req.body.options || {};
+    const result = await convertHL7ToFHIR(content, options, req.apiKey);
     
-    console.log(`[CONVERT] Début de conversion HL7 vers FHIR. Taille: ${hl7Content.length} caractères`);
-    
-    // Parser le message HL7
-    const parser = new hl7.Parser();
-    let parsedMessage;
-    
-    try {
-      parsedMessage = parser.parse(hl7Content);
-    } catch (parseError) {
-      console.error('[CONVERT] Erreur lors du parsing HL7:', parseError);
-      
-      await conversionLogService.logConversion({
-        apiKeyId: req.apiKey.id,
-        applicationId: req.apiKey.application_id,
-        sourceType: 'direct',
-        hl7Content: hl7Content,
-        status: 'error',
-        errorMessage: `Erreur de parsing HL7: ${parseError.message}`,
-        processingTime: Date.now() - startTime
-      });
-      
-      return res.status(400).json({
-        success: false,
-        error: 'Erreur de parsing HL7',
-        message: parseError.message
-      });
-    }
-    
-    // Convertir le message HL7 en FHIR
-    let fhirResources = [];
-    let fhirBundle = null;
-    
-    try {
-      // Extraire les noms français du message HL7
-      const frenchNames = nameExtractor.extractFrenchNames(hl7Content);
-      
-      // Traiter chaque segment pour créer des ressources FHIR
-      const segments = parsedMessage.segments;
-      
-      // Traitement des segments MSH (Message Header)
-      const mshSegments = segments.filter(s => s.name === 'MSH');
-      if (mshSegments.length > 0) {
-        const messageHeader = segmentProcessors.processMSH(mshSegments[0].fields);
-        fhirResources.push(messageHeader);
-      }
-      
-      // Traitement des segments PID (Patient Identification)
-      const pidSegments = segments.filter(s => s.name === 'PID');
-      if (pidSegments.length > 0) {
-        const patient = segmentProcessors.processPID(pidSegments[0].fields, { names: frenchNames });
-        fhirResources.push(patient);
-      }
-      
-      // Traitement des segments PV1 (Patient Visit)
-      const pv1Segments = segments.filter(s => s.name === 'PV1');
-      if (pv1Segments.length > 0) {
-        const encounter = segmentProcessors.processPV1(pv1Segments[0].fields, { resources: fhirResources });
-        fhirResources.push(encounter);
-      }
-      
-      // Traitement des segments NK1 (Next of Kin)
-      const nk1Segments = segments.filter(s => s.name === 'NK1');
-      for (const nk1Segment of nk1Segments) {
-        const relatedPerson = segmentProcessors.processNK1(nk1Segment.fields, { resources: fhirResources });
-        fhirResources.push(relatedPerson);
-      }
-      
-      // Traitement des segments OBR (Observation Request)
-      const obrSegments = segments.filter(s => s.name === 'OBR');
-      for (const obrSegment of obrSegments) {
-        const serviceRequest = segmentProcessors.processOBR(obrSegment.fields, { resources: fhirResources, segments });
-        fhirResources.push(serviceRequest);
-      }
-      
-      // Traitement des segments OBX (Observation)
-      const obxSegments = segments.filter(s => s.name === 'OBX');
-      for (const obxSegment of obxSegments) {
-        const observation = segmentProcessors.processOBX(obxSegment.fields, { resources: fhirResources, segments });
-        fhirResources.push(observation);
-      }
-      
-      // Traitement des segments SPM (Specimen)
-      const spmSegments = segments.filter(s => s.name === 'SPM');
-      for (const spmSegment of spmSegments) {
-        const specimen = segmentProcessors.processSPM(spmSegment.fields, { resources: fhirResources });
-        fhirResources.push(specimen);
-      }
-      
-      // Créer un Bundle FHIR avec toutes les ressources
-      fhirBundle = {
-        resourceType: 'Bundle',
-        id: `bundle-${uuidv4()}`,
-        type: 'transaction',
-        entry: fhirResources.map(resource => ({
-          fullUrl: `urn:uuid:${resource.id}`,
-          resource: resource,
-          request: {
-            method: 'POST',
-            url: resource.resourceType
-          }
-        }))
-      };
-      
-      // Ajouter des méta-informations au Bundle
-      fhirBundle.meta = {
-        lastUpdated: new Date().toISOString(),
-        source: 'FHIRHub Converter'
-      };
-      
-      // Si l'option de validation est activée
-      if (options.validate) {
-        // TODO: Implémenter la validation FHIR
-        console.log('[CONVERT] Validation FHIR non implémentée');
-      }
-      
-      const processingTime = Date.now() - startTime;
-      
-      // Journaliser la conversion réussie
-      await conversionLogService.logConversion({
-        apiKeyId: req.apiKey.id,
-        applicationId: req.apiKey.application_id,
-        sourceType: 'direct',
-        hl7Content: hl7Content,
-        fhirContent: JSON.stringify(fhirBundle),
-        status: 'success',
-        processingTime: processingTime
-      });
-      
-      // Renvoyer le résultat
-      res.json({
-        success: true,
-        message: 'Conversion réussie',
-        processingTime: processingTime,
-        data: fhirBundle,
-        resourceCount: fhirResources.length
-      });
-    } catch (conversionError) {
-      console.error('[CONVERT] Erreur lors de la conversion:', conversionError);
-      
-      await conversionLogService.logConversion({
-        apiKeyId: req.apiKey.id,
-        applicationId: req.apiKey.application_id,
-        sourceType: 'direct',
-        hl7Content: hl7Content,
-        status: 'error',
-        errorMessage: `Erreur de conversion: ${conversionError.message}`,
-        processingTime: Date.now() - startTime
-      });
-      
-      res.status(500).json({
-        success: false,
-        error: 'Erreur de conversion',
-        message: conversionError.message
-      });
-    }
+    res.json(result);
   } catch (error) {
-    console.error('[CONVERT] Erreur interne du serveur:', error);
+    console.error('[API] Erreur lors de la conversion:', error);
     
     res.status(500).json({
       success: false,
-      error: 'Erreur interne du serveur',
+      error: 'Erreur de conversion',
       message: error.message
     });
   }
 });
 
 /**
- * Route pour obtenir les statistiques de conversion
  * GET /api/stats
+ * Obtenir les statistiques de conversion pour l'application associée à la clé API
  */
 router.get('/stats', async (req, res) => {
   try {
-    const applicationId = req.apiKey.application_id;
-    const stats = await conversionLogService.getAppStats(applicationId);
+    const stats = await conversionLogService.getAppStats(req.apiKey.application_id);
     
     res.json({
       success: true,
@@ -235,65 +73,50 @@ router.get('/stats', async (req, res) => {
     
     res.status(500).json({
       success: false,
-      error: 'Erreur interne du serveur',
-      message: error.message
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la récupération des statistiques'
     });
   }
 });
 
 /**
- * Route pour obtenir l'historique des conversions
  * GET /api/conversions
+ * Obtenir l'historique des conversions pour l'application associée à la clé API
  */
 router.get('/conversions', async (req, res) => {
   try {
-    const applicationId = req.apiKey.application_id;
-    const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
-    
-    const conversions = await conversionLogService.getConversions(applicationId, limit, page);
+    const { limit = 10, page = 1 } = req.query;
+    const history = await conversionLogService.getConversions(req.apiKey.application_id, parseInt(limit), parseInt(page));
     
     res.json({
       success: true,
-      data: conversions,
-      page: page,
-      limit: limit
+      data: history
     });
   } catch (error) {
     console.error('[API] Erreur lors de la récupération de l\'historique des conversions:', error);
     
     res.status(500).json({
       success: false,
-      error: 'Erreur interne du serveur',
-      message: error.message
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la récupération de l\'historique des conversions'
     });
   }
 });
 
 /**
- * Route pour obtenir les détails d'une conversion
  * GET /api/conversions/:id
+ * Obtenir les détails d'une conversion spécifique
  */
 router.get('/conversions/:id', async (req, res) => {
   try {
-    const applicationId = req.apiKey.application_id;
-    const conversionId = parseInt(req.params.id);
-    
-    if (!conversionId) {
-      return res.status(400).json({
-        success: false,
-        error: 'ID de conversion invalide',
-        message: 'L\'ID de conversion doit être un nombre entier'
-      });
-    }
-    
-    const conversion = await conversionLogService.getConversion(conversionId, applicationId);
+    const { id } = req.params;
+    const conversion = await conversionLogService.getConversion(parseInt(id), req.apiKey.application_id);
     
     if (!conversion) {
       return res.status(404).json({
         success: false,
         error: 'Conversion non trouvée',
-        message: 'La conversion demandée n\'existe pas ou n\'appartient pas à votre application'
+        message: `La conversion avec l'ID ${id} n'a pas été trouvée ou n'appartient pas à cette application`
       });
     }
     
@@ -306,8 +129,101 @@ router.get('/conversions/:id', async (req, res) => {
     
     res.status(500).json({
       success: false,
-      error: 'Erreur interne du serveur',
-      message: error.message
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la récupération des détails de la conversion'
+    });
+  }
+});
+
+/**
+ * GET /api/terminology/validate
+ * Valider un code dans un système donné
+ */
+router.get('/terminology/validate', async (req, res) => {
+  try {
+    const { system, code } = req.query;
+    
+    if (!system || !code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Paramètres manquants',
+        message: 'Les paramètres "system" et "code" sont obligatoires'
+      });
+    }
+    
+    const isValid = await terminologyService.validateCode(system, code);
+    
+    res.json({
+      success: true,
+      result: {
+        system,
+        code,
+        valid: isValid
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la validation du code:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la validation du code'
+    });
+  }
+});
+
+/**
+ * POST /api/terminology/validate-bundle
+ * Valider tous les codes trouvés dans un bundle FHIR
+ */
+router.post('/terminology/validate-bundle', async (req, res) => {
+  try {
+    const bundle = req.body;
+    
+    if (!bundle || !bundle.resourceType || bundle.resourceType !== 'Bundle') {
+      return res.status(400).json({
+        success: false,
+        error: 'Bundle FHIR invalide',
+        message: 'Le corps de la requête doit être un Bundle FHIR valide'
+      });
+    }
+    
+    const validationResults = await terminologyService.validateBundle(bundle);
+    
+    res.json({
+      success: true,
+      result: validationResults
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la validation du bundle:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la validation du bundle'
+    });
+  }
+});
+
+/**
+ * GET /api/terminology/systems
+ * Récupérer la liste de tous les systèmes de terminologie français
+ */
+router.get('/terminology/systems', async (req, res) => {
+  try {
+    const systems = await terminologyService.getTerminologySystems();
+    
+    res.json({
+      success: true,
+      data: systems
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la récupération des systèmes de terminologie:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur',
+      message: 'Une erreur est survenue lors de la récupération des systèmes de terminologie'
     });
   }
 });

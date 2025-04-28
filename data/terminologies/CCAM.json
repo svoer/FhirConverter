@@ -1,0 +1,8 @@
+{
+  "name": "CCAM",
+  "url": "https://mos.esante.gouv.fr/NOS/CCAM_2/FHIR/CCAM",
+  "oid": "1.2.250.1.213.2.5",
+  "concepts": [],
+  "cached": true,
+  "offline": true
+}
