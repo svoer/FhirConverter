@@ -28,44 +28,48 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   }
   
   if (!apiKey) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Unauthorized',
       message: 'Clé API requise'
     });
+    return;
   }
   
   // Valider la clé API
   const validatedApiKey = validateApiKey(apiKey);
   
   if (!validatedApiKey) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Unauthorized',
       message: 'Clé API invalide ou révoquée'
     });
+    return;
   }
   
   // Récupérer l'application associée à la clé API
   const application = getApplicationById(validatedApiKey.application_id);
   
   if (!application || !application.is_active) {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       error: 'Unauthorized',
       message: 'Application inactive ou inexistante'
     });
+    return;
   }
   
   // Vérifier les restrictions CORS si nécessaire
   if (application.cors_domain) {
     const origin = req.headers.origin;
     if (origin && !isOriginAllowed(origin, application.cors_domain)) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Forbidden',
         message: 'Origine non autorisée'
       });
+      return;
     }
   }
   

@@ -52,26 +52,28 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       500:
  *         description: Erreur serveur lors de la conversion
  */
-router.post('/convert', apiKeyAuth, (req: Request, res: Response) => {
+router.post('/convert', apiKeyAuth, (req: Request, res: Response): void => {
   const startTime = Date.now();
   let hl7Message = req.body.hl7Message as string;
   
   // Vérifier que le message HL7 est fourni
   if (!hl7Message) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Bad Request',
       message: 'Le message HL7 est requis'
     });
+    return;
   }
   
   // Vérifier que le message HL7 est valide
   if (!isValidHL7(hl7Message)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Bad Request',
       message: 'Le message HL7 est invalide'
     });
+    return;
   }
   
   try {
@@ -92,7 +94,7 @@ router.post('/convert', apiKeyAuth, (req: Request, res: Response) => {
     }
     
     // Renvoyer la ressource FHIR
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: fhirResource,
       processingTime
@@ -114,7 +116,7 @@ router.post('/convert', apiKeyAuth, (req: Request, res: Response) => {
     }
     
     // Renvoyer l'erreur
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       error: 'Internal Server Error',
       message: error.message
@@ -161,16 +163,17 @@ router.post('/convert', apiKeyAuth, (req: Request, res: Response) => {
  *       500:
  *         description: Erreur serveur lors de la conversion
  */
-router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, res: Response) => {
+router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, res: Response): void => {
   const startTime = Date.now();
   
   // Vérifier que le fichier est fourni
   if (!req.file) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Bad Request',
       message: 'Le fichier HL7 est requis'
     });
+    return;
   }
   
   // Extraire le contenu du fichier
@@ -178,11 +181,12 @@ router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, r
   
   // Vérifier que le message HL7 est valide
   if (!isValidHL7(hl7Message)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Bad Request',
       message: 'Le fichier HL7 est invalide'
     });
+    return;
   }
   
   try {
@@ -203,7 +207,7 @@ router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, r
     }
     
     // Renvoyer la ressource FHIR
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: fhirResource,
       processingTime
@@ -225,7 +229,7 @@ router.post('/convert/file', apiKeyAuth, upload.single('file'), (req: Request, r
     }
     
     // Renvoyer l'erreur
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       error: 'Internal Server Error',
       message: error.message
