@@ -1216,7 +1216,7 @@ function convertHl7ToFhir(hl7Message) {
       }
       
       
-      // Ajouter le nom du patient avec traitement amélioré des noms composés français
+      // Ajouter le nom du patient avec traitement amélioré pour les noms composés français
       patientResource.name = [];
       
       // Traiter les noms du patient (PID-5) avec support pour noms français composés
@@ -1262,9 +1262,9 @@ function convertHl7ToFhir(hl7Message) {
                     nameObj.given.push(nameParts[1].trim());
                   }
                   
-                  // Ajouter les prénoms supplémentaires
+                  // Ajouter les prénoms supplémentaires - CORRECTION POUR NOMS FRANÇAIS
                   if (nameParts.length > 2 && nameParts[2].trim() !== '') {
-                    // Diviser les prénoms multiples par espace
+                    // Diviser les prénoms multiples par espace - ESSENTIEL POUR LES PRÉNOMS COMPOSÉS
                     const additionalNames = nameParts[2].trim().split(' ');
                     additionalNames.forEach(name => {
                       if (name.trim() !== '' && !nameObj.given.includes(name.trim())) {
@@ -1827,7 +1827,7 @@ function convertHl7ToFhir(hl7Message) {
       const personResource = {
         resourceType: 'Person',
         id: personId,
-        name: patientResource.name,
+        name: JSON.parse(JSON.stringify(patientResource.name)), // Copie profonde pour éviter les problèmes de référence
         gender: patientResource.gender,
         birthDate: patientResource.birthDate,
         telecom: patientResource.telecom,

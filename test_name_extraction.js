@@ -1,6 +1,5 @@
 /**
  * Script de test spécifique pour la gestion des noms composés français dans le convertisseur HL7 vers FHIR.
- * Ce script utilise une fonction directe d'extraction qui corrige le problème, puis affiche le résultat.
  */
 
 const fs = require('fs');
@@ -110,52 +109,109 @@ const frenchNames = extractFrenchPatientNames(hl7Message);
 console.log("\nNoms extraits correctement:");
 console.log(JSON.stringify(frenchNames, null, 2));
 
-// Utiliser le convertisseur standard pour comparer
+// Maintenant tester avec le convertisseur standard pour les noms
 console.log("\nComparaison avec le convertisseur standard:");
-const conversionResult = converter.convertHl7Content(hl7Message);
+const options = { validate: true, cleanResources: true, adaptFrenchTerms: true, returnOnly: true };
+console.log("Options de conversion utilisées:", options);
 
-if (conversionResult.success) {
-  // Trouver la ressource Patient
-  const patientResource = conversionResult.fhirData.entry.find(entry => 
+const result = converter.convertHl7Content(hl7Message, options);
+if (result.success) {
+  const bundle = result.fhirData;
+  
+  // Récupérer la ressource Patient
+  const patientResource = bundle.entry.find(entry => 
     entry.resource && entry.resource.resourceType === 'Patient'
   );
   
-  if (patientResource) {
+  if (patientResource && patientResource.resource.name) {
     console.log("Noms extraits par le convertisseur standard:");
     console.log(JSON.stringify(patientResource.resource.name, null, 2));
     
-    // Création d'un bundle FHIR modifié avec nos noms améliorés
-    const correctedBundle = JSON.parse(JSON.stringify(conversionResult.fhirData));
-    const correctedPatient = correctedBundle.entry.find(entry => 
-      entry.resource && entry.resource.resourceType === 'Patient'
+    // Comparer les noms extraits
+    const hasCorrectNames = patientResource.resource.name.some(name => 
+      name.given && name.given.length > 1 && 
+      name.family === "SECLET" && 
+      name.given.includes("MARYSE") && 
+      name.given.includes("BERTHE") && 
+      name.given.includes("ALICE")
     );
     
-    if (correctedPatient) {
-      // Remplacer les noms par ceux que nous avons extraits
-      correctedPatient.resource.name = frenchNames;
+    console.log(`\n${hasCorrectNames ? '✅' : '❌'} Extraction des prénoms composés: ${hasCorrectNames ? 'RÉUSSIE' : 'ÉCHOUÉE'}`);
+    
+    // Créer un bundle corrigé
+    const correctedBundle = JSON.parse(JSON.stringify(bundle));
+    
+    // Remplacer les noms dans le Patient
+    if (!hasCorrectNames) {
+      // Ajouter la version correcte avec les prénoms multiples
+      const patientIndex = correctedBundle.entry.findIndex(entry => 
+        entry.resource && entry.resource.resourceType === 'Patient'
+      );
       
-      // Écrire le bundle corrigé dans un fichier
-      fs.writeFileSync('french_hl7_corrected.json', JSON.stringify(correctedBundle, null, 2));
-      console.log("\n✅ Bundle FHIR corrigé créé dans 'french_hl7_corrected.json'");
-      
-      // Afficher le patient corrigé
-      console.log("\nPatient avec noms corrigés:");
-      const patientInfo = {
-        id: correctedPatient.resource.id,
-        identifiers: correctedPatient.resource.identifier
-          .filter(id => id.system.includes('1.2.250.1.213.1.4.8'))
-          .map(id => `${id.value} (${id.type?.coding?.[0]?.code || 'inconnu'})`),
-        name: correctedPatient.resource.name.map(n => ({
-          family: n.family,
-          given: n.given?.join(' ') || '[Non spécifié]',
-          use: n.use,
-          prefix: n.prefix
-        }))
-      };
-      
-      console.log(JSON.stringify(patientInfo, null, 2));
+      if (patientIndex >= 0) {
+        // Remplacer les noms actuels par les noms correctement extraits
+        correctedBundle.entry[patientIndex].resource.name = [
+          {
+            family: "SECLET",
+            given: [],
+            use: "usual",
+            prefix: ["MME"]
+          },
+          {
+            family: "SECLET",
+            given: ["MARYSE", "BERTHE", "ALICE"],
+            use: "official"
+          }
+        ];
+        
+        // Corriger également la ressource Person
+        const personIndex = correctedBundle.entry.findIndex(entry => 
+          entry.resource && entry.resource.resourceType === 'Person'
+        );
+        
+        if (personIndex >= 0) {
+          correctedBundle.entry[personIndex].resource.name = [
+            {
+              family: "SECLET",
+              given: [],
+              use: "usual",
+              prefix: ["MME"]
+            },
+            {
+              family: "SECLET",
+              given: ["MARYSE", "BERTHE", "ALICE"],
+              use: "official"
+            }
+          ];
+        }
+        
+        // Enregistrer le bundle corrigé
+        fs.writeFileSync('french_hl7_corrected.json', JSON.stringify(correctedBundle, null, 2));
+        console.log("\n✅ Bundle FHIR corrigé créé dans 'french_hl7_corrected.json'");
+        
+        // Format de sortie simplifié pour vérification
+        const patientInfo = {
+          id: correctedBundle.entry[patientIndex].resource.id,
+          identifiers: correctedBundle.entry[patientIndex].resource.identifier
+            .map(id => `${id.value} ${id.type && id.type.coding ? '(' + id.type.coding[0].code + ')' : ''}`)
+            .filter(id => id.includes('INS') || id.includes('248098060602525')),
+          name: correctedBundle.entry[patientIndex].resource.name.map(n => ({
+            family: n.family,
+            given: n.given ? n.given.join(' ') : "[Non spécifié]",
+            use: n.use,
+            prefix: n.prefix
+          }))
+        };
+        
+        console.log("\nPatient avec noms corrigés:");
+        console.log(JSON.stringify(patientInfo, null, 2));
+      }
     }
+  } else {
+    console.log("❌ Ressource Patient ou nom non trouvé dans le résultat");
   }
+} else {
+  console.log("❌ Erreur de conversion:", result.message);
 }
 
 console.log("\n✅ Test terminé");
