@@ -136,8 +136,8 @@ function parseHL7Message(hl7Content) {
   const cleanContent = hl7Content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
   try {
-    // Parser le message avec hl7-parser
-    const parsedMessage = hl7.parseString(cleanContent);
+    // Parser le message avec hl7-parser (utilise la fonction parse)
+    const parsedMessage = hl7.parse(cleanContent);
     return parsedMessage;
   } catch (error) {
     console.error('[HL7_CONVERTER] Erreur lors du parsing du message HL7:', error);
