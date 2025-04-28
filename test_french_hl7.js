@@ -62,12 +62,17 @@ try {
       
       // Vérifier l'identifiant INS-NIR
       const insIdentifier = patientResource.resource.identifier.find(id => 
-        id.system && id.system.includes('ASIP-SANTE-INS-NIR')
+        (id.system && id.system.includes('ASIP-SANTE-INS-NIR')) ||
+        (id.system && id.system.includes('1.2.250.1.213.1.4.8')) ||
+        (id.type && id.type.coding && id.type.coding.some(coding => coding.code === 'INS'))
       );
       
       if (insIdentifier) {
         console.log(`   Identifiant INS-NIR: ${insIdentifier.value}`);
         console.log(`   Système: ${insIdentifier.system}`);
+        if (insIdentifier.type && insIdentifier.type.coding) {
+          console.log(`   Type: ${insIdentifier.type.coding[0].code}`);
+        }
       } else {
         console.log('❌ Identifiant INS-NIR non trouvé');
       }
@@ -165,8 +170,12 @@ try {
         const name = relatedPersonResource.resource.name[0];
         console.log(`   Nom: ${name.family || '[Non spécifié]'}, ${name.given ? name.given.join(' ') : '[Non spécifié]'}`);
       }
-      if (relatedPersonResource.resource.relationship) {
+      if (relatedPersonResource.resource.relationship && 
+          relatedPersonResource.resource.relationship.coding && 
+          relatedPersonResource.resource.relationship.coding.length > 0) {
         console.log(`   Relation: ${relatedPersonResource.resource.relationship.coding[0].code || 'Non spécifiée'}`);
+      } else if (relatedPersonResource.resource.relationship) {
+        console.log(`   Relation: ${JSON.stringify(relatedPersonResource.resource.relationship)}`);
       }
       if (relatedPersonResource.resource.telecom) {
         console.log(`   Contact: ${relatedPersonResource.resource.telecom[0].value || '[Non spécifié]'}`);
