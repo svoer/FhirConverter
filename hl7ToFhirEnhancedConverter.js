@@ -1,5 +1,5 @@
 /**
- * Convertisseur avancé HL7 v2.5 vers FHIR R4
+ * Convertisseur amélioré HL7 v2.5 vers FHIR R4
  * Spécialement optimisé pour les messages ADT français
  * Compatible avec les exigences de l'ANS
  */
@@ -17,7 +17,7 @@ function convertHL7ToFHIR(hl7Message) {
     
     // Normaliser les fins de ligne et parser le message HL7
     const normalizedMessage = hl7Message.replace(/\n/g, '\r').replace(/\r+/g, '\r');
-    const parser = new hl7.Parser();
+    const parser = new hl7.Parser({ segmentSeperator: '\r' });
     const parsedMessage = parser.parse(normalizedMessage);
     
     // Créer un identifiant unique pour le Bundle
@@ -33,12 +33,22 @@ function convertHL7ToFHIR(hl7Message) {
     };
     
     // Extraire les segments
-    const mshSegment = parsedMessage.getMSH();
-    const pidSegment = hl7.getSegmentOfType(parsedMessage, 'PID');
-    const pv1Segment = hl7.getSegmentOfType(parsedMessage, 'PV1');
-    const rolSegments = hl7.getSegmentsOfType(parsedMessage, 'ROL');
-    const nk1Segments = hl7.getSegmentsOfType(parsedMessage, 'NK1');
-    const in1Segments = hl7.getSegmentsOfType(parsedMessage, 'IN1');
+    const segments = {};
+    parsedMessage.segments.forEach(segment => {
+      const segmentType = segment.name;
+      if (!segments[segmentType]) {
+        segments[segmentType] = [];
+      }
+      segments[segmentType].push(segment);
+    });
+    
+    // Traiter les segments spécifiques
+    const mshSegment = segments.MSH ? segments.MSH[0] : null;
+    const pidSegment = segments.PID ? segments.PID[0] : null;
+    const pv1Segment = segments.PV1 ? segments.PV1[0] : null;
+    const rolSegments = segments.ROL || [];
+    const nk1Segments = segments.NK1 || [];
+    const in1Segments = segments.IN1 || [];
     
     // Traiter le Patient
     if (pidSegment) {
@@ -55,12 +65,12 @@ function convertHL7ToFHIR(hl7Message) {
         
         // Traiter les Organizations (établissements)
         if (mshSegment) {
-          const sendingOrgResource = createOrganizationResource(mshSegment, 4); // MSH-4 (sending)
+          const sendingOrgResource = createOrganizationResource(mshSegment, 'sendingFacility');
           if (sendingOrgResource) {
             bundle.entry.push(sendingOrgResource);
           }
           
-          const receivingOrgResource = createOrganizationResource(mshSegment, 6); // MSH-6 (receiving)
+          const receivingOrgResource = createOrganizationResource(mshSegment, 'receivingFacility');
           if (receivingOrgResource && sendingOrgResource && 
               receivingOrgResource.resource.id !== sendingOrgResource.resource.id) {
             bundle.entry.push(receivingOrgResource);
@@ -68,7 +78,7 @@ function convertHL7ToFHIR(hl7Message) {
         }
         
         // Traiter les Practitioners (médecins)
-        if (rolSegments && rolSegments.length > 0) {
+        if (rolSegments.length > 0) {
           for (const rolSegment of rolSegments) {
             const practitionerResource = createPractitionerResource(rolSegment);
             if (practitionerResource) {
@@ -90,7 +100,7 @@ function convertHL7ToFHIR(hl7Message) {
       }
       
       // Traiter les RelatedPersons (proches)
-      if (nk1Segments && nk1Segments.length > 0) {
+      if (nk1Segments.length > 0) {
         for (const nk1Segment of nk1Segments) {
           const relatedPersonResource = createRelatedPersonResource(nk1Segment, patientResource.fullUrl);
           if (relatedPersonResource) {
@@ -100,7 +110,7 @@ function convertHL7ToFHIR(hl7Message) {
       }
       
       // Traiter les Coverages (assurances)
-      if (in1Segments && in1Segments.length > 0) {
+      if (in1Segments.length > 0) {
         for (const in1Segment of in1Segments) {
           const coverageResource = createCoverageResource(in1Segment, patientResource.fullUrl);
           if (coverageResource) {
@@ -124,21 +134,21 @@ function convertHL7ToFHIR(hl7Message) {
  * @returns {Object} Entrée de bundle pour un Patient
  */
 function createPatientResource(pidSegment) {
-  const idField = pidSegment.getField(3); // PID-3 (Patient ID)
-  const rawId = idField.value || `unknown-${Date.now()}`;
+  // PID-3 (Patient ID)
+  const patientIds = extractField(pidSegment, 3, true);
   
-  // Extraction du premier ID numérique pour l'URI (sans les répétitions ou composants)
-  const simpleId = rawId.replace(/\^.*$/, '');
-  const patientId = `patient-${simpleId}`;
+  // Extraction d'un ID pour l'URI
+  const firstId = patientIds.length > 0 ? patientIds[0].split('^')[0] : Date.now().toString();
+  const patientId = `patient-${firstId}`;
   
   // Créer la ressource Patient
   const patientResource = {
     resourceType: 'Patient',
     id: patientId,
-    identifier: extractIdentifiers(idField),
+    identifier: extractIdentifiers(patientIds),
     name: extractNames(pidSegment),
-    gender: determineGender(pidSegment.getField(8)),
-    birthDate: formatBirthDate(pidSegment.getField(7)),
+    gender: determineGender(extractField(pidSegment, 8)[0]),
+    birthDate: formatBirthDate(extractField(pidSegment, 7)[0]),
     telecom: extractTelecoms(pidSegment),
     address: extractAddresses(pidSegment)
   };
@@ -154,61 +164,92 @@ function createPatientResource(pidSegment) {
 }
 
 /**
- * Extrait les identifiants du patient du champ PID-3
- * @param {Object} idField - Champ d'identifiant
+ * Extrait un champ d'un segment HL7
+ * @param {Object} segment - Segment HL7 parsé
+ * @param {number} fieldIndex - Index du champ à extraire (1-based)
+ * @param {boolean} allowRepetition - Autoriser les répétitions
+ * @returns {string[]} Valeurs du champ
+ */
+function extractField(segment, fieldIndex, allowRepetition = false) {
+  try {
+    if (!segment || !segment.fields || fieldIndex >= segment.fields.length) {
+      return [];
+    }
+
+    // simple-hl7 uses 0-based indexing for fields but HL7 specs use 1-based
+    // We'll adjust for that by subtracting 1
+    const adjustedIndex = fieldIndex;
+    
+    const field = segment.fields[adjustedIndex];
+    if (!field) return [];
+    
+    if (allowRepetition && field.indexOf('~') !== -1) {
+      return field.split('~');
+    }
+    
+    return [field];
+  } catch (error) {
+    console.error(`[EXTRACT FIELD] Erreur lors de l'extraction du champ ${fieldIndex}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Extrait les identifiants du patient des champs PID-3
+ * @param {string[]} idValues - Valeurs des identifiants
  * @returns {Array} Tableau d'identifiants FHIR
  */
-function extractIdentifiers(idField) {
-  if (!idField || !idField.value) {
+function extractIdentifiers(idValues) {
+  if (!idValues || idValues.length === 0) {
     return [];
   }
   
   const identifiers = [];
   
-  // Traiter chaque répétition comme un identifiant séparé
-  const repetitions = idField.getRepetitions();
-  
-  for (const repetition of repetitions) {
-    const components = repetition.getComponents();
+  for (const idValue of idValues) {
+    const components = idValue.split('^');
     
     // ID (component 1)
-    const idValue = components[0] ? components[0].value : '';
+    const id = components[0] || '';
     
     // Système d'identification (components 4-5)
     let system = '';
     let assigner = '';
     
-    if (components[4]) {
-      assigner = components[4].value || '';
+    if (components.length > 3) {
+      assigner = components[3] || '';
     }
     
-    if (components[3] && components[4]) {
-      // Format: namespace&OID&type
-      const namespaceComp = components[3].getComponents();
-      if (namespaceComp.length > 1 && namespaceComp[1].value) {
-        system = `urn:oid:${namespaceComp[1].value}`;
+    if (components.length > 4) {
+      const namespaceComponents = components[4].split('&');
+      if (namespaceComponents.length > 1) {
+        system = `urn:oid:${namespaceComponents[1]}`;
       }
     }
     
     // Type d'identifiant (component 5)
-    const idType = components[4] ? components[4].value : 'PI';
+    let idType = 'PI';
+    if (components.length > 4) {
+      const lastComponent = components[components.length - 1];
+      if (['PI', 'MR', 'INS', 'INS-C', 'NI', 'PPN'].includes(lastComponent)) {
+        idType = lastComponent;
+      }
+    }
     
-    if (idValue) {
+    if (id) {
       const identifier = {
-        value: idValue,
+        value: id,
         system: system || `urn:system:${assigner || 'unknown'}`
       };
       
-      // Ajouter le type d'identifiant si disponible
-      if (idType) {
-        identifier.type = {
-          coding: [{
-            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-            code: idType,
-            display: getIdentifierTypeDisplay(idType)
-          }]
-        };
-      }
+      // Ajouter le type d'identifiant
+      identifier.type = {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: idType,
+          display: getIdentifierTypeDisplay(idType)
+        }]
+      };
       
       identifiers.push(identifier);
     }
@@ -242,40 +283,38 @@ function getIdentifierTypeDisplay(idType) {
  */
 function extractNames(pidSegment) {
   const names = [];
-  
-  // PID-5 (Patient Name)
-  const nameFields = pidSegment.getField(5).getRepetitions();
+  const nameFields = extractField(pidSegment, 5, true);
   
   for (const nameField of nameFields) {
-    const components = nameField.getComponents();
+    const components = nameField.split('^');
     
     // Nom de famille (component 1)
-    const familyName = components[0] ? components[0].value : '';
+    const familyName = components[0] || '';
     
-    // Prénom(s) (components 2-7)
+    // Prénom(s) (components 2-5)
     const givenNames = [];
     
-    // Prénom habituel (component 2)
-    if (components[1] && components[1].value) {
-      // Gérer les prénoms composés à la française (espaces)
-      if (components[1].value.includes(' ')) {
-        givenNames.push(...components[1].value.split(' '));
+    // Prénom principal (component 2)
+    if (components.length > 1 && components[1]) {
+      if (components[1].includes(' ')) {
+        // Gérer les prénoms composés à la française
+        givenNames.push(...components[1].split(' '));
       } else {
-        givenNames.push(components[1].value);
+        givenNames.push(components[1]);
       }
     }
     
-    // Autre(s) prénom(s) (components 3, 4, 5)
-    for (let i = 2; i <= 4; i++) {
-      if (components[i] && components[i].value) {
-        givenNames.push(components[i].value);
+    // Autres prénoms
+    for (let i = 2; i < 5; i++) {
+      if (components.length > i && components[i]) {
+        givenNames.push(components[i]);
       }
     }
     
-    // Type d'utilisation du nom (component 7 - code + component 8 - contexte)
+    // Type d'utilisation du nom
     let nameUse = 'official';
-    if (components[6] && components[6].value) {
-      nameUse = mapNameUseToFHIR(components[6].value);
+    if (components.length > 6 && components[6]) {
+      nameUse = mapNameUseToFHIR(components[6]);
     }
     
     if (familyName || givenNames.length > 0) {
@@ -291,14 +330,14 @@ function extractNames(pidSegment) {
         nameObj.given = givenNames;
       }
       
-      // Préfixe (titre) - component 5
-      if (components[4] && components[4].value) {
-        nameObj.prefix = [components[4].value];
+      // Préfixe (titre) si disponible
+      if (components.length > 4 && components[4]) {
+        nameObj.prefix = [components[4]];
       }
       
-      // Suffixe - component 6
-      if (components[5] && components[5].value) {
-        nameObj.suffix = [components[5].value];
+      // Suffixe si disponible
+      if (components.length > 5 && components[5]) {
+        nameObj.suffix = [components[5]];
       }
       
       names.push(nameObj);
@@ -328,16 +367,16 @@ function mapNameUseToFHIR(hl7NameUse) {
 }
 
 /**
- * Détermine le genre du patient à partir du champ PID-8
- * @param {Object} genderField - Champ de genre
+ * Détermine le genre du patient à partir de PID-8
+ * @param {string} genderValue - Valeur du genre
  * @returns {string} Genre FHIR
  */
-function determineGender(genderField) {
-  if (!genderField || !genderField.value) {
+function determineGender(genderValue) {
+  if (!genderValue) {
     return 'unknown';
   }
   
-  switch (genderField.value.toUpperCase()) {
+  switch (genderValue.toUpperCase()) {
     case 'M':
       return 'male';
     case 'F':
@@ -354,22 +393,20 @@ function determineGender(genderField) {
 }
 
 /**
- * Formate la date de naissance à partir du champ PID-7
- * @param {Object} birthDateField - Champ de date de naissance
+ * Formate la date de naissance à partir de PID-7
+ * @param {string} birthDateValue - Date de naissance au format HL7
  * @returns {string} Date de naissance au format YYYY-MM-DD
  */
-function formatBirthDate(birthDateField) {
-  if (!birthDateField || !birthDateField.value) {
+function formatBirthDate(birthDateValue) {
+  if (!birthDateValue) {
     return null;
   }
   
-  const dateValue = birthDateField.value;
-  
   // Format attendu: YYYYMMDD ou YYYYMMDDHHMMSS
-  if (/^\d{8}/.test(dateValue)) {
-    const year = dateValue.substring(0, 4);
-    const month = dateValue.substring(4, 6);
-    const day = dateValue.substring(6, 8);
+  if (/^\d{8}/.test(birthDateValue)) {
+    const year = birthDateValue.substring(0, 4);
+    const month = birthDateValue.substring(4, 6);
+    const day = birthDateValue.substring(6, 8);
     
     return `${year}-${month}-${day}`;
   }
@@ -386,19 +423,19 @@ function extractTelecoms(pidSegment) {
   const telecoms = [];
   
   // PID-13 (Phone - Home)
-  const phoneFields = pidSegment.getField(13).getRepetitions();
+  const phoneFields = extractField(pidSegment, 13, true);
   
   for (const phoneField of phoneFields) {
-    const components = phoneField.getComponents();
+    const components = phoneField.split('^');
     
     // Numéro (component 1)
-    const phoneNumber = components[0] ? components[0].value : '';
+    const phoneNumber = components[0] || '';
     
     // Type d'utilisation (component 2)
-    const useCode = components[1] ? components[1].value : '';
+    const useCode = components.length > 1 ? components[1] : '';
     
     // Type d'équipement (component 3)
-    const equipCode = components[2] ? components[2].value : '';
+    const equipCode = components.length > 2 ? components[2] : '';
     
     if (phoneNumber) {
       const telecom = {
@@ -422,16 +459,16 @@ function extractTelecoms(pidSegment) {
   }
   
   // PID-14 (Phone - Business)
-  const businessPhoneFields = pidSegment.getField(14).getRepetitions();
+  const businessPhoneFields = extractField(pidSegment, 14, true);
   
   for (const phoneField of businessPhoneFields) {
-    const components = phoneField.getComponents();
+    const components = phoneField.split('^');
     
     // Numéro (component 1)
-    const phoneNumber = components[0] ? components[0].value : '';
+    const phoneNumber = components[0] || '';
     
     // Type d'équipement (component 3)
-    const equipCode = components[2] ? components[2].value : '';
+    const equipCode = components.length > 2 ? components[2] : '';
     
     if (phoneNumber) {
       const telecom = {
@@ -502,21 +539,21 @@ function extractAddresses(pidSegment) {
   const addresses = [];
   
   // PID-11 (Patient Address)
-  const addressFields = pidSegment.getField(11).getRepetitions();
+  const addressFields = extractField(pidSegment, 11, true);
   
   for (const addressField of addressFields) {
-    const components = addressField.getComponents();
+    const components = addressField.split('^');
     
     // Informations d'adresse
-    const street1 = components[0] ? components[0].value : '';
-    const street2 = components[1] ? components[1].value : '';
-    const city = components[2] ? components[2].value : '';
-    const state = components[3] ? components[3].value : '';
-    const postalCode = components[4] ? components[4].value : '';
-    const country = components[5] ? components[5].value : '';
+    const street1 = components[0] || '';
+    const street2 = components.length > 1 ? components[1] : '';
+    const city = components.length > 2 ? components[2] : '';
+    const state = components.length > 3 ? components[3] : '';
+    const postalCode = components.length > 4 ? components[4] : '';
+    const country = components.length > 5 ? components[5] : '';
     
     // Type d'adresse (component 7)
-    const addrType = components[6] ? components[6].value : '';
+    const addrType = components.length > 6 ? components[6] : '';
     
     if (street1 || city || postalCode || country) {
       const address = {
@@ -590,17 +627,17 @@ function mapAddressTypeToFHIR(hl7AddressType) {
 function createEncounterResource(pv1Segment, patientReference) {
   const encounterId = `encounter-${Date.now()}`;
   
-  // Déterminer la classe d'encounter
-  const patientClass = pv1Segment.getField(2).value || '';
+  // Déterminer la classe d'encounter (PV1-2)
+  const patientClass = extractField(pv1Segment, 2)[0] || '';
   const encounterClass = mapPatientClassToFHIR(patientClass);
   
-  // Statut de l'encounter
-  const dischargeDisposition = pv1Segment.getField(36).value || '';
+  // Statut de l'encounter (PV1-36 = disposition)
+  const dischargeDisposition = extractField(pv1Segment, 36)[0] || '';
   const encounterStatus = determineEncounterStatus(dischargeDisposition);
   
   // Période de l'encounter
-  const admitDate = formatHL7DateTime(pv1Segment.getField(44));
-  const dischargeDate = formatHL7DateTime(pv1Segment.getField(45));
+  const admitDate = formatHL7DateTime(extractField(pv1Segment, 44)[0]);
+  const dischargeDate = formatHL7DateTime(extractField(pv1Segment, 45)[0]);
   
   // Créer la ressource Encounter
   const encounterResource = {
@@ -630,8 +667,8 @@ function createEncounterResource(pv1Segment, patientReference) {
     }
   }
   
-  // Numéro de visite/séjour
-  const visitNumber = pv1Segment.getField(19).value;
+  // Numéro de visite/séjour (PV1-19 = visit number)
+  const visitNumber = extractField(pv1Segment, 19)[0];
   if (visitNumber) {
     encounterResource.identifier = [{
       system: 'urn:oid:1.2.250.1.213.1.4.2',
@@ -687,15 +724,13 @@ function determineEncounterStatus(dischargeDisposition) {
 
 /**
  * Formate une date/heure HL7 au format ISO
- * @param {Object} dateField - Champ de date HL7
+ * @param {string} dateValue - Date au format HL7
  * @returns {string|null} Date au format ISO ou null si non disponible
  */
-function formatHL7DateTime(dateField) {
-  if (!dateField || !dateField.value) {
+function formatHL7DateTime(dateValue) {
+  if (!dateValue) {
     return null;
   }
-  
-  const dateValue = dateField.value;
   
   if (/^\d{8}/.test(dateValue)) {
     // Format YYYYMMDD
@@ -724,27 +759,35 @@ function formatHL7DateTime(dateField) {
 /**
  * Crée une ressource Organization FHIR à partir d'un champ MSH
  * @param {Object} mshSegment - Segment MSH parsé
- * @param {number} fieldIndex - Index du champ (4 pour sending, 6 pour receiving)
+ * @param {string} fieldName - Nom du champ (sendingFacility ou receivingFacility)
  * @returns {Object|null} Entrée de bundle pour une Organization ou null si non disponible
  */
-function createOrganizationResource(mshSegment, fieldIndex) {
-  const orgField = mshSegment.getField(fieldIndex);
+function createOrganizationResource(mshSegment, fieldName) {
+  let fieldValue;
   
-  if (!orgField || !orgField.value) {
+  if (fieldName === 'sendingFacility') {
+    fieldValue = mshSegment.sendingFacility;
+  } else if (fieldName === 'receivingFacility') {
+    fieldValue = mshSegment.receivingFacility;
+  } else {
     return null;
   }
   
-  const orgComponents = orgField.getComponents();
-  const orgName = orgComponents[0] ? orgComponents[0].value : '';
+  if (!fieldValue) {
+    return null;
+  }
+  
+  const components = fieldValue.split('^');
+  const orgName = components[0] || '';
   
   if (!orgName) {
     return null;
   }
   
-  // Identifier comme OID s'il existe un namespace
+  // Identifiant comme OID s'il existe un namespace
   let orgId = orgName;
-  if (orgComponents.length > 1 && orgComponents[1].value) {
-    orgId = orgComponents[1].value;
+  if (components.length > 1 && components[1]) {
+    orgId = components[1];
   }
   
   const organizationId = `organization-${orgId.replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -777,20 +820,21 @@ function createOrganizationResource(mshSegment, fieldIndex) {
  * @returns {Object|null} Entrée de bundle pour un Practitioner ou null si non disponible
  */
 function createPractitionerResource(rolSegment) {
-  const rolePersonField = rolSegment.getField(4);
+  // ROL-4 (Role Person)
+  const rolePersonField = extractField(rolSegment, 4)[0];
   
-  if (!rolePersonField || !rolePersonField.value) {
+  if (!rolePersonField) {
     return null;
   }
   
-  const components = rolePersonField.getComponents();
+  const components = rolePersonField.split('^');
   
   // Identifier du praticien (component 1)
-  const idValue = components[0] ? components[0].value : '';
+  const idValue = components[0] || '';
   
   // Nom du praticien (components 2-3)
-  const familyName = components[1] ? components[1].value : '';
-  const givenName = components[2] ? components[2].value : '';
+  const familyName = components.length > 1 ? components[1] : '';
+  const givenName = components.length > 2 ? components[2] : '';
   
   if (!idValue || (!familyName && !givenName)) {
     return null;
@@ -807,17 +851,17 @@ function createPractitionerResource(rolSegment) {
   
   // Ajouter l'identifiant
   if (idValue) {
-    // Système d'identification (composants 5-6)
-    let system = '';
-    if (components[5] && components[6]) {
-      const namespaceComp = components[5].getComponents();
-      if (namespaceComp.length > 1 && namespaceComp[1].value) {
-        system = `urn:oid:${namespaceComp[1].value}`;
+    // Système d'identification (component 9)
+    let system = 'urn:oid:1.2.250.1.71.4.2.1';
+    if (components.length > 8) {
+      const namespaceComponents = components[8].split('&');
+      if (namespaceComponents.length > 1) {
+        system = `urn:oid:${namespaceComponents[1]}`;
       }
     }
     
     practitionerResource.identifier.push({
-      system: system || 'urn:oid:1.2.250.1.71.4.2.1',
+      system: system,
       value: idValue
     });
   }
@@ -855,7 +899,8 @@ function createPractitionerResource(rolSegment) {
  * @returns {Object|null} Entrée de bundle pour un PractitionerRole ou null si non disponible
  */
 function createPractitionerRoleResource(rolSegment, practitionerReference, encounterReference) {
-  const roleType = rolSegment.getField(3).value;
+  // ROL-3 (Role Code)
+  const roleType = extractField(rolSegment, 3)[0];
   
   if (!roleType) {
     return null;
@@ -925,17 +970,18 @@ function getRoleTypeDisplay(roleType) {
  */
 function createRelatedPersonResource(nk1Segment, patientReference) {
   // NK1-2 (Nom)
-  const nameField = nk1Segment.getField(2);
-  // NK1-3 (Relation)
-  const relationshipField = nk1Segment.getField(3);
+  const nameField = extractField(nk1Segment, 2)[0];
   
-  if (!nameField || !nameField.value) {
+  // NK1-3 (Relation)
+  const relationshipField = extractField(nk1Segment, 3)[0];
+  
+  if (!nameField) {
     return null;
   }
   
-  const components = nameField.getComponents();
-  const familyName = components[0] ? components[0].value : '';
-  const givenName = components[1] ? components[1].value : '';
+  const components = nameField.split('^');
+  const familyName = components[0] || '';
+  const givenName = components.length > 1 ? components[1] : '';
   
   if (!familyName && !givenName) {
     return null;
@@ -971,10 +1017,17 @@ function createRelatedPersonResource(nk1Segment, patientReference) {
   }
   
   // Ajouter la relation
-  if (relationshipField && relationshipField.value) {
-    const relationship = relationshipField.getComponents();
-    const relationshipCode = relationship[1] ? relationship[1].value : '';
-    const relationshipSystem = relationship[0] ? relationship[0].value : '';
+  if (relationshipField) {
+    const relationComponents = relationshipField.split('^');
+    let relationshipCode = '';
+    
+    // Trouver le code de relation (généralement component 2, 3 ou 4)
+    for (let i = 1; i < relationComponents.length; i++) {
+      if (relationComponents[i] && ['SPO', 'DOM', 'CHD', 'PAR', 'SIB', 'GRD'].includes(relationComponents[i])) {
+        relationshipCode = relationComponents[i];
+        break;
+      }
+    }
     
     if (relationshipCode) {
       relatedPersonResource.relationship = [{
@@ -1035,24 +1088,18 @@ function getRelationshipDisplay(relationshipCode) {
  */
 function createCoverageResource(in1Segment, patientReference) {
   // IN1-2 (Plan ID)
-  const planIdField = in1Segment.getField(2);
+  const planIdField = extractField(in1Segment, 2)[0];
   
   // IN1-3 (Insurance Company ID)
-  const insuranceCompanyField = in1Segment.getField(3);
-  
-  // IN1-8 (Group Name)
-  const groupNameField = in1Segment.getField(8);
+  const insuranceCompanyField = extractField(in1Segment, 3)[0];
   
   // IN1-12 (Policy Expiration Date)
-  const expirationDateField = in1Segment.getField(12);
+  const expirationDateField = extractField(in1Segment, 12)[0];
   
   // IN1-16 (Name of Insured)
-  const insuredNameField = in1Segment.getField(16);
+  const insuredNameField = extractField(in1Segment, 16)[0];
   
-  // IN1-35 (Insurance Plan ID)
-  const insurancePlanField = in1Segment.getField(35);
-  
-  if (!planIdField && !insuranceCompanyField && !insurancePlanField) {
+  if (!planIdField && !insuranceCompanyField && !insuredNameField) {
     return null;
   }
   
@@ -1069,18 +1116,18 @@ function createCoverageResource(in1Segment, patientReference) {
   };
   
   // Ajouter le type de couverture
-  if (planIdField && planIdField.value) {
+  if (planIdField) {
     coverageResource.type = {
       coding: [{
         system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-        code: planIdField.value,
+        code: planIdField,
         display: 'Insurance policy'
       }]
     };
   }
   
   // Ajouter la période de validité
-  if (expirationDateField && expirationDateField.value) {
+  if (expirationDateField) {
     const expirationDate = formatHL7DateTime(expirationDateField);
     if (expirationDate) {
       coverageResource.period = {
@@ -1090,11 +1137,11 @@ function createCoverageResource(in1Segment, patientReference) {
   }
   
   // Ajouter le nom de l'assuré
-  if (insuredNameField && insuredNameField.value) {
-    const components = insuredNameField.getComponents();
+  if (insuredNameField) {
+    const components = insuredNameField.split('^');
     
-    if (components[0] && components[0].value) {
-      coverageResource.subscriberId = components[0].value;
+    if (components[0]) {
+      coverageResource.subscriberId = components[0];
     }
   }
   

@@ -204,8 +204,8 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// Importation du convertisseur HL7 vers FHIR avancé
-const advancedConverter = require('./hl7ToFhirAdvancedConverter');
+// Importation du convertisseur HL7 vers FHIR simplifié
+const advancedConverter = require('./hl7ToFhirSimpleConverter');
 
 /**
  * @swagger
