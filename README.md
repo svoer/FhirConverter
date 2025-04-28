@@ -148,6 +148,10 @@ curl -X GET http://localhost:5000/api/terminology/systems \
 
 ## Documentation technique
 
+Pour des informations détaillées sur les services et fonctionnalités spécifiques, consultez les documents suivants :
+
+- [Documentation des Terminologies Françaises](./docs_fr/TERMINOLOGIES.md) - Explique les modes en ligne/hors ligne et la configuration des services de terminologie
+
 ### Architecture du projet
 
 Le projet FHIRHub est structuré en plusieurs modules complémentaires :
@@ -240,17 +244,20 @@ Pour utiliser le SMT en ligne (au lieu des données préchargées) :
 
 1. Créer un compte sur le portail ANS : https://esante.gouv.fr/
 2. Demander les identifiants d'API pour le SMT
-3. Configurer l'authentification dans `french_terminology/config.json` :
-```json
-{
-  "authentication": {
-    "enabled": true,
-    "clientId": "VOTRE_CLIENT_ID",
-    "clientSecret": "VOTRE_CLIENT_SECRET",
-    "tokenUrl": "https://auth.esante.gouv.fr/auth/realms/esante-wallet/protocol/openid-connect/token"
-  }
-}
+3. Modifier le fichier `french_terminology_adapter.js` pour utiliser le service en ligne
+4. Configurer l'authentification dans `app.js` :
+
+```javascript
+const frenchTerminologyService = require('./french_terminology_service');
+frenchTerminologyService.configureAuth({
+  authEnabled: true,
+  clientId: 'VOTRE_CLIENT_ID',      // Généralement "user-api"
+  clientSecret: 'VOTRE_CLIENT_SECRET', 
+  apiKey: 'VOTRE_CLE_API'           // Clé fournie par l'ANS
+});
 ```
+
+Pour plus de détails, consultez la [Documentation des Terminologies Françaises](./docs_fr/TERMINOLOGIES.md).
 
 ## Contribuer au projet
 
