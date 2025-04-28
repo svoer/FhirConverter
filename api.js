@@ -15,8 +15,8 @@ const frenchTerminologyService = require('./french_terminology_service');
 const terminologyValidationRouter = require('./api/terminology_validation');
 const apiKeyService = require('./src/services/apiKeyService');
 const conversionLogService = require('./src/services/conversionLogService');
-// Correctif pour l'extraction des noms français
-const applyFrenchNamesFix = require('./apply_french_names_fix');
+// Module de traitement des noms FHIR français bien structuré
+const { processFhirNames } = require('./src/modules/fhirNameProcessor');
 
 // Configuration pour l'upload de fichiers
 const upload = multer({
