@@ -50,28 +50,11 @@ export function convertHL7ToFHIR(hl7Message: string): any {
     // Normaliser le message HL7 avant de le parser
     const normalizedMessage = hl7Message.replace(/\n/g, '\r');
     
-    // Parser le message HL7
+    // Parser le message HL7 pour valider la structure
     const parsedHL7 = hl7Parser.parse(normalizedMessage);
     
-    console.log('[DEBUG] parsedHL7 structure:', JSON.stringify({
-      type: typeof parsedHL7,
-      hasSegments: parsedHL7.hasOwnProperty('segments'),
-      segmentsLength: parsedHL7.segments ? parsedHL7.segments.length : 'N/A',
-      segmentsType: parsedHL7.segments ? typeof parsedHL7.segments : 'N/A',
-      firstSegment: parsedHL7.segments && parsedHL7.segments.length > 0 ? 
-        JSON.stringify(parsedHL7.segments[0]) : 'N/A'
-    }));
-    
-    if (parsedHL7.segments && parsedHL7.segments.length > 0) {
-      console.log('[DEBUG] First segment name:', parsedHL7.segments[0].name);
-      console.log('[DEBUG] First segment parsed:', parsedHL7.segments[0].parsed);
-    }
-    
-    // Conversion directe en utilisant le message brut
     // Diviser le message HL7 en segments
     const segments = normalizedMessage.split('\r').filter(Boolean);
-    
-    console.log('[DEBUG] segments:', segments);
     
     // Trouver les segments par type
     const mshSegment = segments.find(s => s.startsWith('MSH|')) || null;
@@ -79,9 +62,6 @@ export function convertHL7ToFHIR(hl7Message: string): any {
     const pd1Segment = segments.find(s => s.startsWith('PD1|')) || null;
     const pv1Segment = segments.find(s => s.startsWith('PV1|')) || null;
     const pv2Segment = segments.find(s => s.startsWith('PV2|')) || null;
-    
-    console.log('MSH:', mshSegment);
-    console.log('PID:', pidSegment);
     
     // Créer les ressources FHIR
     const patientId = `patient-${Date.now()}`;
