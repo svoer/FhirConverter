@@ -980,6 +980,33 @@ function mapFrenchRoleCode(roleCode) {
 }
 
 /**
+ * Mapper un code d'action HL7 vers une description FHIR
+ * @param {string} actionType - Code d'action HL7 (souvent dans segments Z)
+ * @returns {string} Description de l'action FHIR
+ */
+function mapActionType(actionType) {
+  if (!actionType) return 'Create';
+  
+  switch(actionType.toUpperCase()) {
+    case 'INSERT': return 'Create';
+    case 'ADD': return 'Create';
+    case 'CREATE': return 'Create';
+    case 'UPDATE': return 'Update';
+    case 'REVISE': return 'Update';
+    case 'MODIFY': return 'Update';
+    case 'DELETE': return 'Delete';
+    case 'REMOVE': return 'Delete';
+    case 'CANCEL': return 'Delete';
+    case 'INACTIVE': return 'Inactivate';
+    case 'DEACTIVATE': return 'Inactivate';
+    case 'MERGE': return 'Merge';
+    case 'LINK': return 'Link';
+    case 'UNLINK': return 'Unlink';
+    default: return 'Create';
+  }
+}
+
+/**
  * Convertir un message HL7 v2.5 en ressources FHIR R4
  * @param {string} hl7Message - Message HL7 v2.5
  * @returns {Object} Bundle FHIR R4
