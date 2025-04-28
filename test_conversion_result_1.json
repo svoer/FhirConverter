@@ -1,0 +1,165 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-746f7b69",
+        "identifier": [
+          {
+            "value": "442777",
+            "system": "urn:oid:CEGI",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PI"
+                }
+              ]
+            }
+          },
+          {
+            "value": "248098060602525",
+            "system": "urn:oid:1.2.250.1.213.1.4.8",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "INS"
+                }
+              ]
+            }
+          },
+          {
+            "value": "1000345108",
+            "system": "urn:oid:CEGI",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PIP"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "SECLET",
+            "given": [
+              "MARYSE",
+              "BERTHE",
+              "ALICE"
+            ],
+            "use": "official"
+          }
+        ],
+        "telecom": [
+          {
+            "value": "MARYSE.SECLET@WANADOO.FR",
+            "system": "email"
+          }
+        ],
+        "address": [
+          {
+            "line": [
+              "7 RUE DU BOUJONNIER"
+            ],
+            "city": "FORMERIE",
+            "postalCode": "60220",
+            "use": "home"
+          }
+        ],
+        "contact": [
+          {
+            "relationship": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    "code": "unknown"
+                  }
+                ]
+              }
+            ],
+            "name": {
+              "family": "REMY",
+              "given": [
+                "AUDREY"
+              ]
+            }
+          }
+        ],
+        "birthDate": "1948-09-09",
+        "gender": "female"
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "practitioner-1585a1b9",
+        "identifier": [
+          {
+            "system": "http://terminology.hl7.fr/CodeSystem/v2-0203",
+            "value": "U"
+          }
+        ],
+        "name": [
+          {
+            "family": "10001850758",
+            "given": [
+              "BARTOLI"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-623c3d2a",
+        "status": "in-progress",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "IMP"
+        },
+        "subject": {
+          "reference": "Patient/patient-746f7b69"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "ATND"
+                  }
+                ]
+              }
+            ],
+            "individual": {
+              "reference": "Practitioner/practitioner-1585a1b9"
+            }
+          }
+        ],
+        "period": {
+          "start": "2024-03-26T00:00:00+00:00"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    }
+  ]
+}
