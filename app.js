@@ -612,10 +612,14 @@ app.locals.db = db;
 // Importation des routes
 const applicationsRoutes = require('./routes/applications');
 const apiKeysRoutes = require('./routes/api-keys');
+const usersRoutes = require('./routes/users');
+const authRoutes = require('./routes/auth');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/auth', authRoutes);
 
 // Démarrage du serveur
 app.listen(PORT, () => {
