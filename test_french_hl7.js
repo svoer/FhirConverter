@@ -77,9 +77,12 @@ try {
         console.log('❌ Identifiant INS-NIR non trouvé');
       }
       
-      // Vérifier le nom
+      // Vérifier tous les noms du patient
       if (patientResource.resource.name && patientResource.resource.name.length > 0) {
-        console.log(`   Nom: ${patientResource.resource.name[0].family}, ${patientResource.resource.name[0].given ? patientResource.resource.name[0].given.join(' ') : '[Non spécifié]'}`);
+        console.log(`   Noms du patient (${patientResource.resource.name.length} variantes):`);
+        patientResource.resource.name.forEach((name, index) => {
+          console.log(`     ${index+1}. ${name.family} (${name.use || 'non spécifié'}): ${name.given ? name.given.join(' ') : '[Pas de prénom]'}${name.prefix ? ' (Préfixe: ' + name.prefix.join(' ') + ')' : ''}`);
+        });
       }
       
       // Vérifier l'adresse

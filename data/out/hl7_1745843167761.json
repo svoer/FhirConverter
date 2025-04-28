@@ -95,20 +95,17 @@
         "name": [
           {
             "family": "SECLET",
-            "given": [],
-            "use": "usual",
+            "use": "official",
             "prefix": [
               "MME"
             ]
           },
           {
             "family": "SECLET",
-            "given": [
-              "MARYSE",
-              "BERTHE",
-              "ALICE"
-            ],
-            "use": "official"
+            "use": "official",
+            "prefix": [
+              "MME"
+            ]
           }
         ],
         "birthDate": "1948-09-09",
