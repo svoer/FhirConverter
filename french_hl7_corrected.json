@@ -1,8 +1,8 @@
 {
   "resourceType": "Bundle",
   "type": "transaction",
-  "id": "c52853ea-87e9-4f78-a34c-db80ad7fda83",
-  "timestamp": "2025-04-28T12:26:07.768Z",
+  "id": "04abf81b-3312-4c7a-8ace-bc1aa9b7def3",
+  "timestamp": "2025-04-28T12:30:57.159Z",
   "meta": {
     "profile": [
       "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle"
@@ -24,10 +24,10 @@
   },
   "entry": [
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Patient/48b4aee1-5c2f-42f6-a2fe-9251ab88628b",
+      "fullUrl": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b",
       "resource": {
         "resourceType": "Patient",
-        "id": "48b4aee1-5c2f-42f6-a2fe-9251ab88628b",
+        "id": "eee5b8ca-5289-4f45-a2ab-2a392343859b",
         "identifier": [
           {
             "system": "urn:CEGI",
@@ -137,24 +137,27 @@
       }
     },
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Person/3b9d25a9-c9b8-4a1a-aeb4-fda31c83fda3",
+      "fullUrl": "https://fhir.org/FHIRHub/Person/d305ee81-be58-4a7e-998b-c23afaebe7b4",
       "resource": {
         "resourceType": "Person",
-        "id": "3b9d25a9-c9b8-4a1a-aeb4-fda31c83fda3",
+        "id": "d305ee81-be58-4a7e-998b-c23afaebe7b4",
         "name": [
           {
             "family": "SECLET",
-            "use": "official",
+            "given": [],
+            "use": "usual",
             "prefix": [
               "MME"
             ]
           },
           {
             "family": "SECLET",
-            "use": "official",
-            "prefix": [
-              "MME"
-            ]
+            "given": [
+              "MARYSE",
+              "BERTHE",
+              "ALICE"
+            ],
+            "use": "official"
           }
         ],
         "gender": "female",
@@ -179,7 +182,7 @@
         "link": [
           {
             "target": {
-              "reference": "https://fhir.org/FHIRHub/Patient/48b4aee1-5c2f-42f6-a2fe-9251ab88628b"
+              "reference": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b"
             }
           }
         ]
@@ -190,10 +193,72 @@
       }
     },
     {
-      "fullUrl": "https://fhir.org/FHIRHub/Organization/2e45af86-a7a9-4c08-83ca-cf4ec3659285",
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/5c00c11d-c2bf-4337-9bec-11c86f8a9caf",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "5c00c11d-c2bf-4337-9bec-11c86f8a9caf",
+        "identifier": [
+          {
+            "system": "http://example.org/fhir/sid/provider-id",
+            "value": "10001850758"
+          }
+        ],
+        "name": [
+          {
+            "family": "BARTOLI",
+            "given": [
+              "PAULINE"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Encounter/ec3a97e4-e337-4e56-9774-05308251cf8d",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "ec3a97e4-e337-4e56-9774-05308251cf8d",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "I",
+          "display": "Inpatient"
+        },
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b"
+        },
+        "period": {
+          "start": null
+        },
+        "location": [
+          {
+            "location": {
+              "display": "^^^CLINIQUE VICTOR PAUCHET&800009920&M"
+            }
+          }
+        ],
+        "participant": [
+          {
+            "individual": {
+              "reference": "https://fhir.org/FHIRHub/Practitioner/5c00c11d-c2bf-4337-9bec-11c86f8a9caf"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Encounter"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Organization/8d3469be-e7a5-440d-8367-7d99cbf064ed",
       "resource": {
         "resourceType": "Organization",
-        "id": "2e45af86-a7a9-4c08-83ca-cf4ec3659285",
+        "id": "8d3469be-e7a5-440d-8367-7d99cbf064ed",
         "identifier": [
           {
             "system": "http://terminology.hl7.org/CodeSystem/v3-HL7",
@@ -205,6 +270,161 @@
       "request": {
         "method": "POST",
         "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/RelatedPerson/953c3039-5ce0-4e4a-882f-99adc171019f",
+      "resource": {
+        "resourceType": "RelatedPerson",
+        "id": "953c3039-5ce0-4e4a-882f-99adc171019f",
+        "active": true,
+        "patient": {
+          "reference": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "ONESELF",
+                "display": "UNK"
+              }
+            ]
+          }
+        ],
+        "name": [
+          {
+            "family": "REMY",
+            "given": [
+              "AUDREY"
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Practitioner/b3726b63-3a1f-4a4e-a6f9-9a75a6d1eb9e",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "b3726b63-3a1f-4a4e-a6f9-9a75a6d1eb9e",
+        "identifier": [
+          {
+            "system": "urn:oid:1.2.250.1.71.4.2.1",
+            "value": "10100710366",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "ASIP-SANTE-PS",
+                  "display": "Provider Number"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "LEFRANCOIS",
+            "given": [
+              "PASCAL"
+            ]
+          }
+        ],
+        "active": true
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/PractitionerRole/174f538a-78dc-4a7c-ab71-8171712e1547",
+      "resource": {
+        "resourceType": "PractitionerRole",
+        "id": "174f538a-78dc-4a7c-ab71-8171712e1547",
+        "practitioner": {
+          "reference": "Practitioner/b3726b63-3a1f-4a4e-a6f9-9a75a6d1eb9e"
+        },
+        "code": [
+          {
+            "coding": [
+              {
+                "system": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+                "code": "S",
+                "display": "Médecin"
+              },
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                "code": "ODRP",
+                "display": "Unknown Role"
+              }
+            ]
+          }
+        ],
+        "active": true,
+        "period": {},
+        "subject": {
+          "reference": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "PractitionerRole"
+      }
+    },
+    {
+      "fullUrl": "https://fhir.org/FHIRHub/Provenance/9f258cc4-6a33-4c17-a9e3-5a900e1445af",
+      "resource": {
+        "resourceType": "Provenance",
+        "id": "9f258cc4-6a33-4c17-a9e3-5a900e1445af",
+        "recorded": "2024-03-26T00:00:00+00:00",
+        "activity": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation",
+              "code": "INSERT",
+              "display": "Create"
+            }
+          ]
+        },
+        "agent": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                  "code": "author",
+                  "display": "Author"
+                }
+              ]
+            },
+            "who": {
+              "reference": "https://fhir.org/FHIRHub/Patient/eee5b8ca-5289-4f45-a2ab-2a392343859b"
+            }
+          }
+        ],
+        "extension": [
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/event-indicator",
+            "valueString": "N"
+          },
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/current-location",
+            "valueString": "\"\"^^^^^^UF^^^\"\""
+          },
+          {
+            "url": "https://interop.esante.gouv.fr/ig/fhir/extensions/StructureDefinition/custom-data",
+            "valueString": "|M "
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Provenance"
       }
     }
   ]

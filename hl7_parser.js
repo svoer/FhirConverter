@@ -303,10 +303,20 @@ function extractPatientInfo(parsedMessage) {
         
         for (const additionalName of additionalNames) {
           const parts = additionalName.split('^');
+          
+          // Extraire les prénoms (traitement spécial pour les prénoms composés français)
+          let givenNames = parts[1] || '';
+          let middleNames = parts[2] || '';
+          
+          // Si le middle contient des espaces, c'est probablement un prénom composé français
+          if (middleNames && middleNames.includes(' ')) {
+            console.log(`TRAITEMENT SPÉCIAL PRÉNOM COMPOSÉ: "${middleNames}"`);
+          }
+          
           patientInfo.names.push({
             family: parts[0] || '',
-            given: parts[1] || '',
-            middle: parts[2] || '',
+            given: givenNames,
+            middle: middleNames,
             prefix: parts[4] || '',
             suffix: parts[3] || '',
             nameType: parts[6] || '',
