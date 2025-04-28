@@ -35,18 +35,8 @@ document.addEventListener('DOMContentLoaded', function() {
  * Rafraîchit les statistiques globales
  */
 function refreshStats() {
-  // Récupérer les statistiques via l'API
-  fetch('/api/stats', {
-    headers: {
-      'x-api-key': 'dev-key'
-    }
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
-    }
-    return response.json();
-  })
+  // Récupérer les statistiques via l'API avec la fonction apiRequest
+  apiRequest('stats')
   .then(data => {
     // Mettre à jour les compteurs dans l'interface
     if (data && data.status === 'ok' && data.data) {
@@ -103,18 +93,8 @@ function refreshHistory(reset = false) {
   // Paramètres de pagination
   const offset = currentPage * pageSize;
   
-  // Récupérer l'historique via l'API
-  fetch(`/api/conversions?limit=${pageSize}&offset=${offset}`, {
-    headers: {
-      'x-api-key': 'dev-key'
-    }
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP: ${response.status}`);
-    }
-    return response.json();
-  })
+  // Récupérer l'historique via l'API avec la fonction apiRequest
+  apiRequest(`conversions?limit=${pageSize}&offset=${offset}`)
   .then(data => {
     isLoadingHistory = false;
     
@@ -238,13 +218,8 @@ function refreshHistory(reset = false) {
  * @param {string} conversionId - ID de la conversion
  */
 function viewConversion(conversionId) {
-  // Récupérer les détails de la conversion
-  fetch(`/api/conversions/${conversionId}`, {
-    headers: {
-      'x-api-key': 'dev-key'
-    }
-  })
-  .then(response => response.json())
+  // Récupérer les détails de la conversion avec la fonction apiRequest
+  apiRequest(`conversions/${conversionId}`)
   .then(data => {
     if (data && data.status === 'ok') {
       // TODO: Implémenter l'affichage des détails dans une modale
