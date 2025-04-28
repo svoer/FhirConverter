@@ -95,25 +95,25 @@ function convertHL7ToFHIR(hl7Message) {
       // Traiter le segment en fonction de son type
       switch (segmentType) {
         case 'PID':
-          processPIDSegment(segment.toArray(), context);
+          processPIDSegment(fields, context);
           break;
         
         case 'NK1':
-          processNK1Segment(segment.toArray(), context);
+          processNK1Segment(fields, context);
           break;
         
         case 'PV1':
-          processPV1Segment(segment.toArray(), context);
+          processPV1Segment(fields, context);
           break;
         
         default:
           // Traiter les segments Z (segments personnalisés)
           if (isZSegment(segmentType)) {
-            processZSegment(segmentType, segment.toArray(), context);
+            processZSegment(segmentType, fields, context);
           }
           // Traiter les segments d'assurance
           else if (isInsuranceSegment(segmentType)) {
-            processInsuranceSegment(segment.toArray(), segmentType, context);
+            processInsuranceSegment(fields, segmentType, context);
           }
           // Autres segments non traités spécifiquement
           else {
@@ -126,12 +126,24 @@ function convertHL7ToFHIR(hl7Message) {
     // Obtenir le bundle FHIR
     const fhirBundle = context.getFhirBundle();
     
-    // Traiter les noms français
-    const enhancedResult = processFhirNames({
+    // Extraire et traiter les noms français directement
+    console.log("[HL7_TO_FHIR] Traitement des noms français");
+    
+    // Extraction des noms directement depuis le message HL7
+    const patientNames = extractPatientNames(hl7Message);
+    
+    // Appliquer les noms à la ressource Patient
+    const patientResource = context.getResourceByType('Patient');
+    if (patientResource && patientNames.length > 0) {
+      patientResource.name = patientNames;
+    }
+    
+    // Construire le résultat
+    const enhancedResult = {
       success: true,
       message: "Conversion réussie",
       fhirData: fhirBundle
-    }, hl7Message);
+    };
     
     // Nettoyage final du bundle
     enhancedResult.fhirData = cleanBundle(enhancedResult.fhirData);

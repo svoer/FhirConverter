@@ -27,19 +27,45 @@ function processPIDSegment(pidSegment, context) {
   };
   
   // Traiter les identifiants (PID-3)
-  if (pidSegment[3] && Array.isArray(pidSegment[3])) {
-    pidSegment[3].forEach(idField => {
-      if (!idField || !idField.value) return;
+  if (pidSegment[3]) {
+    // Dans notre implémentation simplifiée, PID-3 peut contenir plusieurs identifiants séparés par ~
+    const identifiers = pidSegment[3].split('~').filter(id => id && id.trim() !== '');
+    
+    identifiers.forEach(idStr => {
+      // Format typique: 442777^^^CEGI&&M^PI
+      const idParts = idStr.split('^');
+      
+      if (!idParts[0]) return;
       
       const identifier = {
-        value: idField.value
+        value: idParts[0]
       };
       
-      // Ajouter le système d'identification si disponible
-      if (idField.assigningAuthority && idField.assigningAuthority.namespaceId) {
-        const nsId = idField.assigningAuthority.namespaceId;
-        const mappedSystem = conversionRules.PID.identifiers.systemMapping[nsId];
-        identifier.system = mappedSystem || `urn:oid:${nsId}`;
+      // Extraire le système d'identification
+      if (idParts[3]) {
+        // Format potentiel: ASIP-SANTE-INS-NIR&1.2.250.1.213.1.4.8&ISO
+        const systemParts = idParts[3].split('&');
+        const systemName = systemParts[0];
+        const oid = systemParts[1];
+        
+        // Appliquer le mapping si disponible
+        if (systemName && conversionRules.PID.identifiers.systemMapping[systemName]) {
+          identifier.system = conversionRules.PID.identifiers.systemMapping[systemName];
+        } else if (oid) {
+          identifier.system = `urn:oid:${oid}`;
+        } else if (systemName) {
+          identifier.system = `urn:oid:${systemName}`;
+        }
+      }
+      
+      // Ajouter le type d'identifiant si disponible (ex: PI = Patient Internal ID)
+      if (idParts[4]) {
+        identifier.type = {
+          coding: [{
+            system: "http://terminology.hl7.org/CodeSystem/v2-0203",
+            code: idParts[4]
+          }]
+        };
       }
       
       patientResource.identifier.push(identifier);
@@ -50,8 +76,8 @@ function processPIDSegment(pidSegment, context) {
   // Nous ne traitons pas les noms ici pour éviter les conflits
   
   // Traiter la date de naissance (PID-7)
-  if (pidSegment[7] && pidSegment[7].value) {
-    let birthDate = pidSegment[7].value;
+  if (pidSegment[7]) {
+    let birthDate = pidSegment[7];
     // Formater la date pour FHIR (YYYY-MM-DD)
     if (birthDate.length >= 8) {
       const year = birthDate.substring(0, 4);
@@ -62,87 +88,109 @@ function processPIDSegment(pidSegment, context) {
   }
   
   // Traiter le genre (PID-8)
-  if (pidSegment[8] && pidSegment[8].value) {
-    const gender = pidSegment[8].value;
+  if (pidSegment[8]) {
+    const gender = pidSegment[8];
     patientResource.gender = conversionRules.PID.gender.mapping[gender] || 'unknown';
   }
   
   // Traiter les adresses (PID-11)
-  if (pidSegment[11] && Array.isArray(pidSegment[11])) {
-    pidSegment[11].forEach(addrField => {
-      if (!addrField) return;
+  if (pidSegment[11]) {
+    // Format typique: 7 RUE DU BOUJONNIER^^FORMERIE^^60220^^H
+    const addresses = pidSegment[11].split('~').filter(addr => addr && addr.trim() !== '');
+    
+    addresses.forEach(addrStr => {
+      const addrParts = addrStr.split('^');
       
       const address = {
         line: []
       };
       
-      // Ligne 1 de l'adresse
-      if (addrField.streetAddress) {
-        address.line.push(addrField.streetAddress);
+      // Ligne d'adresse (première partie)
+      if (addrParts[0] && addrParts[0].trim() !== '') {
+        address.line.push(addrParts[0]);
       }
       
-      // Ligne 2 de l'adresse (non définie dans HL7 v2.5 standard, mais parfois utilisée)
-      if (addrField.otherDesignation) {
-        address.line.push(addrField.otherDesignation);
+      // Deuxième ligne d'adresse (deuxième partie, souvent vide)
+      if (addrParts[1] && addrParts[1].trim() !== '') {
+        address.line.push(addrParts[1]);
       }
       
-      // Ville
-      if (addrField.city) {
-        address.city = addrField.city;
+      // Ville (troisième partie)
+      if (addrParts[2] && addrParts[2].trim() !== '') {
+        address.city = addrParts[2];
       }
       
-      // État/Région
-      if (addrField.stateOrProvince) {
-        address.state = addrField.stateOrProvince;
+      // État/Province/Département (quatrième partie, souvent vide en France)
+      if (addrParts[3] && addrParts[3].trim() !== '') {
+        address.state = addrParts[3];
       }
       
-      // Code postal
-      if (addrField.zipOrPostalCode) {
-        address.postalCode = addrField.zipOrPostalCode;
+      // Code postal (cinquième partie)
+      if (addrParts[4] && addrParts[4].trim() !== '') {
+        address.postalCode = addrParts[4];
       }
       
-      // Pays
-      if (addrField.country) {
-        address.country = addrField.country;
+      // Pays (sixième partie)
+      if (addrParts[5] && addrParts[5].trim() !== '') {
+        address.country = addrParts[5];
       }
       
-      // Type d'adresse
-      if (addrField.addressType) {
-        const useCode = conversionRules.PID.address.useMapping[addrField.addressType] || 'home';
+      // Type d'adresse (septième partie)
+      if (addrParts[6] && addrParts[6].trim() !== '') {
+        const useCode = conversionRules.PID.address.useMapping[addrParts[6]] || 'home';
         address.use = useCode;
       }
       
-      patientResource.address.push(address);
+      // N'ajouter l'adresse que si elle contient au moins une information
+      if (address.line.length > 0 || address.city || address.postalCode) {
+        patientResource.address.push(address);
+      }
     });
   }
   
-  // Traiter les numéros de téléphone (PID-13)
-  if (pidSegment[13] && Array.isArray(pidSegment[13])) {
-    pidSegment[13].forEach(telecomField => {
-      if (!telecomField || !telecomField.telephoneNumber) return;
+  // Traiter les numéros de téléphone et emails (PID-13)
+  if (pidSegment[13]) {
+    // Format typique: ^PRN^PH^^^^^^^^^0608987212~~~^NET^Internet^MARYSE.SECLET@WANADOO.FR
+    const telecoms = pidSegment[13].split('~').filter(tel => tel && tel.trim() !== '');
+    
+    telecoms.forEach(telecomStr => {
+      const telecomParts = telecomStr.split('^');
+      
+      // Vérifier si nous avons assez de parties dans le champ
+      if (telecomParts.length < 3) return;
+      
+      // Le numéro de téléphone se trouve généralement à l'index 10
+      // L'email se trouve généralement à l'index 3 si type=NET
+      const value = telecomParts[10] || telecomParts[3] || '';
+      
+      if (!value || value.trim() === '') return;
       
       const telecom = {
-        value: telecomField.telephoneNumber
+        value: value
       };
       
-      // Type de télécom (téléphone, e-mail, etc.)
-      if (telecomField.telecommunicationEquipmentType) {
-        const system = conversionRules.PID.telecom.systemMapping[telecomField.telecommunicationEquipmentType] || 'phone';
-        telecom.system = system;
-      } else {
+      // Type d'équipement (téléphone, fax, email) à l'index 2
+      const equipmentType = telecomParts[2] || '';
+      
+      if (equipmentType === 'PH' || equipmentType === 'CP') {
         telecom.system = 'phone';
-      }
-      
-      // Utilisation (domicile, travail, etc.)
-      if (telecomField.telecommunicationUseCode) {
-        const use = conversionRules.PID.telecom.useMapping[telecomField.telecommunicationUseCode] || 'home';
-        telecom.use = use;
-      }
-      
-      // Traitement spécial pour les e-mails
-      if (telecomField.emailAddress) {
+      } else if (equipmentType === 'FX') {
+        telecom.system = 'fax';
+      } else if (equipmentType === 'NET' || equipmentType === 'Internet') {
         telecom.system = 'email';
-        telecom.value = telecomField.emailAddress;
+      } else {
+        telecom.system = 'phone'; // Par défaut
+      }
+      
+      // Utilisation (domicile, travail, etc.) à l'index 1
+      const useCode = telecomParts[1] || '';
+      
+      if (useCode === 'PRN') {
+        telecom.use = 'home';
+      } else if (useCode === 'WPN') {
+        telecom.use = 'work';
+      } else if (useCode === 'ORN') {
+        telecom.use = 'old';
       }
       
       patientResource.telecom.push(telecom);
@@ -177,28 +225,26 @@ function processNK1Segment(nk1Segment, context) {
   
   // Traiter le nom (NK1-2)
   if (nk1Segment[2]) {
-    const familyName = nk1Segment[2].familyName?.surname;
-    const givenName = nk1Segment[2].givenName;
+    // Format typique: DUPONT^MARIE^^^^^L
+    const nameParts = nk1Segment[2].split('^');
     
-    if (familyName || givenName) {
-      contact.name = {
-        family: familyName || '',
-        given: givenName ? [givenName] : []
-      };
+    if (nameParts.length >= 2) {
+      const familyName = nameParts[0];
+      const givenName = nameParts[1];
+      
+      if (familyName || givenName) {
+        contact.name = {
+          family: familyName || '',
+          given: givenName ? [givenName] : []
+        };
+      }
     }
   }
   
   // Traiter la relation (NK1-3)
   if (nk1Segment[3]) {
-    let relationshipCode = '';
-    
-    if (typeof nk1Segment[3] === 'string') {
-      relationshipCode = nk1Segment[3];
-    } else if (nk1Segment[3].identifier) {
-      relationshipCode = nk1Segment[3].identifier;
-    } else if (nk1Segment[3].text) {
-      relationshipCode = nk1Segment[3].text;
-    }
+    // Format typique: SPO ou MTH (spouse ou mother)
+    const relationshipCode = nk1Segment[3].split('^')[0];
     
     if (relationshipCode) {
       const mappedRelationship = conversionRules.NK1.relationship.mapping[relationshipCode] || 'other';
@@ -214,43 +260,50 @@ function processNK1Segment(nk1Segment, context) {
   
   // Traiter l'adresse (NK1-4)
   if (nk1Segment[4]) {
-    const addressField = nk1Segment[4];
+    // Format similaire à PID-11
+    const addrParts = nk1Segment[4].split('^');
     
     const address = {
       line: []
     };
     
-    if (addressField.streetAddress) {
-      address.line.push(addressField.streetAddress);
+    // Ligne d'adresse (première partie)
+    if (addrParts[0] && addrParts[0].trim() !== '') {
+      address.line.push(addrParts[0]);
     }
     
-    if (addressField.city) {
-      address.city = addressField.city;
+    // Deuxième ligne d'adresse (deuxième partie, souvent vide)
+    if (addrParts[1] && addrParts[1].trim() !== '') {
+      address.line.push(addrParts[1]);
     }
     
-    if (addressField.stateOrProvince) {
-      address.state = addressField.stateOrProvince;
+    // Ville (troisième partie)
+    if (addrParts[2] && addrParts[2].trim() !== '') {
+      address.city = addrParts[2];
     }
     
-    if (addressField.zipOrPostalCode) {
-      address.postalCode = addressField.zipOrPostalCode;
+    // Code postal (cinquième partie)
+    if (addrParts[4] && addrParts[4].trim() !== '') {
+      address.postalCode = addrParts[4];
     }
     
-    if (addressField.country) {
-      address.country = addressField.country;
+    // N'ajouter l'adresse que si elle contient au moins une information
+    if (address.line.length > 0 || address.city || address.postalCode) {
+      contact.address = address;
     }
-    
-    contact.address = address;
   }
   
   // Traiter le téléphone (NK1-5)
   if (nk1Segment[5]) {
-    const telecomField = nk1Segment[5];
+    // Format similaire à PID-13
+    const telecomParts = nk1Segment[5].split('^');
     
-    if (telecomField.telephoneNumber) {
+    // Si le numéro est disponible (généralement à l'index 10)
+    if (telecomParts.length > 10 && telecomParts[10] && telecomParts[10].trim() !== '') {
       contact.telecom = [{
         system: 'phone',
-        value: telecomField.telephoneNumber
+        value: telecomParts[10],
+        use: 'home'
       }];
     }
   }
@@ -297,39 +350,43 @@ function processPV1Segment(pv1Segment, context) {
   };
   
   // Traiter le type de patient (PV1-2)
-  if (pv1Segment[2] && pv1Segment[2].value) {
-    const patientClass = pv1Segment[2].value;
-    const mappedClass = conversionRules.PV1.patientClass.mapping[patientClass];
+  if (pv1Segment[2]) {
+    const patientClass = pv1Segment[2];
     
-    if (mappedClass) {
-      encounterResource.class.code = mappedClass === 'inpatient' ? 'IMP' : 
-                                     mappedClass === 'outpatient' ? 'AMB' : 
-                                     mappedClass === 'emergency' ? 'EMER' : 'AMB';
+    // Mapper le type de patient
+    if (patientClass === 'I') {
+      encounterResource.class.code = 'IMP'; // Hospitalisé
+    } else if (patientClass === 'O') {
+      encounterResource.class.code = 'AMB'; // Ambulatoire
+    } else if (patientClass === 'E') {
+      encounterResource.class.code = 'EMER'; // Urgence
     }
   }
   
   // Traiter le lieu/service (PV1-3)
   if (pv1Segment[3]) {
-    let locationDisplay = null;
-    let locationReference = null;
+    // Format: PV1|1|O|MEDE^^^^MEDE^^^^Service de médecine^^^^SI
+    const locationParts = pv1Segment[3].split('^');
     
-    // Extraire l'identifiant et le nom du lieu selon les règles
-    conversionRules.PV1.location.extract.forEach(([index, attrName]) => {
-      if (pv1Segment[3][index]) {
-        if (attrName === 'identifier') {
-          locationReference = pv1Segment[3][index];
-        } else if (attrName === 'display') {
-          locationDisplay = pv1Segment[3][index];
-        }
-      }
-    });
+    // Récupérer les informations du service
+    let locationDisplay = '';
+    
+    // L'identifiant du service est généralement dans la 1ère partie
+    if (locationParts[0] && locationParts[0].trim() !== '') {
+      locationDisplay = locationParts[0];
+    }
+    
+    // Le nom complet est souvent dans la 4ème partie
+    if (locationParts[4] && locationParts[4].trim() !== '') {
+      locationDisplay = locationParts[4];
+    }
     
     // Ajouter la location à l'encounter
-    if (locationReference || locationDisplay) {
+    if (locationDisplay) {
       encounterResource.location = [{
         status: 'active',
         location: {
-          display: locationDisplay || 'Unknown location'
+          display: locationDisplay
         }
       }];
     }
@@ -337,48 +394,57 @@ function processPV1Segment(pv1Segment, context) {
   
   // Traiter le praticien responsable (PV1-7)
   if (pv1Segment[7]) {
-    const practitionerId = `practitioner-${context.getUniqueId()}`;
-    const practitionerResource = {
-      resourceType: 'Practitioner',
-      id: practitionerId,
-      identifier: []
-    };
+    // Format: DURANT^JEAN^^^^^D^^^RPPS&1.2.250.1.71.4.2.1&ISO^L^^^RPPS
+    const practitionerParts = pv1Segment[7].split('^');
     
-    // Traiter l'identifiant du praticien
-    if (pv1Segment[7].idNumber) {
-      practitionerResource.identifier.push({
-        value: pv1Segment[7].idNumber
-      });
-    }
-    
-    // Traiter le nom du praticien
-    if (pv1Segment[7].familyName || pv1Segment[7].givenName) {
-      practitionerResource.name = [{
-        family: pv1Segment[7].familyName?.surname || '',
-        given: pv1Segment[7].givenName ? [pv1Segment[7].givenName] : []
+    if (practitionerParts.length >= 2) {
+      const practitionerId = `practitioner-${context.getUniqueId()}`;
+      const practitionerResource = {
+        resourceType: 'Practitioner',
+        id: practitionerId,
+        identifier: []
+      };
+      
+      // Traiter le nom du praticien (généralement les 2 premières parties)
+      const familyName = practitionerParts[0];
+      const givenName = practitionerParts[1];
+      
+      if (familyName || givenName) {
+        practitionerResource.name = [{
+          family: familyName || '',
+          given: givenName ? [givenName] : []
+        }];
+      }
+      
+      // Traiter l'identifiant du praticien (souvent dans la 9ème partie)
+      if (practitionerParts[9] && practitionerParts[9].trim() !== '') {
+        practitionerResource.identifier.push({
+          system: 'http://terminology.hl7.fr/CodeSystem/v2-0203',
+          value: practitionerParts[9]
+        });
+      }
+      
+      // Ajouter le praticien au contexte
+      context.addResource(practitionerResource);
+      
+      // Référencer le praticien dans l'encounter
+      encounterResource.participant = [{
+        type: [{
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
+            code: 'ATND'
+          }]
+        }],
+        individual: {
+          reference: `Practitioner/${practitionerId}`
+        }
       }];
     }
-    
-    // Ajouter le praticien au contexte
-    context.addResource(practitionerResource);
-    
-    // Référencer le praticien dans l'encounter
-    encounterResource.participant = [{
-      type: [{
-        coding: [{
-          system: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
-          code: 'ATND'
-        }]
-      }],
-      individual: {
-        reference: `Practitioner/${practitionerId}`
-      }
-    }];
   }
   
   // Traiter la date de début (PV1-44)
-  if (pv1Segment[44] && pv1Segment[44].value) {
-    let admitDate = pv1Segment[44].value;
+  if (pv1Segment[44]) {
+    let admitDate = pv1Segment[44];
     
     // Formater la date pour FHIR (YYYY-MM-DDThh:mm:ss+zz:zz)
     if (admitDate.length >= 8) {
@@ -489,9 +555,29 @@ function processInsuranceSegment(inSegment, segmentType, context) {
   };
   
   // Traiter l'identifiant de l'organisme d'assurance (IN1-2)
-  if (inSegment[2] && inSegment[2].value) {
-    const insurerId = inSegment[2].value;
-    const insurerName = conversionRules.IN.insurerMapping[insurerId] || `Organisme ${insurerId}`;
+  if (inSegment[2]) {
+    // Format potentiel: CPAM OISE^1111^CPAM OISE
+    const insurerParts = inSegment[2].split('^');
+    
+    let insurerId = '';
+    let insurerName = '';
+    
+    // L'identifiant est souvent dans la deuxième partie
+    if (insurerParts[1] && insurerParts[1].trim() !== '') {
+      insurerId = insurerParts[1];
+    } else if (insurerParts[0] && insurerParts[0].trim() !== '') {
+      // Si pas de deuxième partie, utiliser la première
+      insurerId = insurerParts[0];
+    }
+    
+    // Le nom est souvent dans la première ou troisième partie
+    if (insurerParts[2] && insurerParts[2].trim() !== '') {
+      insurerName = insurerParts[2];
+    } else if (insurerParts[0] && insurerParts[0].trim() !== '') {
+      insurerName = insurerParts[0];
+    } else {
+      insurerName = `Organisme ${insurerId}`;
+    }
     
     // Créer une ressource Organization pour l'assureur
     const organizationId = `organization-${context.getUniqueId()}`;
@@ -499,6 +585,7 @@ function processInsuranceSegment(inSegment, segmentType, context) {
       resourceType: 'Organization',
       id: organizationId,
       identifier: [{
+        system: 'http://terminology.hl7.fr/CodeSystem/TRE-G08-TypeIdentifiantStructure',
         value: insurerId
       }],
       name: insurerName
@@ -514,8 +601,9 @@ function processInsuranceSegment(inSegment, segmentType, context) {
   }
   
   // Traiter la période de validité (IN1-12 -> IN1-13 = début -> fin)
-  if (inSegment[13] && inSegment[13].value) {
-    let endDate = inSegment[13].value;
+  if (inSegment[13]) {
+    // Format potentiel: 20231231
+    let endDate = inSegment[13];
     
     // Formater la date pour FHIR (YYYY-MM-DD)
     if (endDate.length >= 8) {
@@ -527,6 +615,14 @@ function processInsuranceSegment(inSegment, segmentType, context) {
         end: `${year}-${month}-${day}`
       };
     }
+  }
+  
+  // Traiter le numéro d'assuré (IN1-36)
+  if (inSegment[36]) {
+    coverageResource.identifier = [{
+      system: 'http://terminology.hl7.fr/CodeSystem/v2-0203',
+      value: inSegment[36]
+    }];
   }
   
   // Ajouter la ressource au contexte
