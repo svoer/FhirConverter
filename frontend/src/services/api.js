@@ -10,27 +10,65 @@
  * @returns {Promise} Response data
  */
 async function apiRequest(endpoint, apiKey, options = {}) {
-  const url = `/api${endpoint}`;
+  // URL correctement formatée avec le préfixe /api/
+  const url = endpoint.startsWith('/') 
+    ? `/api${endpoint}` 
+    : `/api/${endpoint}`;
   
-  // Set up headers with API key
-  const headers = {
-    'X-API-Key': apiKey,
-    ...options.headers
-  };
+  // Assurer que les en-têtes sont initialisés
+  options.headers = options.headers || {};
+  
+  // Ajouter l'API key aux en-têtes
+  options.headers['X-API-Key'] = apiKey;
+  
+  // Ajouter l'API key comme paramètre de requête pour compatibilité
+  const separator = url.includes('?') ? '&' : '?';
+  const urlWithKey = `${url}${separator}apiKey=${encodeURIComponent(apiKey)}`;
   
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
-    
-    const data = await response.json();
+    const response = await fetch(urlWithKey, options);
     
     if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+      console.error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+      
+      // Tenter de lire le corps de la réponse
+      const errorText = await response.text();
+      console.error('Réponse détaillée:', errorText.substring(0, 200) + '...');
+      
+      try {
+        // Essayer de parser la réponse comme JSON
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.message || errorData.error || `Erreur HTTP: ${response.status}`);
+      } catch (parseError) {
+        // Si on ne peut pas parser comme JSON, utiliser le texte brut
+        throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+      }
     }
     
-    return data;
+    // Vérifier si la réponse est du JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      return data;
+    } else {
+      // Convertir en texte si ce n'est pas du JSON
+      const text = await response.text();
+      console.warn('Réponse non-JSON reçue:', text.substring(0, 100) + '...');
+      
+      // Essayer de parser comme JSON au cas où
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        // Retourner un objet formaté si ce n'est pas du JSON
+        return { 
+          status: 'ok', 
+          data: text, 
+          meta: { 
+            contentType: contentType || 'text/plain' 
+          }
+        };
+      }
+    }
   } catch (error) {
     console.error(`API request failed: ${error.message}`);
     throw error;
