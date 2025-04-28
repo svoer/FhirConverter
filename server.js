@@ -1,296 +1,454 @@
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+/**
+ * Serveur principal FHIRHub
+ * Ce serveur expose une API REST pour la conversion HL7 vers FHIR
+ * et sert l'interface web
+ */
+
 const express = require('express');
 const cors = require('cors');
-const http = require('http');
+const bodyParser = require('body-parser');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+// Modules internes
+const converter = require('./hl7ToFhirConverter');
+const frenchTerminologyAdapter = require('./french_terminology_adapter');
+const fhirCleaner = require('./fhir_cleaner');
+const dbService = require('./src/db/dbService');
+
+// Configuration du middleware de téléchargement
+const upload = multer({ dest: 'data/uploads/' });
+
+// Initialiser l'application Express
 const app = express();
-const port = 5000;
-const javaAppPort = 8080;
+const PORT = process.env.PORT || 5000;
 
-// État de l'application
-const appState = {
-  javaAppStarted: false,
-  javaAppRunning: false,
-  javaPath: null,
-  startTime: new Date(),
-  errors: []
-};
-
-// Activer CORS
+// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.text({ limit: '10mb', type: 'text/plain' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
-// Middleware pour servir les fichiers statiques du frontend si disponible
-app.use(express.static(path.join(__dirname, 'frontend')));
+// Middleware d'enrichissement des résultats API
+const { apiResultEnricherMiddleware } = require('./src/utils/apiResultEnricher');
+app.use(apiResultEnricherMiddleware);
 
-// Fonction pour vérifier si le serveur Java est en cours d'exécution
-function checkJavaAppStatus() {
-  return new Promise((resolve) => {
-    if (!appState.javaAppStarted) {
-      return resolve(false);
-    }
-    
-    const req = http.request({
-      host: 'localhost',
-      port: javaAppPort,
-      path: '/api/status',
-      method: 'GET',
-      timeout: 1000
-    }, (res) => {
-      if (res.statusCode === 200) {
-        appState.javaAppRunning = true;
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
-    
-    req.on('error', () => {
-      resolve(false);
-    });
-    
-    req.end();
-  });
-}
-
-// API pour vérifier que le serveur fonctionne
-app.get('/api/status', async (req, res) => {
-  const javaStatus = await checkJavaAppStatus();
-  
-  res.json({ 
-    status: 'ok', 
-    message: 'FHIRHub API server is running',
-    javaApp: {
-      started: appState.javaAppStarted,
-      running: javaStatus,
-      startTime: appState.startTime,
-      uptime: Math.floor((new Date() - appState.startTime) / 1000) + ' seconds'
-    },
-    errors: appState.errors
-  });
-});
-
-// Middleware pour rediriger les requêtes API vers le serveur Java
-app.use('/api', async (req, res, next) => {
-  // Si la route est /api/status, ne pas rediriger
-  if (req.path === '/status') {
+// Middleware d'authentification par clé API
+async function apiKeyAuth(req, res, next) {
+  // Pas d'authentification pour ces chemins
+  const publicPaths = ['/api/health', '/api/info'];
+  if (publicPaths.includes(req.path)) {
     return next();
   }
   
-  const javaStatus = await checkJavaAppStatus();
+  // Récupérer la clé API
+  const apiKey = req.headers['x-api-key'] || req.query.apiKey;
   
-  if (!javaStatus) {
-    return res.status(503).json({
-      status: 'error',
-      message: 'Le serveur Java n\'est pas encore disponible. Veuillez réessayer dans quelques instants.',
-      javaApp: {
-        started: appState.javaAppStarted,
-        running: false
-      }
+  if (!apiKey) {
+    return res.status(401).json({ 
+      error: 'Clé API manquante', 
+      message: 'Veuillez fournir une clé API valide dans l\'en-tête X-API-Key ou le paramètre apiKey'
     });
   }
   
-  // Préparer les options pour la requête proxy
-  const options = {
-    host: 'localhost',
-    port: javaAppPort,
-    path: req.url,
-    method: req.method,
-    headers: {
-      ...req.headers,
-      host: `localhost:${javaAppPort}`
-    }
+  // Clé de développement spéciale pour les tests
+  if (apiKey === 'dev-key') {
+    req.app = { 
+      id: 1, 
+      name: 'Application par défaut', 
+      settings: { maxHistoryDays: 30, enableLogging: true } 
+    };
+    return next();
+  }
+  
+  // Valider la clé API
+  const apiKeyInfo = dbService.validateApiKey(apiKey);
+  
+  if (!apiKeyInfo) {
+    return res.status(401).json({ 
+      error: 'Clé API invalide', 
+      message: 'La clé API fournie n\'est pas valide ou a été désactivée'
+    });
+  }
+  
+  // Stocker les informations de l'application dans la requête
+  req.app = {
+    id: apiKeyInfo.app_id,
+    name: apiKeyInfo.app_name,
+    settings: apiKeyInfo.settings || {}
   };
   
-  // Créer la requête proxy
-  const proxyReq = http.request(options, (proxyRes) => {
-    res.status(proxyRes.statusCode);
-    
-    // Copier les en-têtes de la réponse
-    Object.keys(proxyRes.headers).forEach(key => {
-      res.setHeader(key, proxyRes.headers[key]);
-    });
-    
-    // Rediriger le flux de données
-    proxyRes.pipe(res);
-  });
-  
-  // Gérer les erreurs
-  proxyReq.on('error', (error) => {
-    console.error('Erreur de proxy vers le serveur Java:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Erreur lors de la communication avec le serveur Java'
-    });
-  });
-  
-  // Si la requête a un corps, le transmettre
-  if (req.body) {
-    proxyReq.write(JSON.stringify(req.body));
-  }
-  
-  proxyReq.end();
-});
-
-// Route par défaut qui renvoie un message HTML simple
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>FHIRHub - HL7 vers FHIR Converter</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; color: #333; }
-          .container { max-width: 800px; margin: 0 auto; }
-          h1 { color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-          .info { background: #f8f9fa; border-left: 4px solid #4CAF50; padding: 15px; margin: 20px 0; }
-          .status { margin-top: 30px; }
-          .status div { margin-bottom: 10px; }
-          .status span { font-weight: bold; }
-          .badge { display: inline-block; padding: 3px 7px; border-radius: 10px; font-size: 12px; font-weight: bold; }
-          .success { background-color: #d4edda; color: #155724; }
-          .pending { background-color: #fff3cd; color: #856404; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>FHIRHub - Convertisseur HL7 vers FHIR</h1>
-          
-          <div class="info">
-            Cette application permet de convertir des messages HL7 v2.5 vers le format FHIR R4 conforme aux standards de l'ANS. Utilisez l'API ou l'interface pour convertir vos messages HL7.
-          </div>
-          
-          <div class="status">
-            <h2>État des services</h2>
-            <div>Serveur proxy: <span class="badge success">Actif</span></div>
-            <div>Application Java: <span class="badge pending">Démarrage...</span></div>
-            <div>Frontend React: <span class="badge pending">En développement</span></div>
-          </div>
-          
-          <p>Le serveur FHIRHub est en cours de démarrage. Veuillez patienter...</p>
-        </div>
-      </body>
-    </html>
-  `);
-});
-
-// Démarrer le serveur Express
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Serveur proxy démarré sur le port ${port}`);
-  
-  // Lancer le processus Java en arrière-plan
-  console.log('Recherche de Java...');
-  
-  // Premièrement, compiler le projet Java s'il n'est pas déjà compilé
-  if (!fs.existsSync(path.join(__dirname, 'target', 'fhirhub-1.0.0.jar'))) {
-    console.log('Compilation du projet Java...');
-    exec('mvn clean package -DskipTests', (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Erreur de compilation: ${error}`);
-        return;
-      }
-      console.log('Compilation réussie!');
-      startJavaApp();
-    });
-  } else {
-    startJavaApp();
-  }
-});
-
-function startJavaApp() {
-  // Chercher le chemin Java
-  exec('find /nix/store -type f -executable -name java | grep -v wrapper | head -1', (error, stdout, stderr) => {
-    if (error || !stdout.trim()) {
-      console.error('Java est introuvable!');
-      appState.errors.push({
-        time: new Date(),
-        message: 'Java est introuvable dans le système'
-      });
-      return;
-    }
-    
-    const javaPath = stdout.trim();
-    appState.javaPath = javaPath;
-    console.log(`Java trouvé à: ${javaPath}`);
-    
-    // Créer les répertoires nécessaires
-    try {
-      fs.mkdirSync('./data/in', { recursive: true });
-      fs.mkdirSync('./data/out', { recursive: true });
-    } catch (err) {
-      console.error('Erreur lors de la création des répertoires:', err);
-      appState.errors.push({
-        time: new Date(),
-        message: `Erreur lors de la création des répertoires: ${err.message}`
-      });
-    }
-    
-    // Lancer l'application Java sur un port différent (8080)
-    console.log(`Démarrage de l'application Java sur le port ${javaAppPort}...`);
-    
-    try {
-      const javaProcess = exec(
-        `${javaPath} -Dserver.port=${javaAppPort} -Dserver.address=0.0.0.0 -jar target/fhirhub-1.0.0.jar`, 
-        (error, stdout, stderr) => {
-          if (error) {
-            console.error(`Erreur au démarrage de l'application Java: ${error}`);
-            appState.errors.push({
-              time: new Date(),
-              message: `Erreur au démarrage de l'application Java: ${error.message}`
-            });
-          }
-      });
-      
-      // Marquer l'application comme démarrée
-      appState.javaAppStarted = true;
-      
-      // Monitorer la sortie standard
-      javaProcess.stdout.on('data', (data) => {
-        console.log(`Java stdout: ${data}`);
-        
-        // Détecter le démarrage complet de Spring Boot
-        if (data.toString().includes('Started FhirHubApplication')) {
-          appState.javaAppRunning = true;
-          console.log('Application Java prête à recevoir des requêtes!');
-        }
-      });
-      
-      // Monitorer la sortie d'erreur
-      javaProcess.stderr.on('data', (data) => {
-        console.error(`Java stderr: ${data}`);
-        
-        // Enregistrer les erreurs importantes
-        const errorMsg = data.toString();
-        if (errorMsg.includes('Error') || errorMsg.includes('Exception')) {
-          appState.errors.push({
-            time: new Date(),
-            message: errorMsg.trim()
-          });
-        }
-      });
-      
-      // Gérer la fin du processus
-      javaProcess.on('close', (code) => {
-        appState.javaAppRunning = false;
-        appState.javaAppStarted = false;
-        
-        console.log(`Le processus Java s'est arrêté avec le code: ${code}`);
-        if (code !== 0) {
-          appState.errors.push({
-            time: new Date(),
-            message: `L'application Java s'est arrêtée anormalement avec le code: ${code}`
-          });
-        }
-      });
-      
-      console.log('Application Java démarrée!');
-    } catch (err) {
-      console.error('Erreur lors du lancement du processus Java:', err);
-      appState.errors.push({
-        time: new Date(),
-        message: `Erreur lors du lancement du processus Java: ${err.message}`
-      });
-    }
-  });
+  next();
 }
+
+// Utiliser le middleware d'authentification
+app.use('/api', apiKeyAuth);
+
+// Routes API
+// Point d'entrée pour vérifier la santé du serveur
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', version: '1.0.0' });
+});
+
+// Informations sur le serveur
+app.get('/api/info', (req, res) => {
+  res.json({
+    name: 'FHIRHub',
+    description: 'Convertisseur HL7 v2.5 vers FHIR R4',
+    version: '1.0.0',
+    frenchTerminologies: frenchTerminologyAdapter.getAllTerminologySystems() ? 'loaded' : 'not_loaded'
+  });
+});
+
+// Récupérer la liste des conversions
+app.get('/api/conversions', (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const appId = req.app.id;
+  
+  const conversions = dbService.getConversionHistory({
+    appId,
+    limit
+  });
+  
+  res.json(conversions);
+});
+
+// Obtenir une conversion spécifique par ID
+app.get('/api/conversions/:id', (req, res) => {
+  const conversion = dbService.getConversionById(req.params.id);
+  
+  if (!conversion) {
+    return res.status(404).json({ 
+      error: 'Conversion non trouvée', 
+      message: `Aucune conversion trouvée avec l'ID ${req.params.id}`
+    });
+  }
+  
+  // Vérifier que la conversion appartient à l'application actuelle
+  if (conversion.app_id && conversion.app_id !== req.app.id) {
+    return res.status(403).json({ 
+      error: 'Accès refusé', 
+      message: 'Cette conversion appartient à une autre application'
+    });
+  }
+  
+  // Préparer le résultat
+  let result;
+  
+  try {
+    // Analyser le contenu JSON du résultat s'il existe
+    result = conversion.result_content ? JSON.parse(conversion.result_content) : null;
+  } catch (error) {
+    result = { error: 'Erreur lors du parsing du résultat' };
+  }
+  
+  res.json({
+    id: conversion.conversion_id,
+    sourceContent: conversion.source_content,
+    sourceName: conversion.source_name,
+    status: conversion.status,
+    message: conversion.message,
+    createdAt: conversion.created_at,
+    resourceCount: conversion.resource_count,
+    result
+  });
+});
+
+// Statistiques
+app.get('/api/stats', (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const appId = req.app.id;
+  
+  const stats = dbService.getAppStats(appId, days);
+  const systemInfo = dbService.getSystemInfo();
+  
+  res.json({
+    appStats: stats,
+    systemInfo
+  });
+});
+
+// Méthode principale pour convertir du contenu HL7 en FHIR
+async function convertHL7ToFHIR(hl7Content, options = {}) {
+  try {
+    // Vérifier que le contenu HL7 est valide
+    if (!hl7Content || typeof hl7Content !== 'string' || hl7Content.trim().length < 10) {
+      throw new Error('Contenu HL7 invalide ou trop court');
+    }
+    
+    // Options par défaut
+    const defaultOptions = {
+      cleanResult: true,
+      adaptFrenchTerminologies: true,
+      outputFormat: 'json'
+    };
+    
+    // Fusionner les options
+    const finalOptions = { ...defaultOptions, ...options };
+    
+    // Convertir le message HL7 en FHIR
+    let conversionResult = await converter.convert(hl7Content, finalOptions);
+    
+    // Adapter pour les terminologies françaises si demandé
+    if (finalOptions.adaptFrenchTerminologies) {
+      conversionResult.fhir = frenchTerminologyAdapter.adaptFhirBundle(conversionResult.fhir);
+    }
+    
+    // Nettoyer le résultat si demandé
+    if (finalOptions.cleanResult && conversionResult.fhir) {
+      conversionResult.fhir = fhirCleaner.cleanBundle(conversionResult.fhir);
+    }
+    
+    // Préparer la réponse
+    const result = {
+      status: 'success',
+      message: 'Conversion réussie',
+      fhir: conversionResult.fhir,
+      resourceCount: conversionResult.fhir && conversionResult.fhir.entry ? conversionResult.fhir.entry.length : 0,
+      fhirResources: conversionResult.fhir && conversionResult.fhir.entry ? 
+        conversionResult.fhir.entry.map(e => e.resource) : []
+    };
+    
+    return result;
+  } catch (error) {
+    console.error('[SERVER] Erreur lors de la conversion:', error);
+    
+    // Préparer la réponse d'erreur
+    return {
+      status: 'error',
+      message: `Erreur de conversion: ${error.message}`,
+      error: error.stack
+    };
+  }
+}
+
+// Point d'entrée pour la conversion de contenu HL7
+app.post('/api/convert', async (req, res) => {
+  let hl7Content;
+  let options = {};
+  
+  // Déterminer le type de contenu de la requête
+  if (req.is('application/json')) {
+    if (!req.body) {
+      return res.status(400).json({ 
+        error: 'Corps de requête invalide', 
+        message: 'Le corps de la requête doit être un objet JSON contenant le contenu HL7'
+      });
+    }
+    
+    // Si c'est un JSON, extraire le contenu et les options
+    hl7Content = req.body.content;
+    options = req.body.options || {};
+  } else if (req.is('text/plain')) {
+    // Si c'est du texte brut, utiliser directement comme contenu HL7
+    hl7Content = req.body;
+  } else {
+    return res.status(415).json({ 
+      error: 'Type de contenu non supporté', 
+      message: 'Le type de contenu doit être application/json ou text/plain'
+    });
+  }
+  
+  if (!hl7Content) {
+    return res.status(400).json({ 
+      error: 'Contenu HL7 manquant', 
+      message: 'Veuillez fournir le contenu HL7 à convertir'
+    });
+  }
+  
+  // Convertir le contenu HL7 en FHIR
+  const result = await convertHL7ToFHIR(hl7Content, options);
+  
+  // Enregistrer la conversion dans l'historique
+  const conversionId = dbService.saveConversion({
+    app_id: req.app.id,
+    source_name: 'API Direct',
+    source_content: hl7Content,
+    result_content: JSON.stringify(result),
+    status: result.status,
+    message: result.message,
+    resource_count: result.resourceCount || 0
+  });
+  
+  if (conversionId) {
+    result.id = conversionId;
+  }
+  
+  // Envoyer le résultat
+  res.json(result);
+});
+
+// Point d'entrée pour le téléchargement et la conversion d'un fichier HL7
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  // Vérifier qu'un fichier a été téléchargé
+  if (!req.file) {
+    return res.status(400).json({ 
+      error: 'Fichier manquant', 
+      message: 'Veuillez télécharger un fichier HL7'
+    });
+  }
+  
+  try {
+    // Lire le contenu du fichier
+    const filePath = req.file.path;
+    const hl7Content = fs.readFileSync(filePath, 'utf8');
+    
+    // Extraire les options de la requête
+    const options = req.body.options ? JSON.parse(req.body.options) : {};
+    
+    // Convertir le contenu HL7 en FHIR
+    const result = await convertHL7ToFHIR(hl7Content, options);
+    
+    // Enregistrer la conversion dans l'historique
+    const conversionId = dbService.saveConversion({
+      app_id: req.app.id,
+      source_name: req.file.originalname,
+      source_content: hl7Content,
+      result_content: JSON.stringify(result),
+      status: result.status,
+      message: result.message,
+      resource_count: result.resourceCount || 0
+    });
+    
+    if (conversionId) {
+      result.id = conversionId;
+    }
+    
+    // Nettoyer le fichier temporaire
+    fs.unlink(filePath, (err) => {
+      if (err) console.error('Erreur lors de la suppression du fichier temporaire:', err);
+    });
+    
+    // Envoyer le résultat
+    res.json(result);
+  } catch (error) {
+    console.error('[SERVER] Erreur lors du traitement du fichier:', error);
+    
+    res.status(500).json({ 
+      error: 'Erreur serveur', 
+      message: `Erreur lors du traitement du fichier: ${error.message}`
+    });
+  }
+});
+
+// Récupérer un fichier FHIR généré
+app.get('/api/files/fhir/:filename', (req, res) => {
+  const filename = req.params.filename;
+  
+  // Vérifier que le nom de fichier est valide
+  if (!filename || !filename.match(/^[a-zA-Z0-9_-]+\.json$/)) {
+    return res.status(400).json({ 
+      error: 'Nom de fichier invalide', 
+      message: 'Le nom de fichier doit contenir uniquement des lettres, chiffres, tirets et underscores, et se terminer par .json'
+    });
+  }
+  
+  const filePath = path.join(__dirname, 'data/conversions', filename);
+  
+  // Vérifier que le fichier existe
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ 
+      error: 'Fichier non trouvé', 
+      message: `Le fichier ${filename} n'existe pas`
+    });
+  }
+  
+  // Envoyer le fichier
+  res.sendFile(filePath);
+});
+
+// Routes pour les terminologies
+app.get('/api/terminology/systems', (req, res) => {
+  const systems = frenchTerminologyAdapter.getAllTerminologySystems();
+  
+  if (!systems) {
+    return res.status(500).json({ 
+      error: 'Erreur serveur', 
+      message: 'Impossible de charger les systèmes de terminologie'
+    });
+  }
+  
+  res.json(systems);
+});
+
+app.get('/api/terminology/oid/:oid', (req, res) => {
+  const oid = req.params.oid;
+  
+  // Vérifier que l'OID est valide
+  if (!oid || !oid.match(/^[0-9.]+$/)) {
+    return res.status(400).json({ 
+      error: 'OID invalide', 
+      message: 'L\'OID doit contenir uniquement des chiffres et des points'
+    });
+  }
+  
+  const system = frenchTerminologyAdapter.getCodeSystemByOid(oid);
+  
+  if (!system) {
+    return res.status(404).json({ 
+      error: 'Système non trouvé', 
+      message: `Aucun système trouvé avec l'OID ${oid}`
+    });
+  }
+  
+  res.json(system);
+});
+
+app.get('/api/terminology/search', (req, res) => {
+  const query = req.query.q;
+  
+  if (!query || query.length < 2) {
+    return res.status(400).json({ 
+      error: 'Requête invalide', 
+      message: 'La requête de recherche doit contenir au moins 2 caractères'
+    });
+  }
+  
+  const systems = frenchTerminologyAdapter.getAllTerminologySystems();
+  
+  if (!systems) {
+    return res.status(500).json({ 
+      error: 'Erreur serveur', 
+      message: 'Impossible de charger les systèmes de terminologie'
+    });
+  }
+  
+  // Rechercher dans tous les systèmes
+  const results = [];
+  const queryLower = query.toLowerCase();
+  
+  Object.values(systems).forEach(system => {
+    // Vérifier si le nom, la description ou l'OID correspondent à la requête
+    if (system.name && system.name.toLowerCase().includes(queryLower) ||
+        system.oid && system.oid.includes(queryLower) ||
+        system.title && system.title.toLowerCase().includes(queryLower) ||
+        system.description && system.description.toLowerCase().includes(queryLower)) {
+      results.push(system);
+    }
+  });
+  
+  res.json(results);
+});
+
+// Servir les fichiers statiques du frontend
+app.use(express.static(path.join(__dirname, 'frontend', 'public')));
+
+// Pour toutes les autres routes non-API, servir la page d'index
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'public', 'index.html'));
+});
+
+// Route de fallback générique
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'frontend', 'public', 'index.html'));
+});
+
+// Démarrer le serveur
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Serveur FHIRHub démarré sur le port ${PORT}`);
+  console.log(`API accessible à l'adresse http://localhost:${PORT}/api`);
+  console.log(`Interface web accessible à l'adresse http://localhost:${PORT}`);
+});
+
+module.exports = app;

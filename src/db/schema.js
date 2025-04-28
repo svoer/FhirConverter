@@ -1,186 +1,140 @@
 /**
- * Schéma de base de données SQLite pour FHIRHub
- * Gère les applications, paramètres et clés API de manière portable
+ * Module définissant le schéma de la base de données SQLite pour FHIRHub
+ * Ce module initialise la connexion à la base de données et définit les tables
  */
 
-const sqlite3 = require('better-sqlite3');
-const path = require('path');
+const Database = require('better-sqlite3');
 const fs = require('fs');
+const path = require('path');
 
-// Assurer que le répertoire data existe
+// Créer le répertoire data s'il n'existe pas
 const dataDir = path.join(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Initialiser la base de données
+// Chemin vers la base de données SQLite
 const dbPath = path.join(dataDir, 'fhirhub.db');
-const db = sqlite3(dbPath);
+const db = new Database(dbPath);
 
-// Activer les clés étrangères
-db.pragma('foreign_keys = ON');
-
-// Créer les tables si elles n'existent pas
+// Initialisation des tables
 function initializeDatabase() {
-  // Table des utilisateurs
-  db.exec(`
+  // Création de la table des utilisateurs
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      fullname TEXT,
-      email TEXT,
       role TEXT NOT NULL DEFAULT 'user',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_login TIMESTAMP
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      last_login TEXT DEFAULT NULL
     )
-  `);
+  `).run();
 
-  // Table des applications
-  db.exec(`
+  // Création de la table des applications
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS applications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
       description TEXT,
-      active BOOLEAN DEFAULT 1,
-      retention_days INTEGER DEFAULT 30,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      created_by INTEGER,
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      settings TEXT DEFAULT '{}'
     )
-  `);
+  `).run();
 
-  // Table des paramètres d'applications (extensible dynamiquement)
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS app_params (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      param_key TEXT NOT NULL,
-      param_value TEXT,
-      param_type TEXT DEFAULT 'string',
-      description TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
-      UNIQUE(app_id, param_key)
-    )
-  `);
-
-  // Table des clés API
-  db.exec(`
+  // Création de la table des clés API
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS api_keys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       app_id INTEGER NOT NULL,
-      api_key TEXT UNIQUE NOT NULL,
+      key TEXT UNIQUE NOT NULL,
       description TEXT,
-      environment TEXT DEFAULT 'development',
-      revoked BOOLEAN DEFAULT 0,
-      expires_at TIMESTAMP,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      last_used TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      last_used TEXT DEFAULT NULL,
+      is_active INTEGER DEFAULT 1,
+      FOREIGN KEY (app_id) REFERENCES applications(id)
     )
-  `);
+  `).run();
 
-  // Table supprimée : app_folders (monitoring)
-
-  // Table des conversions HL7->FHIR
-  db.exec(`
+  // Création de la table des conversions
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS conversions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       conversion_id TEXT UNIQUE NOT NULL,
       app_id INTEGER,
-      api_key_id INTEGER,
-      source_type TEXT,
       source_name TEXT,
-      source_size INTEGER,
-      resource_count INTEGER,
+      source_content TEXT,
+      result_content TEXT,
       status TEXT,
-      error_message TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      completed_at TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE SET NULL,
-      FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE SET NULL
+      message TEXT,
+      resource_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (app_id) REFERENCES applications(id)
     )
-  `);
+  `).run();
 
-  // Table des statistiques par application
-  db.exec(`
+  // Création de la table des statistiques
+  db.prepare(`
     CREATE TABLE IF NOT EXISTS app_stats (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       app_id INTEGER NOT NULL,
-      date DATE NOT NULL,
+      date TEXT NOT NULL,
       conversion_count INTEGER DEFAULT 0,
       success_count INTEGER DEFAULT 0,
       error_count INTEGER DEFAULT 0,
       resource_count INTEGER DEFAULT 0,
-      FOREIGN KEY (app_id) REFERENCES applications(id) ON DELETE CASCADE,
+      FOREIGN KEY (app_id) REFERENCES applications(id),
       UNIQUE(app_id, date)
     )
-  `);
+  `).run();
 
-  console.log('Base de données initialisée avec succès');
+  // Création d'un index pour accélérer les requêtes sur les conversions par app_id
+  db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_conversions_app_id
+    ON conversions (app_id)
+  `).run();
+
+  // Vérification de l'existence d'un utilisateur admin
+  const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get('admin');
   
-  // Vérifier si l'utilisateur admin existe déjà
-  const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-  
-  // Si l'admin n'existe pas, l'ajouter
-  if (!adminExists) {
-    // Mot de passe: adminfhirhub
-    const adminPassword = '$2b$10$QJFFLbLCEMXdPC8dBHxgVOHCG7PiLBf4B5BWJ8WgnrDBVn3sQZr3m';
-    
+  // Si aucun utilisateur admin n'existe, en créer un
+  if (adminExists.count === 0) {
     db.prepare(`
-      INSERT INTO users (username, password, fullname, email, role)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('admin', adminPassword, 'Administrateur', 'admin@fhirhub.local', 'admin');
+      INSERT INTO users (username, password, role)
+      VALUES (?, ?, ?)
+    `).run('admin', 'adminfhirhub', 'admin');
     
-    console.log('Utilisateur admin créé avec succès');
+    console.log('Utilisateur admin créé avec mot de passe par défaut');
   }
+
+  // Vérification de l'existence d'une application par défaut
+  const defaultAppExists = db.prepare('SELECT COUNT(*) as count FROM applications WHERE name = ?').get('Application par défaut');
   
-  // Vérifier si l'utilisateur standard existe déjà
-  const userExists = db.prepare('SELECT id FROM users WHERE username = ?').get('user');
-  
-  // Si l'utilisateur standard n'existe pas, l'ajouter
-  if (!userExists) {
-    // Mot de passe: userfhirhub
-    const userPassword = '$2b$10$0Z4Evm3HBJ0.HYZY6Gy7oekZpEFzQlQmEJzikVJFkwYpY3jLK8QZC';
+  // Si aucune application par défaut n'existe, en créer une
+  if (defaultAppExists.count === 0) {
+    const result = db.prepare(`
+      INSERT INTO applications (name, description, settings)
+      VALUES (?, ?, ?)
+    `).run('Application par défaut', 'Application créée automatiquement', JSON.stringify({
+      maxHistoryDays: 30,
+      enableLogging: true
+    }));
     
+    // Création d'une clé API pour cette application
+    const apiKey = 'dev-key-' + Math.random().toString(36).substring(2, 10);
     db.prepare(`
-      INSERT INTO users (username, password, fullname, email, role)
-      VALUES (?, ?, ?, ?, ?)
-    `).run('user', userPassword, 'Utilisateur', 'user@fhirhub.local', 'user');
+      INSERT INTO api_keys (app_id, key, description)
+      VALUES (?, ?, ?)
+    `).run(result.lastInsertRowid, apiKey, 'Clé API par défaut');
     
-    console.log('Utilisateur standard créé avec succès');
-  }
-  
-  // Vérifier si une clé API par défaut existe
-  const apiKeyExists = db.prepare('SELECT id FROM api_keys WHERE api_key = ?').get('dev-key');
-  
-  // Si aucune clé API n'existe, créer l'application par défaut et sa clé
-  if (!apiKeyExists) {
-    // Créer une application par défaut
-    const appResult = db.prepare(`
-      INSERT INTO applications (name, description, retention_days, created_by)
-      VALUES (?, ?, ?, ?)
-    `).run('Application par défaut', 'Application créée automatiquement', 30, 1);
-    
-    const appId = appResult.lastInsertRowid;
-    
-    // Ajouter la clé API de développement
-    db.prepare(`
-      INSERT INTO api_keys (app_id, api_key, description, environment)
-      VALUES (?, ?, ?, ?)
-    `).run(appId, 'dev-key', 'Clé de développement par défaut', 'development');
-    
-    console.log('Application par défaut et clé API créées avec succès');
+    console.log('Application par défaut créée avec une clé API');
   }
 }
 
-// Exporter la connexion à la base de données et les fonctions
+// Initialiser la base de données
+initializeDatabase();
+
 module.exports = {
-  db,
-  initializeDatabase
+  db
 };

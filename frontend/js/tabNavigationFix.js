@@ -12,18 +12,26 @@
  * @param {string} activeTabId - ID de l'onglet actif
  */
 function cleanupInactiveTabs(activeTabId) {
-  // Liste des conteneurs de contenu à nettoyer lorsqu'ils sont inactifs
-  const cleanableContainers = [
-    'history-content',
-    'conversion-result-container',
-    'error-container'
-  ];
+  // Liste des onglets qui doivent être nettoyés lors de la désactivation
+  const tabsToCleanup = {
+    'history-tab-content': function() {
+      // Vider le conteneur des résultats d'historique
+      document.getElementById('history-results-container').innerHTML = '';
+    },
+    'conversion-tab-content': function() {
+      // Réinitialiser les résultats de conversion
+      const resultContainer = document.getElementById('fhir-result-container');
+      if (resultContainer) {
+        resultContainer.innerHTML = '<div class="placeholder-message">Le résultat de la conversion s\'affichera ici</div>';
+      }
+    }
+  };
   
-  cleanableContainers.forEach(containerId => {
-    const container = document.getElementById(containerId);
-    if (container && !container.closest(`#${activeTabId}`)) {
-      // Si le conteneur n'est pas dans l'onglet actif, le vider
-      container.innerHTML = '';
+  // Parcourir tous les onglets à nettoyer
+  Object.keys(tabsToCleanup).forEach(tabId => {
+    // Ne pas nettoyer l'onglet actif
+    if (tabId !== activeTabId && document.getElementById(tabId)) {
+      tabsToCleanup[tabId]();
     }
   });
 }
@@ -32,87 +40,85 @@ function cleanupInactiveTabs(activeTabId) {
  * Appliquer le correctif de navigation des onglets
  */
 function applyTabNavigationFix() {
-  console.log("Application du correctif de navigation des onglets");
+  // Récupérer tous les liens d'onglets
+  const tabLinks = document.querySelectorAll('.nav-tabs .nav-link');
   
-  // Récupérer tous les onglets
-  const tabs = document.querySelectorAll('[role="tab"]');
-  
-  // Appliquer le correctif à chaque onglet
-  tabs.forEach(tab => {
-    if (!tab.dataset.navFixed) {
-      tab.dataset.navFixed = 'true';
+  // Ajouter des écouteurs d'événements à chaque lien d'onglet
+  tabLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
       
-      // Intercepter le clic sur l'onglet
-      tab.addEventListener('click', function(e) {
-        const targetId = this.getAttribute('aria-controls');
+      // Récupérer l'ID de l'onglet cible
+      const tabId = this.getAttribute('href').substring(1);
+      const tabContentId = tabId + '-content';
+      
+      // Désactiver tous les onglets
+      tabLinks.forEach(l => {
+        l.classList.remove('active');
+        
+        // Désactiver le contenu correspondant
+        const contentId = l.getAttribute('href').substring(1) + '-content';
+        const content = document.getElementById(contentId);
+        if (content) {
+          content.classList.remove('active');
+          content.classList.remove('show');
+        }
+      });
+      
+      // Activer l'onglet cliqué
+      this.classList.add('active');
+      
+      // Activer le contenu correspondant
+      const tabContent = document.getElementById(tabContentId);
+      if (tabContent) {
+        tabContent.classList.add('active');
+        tabContent.classList.add('show');
         
         // Nettoyer les onglets inactifs
-        cleanupInactiveTabs(targetId);
+        cleanupInactiveTabs(tabContentId);
         
-        // Si c'est l'onglet historique, recharger l'historique
-        if (targetId === 'history-tab') {
-          // Vider d'abord le conteneur d'historique
-          const historyContent = document.getElementById('history-content');
-          if (historyContent) {
-            historyContent.innerHTML = '';
-          }
-          
-          // Déclencher la fonction de chargement d'historique si elle existe
+        // Actions spécifiques à certains onglets
+        if (tabId === 'history-tab') {
+          // Recharger l'historique lorsqu'on active cet onglet
           if (window.loadConversionHistory) {
             window.loadConversionHistory();
           }
+        } else if (tabId === 'dashboard-tab') {
+          // Recharger les statistiques lorsqu'on active cet onglet
+          if (window.loadDashboardStats) {
+            window.loadDashboardStats();
+          }
         }
-      });
-    }
+      }
+      
+      // Stocker l'onglet actif dans le stockage local
+      localStorage.setItem('activeTab', tabId);
+    });
   });
+  
+  console.log("Application du correctif de navigation des onglets");
 }
 
 /**
  * Initialiser le correctif de navigation
  */
 function initTabNavigationFix() {
-  // Appliquer le correctif immédiatement
-  applyTabNavigationFix();
-  
-  // Observer les mutations du DOM pour les nouveaux onglets
-  if (window.MutationObserver) {
-    const observer = new MutationObserver(mutations => {
-      let shouldApplyFix = false;
-      
-      mutations.forEach(mutation => {
-        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-          for (let i = 0; i < mutation.addedNodes.length; i++) {
-            const node = mutation.addedNodes[i];
-            if (node.nodeType === 1 && (node.getAttribute('role') === 'tab' || 
-                node.querySelector('[role="tab"]'))) {
-              shouldApplyFix = true;
-              break;
-            }
-          }
-        }
-      });
-      
-      if (shouldApplyFix) {
-        applyTabNavigationFix();
-      }
-    });
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTabNavigationFix();
     
-    // Observer tout le document pour les nouveaux onglets
-    observer.observe(document.body, { 
-      childList: true, 
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['role', 'aria-controls']
-    });
-  }
+    // Restaurer l'onglet actif s'il est stocké
+    const activeTab = localStorage.getItem('activeTab');
+    if (activeTab) {
+      const tabLink = document.querySelector(`.nav-tabs .nav-link[href="#${activeTab}"]`);
+      if (tabLink) {
+        tabLink.click();
+      }
+    }
+  });
 }
 
-// Exportation des fonctions du module
-window.tabNavigationFix = {
-  init: initTabNavigationFix,
-  apply: applyTabNavigationFix,
-  cleanupInactiveTabs: cleanupInactiveTabs
-};
+// Initialiser le correctif
+initTabNavigationFix();
 
-// Appliquer le correctif au chargement de la page
-document.addEventListener('DOMContentLoaded', initTabNavigationFix);
+// Exposer la fonction pour permettre son utilisation directe
+window.applyTabNavigationFix = applyTabNavigationFix;

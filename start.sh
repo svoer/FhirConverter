@@ -6,9 +6,15 @@
 
 echo "Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
 
+# Création des répertoires nécessaires
+mkdir -p data/uploads data/conversions data/history test_data/hl7_samples test_data/fhir_results
+
+# Déplacer les fichiers de test dans les bons répertoires
+find . -name "test_*.hl7" -not -path "./test_data/*" -exec mv {} test_data/hl7_samples/ \; 2>/dev/null
+find . -name "test_*.json" -not -path "./test_data/*" -exec mv {} test_data/fhir_results/ \; 2>/dev/null
+
 # Initialisation du nouveau système de conversion
 echo "Initialisation du nouveau système de conversion HL7 vers FHIR..."
-
 
 # Appliquer les correctifs nécessaires
 if [ -f fix_converter.patch.js ]; then
@@ -79,51 +85,29 @@ if [ ! -f french_terminology/config.json ]; then
 EOL
 fi
 
-# Ajouter les systèmes de terminologie français importants au fichier local si nécessaire
-if [ -f french_terminology/fhir_r4_french_systems.json ]; then
-  # Vérifier si les URLs ANS sont déjà présentes
-  if ! grep -q "mos.esante.gouv.fr" french_terminology/fhir_r4_french_systems.json; then
-    echo "Mise à jour des URLs des terminologies françaises..."
-    # Cela serait normalement fait par le script Python extract_french_systems.py
-    # mais nous ajoutons cette vérification pour nous assurer que les URLs sont présentes
-    echo "Note: Les URLs ANS sont manquantes. Veuillez exécuter à nouveau extract_french_systems.py"
-  fi
-fi
-
 echo "----------------------------------------------------"
 echo "Préparation du Serveur Multi-Terminologies français terminée"
 echo "Systèmes terminologiques ANS intégrés (TRE-R316, TRE-R51, etc.)"
 echo "----------------------------------------------------"
 
-# Vérifier les fichiers statiques du frontend
+# Vérifier les fichiers du frontend
 echo "Vérification des fichiers du frontend..."
-if [ ! -d "frontend/public" ]; then
-  echo "ERREUR: Le répertoire frontend/public est manquant!"
-  exit 1
-fi
 
-if [ ! -f "frontend/public/conversions.html" ]; then
-  echo "ERREUR: La page de conversion est manquante!"
-  exit 1
-fi
-
-if [ ! -f "frontend/public/index.html" ]; then
-  echo "ERREUR: La page d'accueil est manquante!"
-  exit 1
-fi
-
-if [ ! -d "frontend/public/css" ]; then
-  echo "ERREUR: Le répertoire CSS est manquant!"
-  exit 1
-fi
+# Nettoyer l'historique pour éviter les rémanences
+echo "Nettoyage de l'historique des conversions..."
+node -e "try { require('./src/utils/historyFix').applyHistoryFixes(); } catch(e) { console.error('Erreur:', e.message); }"
 
 # Exécuter le script de test pour le nom français
 echo "Test du correctif d'extraction des noms français..."
-node test_french_name_extractor.js
+node test_french_names.js
+
+# Supprimer tous les fichiers temporaires
+echo "Nettoyage des fichiers temporaires..."
+find . -maxdepth 1 -type f -name "*.bak" -delete
+find . -maxdepth 1 -type f -name "*.new" -delete
+find . -maxdepth 1 -type f -name "*.tmp" -delete
+find . -maxdepth 1 -type f -name "*.temp" -delete
 
 # Démarrer l'application principale
 echo "Démarrage du serveur FHIRHub..."
-# Tuer toute instance précédente qui pourrait bloquer le port
-pkill -f "node app.js" || true
-sleep 1
-node app.js
+node server.js
