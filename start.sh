@@ -6,6 +6,10 @@
 
 echo "Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
 
+# Initialisation du nouveau système de conversion
+echo "Initialisation du nouveau système de conversion HL7 vers FHIR..."
+
+
 # Appliquer les correctifs nécessaires
 if [ -f fix_converter.patch.js ]; then
   echo "Application du correctif pour l'extraction des noms français..."
