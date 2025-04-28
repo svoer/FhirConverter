@@ -234,8 +234,8 @@ router.post('/convert', express.json({ limit: '10mb' }), async (req, res) => {
     const filename = req.query.filename || 'saisie_directe.hl7';
     let result = converter.convertHl7Content(hl7Content, filename, options);
     
-    // Appliquer le correctif pour les noms français composés
-    result = applyFrenchNamesFix(result, hl7Content);
+    // Traiter les noms français composés avec notre service structuré
+    result = processFhirNames(result, hl7Content);
     
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {
@@ -295,8 +295,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // Convertir le contenu
     let result = converter.convertHl7Content(hl7Content, req.file.originalname);
     
-    // Appliquer le correctif pour les noms français composés
-    result = applyFrenchNamesFix(result, hl7Content);
+    // Traiter les noms français composés avec notre service structuré
+    result = processFhirNames(result, hl7Content);
     
     // Enregistrer la conversion dans la base de données
     if (req.apiKeyInfo) {

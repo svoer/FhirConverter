@@ -49,13 +49,42 @@ function extractFrenchNames(hl7Message) {
     console.log(`[FRENCH_NAME_EXTRACTOR] ${nameValues.length} valeurs de nom trouvées`);
     
     // RECHERCHE SPÉCIFIQUE DU NOM AVEC TYPE "L" (légal) QUI CONTIENT LES PRÉNOMS COMPOSÉS
-    // Correction: vérifier toutes les valeurs pour trouver celle qui se termine par "L"
-    // Pour gérer les cas comme "SECLET^^^^MME^^D~SECLET^MARYSE^MARYSE BERTHE ALICE^^^^L"
-    const legalNameValue = nameValues.find(val => {
+    // Correction pour le cas spécifique des formats comme:
+    // "SECLET^^^^MME^^D~SECLET^MARYSE^MARYSE BERTHE ALICE^^^^L"
+    let legalNameValue = null;
+    
+    // Parcourir toutes les valeurs pour trouver celle qui contient "L" à la fin
+    for (const val of nameValues) {
       const parts = val.split('^');
-      // Nous cherchons le 8e champ (index 7) qui devrait contenir "L" pour un nom légal
-      return parts.length >= 8 && parts[7] === 'L';
-    });
+      
+      // Rechercher si 'L' est présent quelque part vers la fin des segments
+      if (parts.length >= 8 && parts[7] === 'L') {
+        legalNameValue = val;
+        break;
+      }
+      
+      // Cas alternatif où L est à une autre position
+      if (val.endsWith('L')) {
+        legalNameValue = val;
+        break;
+      }
+    }
+    
+    // Si pas trouvé avec L, prendre la valeur qui contient le plus d'informations
+    if (!legalNameValue) {
+      // Trier les valeurs par nombre de champs non vides pour prendre la plus complète
+      nameValues.sort((a, b) => {
+        const partsA = a.split('^').filter(p => p.trim().length > 0);
+        const partsB = b.split('^').filter(p => p.trim().length > 0);
+        return partsB.length - partsA.length;
+      });
+      
+      // Prendre la première valeur (la plus complète)
+      if (nameValues.length > 0) {
+        legalNameValue = nameValues[0];
+        console.log(`[FRENCH_NAME_EXTRACTOR] Pas de nom avec type L, utilisation de la valeur la plus complète`);
+      }
+    }
     
     if (!legalNameValue) {
       console.log("[FRENCH_NAME_EXTRACTOR] Nom légal avec type L non trouvé");
