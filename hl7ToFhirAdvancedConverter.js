@@ -468,11 +468,63 @@ function createPatientResource(pidSegmentFields, pd1SegmentFields) {
     patientId = `patient-${patientIdentifiers[0].value}`;
   }
   
+  // Optimiser la gestion des identifiants selon les spécifications ANS
+  // Nous voulons un seul identifiant PI pour l'IPP, et un identifiant NI pour l'INS-C avec l'OID spécifique
+  
+  // Classification des identifiants par type
+  let ippIdentifier = null;
+  let insIdentifier = null;
+  let otherIdentifiers = [];
+  
+  // D'abord, parcourir tous les identifiants et les trier par catégorie
+  patientIdentifiers.forEach(id => {
+    const idType = id.type?.coding?.[0]?.code || 'PI';
+    
+    // Identifiant INS/INS-C - priorité nationale
+    if (idType === 'NI' && (id.system === 'urn:oid:1.2.250.1.213.1.4.8' || id.system === 'urn:oid:1.2.250.1.213.1.4.2')) {
+      // Si nous n'avons pas encore d'INS OU si nous avons déjà un INS-C mais que celui-ci est un INS (priorité à l'INS)
+      if (!insIdentifier || (insIdentifier.system === 'urn:oid:1.2.250.1.213.1.4.2' && id.system === 'urn:oid:1.2.250.1.213.1.4.8')) {
+        insIdentifier = id;
+      }
+    }
+    // Identifiant Patient Interne (IPP) - établissement
+    else if (idType === 'PI') {
+      // Si nous n'avons pas encore d'IPP OU si l'IPP a un system plus spécifique (pas "unknown")
+      if (!ippIdentifier || (ippIdentifier.system === 'urn:system:unknown' && id.system !== 'urn:system:unknown')) {
+        ippIdentifier = id;
+      }
+    }
+    // Tous les autres identifiants
+    else {
+      otherIdentifiers.push(id);
+    }
+  });
+  
+  // Construire la liste finale selon les priorités ANS
+  const optimizedIdentifiers = [];
+  
+  // 1. D'abord l'IPP - obligatoire
+  if (ippIdentifier) {
+    // Si l'IPP n'a pas de système spécifique, utiliser le format ANS
+    if (ippIdentifier.system === 'urn:system:unknown') {
+      ippIdentifier.system = 'urn:oid:1.2.250.1.71.4.2.7'; // OID standard pour les IPP en France
+    }
+    optimizedIdentifiers.push(ippIdentifier);
+  }
+  
+  // 2. Ensuite l'INS/INS-C - prioritaire pour l'identification nationale
+  if (insIdentifier) {
+    optimizedIdentifiers.push(insIdentifier);
+  }
+  
+  // 3. Tous les autres identifiants (limités à 1-2 maximum)
+  optimizedIdentifiers.push(...otherIdentifiers.slice(0, 2));
+  
   // Créer la ressource Patient
   const patientResource = {
     resourceType: 'Patient',
     id: patientId,
-    identifier: patientIdentifiers,
+    identifier: optimizedIdentifiers,  // Utilisation des identifiants optimisés
     name: extractNames(pidSegmentFields[5]),
     gender: determineGender(pidSegmentFields[8]),
     birthDate: formatBirthDate(pidSegmentFields[7]),
@@ -1640,6 +1692,40 @@ function createPractitionerResource(rolSegment) {
   if (oid === '2.16.840.1.113883.3.31.2.2' || oid === '1.2.250.1.213.1.1.2') {
     // ADELI ou RPPS
     addFrenchPractitionerExtensions(practitionerResource, rolSegment);
+  }
+  
+  // Optimisation des identifiants pour conformité ANS
+  if (practitionerResource.identifier && practitionerResource.identifier.length > 0) {
+    // Déterminer si nous avons un identifiant RPPS ou ADELI
+    let hasRppsOrAdeli = false;
+    
+    practitionerResource.identifier.forEach(id => {
+      if (id.system && id.system.includes('1.2.250.1.71.4.2.1')) {
+        // Identifier le type selon le système ou la valeur
+        if (id.value) {
+          // Ajouter le type d'identifiant explicite selon les spécifications ANS
+          id.type = {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: id.value.length === 11 ? 'RPPS' : 'ADELI',
+              display: id.value.length === 11 ? 'Numéro RPPS' : 'Numéro ADELI'
+            }]
+          };
+          hasRppsOrAdeli = true;
+        }
+      }
+    });
+    
+    // Si pas d'identifiant RPPS ou ADELI, marquer l'identifiant comme PI
+    if (!hasRppsOrAdeli && practitionerResource.identifier.length > 0) {
+      practitionerResource.identifier[0].type = {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: 'PI',
+          display: 'Identifiant interne'
+        }]
+      };
+    }
   }
   
   return {
