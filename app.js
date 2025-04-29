@@ -2,7 +2,7 @@
  * Application FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
  * Compatible avec les terminologies françaises
  * @author Équipe FHIRHub
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 const express = require('express');
@@ -205,7 +205,8 @@ app.get('/', (req, res) => {
 });
 
 // Importation du convertisseur HL7 vers FHIR avancé avec prise en charge ANS
-const advancedConverter = require('./hl7ToFhirAdvancedConverter');
+const fhirHub = require('./src/index');
+const { convertHL7ToFHIR } = fhirHub;
 
 /**
  * @swagger
