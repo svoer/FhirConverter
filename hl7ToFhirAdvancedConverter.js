@@ -463,6 +463,29 @@ function convertHL7ToFHIR(hl7Message) {
       bundle.entry = bundle.entry.concat(bundleEntries);
     }
     
+    // Ajouter le support pour l'hospitalisation (propriété hospitalization) si date de sortie prévue
+    if (bundle.entry.length > 0) {
+      const encounterEntry = bundle.entry.find(entry => 
+        entry.resource && entry.resource.resourceType === 'Encounter'
+      );
+      
+      if (encounterEntry) {
+        const encounterResource = encounterEntry.resource;
+        
+        // Vérifier s'il y a une extension pour la date de sortie prévue
+        const expectedExitDateExt = encounterResource.extension?.find(ext => 
+          ext.url === "http://hl7.org/fhir/StructureDefinition/encounter-expectedExitDate"
+        );
+        
+        if (expectedExitDateExt && expectedExitDateExt.valueDateTime) {
+          // Ajouter ou mettre à jour la propriété hospitalization avec la date de sortie prévue
+          encounterResource.hospitalization = encounterResource.hospitalization || {};
+          encounterResource.hospitalization.expectedDischargeDate = expectedExitDateExt.valueDateTime;
+          console.log('[CONVERTER] Date de sortie prévue ajoutée à hospitalization:', expectedExitDateExt.valueDateTime);
+        }
+      }
+    }
+    
     console.log(`[CONVERTER] Conversion terminée avec ${bundle.entry.length} ressources FHIR générées`);
     return bundle;
   } catch (error) {
@@ -2509,9 +2532,135 @@ function addFrenchExtensions(patientResource, pd1Segment) {
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object} Entrée de bundle pour un Encounter
  */
+/**
+ * Crée une ressource Location à partir des données d'un établissement de soins
+ * @param {string|Array} locationData - Données de localisation (nom et identifiant)
+ * @returns {Object} Entrée de bundle pour la ressource Location
+ */
+function createLocationResource(locationData) {
+  if (!locationData) {
+    return null;
+  }
+  
+  let name = '';
+  let identifier = '';
+  
+  // Extraire les informations selon le format (chaîne ou tableau)
+  if (typeof locationData === 'string') {
+    // Format simple "NOM DE L'ÉTABLISSEMENT"
+    name = locationData;
+  } else if (Array.isArray(locationData)) {
+    // Format complexe ["NOM DE L'ÉTABLISSEMENT", "IDENTIFIANT", "TYPE"]
+    name = locationData[0] || '';
+    identifier = locationData[1] || '';
+  } else if (locationData && typeof locationData === 'object') {
+    // Format avec attributs nommés 
+    name = locationData.name || '';
+    identifier = locationData.id || '';
+  }
+  
+  // Si aucun nom n'est trouvé, ne pas créer la ressource
+  if (!name) {
+    return null;
+  }
+  
+  // Générer un identifiant unique pour cette ressource Location
+  const locationId = `location-${uuid.v4().substring(0, 8)}`;
+  
+  const locationResource = {
+    resourceType: 'Location',
+    id: locationId,
+    status: 'active',
+    name: name
+  };
+  
+  // Ajouter l'identifiant si disponible
+  if (identifier) {
+    locationResource.identifier = [{
+      system: 'urn:oid:1.2.250.1.71.4.2.2',
+      value: identifier
+    }];
+  }
+  
+  return {
+    fullUrl: `urn:uuid:${locationId}`,
+    resource: locationResource,
+    request: {
+      method: 'POST',
+      url: 'Location'
+    }
+  };
+}
+
 function createEncounterResource(pv1Segment, patientReference, pv2Segment = null) {
   if (!pv1Segment) {
     return null;
+  }
+  
+  // Vérifier s'il y a des informations de localisation (PV1-3) pour créer une ressource Location
+  let locationReference = null;
+  let locationResource = null;
+  
+  if (pv1Segment.length > 3 && pv1Segment[3]) {
+    const locationData = pv1Segment[3];
+    console.log('[CONVERTER] Donnée de localisation détectée dans PV1-3:', JSON.stringify(locationData));
+    
+    // Format attendu pour le lieu d'hospitalisation (spécifique français)
+    if (typeof locationData === 'string' && locationData.includes('^')) {
+      // Format: "^^^CLINIQUE VICTOR PAUCHET&800009920&M"
+      const parts = locationData.split('^');
+      if (parts.length >= 4 && parts[3]) {
+        const facilityName = parts[3].split('&')[0]; // Enlever les identifiants après &
+        const facilityId = parts[3].split('&')[1] || ''; // Récupérer l'identifiant s'il existe
+        console.log('[CONVERTER] Établissement de soins détecté:', facilityName, facilityId);
+        
+        // Créer une ressource Location
+        locationResource = createLocationResource({name: facilityName, id: facilityId});
+      }
+    } else if (Array.isArray(locationData)) {
+      // Format tableau: [unit, room, bed, facility, location_status, person_loc_type, building, floor, ...]
+      let facilityName = '';
+      let facilityId = '';
+      
+      // Position 3 contient généralement le nom de l'établissement
+      if (locationData.length > 3 && locationData[3]) {
+        if (typeof locationData[3] === 'string') {
+          facilityName = locationData[3].split('&')[0]; // Enlever les identifiants après &
+          facilityId = locationData[3].split('&')[1] || ''; // Récupérer l'identifiant s'il existe
+        } else if (Array.isArray(locationData[3])) {
+          facilityName = locationData[3][0] || '';
+          facilityId = locationData[3][1] || '';
+        }
+        
+        if (facilityName) {
+          console.log('[CONVERTER] Établissement de soins détecté (format tableau):', facilityName, facilityId);
+          locationResource = createLocationResource({name: facilityName, id: facilityId});
+        }
+      }
+    }
+    
+    // Si aucune ressource Location n'a été créée mais que nous avons un nom d'établissement
+    // dans le format ^^^CLINIQUE (spécifique aux systèmes français)
+    if (!locationResource && typeof locationData === 'string') {
+      // Tenter une extraction directe en cherchant la première chaîne significative après les ^
+      const allParts = locationData.split('^');
+      let facilityName = '';
+      
+      // Parcourir toutes les parties à la recherche d'une chaîne non vide
+      for (let i = 0; i < allParts.length; i++) {
+        const part = allParts[i].trim();
+        if (part && part.length > 3) {  // Au moins 4 caractères pour éviter les codes courts
+          // Extraire le nom sans les éventuels identifiants après &
+          facilityName = part.split('&')[0].trim();
+          break;
+        }
+      }
+      
+      if (facilityName) {
+        console.log('[CONVERTER] Établissement de soins extrait via méthode alternative:', facilityName);
+        locationResource = createLocationResource({name: facilityName, id: ''});
+      }
+    }
   }
   
   // Utiliser un UUID v4 conforme aux recommandations de l'ANS
@@ -2673,6 +2822,21 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
   // Si pas d'extensions ajoutées, supprimer le tableau vide
   if (encounterResource.extension && encounterResource.extension.length === 0) {
     delete encounterResource.extension;
+  }
+  
+  // Ajouter la référence à la location si elle existe
+  if (locationResource) {
+    // Ajouter la location.reference à l'encounter
+    encounterResource.location = [{
+      location: {
+        reference: locationResource.fullUrl,
+        display: locationResource.resource.name || "Lieu d'hospitalisation"
+      }
+    }];
+    
+    // Ajouter la location au bundleEntries pour qu'elle soit incluse dans le bundle
+    bundleEntries.push(locationResource);
+    console.log('[CONVERTER] Ressource Location ajoutée pour l\'établissement:', locationResource.resource.name);
   }
   
   return {
