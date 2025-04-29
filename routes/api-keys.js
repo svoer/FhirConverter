@@ -3,8 +3,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const apiKeyAuth = require('../middleware/apiKeyAuth');
-const jwtAuth = require('../middleware/jwtAuth');
+const authCombined = require('../middleware/authCombined');
 
 /**
  * @swagger
@@ -30,7 +29,7 @@ const jwtAuth = require('../middleware/jwtAuth');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.get('/', authCombined(), (req, res) => {
   try {
     const db = req.app.locals.db;
     
@@ -80,7 +79,7 @@ router.get('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })],
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.get('/:id', authCombined(), (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -151,7 +150,7 @@ router.get('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false }
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.post('/', authCombined(), (req, res) => {
   try {
     const { application_id, description, expires_at, custom_key } = req.body;
     
@@ -242,7 +241,7 @@ router.post('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })]
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/revoke', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.post('/:id/revoke', authCombined(), (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -304,7 +303,7 @@ router.post('/:id/revoke', [apiKeyAuth({ required: false }), jwtAuth({ required:
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/activate', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.post('/:id/activate', authCombined(), (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -366,7 +365,7 @@ router.post('/:id/activate', [apiKeyAuth({ required: false }), jwtAuth({ require
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
+router.delete('/:id', authCombined(), (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
