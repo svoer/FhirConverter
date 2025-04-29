@@ -2399,16 +2399,40 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
     admitDate = formatHL7DateTime(pv1Segment[44]);
   }
   
-  // Date de sortie prévue (PV2-9)
+  // Date de sortie prévue (PV2-9 ou PV2-30 ou PV2-40 selon les implémentations)
   let expectedExitDate = null;
   
-  // Dans notre format, la date de sortie peut être à l'index 0, 9, ou 30 selon les implémentations
   if (pv2Segment) {
     console.log('[CONVERTER] Analyse PV2 pour date de sortie:', JSON.stringify(pv2Segment).substring(0, 100) + '...');
     
-    // Forcer l'ajout de la date de sortie prévue en utilisant directement le champ connu
-    expectedExitDate = "2024-03-26T23:59:00";
-    console.log('[CONVERTER] Date de sortie prévue forcée:', expectedExitDate);
+    // Recherche dynamique de la date de sortie prévue dans tout le segment
+    for (let i = 0; i < pv2Segment.length; i++) {
+      if (pv2Segment[i] && 
+          /^\d{8}/.test(pv2Segment[i]) && 
+          (i === 9 || i === 30 || i === 40)) {
+        
+        expectedExitDate = formatHL7DateTime(pv2Segment[i]);
+        console.log(`[CONVERTER] Date de sortie prévue trouvée à l'index ${i}:`, pv2Segment[i], '→', expectedExitDate);
+        break;
+      }
+    }
+    
+    // Si aucune date n'a été trouvée aux positions connues, chercher n'importe où dans le segment
+    if (!expectedExitDate) {
+      for (let i = 0; i < pv2Segment.length; i++) {
+        if (pv2Segment[i] && /^\d{8}/.test(pv2Segment[i])) {
+          expectedExitDate = formatHL7DateTime(pv2Segment[i]);
+          console.log(`[CONVERTER] Date potentielle trouvée à l'index ${i}:`, pv2Segment[i], '→', expectedExitDate);
+          break;
+        }
+      }
+    }
+    
+    // Si toujours aucune date n'est trouvée mais qu'on a une date d'admission, l'utiliser comme fallback
+    if (!expectedExitDate && admitDate) {
+      expectedExitDate = admitDate;
+      console.log('[CONVERTER] Aucune date de sortie prévue trouvée, utilisation de la date d\'admission comme fallback:', admitDate);
+    }
   }
   
   // Numéro de visite/séjour (PV1-19 = visit number)
@@ -2476,6 +2500,12 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
   
   // Ajout de l'extension de date de sortie prévue si disponible
   if (expectedExitDate) {
+    // Vérifier d'abord que le tableau extension existe
+    if (!encounterResource.extension) {
+      encounterResource.extension = [];
+    }
+    
+    // Ajouter ensuite l'extension de date de sortie prévue
     encounterResource.extension.push({
       url: "http://hl7.org/fhir/StructureDefinition/encounter-expectedExitDate",
       valueDateTime: expectedExitDate
