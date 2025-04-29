@@ -514,32 +514,53 @@ function extractIdentifiers(identifierField) {
       let system = 'urn:system:unknown';
       let officialType = '';
       
-      // Traiter l'autorité d'assignation et l'OID
+      // Traiter l'autorité d'assignation et l'OID pour conformité ANS
       if (assigningAuthority) {
         const authParts = assigningAuthority.split('&');
         const namespaceName = authParts[0] || '';
         const oid = authParts.length > 1 ? authParts[1] : '';
         
-        if (oid) {
+        // Détection des identifiants français basée sur le nom et l'OID
+        // En conformité stricte avec les recommandations ANS
+        if (namespaceName.includes('ASIP-SANTE-INS-NIR') || namespaceName.includes('INSEE-NIR')) {
+          officialType = 'INS';
+          system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS-NIR
+        } else if (namespaceName.includes('ASIP-SANTE-INS-C')) {
+          officialType = 'INS-C';
+          system = 'urn:oid:1.2.250.1.213.1.4.2'; // OID officiel pour INS-C
+        } else if (namespaceName.includes('ADELI')) {
+          officialType = 'ADELI';
+          system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID officiel pour ADELI
+        } else if (namespaceName.includes('RPPS')) {
+          officialType = 'RPPS';
+          system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID officiel pour RPPS
+        } else if (namespaceName.includes('FINESS')) {
+          officialType = 'FINESS';
+          system = 'urn:oid:1.2.250.1.71.4.2.2'; // OID officiel pour FINESS
+        } else if (namespaceName.includes('SIRET')) {
+          officialType = 'SIRET';
+          system = 'urn:oid:1.2.250.1.71.4.2.2'; // OID officiel pour SIRET
+        } else if (oid) {
+          // Utiliser l'OID directement si fourni
           system = `urn:oid:${oid}`;
           
-          // Détection des identifiants français
-          if (namespaceName.includes('ASIP-SANTE-INS-NIR') || oid === '1.2.250.1.213.1.4.8') {
+          // Détection des identifiants français basée sur l'OID uniquement
+          if (oid === '1.2.250.1.213.1.4.8') {
             officialType = 'INS';
-          } else if (namespaceName.includes('ASIP-SANTE-INS-C') || oid === '1.2.250.1.213.1.4.2') {
+          } else if (oid === '1.2.250.1.213.1.4.2') {
             officialType = 'INS-C';
-          } else if (namespaceName.includes('ADELI') || oid === '1.2.250.1.71.4.2.1') {
-            officialType = 'ADELI';
-          } else if (namespaceName.includes('RPPS') || oid === '1.2.250.1.71.4.2.1') {
-            officialType = 'RPPS';
-          } else if (namespaceName.includes('FINESS') || oid === '1.2.250.1.71.4.2.2') {
-            officialType = 'FINESS';
-          } else if (namespaceName.includes('SIRET') || oid === '1.2.250.1.71.4.2.2') {
-            officialType = 'SIRET';
+          } else if (oid === '1.2.250.1.71.4.2.1') {
+            officialType = idType === 'ADELI' ? 'ADELI' : 'RPPS';
+          } else if (oid === '1.2.250.1.71.4.2.2') {
+            officialType = idType === 'FINESS' ? 'FINESS' : 'SIRET';
           }
         } else {
+          // Si pas d'OID mais un namespace, utiliser le namespace comme système
           system = `urn:system:${namespaceName}`;
         }
+      } else if (idType === 'PI' || idType === 'NH') {
+        // IPP (Patient Internal) ou Numéro d'hospitalisation
+        system = 'urn:oid:1.2.250.1.71.4.2.7'; // OID pour identifiants internes
       }
       
       // Utiliser les mappings de terminologie française
@@ -1257,8 +1278,8 @@ function createEncounterResource(pv1Segment, patientReference) {
   // Ajouter l'identifiant de visite si disponible avec format français
   if (visitNumber) {
     encounterResource.identifier = [{
-      system: 'urn:oid:1.2.250.1.71.4.2.1', // OID français conforme à l'ANS
-      value: visitNumber,
+      system: 'urn:oid:1.2.250.1.71.4.2.7', // OID français conforme à l'ANS pour identifiants internes (corrigé)
+      value: visitNumber, // Valeur unique sous forme de chaîne (pas de tableau)
       type: {
         coding: [{
           system: "http://terminology.hl7.org/CodeSystem/v2-0203",
@@ -1385,11 +1406,14 @@ function createOrganizationResource(mshSegment, fieldIndex) {
       return null;
     }
     
-    // Identifiant comme OID s'il existe (component 2)
-    orgId = orgName.replace(/[^a-zA-Z0-9]/g, '');
-    
+    // Identifiant de l'organisation (component 2)
+    // Générer un identifiant stable basé sur le nom plutôt qu'un horodatage
     if (fieldParts.length > 1 && fieldParts[1]) {
       orgId = fieldParts[1];
+    } else {
+      // Utiliser le nom de l'organisation pour générer un ID stable
+      // Nous convertissons le nom en un identifiant alphanumérique sans caractères spéciaux
+      orgId = `org-${orgName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
     }
     
     // Namespace (component 3)
