@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation - FHIRHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .api-section {
+      margin-bottom: 40px;
+    }
+    .api-endpoint {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #3498db;
+    }
+    .api-endpoint.post {
+      border-left-color: #2ecc71;
+    }
+    .api-endpoint.get {
+      border-left-color: #3498db;
+    }
+    .api-endpoint.put {
+      border-left-color: #f39c12;
+    }
+    .api-endpoint.delete {
+      border-left-color: #e74c3c;
+    }
+    .endpoint-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .method {
+      font-weight: bold;
+      padding: 5px 10px;
+      color: white;
+      border-radius: 4px;
+      margin-right: 10px;
+      font-size: 14px;
+      min-width: 60px;
+      text-align: center;
+    }
+    .method.get { background-color: #3498db; }
+    .method.post { background-color: #2ecc71; }
+    .method.put { background-color: #f39c12; }
+    .method.delete { background-color: #e74c3c; }
+    .endpoint-path {
+      font-family: monospace;
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .endpoint-description {
+      margin-bottom: 15px;
+      color: #555;
+    }
+    .params-title, .response-title, .request-title {
+      font-weight: 500;
+      margin: 15px 0 10px 0;
+      color: #333;
+    }
+    .code-example {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .try-it {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+    .try-it textarea {
+      width: 100%;
+      height: 150px;
+      margin-bottom: 10px;
+      padding: 10px;
+      font-family: monospace;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .try-it button {
+      align-self: flex-end;
+      padding: 8px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .try-it button:hover {
+      background-color: #2980b9;
+    }
+    .response-output {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .section-nav {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .section-nav a {
+      margin-right: 20px;
+      color: #555;
+      text-decoration: none;
+      padding-bottom: 10px;
+      border-bottom: 2px solid transparent;
+    }
+    .section-nav a:hover, .section-nav a.active {
+      color: #3498db;
+      border-bottom-color: #3498db;
+    }
+    .param {
+      margin-bottom: 5px;
+    }
+    .param-name {
+      font-weight: 500;
+      color: #e67e22;
+    }
+    .param-type {
+      color: #95a5a6;
+      font-style: italic;
+      margin-left: 5px;
+    }
+    .param-required {
+      color: #e74c3c;
+      font-weight: 500;
+      margin-left: 5px;
+    }
+    .param-description {
+      margin-left: 20px;
+      color: #555;
+    }
+    .doc-intro {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      color: white;
+    }
+    .doc-intro h2 {
+      margin-top: 0;
+      font-weight: 700;
+    }
+    .doc-intro p {
+      margin-bottom: 0;
+      line-height: 1.6;
+    }
+    .copy-btn {
+      padding: 5px 8px;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .copy-btn:hover {
+      background-color: #666;
+    }
+    .response-container {
+      margin-top: 15px;
+    }
+    .collapsible {
+      cursor: pointer;
+      border: none;
+      text-align: left;
+      outline: none;
+      width: 100%;
+      padding: 10px;
+      background-color: #f1f1f1;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .collapsible:hover {
+      background-color: #e6e6e6;
+    }
+    .content {
+      padding: 0 18px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.2s ease-out;
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/logo.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
+      </div>
+      
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/applications.html"><i class="fas fa-cogs"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="container">
+      <h1>Documentation de l'API FHIRHub</h1>
+      
+      <div class="doc-intro">
+        <h2>Conversion HL7 v2.5 vers FHIR R4</h2>
+        <p>FHIRHub est une solution puissante pour convertir des messages HL7 v2.5 en ressources FHIR R4, optimisée pour les terminologies françaises et conforme aux spécifications de l'ANS.</p>
+      </div>
+      
+      <div class="section-nav">
+        <a href="#conversion" class="active">Conversion</a>
+        <a href="#terminology">Terminologie</a>
+        <a href="#system">Système</a>
+        <a href="#authentication">Authentification</a>
+      </div>
+      
+      <div class="api-section" id="conversion">
+        <h2>APIs de Conversion</h2>
+        
+        <div class="api-endpoint post">
+          <div class="endpoint-title">
+            <span class="method post">POST</span>
+            <span class="endpoint-path">/api/convert</span>
+            <button class="copy-btn" onclick="copyToClipboard('/api/convert')">Copier</button>
+          </div>
+          <div class="endpoint-description">
+            Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS.
+          </div>
+          
+          <div class="request-title">Paramètres de la requête</div>
+          <div class="param">
+            <span class="param-name">hl7Message</span>
+            <span class="param-type">string</span>
+            <span class="param-required">requis</span>
+            <div class="param-description">Message HL7 v2.5 à convertir</div>
+          </div>
+          
+          <div class="request-title">Exemple de requête</div>
+          <pre class="code-example">// POST /api/convert
+{
+  "hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N"
+}</pre>
+          
+          <div class="response-title">Réponse</div>
+          <button class="collapsible">Afficher la structure de la réponse <i class="fas fa-chevron-down"></i></button>
+          <div class="content">
+            <pre class="code-example">{
+  "success": true,
+  "data": {
+    "resourceType": "Bundle",
+    "id": "bundle-1745958176068",
+    "type": "transaction",
+    "timestamp": "2025-04-29T20:22:56.068Z",
+    "entry": [
+      {
+        "fullUrl": "urn:uuid:patient-458722781",
+        "resource": {
+          "resourceType": "Patient",
+          "id": "patient-458722781",
+          "identifier": [
+            {
+              "value": "458722781",
+              "system": "urn:oid:1.2.250.1.71.4.2.7",
+              "type": {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                    "code": "PI",
+                    "display": "Identifiant patient interne"
+                  }
+                ]
+              },
+              "assigner": { "display": "CENTRE_HOSPITALIER_DE_TEST" }
+            }
+          ],
+          "name": [
+            {
+              "use": "official",
+              "family": "SECLET",
+              "given": ["MARYSE", "BERTHE", "ALICE"]
+            }
+          ],
+          "gender": "female",
+          "birthDate": "1983-07-11",
+          // ... autres attributs ...
+        },
+        "request": {
+          "method": "POST",
+          "url": "Patient"
+        }
+      },
+      // ... autres ressources (Encounter, Organization, etc.) ...
+    ]
+  },
+  "meta": {
+    "conversionTime": 5,
+    "resourceCount": 3
+  }
+}</pre>
+          </div>
+          
+          <div class="try-it">
+            <h4>Essayer cette API</h4>
+            <textarea id="convert-request" placeholder="Entrez votre message HL7 ici...">MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N</textarea>
+            <button onclick="testConvert()">Envoyer la requête</button>
+            
+            <div class="response-container">
+              <div class="response-title">Réponse (résultat)</div>
+              <pre id="convert-response" class="response-output"></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="api-endpoint post">
+          <div class="endpoint-title">
+            <span class="method post">POST</span>
+            <span class="endpoint-path">/api/convert/validate</span>
+            <button class="copy-btn" onclick="copyToClipboard('/api/convert/validate')">Copier</button>
+          </div>
+          <div class="endpoint-description">
+            Vérifie la syntaxe d'un message HL7 v2.5 et retourne des informations sur les segments.
+          </div>
+          
+          <div class="request-title">Paramètres de la requête</div>
+          <div class="param">
+            <span class="param-name">hl7Message</span>
+            <span class="param-type">string</span>
+            <span class="param-required">requis</span>
+            <div class="param-description">Message HL7 v2.5 à valider</div>
+          </div>
+          
+          <div class="request-title">Exemple de requête</div>
+          <pre class="code-example">// POST /api/convert/validate
+{
+  "hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N"
+}</pre>
+          
+          <div class="response-title">Réponse</div>
+          <pre class="code-example">{
+  "success": true,
+  "data": {
+    "valid": true,
+    "segmentCount": 2,
+    "segmentTypes": {
+      "MSH": 1,
+      "PID": 1
+    }
+  }
+}</pre>
+          
+          <div class="try-it">
+            <h4>Essayer cette API</h4>
+            <textarea id="validate-request" placeholder="Entrez votre message HL7 ici...">MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N</textarea>
+            <button onclick="testValidate()">Envoyer la requête</button>
+            
+            <div class="response-container">
+              <div class="response-title">Réponse (résultat)</div>
+              <pre id="validate-response" class="response-output"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="api-section" id="terminology">
+        <h2>APIs de Terminologie</h2>
+        
+        <div class="api-endpoint get">
+          <div class="endpoint-title">
+            <span class="method get">GET</span>
+            <span class="endpoint-path">/api/terminology/french</span>
+            <button class="copy-btn" onclick="copyToClipboard('/api/terminology/french')">Copier</button>
+          </div>
+          <div class="endpoint-description">
+            Retourne les informations sur les terminologies françaises utilisées pour la conversion.
+          </div>
+          
+          <div class="response-title">Réponse</div>
+          <button class="collapsible">Afficher la structure de la réponse <i class="fas fa-chevron-down"></i></button>
+          <div class="content">
+            <pre class="code-example">{
+  "success": true,
+  "data": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-04-29T00:00:00Z",
+    "systems": {
+      "PAYS": "https://mos.esante.gouv.fr/NOS/TRE_R20-Pays/FHIR/TRE-R20-Pays",
+      "GENDER": "https://mos.esante.gouv.fr/NOS/TRE_R303-HL7v3AdministrativeGender/FHIR/TRE-R303-HL7v3AdministrativeGender",
+      "ENCOUNTER_TYPE": "https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre",
+      "PROFESSION": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+      "ROLE_SOCIAL": "https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial",
+      "SPECIALITE": "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale",
+      "MODE_PRISE_EN_CHARGE": "https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge",
+      "TYPE_COUVERTURE": "https://mos.esante.gouv.fr/NOS/TRE_R28-TypeCouverture/FHIR/TRE-R28-TypeCouverture"
+    },
+    "oids": {
+      "INS": "1.2.250.1.213.1.4.8",
+      "INS_C": "1.2.250.1.213.1.4.2",
+      "ADELI": "1.2.250.1.71.4.2.1",
+      "RPPS": "1.2.250.1.71.4.2.1",
+      "STRUCTURE": "1.2.250.1.71.4.2.2",
+      "SIRET": "1.2.250.1.71.4.2.2",
+      "FINESS": "1.2.250.1.71.4.2.2",
+      "IPP": "1.2.250.1.71.4.2.7",
+      "VN": "1.2.250.1.71.4.2.7"
+    }
+  }
+}</pre>
+          </div>
+          
+          <div class="try-it">
+            <h4>Essayer cette API</h4>
+            <button onclick="testTerminology()">Envoyer la requête</button>
+            
+            <div class="response-container">
+              <div class="response-title">Réponse (résultat)</div>
+              <pre id="terminology-response" class="response-output"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="api-section" id="system">
+        <h2>APIs Système</h2>
+        
+        <div class="api-endpoint get">
+          <div class="endpoint-title">
+            <span class="method get">GET</span>
+            <span class="endpoint-path">/api/stats</span>
+            <button class="copy-btn" onclick="copyToClipboard('/api/stats')">Copier</button>
+          </div>
+          <div class="endpoint-description">
+            Retourne les statistiques du système (conversions, uptime, etc.).
+          </div>
+          
+          <div class="response-title">Réponse</div>
+          <pre class="code-example">{
+  "success": true,
+  "data": {
+    "conversions": 5,
+    "uptime": 786.56,
+    "memory": {
+      "rss": 71192576,
+      "heapTotal": 14958592,
+      "heapUsed": 14279072,
+      "external": 2206272,
+      "arrayBuffers": 44555
+    }
+  }
+}</pre>
+          
+          <div class="try-it">
+            <h4>Essayer cette API</h4>
+            <button onclick="testStats()">Envoyer la requête</button>
+            
+            <div class="response-container">
+              <div class="response-title">Réponse (résultat)</div>
+              <pre id="stats-response" class="response-output"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="api-section" id="authentication">
+        <h2>Authentification</h2>
+        <p>Toutes les requêtes API doivent être authentifiées en utilisant l'un des deux méthodes suivantes :</p>
+        
+        <h3>Authentification par clé API</h3>
+        <p>Pour les API de conversion, utilisez une clé API en incluant l'en-tête <code>X-API-KEY</code> dans vos requêtes.</p>
+        <pre class="code-example">curl -X POST http://localhost:5000/api/convert \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: votre-clé-api" \
+  -d '{"hl7Message": "MSH|..."}'</pre>
+        
+        <h3>Authentification par JWT</h3>
+        <p>Pour les API d'administration, utilisez un JWT (JSON Web Token) en incluant l'en-tête <code>Authorization</code> dans vos requêtes.</p>
+        <pre class="code-example">curl -X GET http://localhost:5000/api/stats \
+  -H "Authorization: Bearer votre-jwt-token"</pre>
+        
+        <h3>Obtenir un JWT</h3>
+        <div class="api-endpoint post">
+          <div class="endpoint-title">
+            <span class="method post">POST</span>
+            <span class="endpoint-path">/api/auth/login</span>
+            <button class="copy-btn" onclick="copyToClipboard('/api/auth/login')">Copier</button>
+          </div>
+          <div class="endpoint-description">
+            Authentifie un utilisateur et retourne un JWT.
+          </div>
+          
+          <div class="request-title">Paramètres de la requête</div>
+          <div class="param">
+            <span class="param-name">username</span>
+            <span class="param-type">string</span>
+            <span class="param-required">requis</span>
+            <div class="param-description">Nom d'utilisateur</div>
+          </div>
+          <div class="param">
+            <span class="param-name">password</span>
+            <span class="param-type">string</span>
+            <span class="param-required">requis</span>
+            <div class="param-description">Mot de passe</div>
+          </div>
+          
+          <div class="request-title">Exemple de requête</div>
+          <pre class="code-example">// POST /api/auth/login
+{
+  "username": "admin",
+  "password": "adminfhirhub"
+}</pre>
+          
+          <div class="response-title">Réponse</div>
+          <pre class="code-example">{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "role": "admin"
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="/documentation.html">Documentation</a></li>
+        <li><a href="/api-docs">API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      // Gestion de la déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+      
+      // Activer les sections d'accordéon
+      const coll = document.getElementsByClassName("collapsible");
+      for (let i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+          this.classList.toggle("active");
+          const icon = this.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+          }
+          
+          const content = this.nextElementSibling;
+          if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+          } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+          }
+        });
+      }
+    });
+    
+    // Fonction pour copier dans le presse-papier
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          alert('Copié dans le presse-papier: ' + text);
+        })
+        .catch(err => {
+          console.error('Erreur lors de la copie: ', err);
+        });
+    }
+    
+    // Fonctions pour tester les API
+    function testConvert() {
+      const hl7Message = document.getElementById('convert-request').value;
+      const responseOutput = document.getElementById('convert-response');
+      
+      responseOutput.style.display = 'block';
+      responseOutput.innerText = 'Chargement...';
+      
+      fetch('/api/convert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ hl7Message: hl7Message })
+      })
+      .then(response => response.json())
+      .then(data => {
+        responseOutput.innerText = JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        responseOutput.innerText = 'Erreur: ' + error.message;
+      });
+    }
+    
+    function testValidate() {
+      const hl7Message = document.getElementById('validate-request').value;
+      const responseOutput = document.getElementById('validate-response');
+      
+      responseOutput.style.display = 'block';
+      responseOutput.innerText = 'Chargement...';
+      
+      fetch('/api/convert/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ hl7Message: hl7Message })
+      })
+      .then(response => response.json())
+      .then(data => {
+        responseOutput.innerText = JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        responseOutput.innerText = 'Erreur: ' + error.message;
+      });
+    }
+    
+    function testTerminology() {
+      const responseOutput = document.getElementById('terminology-response');
+      
+      responseOutput.style.display = 'block';
+      responseOutput.innerText = 'Chargement...';
+      
+      fetch('/api/terminology/french')
+      .then(response => response.json())
+      .then(data => {
+        responseOutput.innerText = JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        responseOutput.innerText = 'Erreur: ' + error.message;
+      });
+    }
+    
+    function testStats() {
+      const responseOutput = document.getElementById('stats-response');
+      
+      responseOutput.style.display = 'block';
+      responseOutput.innerText = 'Chargement...';
+      
+      fetch('/api/stats')
+      .then(response => response.json())
+      .then(data => {
+        responseOutput.innerText = JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        responseOutput.innerText = 'Erreur: ' + error.message;
+      });
+    }
+  </script>
+</body>
+</html>

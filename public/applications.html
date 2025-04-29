@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Applications - FHIRHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .apps-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .app-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .app-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #333;
+    }
+    .app-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .app-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #3498db;
+      margin-bottom: 5px;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #777;
+    }
+    .button-primary {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    .button-primary:hover {
+      background-color: #2980b9;
+    }
+    .button-secondary {
+      background-color: #f1f1f1;
+      color: #333;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    .button-secondary:hover {
+      background-color: #ddd;
+    }
+    .button-danger {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    .button-danger:hover {
+      background-color: #c0392b;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      width: 500px;
+      max-width: 90%;
+    }
+    .modal-header {
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: #333;
+      margin: 0;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .form-input:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+    .form-textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+      min-height: 100px;
+      resize: vertical;
+    }
+    .form-textarea:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .no-apps {
+      text-align: center;
+      padding: 40px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      color: #777;
+    }
+    .no-apps i {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: #aaa;
+    }
+    .app-description {
+      color: #555;
+      margin-bottom: 15px;
+    }
+    .app-date {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 15px;
+    }
+    .app-settings {
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .app-settings-title {
+      font-weight: 500;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    .settings-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .settings-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .settings-label {
+      font-size: 14px;
+      color: #777;
+    }
+    .settings-value {
+      font-weight: 500;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/logo.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
+      </div>
+      
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/applications.html" class="active"><i class="fas fa-cogs"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="apps-header">
+        <h1>Applications</h1>
+        <button class="button-primary" id="addAppBtn"><i class="fas fa-plus"></i> Nouvelle application</button>
+      </div>
+      
+      <div id="applicationsList">
+        <!-- Applications will be loaded here -->
+        <div class="no-apps" id="noAppsMessage">
+          <i class="fas fa-laptop-code"></i>
+          <h2>Aucune application</h2>
+          <p>Vous n'avez pas encore créé d'applications. Cliquez sur "Nouvelle application" pour commencer.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Add/Edit Application Modal -->
+  <div id="appModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Nouvelle application</h2>
+      </div>
+      
+      <form id="appForm">
+        <input type="hidden" id="appId">
+        
+        <div class="form-group">
+          <label for="appName" class="form-label">Nom de l'application *</label>
+          <input type="text" id="appName" class="form-input" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="appDescription" class="form-label">Description</label>
+          <textarea id="appDescription" class="form-textarea"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="appCorsOrigins" class="form-label">Origines CORS autorisées</label>
+          <input type="text" id="appCorsOrigins" class="form-input" placeholder="http://example.com, https://app.example.com">
+          <small>Séparez les différentes origines par des virgules</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="appMaxConversions" class="form-label">Limite de conversions par jour</label>
+          <input type="number" id="appMaxConversions" class="form-input" value="1000" min="1">
+        </div>
+        
+        <div class="form-group">
+          <label for="appMaxMessageSize" class="form-label">Taille maximale des messages (octets)</label>
+          <input type="number" id="appMaxMessageSize" class="form-input" value="100000" min="1000">
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="button-secondary" id="cancelBtn">Annuler</button>
+          <button type="submit" class="button-primary" id="saveAppBtn">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Confirmer la suppression</h2>
+      </div>
+      
+      <p>Êtes-vous sûr de vouloir supprimer cette application ? Cette action est irréversible.</p>
+      <p><strong>Attention :</strong> Toutes les clés API associées à cette application seront également supprimées.</p>
+      
+      <div class="modal-footer">
+        <button type="button" class="button-secondary" id="cancelDeleteBtn">Annuler</button>
+        <button type="button" class="button-danger" id="confirmDeleteBtn">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="/documentation.html">Documentation</a></li>
+        <li><a href="/api-docs">API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      // Gestion de la déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+      
+      // Charger les applications
+      loadApplications();
+      
+      // Event listeners pour les modals
+      const appModal = document.getElementById('appModal');
+      const deleteModal = document.getElementById('deleteModal');
+      
+      document.getElementById('addAppBtn').addEventListener('click', showAddAppModal);
+      document.getElementById('cancelBtn').addEventListener('click', closeAppModal);
+      document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+      document.getElementById('appForm').addEventListener('submit', saveApplication);
+      
+      // Fermer les modals en cliquant en dehors
+      window.addEventListener('click', function(e) {
+        if (e.target === appModal) {
+          closeAppModal();
+        }
+        if (e.target === deleteModal) {
+          closeDeleteModal();
+        }
+      });
+    });
+    
+    // Charger les applications depuis l'API
+    async function loadApplications() {
+      try {
+        const response = await fetch('/api/applications');
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des applications');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+          renderApplications(data.data);
+          document.getElementById('noAppsMessage').style.display = 'none';
+        } else {
+          // Afficher le message "Aucune application"
+          document.getElementById('noAppsMessage').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        // Afficher un message d'erreur à l'utilisateur
+        alert('Erreur lors de la récupération des applications : ' + error.message);
+      }
+    }
+    
+    // Afficher les applications dans la liste
+    function renderApplications(applications) {
+      const appsList = document.getElementById('applicationsList');
+      appsList.innerHTML = '';
+      
+      applications.forEach(app => {
+        const settings = JSON.parse(app.settings || '{}');
+        
+        const appCard = document.createElement('div');
+        appCard.className = 'app-card';
+        appCard.innerHTML = `
+          <div class="app-header">
+            <h2 class="app-title">${app.name}</h2>
+            <div class="app-actions">
+              <button class="button-secondary edit-app-btn" data-id="${app.id}">
+                <i class="fas fa-edit"></i> Modifier
+              </button>
+              <button class="button-danger delete-app-btn" data-id="${app.id}">
+                <i class="fas fa-trash"></i> Supprimer
+              </button>
+            </div>
+          </div>
+          
+          <div class="app-date">
+            Créé le ${new Date(app.created_at).toLocaleDateString()} à ${new Date(app.created_at).toLocaleTimeString()}
+          </div>
+          
+          <div class="app-description">
+            ${app.description || 'Aucune description fournie.'}
+          </div>
+          
+          <div class="app-settings">
+            <div class="app-settings-title">Paramètres de l'application</div>
+            <div class="settings-list">
+              <div class="settings-item">
+                <span class="settings-label">Limite de conversions / jour</span>
+                <span class="settings-value">${settings.max_conversions_per_day || 'Illimité'}</span>
+              </div>
+              <div class="settings-item">
+                <span class="settings-label">Taille max. des messages</span>
+                <span class="settings-value">${settings.max_message_size ? (settings.max_message_size / 1000) + ' Ko' : 'Illimité'}</span>
+              </div>
+              <div class="settings-item">
+                <span class="settings-label">Origines CORS</span>
+                <span class="settings-value">${app.cors_origins || 'Aucune restriction'}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="app-stats">
+            <div class="stat-item">
+              <div class="stat-value">0</div>
+              <div class="stat-label">Conversions aujourd'hui</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">0</div>
+              <div class="stat-label">Clés API</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">0</div>
+              <div class="stat-label">Erreurs</div>
+            </div>
+          </div>
+        `;
+        
+        appsList.appendChild(appCard);
+      });
+      
+      // Ajouter les event listeners pour les boutons d'action
+      document.querySelectorAll('.edit-app-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const appId = this.getAttribute('data-id');
+          editApplication(appId);
+        });
+      });
+      
+      document.querySelectorAll('.delete-app-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const appId = this.getAttribute('data-id');
+          showDeleteModal(appId);
+        });
+      });
+    }
+    
+    // Afficher le modal pour ajouter une application
+    function showAddAppModal() {
+      document.getElementById('modalTitle').textContent = 'Nouvelle application';
+      document.getElementById('appId').value = '';
+      document.getElementById('appForm').reset();
+      document.getElementById('appModal').style.display = 'flex';
+    }
+    
+    // Afficher le modal pour modifier une application
+    async function editApplication(appId) {
+      try {
+        const response = await fetch(`/api/applications/${appId}`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des détails de l\'application');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const app = data.data;
+          const settings = JSON.parse(app.settings || '{}');
+          
+          document.getElementById('modalTitle').textContent = 'Modifier l\'application';
+          document.getElementById('appId').value = app.id;
+          document.getElementById('appName').value = app.name;
+          document.getElementById('appDescription').value = app.description || '';
+          document.getElementById('appCorsOrigins').value = app.cors_origins || '';
+          document.getElementById('appMaxConversions').value = settings.max_conversions_per_day || 1000;
+          document.getElementById('appMaxMessageSize').value = settings.max_message_size || 100000;
+          
+          document.getElementById('appModal').style.display = 'flex';
+        } else {
+          throw new Error('Application non trouvée');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la récupération des détails de l\'application : ' + error.message);
+      }
+    }
+    
+    // Fermer le modal d'application
+    function closeAppModal() {
+      document.getElementById('appModal').style.display = 'none';
+    }
+    
+    // Afficher le modal de confirmation de suppression
+    function showDeleteModal(appId) {
+      document.getElementById('confirmDeleteBtn').setAttribute('data-id', appId);
+      document.getElementById('deleteModal').style.display = 'flex';
+      
+      // Ajouter l'event listener pour le bouton de confirmation
+      document.getElementById('confirmDeleteBtn').addEventListener('click', deleteApplication);
+    }
+    
+    // Fermer le modal de confirmation de suppression
+    function closeDeleteModal() {
+      document.getElementById('deleteModal').style.display = 'none';
+    }
+    
+    // Sauvegarder une application (création ou modification)
+    async function saveApplication(e) {
+      e.preventDefault();
+      
+      const appId = document.getElementById('appId').value;
+      const isNewApp = !appId;
+      
+      const appData = {
+        name: document.getElementById('appName').value,
+        description: document.getElementById('appDescription').value,
+        cors_origins: document.getElementById('appCorsOrigins').value,
+        settings: JSON.stringify({
+          max_conversions_per_day: parseInt(document.getElementById('appMaxConversions').value),
+          max_message_size: parseInt(document.getElementById('appMaxMessageSize').value)
+        })
+      };
+      
+      try {
+        const url = isNewApp ? '/api/applications' : `/api/applications/${appId}`;
+        const method = isNewApp ? 'POST' : 'PUT';
+        
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(appData)
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de l\'enregistrement de l\'application');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          closeAppModal();
+          loadApplications();
+        } else {
+          throw new Error(data.message || 'Erreur inconnue');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'enregistrement de l\'application : ' + error.message);
+      }
+    }
+    
+    // Supprimer une application
+    async function deleteApplication() {
+      const appId = this.getAttribute('data-id');
+      
+      try {
+        const response = await fetch(`/api/applications/${appId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la suppression de l\'application');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          closeDeleteModal();
+          loadApplications();
+        } else {
+          throw new Error(data.message || 'Erreur inconnue');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression de l\'application : ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
