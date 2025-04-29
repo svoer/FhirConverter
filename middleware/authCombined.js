@@ -71,7 +71,7 @@ function createAuthCombinedMiddleware() {
         SELECT ak.*, a.name as app_name
         FROM api_keys ak
         JOIN applications a ON ak.application_id = a.id
-        WHERE ak.key = ? AND ak.active = 1
+        WHERE ak.key = ? AND ak.is_active = 1
       `).get(apiKey);
       
       if (!keyData) {

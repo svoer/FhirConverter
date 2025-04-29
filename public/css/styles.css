@@ -1,9 +1,9 @@
 /* Styles pour FHIRHub */
 :root {
-  --primary-color: #00579b; /* Bleu santé France */
-  --primary-gradient-start: #005091;
-  --primary-gradient-end: #0078d4;
-  --secondary-color: #e13427; /* Rouge santé France */
+  --primary-color: #e74c3c; /* Rouge dégradé */
+  --primary-gradient-start: #e74c3c; /* Rouge */
+  --primary-gradient-end: #f39c12; /* Orange */
+  --secondary-color: #f39c12; /* Orange */
   --text-color: #333;
   --light-text: #f8f9fa;
   --background-color: #f4f7f9;
