@@ -749,7 +749,10 @@ function getIdentifierTypeDisplay(idType) {
  * @returns {Array} Tableau de noms FHIR
  */
 function extractNames(nameFields) {
+  console.log('[CONVERTER] Extraction des noms à partir de:', JSON.stringify(nameFields));
+  
   if (!nameFields) {
+    console.log('[CONVERTER] Aucun champ de nom fourni');
     return [];
   }
   
@@ -757,46 +760,88 @@ function extractNames(nameFields) {
   
   // Si nous avons une chaîne, c'est un seul nom
   if (typeof nameFields === 'string') {
+    console.log('[CONVERTER] Traitement du nom (chaîne):', nameFields);
     const parts = nameFields.split('^');
     const familyName = parts[0] || '';
     const givenName = parts[1] || '';
+    const middleName = parts[2] || '';
+    const suffix = parts[3] || '';
+    const prefix = parts[4] || '';
+    const degree = parts[5] || '';
     
-    if (familyName || givenName) {
+    // 7ème composant (XPN.7) contient le type d'utilisation du nom (D=maiden, L=legal)
+    const useCode = parts[6] || '';
+    
+    // Construction des objets de nom selon la structure et type détectés
+    if (familyName || givenName || middleName) {
+      // Type de nom selon composant 7
+      let useType = 'official';
+      if (useCode === 'D') {
+        useType = 'maiden';
+      } else if (useCode === 'L') {
+        useType = 'official';
+      }
+      
+      // Objet nom selon spécifications FHIR
       const nameObj = {
-        use: 'official'
+        use: useType
       };
       
       if (familyName) {
         nameObj.family = familyName;
       }
       
+      const givenNames = [];
+      
+      // Prénom principal
       if (givenName) {
         // Traiter les prénoms composés (spécificité française)
-        const givenNames = [];
         if (givenName.includes(' ')) {
           givenNames.push(...givenName.split(' ').filter(Boolean));
         } else {
           givenNames.push(givenName);
         }
+      }
+      
+      // Prénom secondaire / nom d'usage
+      if (middleName) {
+        // Traiter les prénoms composés pour le middle name aussi
+        if (middleName.includes(' ')) {
+          givenNames.push(...middleName.split(' ').filter(Boolean));
+        } else {
+          givenNames.push(middleName);
+        }
+      }
+      
+      if (givenNames.length > 0) {
         nameObj.given = givenNames;
       }
       
-      // Autres composants si disponibles
-      if (parts[4]) { // Préfixe
-        nameObj.prefix = [parts[4]];
-      }
-      if (parts[5]) { // Suffixe
-        nameObj.suffix = [parts[5]];
+      // Préfixe (Monsieur, Madame, etc.)
+      if (prefix) {
+        nameObj.prefix = [prefix];
       }
       
+      // Suffixe (Jr, PhD, etc.)
+      if (suffix || degree) {
+        const suffixes = [];
+        if (suffix) suffixes.push(suffix);
+        if (degree) suffixes.push(degree);
+        nameObj.suffix = suffixes;
+      }
+      
+      console.log('[CONVERTER] Nom extrait:', JSON.stringify(nameObj));
       names.push(nameObj);
     }
     
     return names;
   }
   
-  // Si nous avons un tableau
+  // Si nous avons un tableau (format pour les nouveaux parsers HL7)
   if (Array.isArray(nameFields)) {
+    console.log('[CONVERTER] Traitement des noms (tableau):', JSON.stringify(nameFields).substring(0, 200));
+    
+    // Parcourir chaque élément du tableau
     nameFields.forEach(field => {
       if (!field) return;
       
@@ -805,75 +850,148 @@ function extractNames(nameFields) {
         const fieldNames = extractNames(field);
         names.push(...fieldNames);
       }
-      // Si c'est un objet avec des composants (format habituel de simple-hl7)
-      else if (field.components) {
-        const components = field.components;
-        
-        // Nom de famille (component 1)
-        const familyName = components[0] ? components[0].value : '';
-        
-        // Prénom(s) (composants 2+)
-        const givenNames = [];
-        
-        // Prénom principal (component 2)
-        if (components[1] && components[1].value) {
-          if (components[1].value.includes(' ')) {
-            // Gérer les prénoms composés à la française
-            givenNames.push(...components[1].value.split(' ').filter(Boolean));
-          } else {
-            givenNames.push(components[1].value);
+      // Si c'est un tableau ou un objet
+      else if (Array.isArray(field) || typeof field === 'object') {
+        // Cas 1: C'est un tableau direct (structure [family, given, middle, ...])
+        if (Array.isArray(field)) {
+          const familyName = field[0] || '';
+          const givenName = field[1] || '';
+          const middleName = field[2] || '';
+          const suffix = field[3] || '';
+          const prefix = field[4] || '';
+          const degree = field[5] || '';
+          const useCode = field.length > 6 ? field[6] || '' : '';
+          
+          // Type de nom selon composant 7
+          let useType = 'official';
+          if (useCode === 'D') {
+            useType = 'maiden';
+          } else if (useCode === 'L') {
+            useType = 'official';
           }
-        }
-        
-        // Prénom additionnel (component 3)
-        if (components[2] && components[2].value) {
-          if (components[2].value.includes(' ')) {
-            // Gérer les prénoms composés additionnels
-            components[2].value.split(' ').filter(Boolean).forEach(name => {
-              if (!givenNames.includes(name)) {
-                givenNames.push(name);
+          
+          if (familyName || givenName || middleName) {
+            const nameObj = {
+              use: useType
+            };
+            
+            if (familyName) {
+              nameObj.family = familyName;
+            }
+            
+            const givenNames = [];
+            
+            // Prénom principal
+            if (givenName) {
+              if (typeof givenName === 'string' && givenName.includes(' ')) {
+                givenNames.push(...givenName.split(' ').filter(Boolean));
+              } else {
+                givenNames.push(givenName);
               }
-            });
-          } else if (!givenNames.includes(components[2].value)) {
-            givenNames.push(components[2].value);
+            }
+            
+            // Prénom secondaire
+            if (middleName) {
+              if (typeof middleName === 'string' && middleName.includes(' ')) {
+                givenNames.push(...middleName.split(' ').filter(Boolean));
+              } else {
+                givenNames.push(middleName);
+              }
+            }
+            
+            if (givenNames.length > 0) {
+              nameObj.given = givenNames;
+            }
+            
+            // Préfixe
+            if (prefix) {
+              nameObj.prefix = [prefix];
+            }
+            
+            // Suffixe
+            if (suffix || degree) {
+              const suffixes = [];
+              if (suffix) suffixes.push(suffix);
+              if (degree) suffixes.push(degree);
+              nameObj.suffix = suffixes;
+            }
+            
+            console.log('[CONVERTER] Nom extrait (tableau):', JSON.stringify(nameObj));
+            names.push(nameObj);
           }
         }
-        
-        // Type d'utilisation du nom (component 7)
-        let nameUse = 'official';
-        if (components[6] && components[6].value) {
-          nameUse = mapNameUseToFHIR(components[6].value);
-        }
-        
-        if (familyName || givenNames.length > 0) {
-          const nameObj = {
-            use: nameUse
-          };
+        // Cas 2: C'est un objet avec des composants (format habituel de simple-hl7)
+        else if (field.components) {
+          const components = field.components;
           
-          if (familyName) {
-            nameObj.family = familyName;
+          // Nom de famille (component 1)
+          const familyName = components[0] ? components[0].value : '';
+          
+          // Prénom(s) (composants 2+)
+          const givenNames = [];
+          
+          // Prénom principal (component 2)
+          if (components[1] && components[1].value) {
+            if (components[1].value.includes(' ')) {
+              // Gérer les prénoms composés à la française
+              givenNames.push(...components[1].value.split(' ').filter(Boolean));
+            } else {
+              givenNames.push(components[1].value);
+            }
           }
           
-          if (givenNames.length > 0) {
-            nameObj.given = givenNames;
+          // Prénom additionnel (component 3)
+          if (components[2] && components[2].value) {
+            if (components[2].value.includes(' ')) {
+              // Gérer les prénoms composés additionnels
+              components[2].value.split(' ').filter(Boolean).forEach(name => {
+                if (!givenNames.includes(name)) {
+                  givenNames.push(name);
+                }
+              });
+            } else if (!givenNames.includes(components[2].value)) {
+              givenNames.push(components[2].value);
+            }
           }
           
-          // Préfixe (titre) si disponible (component 5)
-          if (components[4] && components[4].value) {
-            nameObj.prefix = [components[4].value];
+          // Type d'utilisation du nom (component 7)
+          let nameUse = 'official';
+          if (components[6] && components[6].value) {
+            nameUse = mapNameUseToFHIR(components[6].value);
           }
           
-          // Suffixe si disponible (component 6)
-          if (components[5] && components[5].value) {
-            nameObj.suffix = [components[5].value];
+          if (familyName || givenNames.length > 0) {
+            const nameObj = {
+              use: nameUse
+            };
+            
+            if (familyName) {
+              nameObj.family = familyName;
+            }
+            
+            if (givenNames.length > 0) {
+              nameObj.given = givenNames;
+            }
+            
+            // Préfixe (titre) si disponible (component 5)
+            if (components[4] && components[4].value) {
+              nameObj.prefix = [components[4].value];
+            }
+            
+            // Suffixe si disponible (component 6)
+            if (components[5] && components[5].value) {
+              nameObj.suffix = [components[5].value];
+            }
+            
+            console.log('[CONVERTER] Nom extrait (objet):', JSON.stringify(nameObj));
+            names.push(nameObj);
           }
-          
-          names.push(nameObj);
         }
       }
     });
   }
   
+  console.log('[CONVERTER] Total noms extraits:', names.length);
   return names;
 }
 

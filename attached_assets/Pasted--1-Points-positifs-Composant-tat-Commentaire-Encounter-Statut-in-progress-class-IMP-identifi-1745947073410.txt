@@ -1,0 +1,41 @@
+✅ 1. Points positifs
+
+Composant	État	Commentaire
+Encounter	✅	Statut in-progress, class=IMP, identifier bien formaté (VN), avec healthevent-type et mode-prise-en-charge.
+Organization	✅	Bien structurées avec urn:oid correct et identifiants stables (org-osiris, org-202403...).
+Practitioner	🟢	Identifiants présents, mais certains sont douteux (voir ci-dessous).
+PractitionerRole	✅	Code ODRP (Médecin), codification conforme ANS.
+RelatedPerson	✅	Nom et lien familial présents (code "UNK" par défaut).
+⚠️ 2. Problèmes à corriger ou améliorer
+🔸 Patient resource
+
+Élément	Problème	Solution
+name	Vide	→ Devrait contenir family: "SECLET", given: ["MARYSE", "BERTHE", "ALICE"] comme dans HL7v2.
+birthDate	"1948-09-09"	⚠️ Cette date ne correspond pas à celle du PID (HL7 indique 19830711). Vérifier si c’est une erreur de correspondance.
+telecom	Vide	Tu as des infos dans HL7v2 :
+- 0123456789 (téléphone portable)
+- email@test.fr (email).
+address	Vide	HL7 indique : 123 AVENUE DES HÔPITAUX, 75001 PARIS, FRANCE. À structurer en line, city, postalCode, country.
+identifier.value	"442777"	Ce n’est pas l’identifiant du message HL7 (c’est "458722781"). ⚠️ À remplacer !
+🔸 Practitioner.identifier
+
+Élément	Problème	Solution
+Multiples identifier.value de type texte ("LEFRANCOIS", "DOC"...)	Ce n’est pas valide. Un identifier = une valeur logique (ex : RPPS, ADELI...).	Garde uniquement :
+- "value": "10100710366", "system": "urn:oid:1.2.250.1.71.4.2.1"
+→ Interprété comme RPPS. Supprime les autres valeurs libres.
+name.family = "Praticien non spécifié"	Trop vague pour un échange ANS.	Utiliser : "family": "LEFRANCOIS", "given": ["PASCAL"] d’après les identifier.
+🔸 RelatedPerson.relationship
+| Problème | "code": "UNK" = "Unknown" | Si le lien est connu (conjoint, enfant...), il faut le préciser. | | Correction | Utiliser code "SPO" pour épouse/époux, "CHILD", "PRN"… selon le cas. |
+
+✅ 3. Points conformes
+PractitionerRole avec code métier (ODRP) dans le bon système ANS.
+
+Encounter.identifier bien formaté (pas de tableau !).
+
+Bundle.type = transaction OK.
+
+📋 Résumé
+
+État	Détails
+🟡 Correct techniquement, mais incomplet sémantiquement	Il manque les informations patient, adresse, télécom, et certains identifiants sont incorrects ou mal utilisés.
+❗ Risques de rejet	Ce Bundle ne passerait pas en validation stricte ANS à cause de Patient.name, identifier, birthDate, Practitioner.identifier.
