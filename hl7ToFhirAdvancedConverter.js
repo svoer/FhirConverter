@@ -549,8 +549,10 @@ function extractIdentifiers(identifierField) {
           // Détection des identifiants français basée sur l'OID uniquement
           if (oid === '1.2.250.1.213.1.4.8') {
             officialType = 'INS';
+            idType = 'NI'; // National identifier pour INS
           } else if (oid === '1.2.250.1.213.1.4.2') {
             officialType = 'INS-C';
+            idType = 'NI'; // National identifier pour INS-C
           } else if (oid === '1.2.250.1.71.4.2.1') {
             officialType = idType === 'ADELI' ? 'ADELI' : 'RPPS';
           } else if (oid === '1.2.250.1.71.4.2.2') {
@@ -1242,7 +1244,24 @@ function createEncounterResource(pv1Segment, patientReference) {
   }
   
   // Numéro de visite/séjour (PV1-19 = visit number)
-  const visitNumber = pv1Segment.length > 19 ? pv1Segment[19] || null : null;
+  let visitNumber = null;
+  // Assurer que la valeur est une chaîne et non un tableau
+  if (pv1Segment.length > 19) {
+    if (Array.isArray(pv1Segment[19])) {
+      // Si c'est un tableau, prendre la première valeur non vide
+      visitNumber = pv1Segment[19].find(v => v && (typeof v === 'string' || v.value));
+      // Extraire la valeur si c'est un objet
+      if (visitNumber && typeof visitNumber === 'object' && visitNumber.value) {
+        visitNumber = visitNumber.value;
+      }
+    } else if (pv1Segment[19] && typeof pv1Segment[19] === 'object' && pv1Segment[19].value) {
+      // Si c'est un objet avec une propriété value
+      visitNumber = pv1Segment[19].value;
+    } else {
+      // Si c'est une chaîne ou autre valeur primitive
+      visitNumber = pv1Segment[19];
+    }
+  }
   
   // Créer la ressource Encounter avec extensions françaises
   const encounterResource = {
@@ -1296,9 +1315,12 @@ function createEncounterResource(pv1Segment, patientReference) {
   
   // Ajouter l'identifiant de visite si disponible avec format français
   if (visitNumber) {
+    // S'assurer que la valeur est bien une chaîne
+    const visitNumberStr = typeof visitNumber === 'string' ? visitNumber : String(visitNumber);
+    
     encounterResource.identifier = [{
-      system: 'urn:oid:1.2.250.1.71.4.2.7', // OID français conforme à l'ANS pour identifiants internes (corrigé)
-      value: visitNumber, // Valeur unique sous forme de chaîne (pas de tableau)
+      system: 'urn:oid:1.2.250.1.71.4.2.7', // OID français conforme à l'ANS pour identifiants internes
+      value: visitNumberStr, // Valeur unique sous forme de chaîne (pas de tableau)
       type: {
         coding: [{
           system: "http://terminology.hl7.org/CodeSystem/v2-0203",
