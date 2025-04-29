@@ -187,7 +187,7 @@ router.get('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false }
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', apiKeyAuth(), (req, res) => {
+router.post('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
   try {
     const { name, description, cors_origins, settings } = req.body;
     
@@ -296,7 +296,7 @@ router.post('/', apiKeyAuth(), (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', apiKeyAuth(), (req, res) => {
+router.put('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, cors_origins, settings } = req.body;
@@ -380,7 +380,7 @@ router.put('/:id', apiKeyAuth(), (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', apiKeyAuth(), (req, res) => {
+router.delete('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
