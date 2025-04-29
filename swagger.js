@@ -60,12 +60,50 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 // Fonction d'initialisation de Swagger pour l'application Express
 function setupSwagger(app) {
+  // Middleware pour permettre à l'admin d'accéder à Swagger sans authentification supplémentaire
+  const swaggerAuthMiddleware = (req, res, next) => {
+    // Vérifier si l'utilisateur est authentifié avec un JWT
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        // Utiliser la même clé secrète que dans jwtAuth.js
+        const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Vérifier si l'utilisateur est admin dans la base de données
+        const db = req.app.locals.db;
+        const user = db.prepare(`SELECT role FROM users WHERE id = ?`).get(decoded.id);
+        
+        if (user && user.role === 'admin') {
+          // Pour les administrateurs, ajouter une clé API de développement aux en-têtes
+          const devKey = db.prepare(`SELECT key FROM api_keys WHERE key = 'dev-key' LIMIT 1`).get();
+          if (devKey) {
+            // Ajouter la clé API aux en-têtes pour les requêtes Swagger
+            req.headers['x-api-key'] = devKey.key;
+          }
+        }
+      } catch (error) {
+        console.error('[SWAGGER AUTH]', error);
+      }
+    }
+    next();
+  };
+
+  // Appliquer le middleware d'authentification pour Swagger
+  app.use('/api-docs', swaggerAuthMiddleware);
+  
   // Interface Swagger
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'FHIRHub API Documentation',
-    customfavIcon: '/favicon.ico'
+    customfavIcon: '/favicon.ico',
+    customJs: '/js/swagger-helper.js',
+    swaggerOptions: {
+      persistAuthorization: true
+    }
   }));
 
   // Route pour télécharger le fichier JSON Swagger

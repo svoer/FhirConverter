@@ -1,9 +1,9 @@
 /* Styles pour FHIRHub */
 :root {
-  --primary-color: #e74c3c;
-  --primary-gradient-start: #e74c3c;
-  --primary-gradient-end: #f39c12;
-  --secondary-color: #3498db;
+  --primary-color: #00579b; /* Bleu santé France */
+  --primary-gradient-start: #005091;
+  --primary-gradient-end: #0078d4;
+  --secondary-color: #e13427; /* Rouge santé France */
   --text-color: #333;
   --light-text: #f8f9fa;
   --background-color: #f4f7f9;
@@ -202,10 +202,24 @@ body {
   margin-bottom: 1rem;
 }
 
+.login-hero p.slogan {
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  max-width: 500px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
 .login-hero p {
   font-size: 1.1rem;
   margin-bottom: 1.5rem;
   max-width: 500px;
+}
+
+.login-hero i {
+  margin: 0 15px;
+  color: rgba(255,255,255,0.9);
 }
 
 .login-hero img {
