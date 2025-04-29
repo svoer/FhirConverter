@@ -1358,7 +1358,16 @@ function determineMaritalStatus(maritalStatusField) {
  * @returns {Array} Tableau de coordonnées FHIR
  */
 function extractTelecoms(homePhoneFields, workPhoneFields) {
-  console.log('[CONVERTER] Extraction des télécom à partir de:', JSON.stringify(homePhoneFields).substring(0, 200), '...');
+  // Si les paramètres sont undefined, utiliser des tableaux vides pour éviter les erreurs
+  homePhoneFields = homePhoneFields || [];
+  workPhoneFields = workPhoneFields || [];
+  
+  try {
+    console.log('[CONVERTER] Extraction des télécom à partir de:', 
+                homePhoneFields ? JSON.stringify(homePhoneFields).substring(0, 200) : 'aucun', '...');
+  } catch (e) {
+    console.log('[CONVERTER] Échec du log des télécom:', e.message);
+  }
   
   const telecoms = [];
   
@@ -1652,7 +1661,15 @@ function mapContactUseToFHIR(useCode) {
  * @returns {Array} Tableau d'adresses FHIR
  */
 function extractAddresses(addressFields) {
-  console.log('[CONVERTER] Extraction des adresses à partir de:', JSON.stringify(addressFields).substring(0, 200), '...');
+  // S'assurer que addressFields est défini pour éviter les erreurs
+  addressFields = addressFields || [];
+  
+  try {
+    console.log('[CONVERTER] Extraction des adresses à partir de:', 
+                addressFields ? JSON.stringify(addressFields).substring(0, 200) : 'aucune', '...');
+  } catch (e) {
+    console.log('[CONVERTER] Échec du log des adresses:', e.message);
+  }
   
   if (!addressFields) {
     console.log('[CONVERTER] Pas de champ d\'adresse fourni');
