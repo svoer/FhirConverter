@@ -551,6 +551,10 @@ PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19
     </div>
   </div>
 
+  <a href="#" class="back-to-top" id="backToTop">
+    <i class="fas fa-arrow-up"></i>
+  </a>
+
   <footer class="footer">
     <div class="container">
       <div class="footer-text">
@@ -690,6 +694,27 @@ PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19
         responseOutput.innerText = 'Erreur: ' + error.message;
       });
     }
+
+    // Gestion du bouton retour en haut
+    const backToTopButton = document.getElementById('backToTop');
+    
+    // Afficher le bouton quand l'utilisateur scrolle
+    window.addEventListener('scroll', () => {
+      if (window.pageYOffset > 300) { // Montrer après 300px de scroll
+        backToTopButton.classList.add('visible');
+      } else {
+        backToTopButton.classList.remove('visible');
+      }
+    });
+    
+    // Action lors du clic sur le bouton
+    backToTopButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth' // Scroll fluide
+      });
+    });
   </script>
 </body>
 </html>
