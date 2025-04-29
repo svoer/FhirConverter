@@ -525,9 +525,11 @@ function extractIdentifiers(identifierField) {
         if (namespaceName.includes('ASIP-SANTE-INS-NIR') || namespaceName.includes('INSEE-NIR')) {
           officialType = 'INS';
           system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS-NIR
+          idType = 'NI'; // National identifier pour INS
         } else if (namespaceName.includes('ASIP-SANTE-INS-C')) {
           officialType = 'INS-C';
           system = 'urn:oid:1.2.250.1.213.1.4.2'; // OID officiel pour INS-C
+          idType = 'NI'; // National identifier pour INS-C
         } else if (namespaceName.includes('ADELI')) {
           officialType = 'ADELI';
           system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID officiel pour ADELI
