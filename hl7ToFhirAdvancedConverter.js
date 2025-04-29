@@ -27,9 +27,12 @@ const frenchTerminology = require('./french_terminology_adapter');
 const hl7Parser = require('./hl7Parser');
 
 /**
- * Convertit un message HL7 en bundle FHIR
+ * Convertit un message HL7 en bundle FHIR conforme aux spécifications ANS (France)
+ * Optimisé pour les identifiants INS/INS-C et terminologies françaises
+ * @version 1.1.1
+ * @updated 2025-04-29
  * @param {string} hl7Message - Message HL7 au format texte
- * @returns {Object} Bundle FHIR au format R4
+ * @returns {Object} Bundle FHIR au format R4 conforme ANS
  */
 function convertHL7ToFHIR(hl7Message) {
   try {
@@ -582,8 +585,8 @@ function extractIdentifiers(identifierField) {
           type: {
             coding: [{
               system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-              code: idInfo.typeCode,
-              display: idInfo.display
+              code: officialType === 'INS' || officialType === 'INS-C' ? 'NI' : idInfo.typeCode,
+              display: officialType === 'INS' || officialType === 'INS-C' ? 'National unique identifier' : idInfo.display
             }]
           }
         };
@@ -679,9 +682,9 @@ function getIdentifierTypeDisplay(idType) {
     'PI': 'Patient internal identifier',
     'PPN': 'Passport number',
     'MR': 'Medical record number',
-    'INS': 'Identifiant National de Santé',
-    'INS-C': 'Identifiant National de Santé Calculé',
-    'NI': 'National identifier',
+    'INS': 'National unique identifier',
+    'INS-C': 'National unique identifier',
+    'NI': 'National unique identifier',
     'NH': 'Numéro d\'hospitalisation'
   };
   

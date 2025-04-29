@@ -84,13 +84,13 @@ function getIdentifierInfo(idType) {
   const idMap = {
     'INS': { 
       system: FRENCH_SYSTEMS.OID_INS,
-      typeCode: 'INS',
-      display: 'Identifiant National de Santé'
+      typeCode: 'NI',
+      display: 'National unique identifier'
     },
     'INS-C': { 
       system: FRENCH_SYSTEMS.OID_INS_C,
-      typeCode: 'INS-C',
-      display: 'Identifiant National de Santé Calculé'
+      typeCode: 'NI',
+      display: 'National unique identifier'
     },
     'ADELI': { 
       system: FRENCH_SYSTEMS.OID_ADELI,

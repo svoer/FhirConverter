@@ -1,5 +1,7 @@
 /**
  * Application FHIRHub minimale pour le débogage
+ * @version 1.1.1
+ * @updated 2025-04-29
  */
 
 const express = require('express');
