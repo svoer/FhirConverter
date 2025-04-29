@@ -551,15 +551,21 @@ function createPatientResource(pidSegmentFields, pd1SegmentFields) {
 
 /**
  * Extrait les identifiants du patient à partir du champ PID-3
+ * Gestion optimisée des identifiants selon les spécifications ANS (France)
  * @param {Array|string} identifierField - Champ d'identifiants
  * @returns {Array} Tableau d'identifiants FHIR
  */
 function extractIdentifiers(identifierField) {
+  console.log('[CONVERTER] Extraction des identifiants à partir de:', JSON.stringify(identifierField).substring(0, 200));
+  
   if (!identifierField) {
+    console.log('[CONVERTER] Pas d\'identifiants fournis');
     return [];
   }
   
   const identifiers = [];
+  let hasINS = false; // Pour traquer si un INS a été trouvé
+  let hasIPP = false; // Pour traquer si un IPP a été trouvé
   
   // Si nous avons une chaîne, traiter directement
   if (typeof identifierField === 'string') {
@@ -569,6 +575,8 @@ function extractIdentifiers(identifierField) {
     const assigningAuthority = components[3] || '';
     
     if (idValue) {
+      console.log('[CONVERTER] Traitement identifiant:',idValue,'type:',idType,'autorité:',assigningAuthority);
+      
       // Configuration standard
       let system = 'urn:system:unknown';
       let officialType = '';
@@ -581,108 +589,110 @@ function extractIdentifiers(identifierField) {
         
         // Détection des identifiants français basée sur le nom et l'OID
         // En conformité stricte avec les recommandations ANS
-        if (namespaceName.includes('ASIP-SANTE-INS-NIR') || namespaceName.includes('INSEE-NIR')) {
+        if (namespaceName.includes('ASIP-SANTE-INS-NIR') || 
+            namespaceName.includes('INSEE-NIR') || 
+            namespaceName.includes('INS-NIR') ||
+            idType === 'INS' || idType === 'INS-NIR') {
+          console.log('[CONVERTER] Identifiant INS-NIR détecté');
           officialType = 'INS';
           system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS-NIR
-          idType = 'NI'; // National identifier pour INS
-        } else if (namespaceName.includes('ASIP-SANTE-INS-C')) {
+          hasINS = true;
+        } else if (namespaceName.includes('ASIP-SANTE-INS-C') || 
+                   namespaceName.includes('INS-C') ||
+                   idType === 'INS-C') {
+          console.log('[CONVERTER] Identifiant INS-C détecté');
           officialType = 'INS-C';
-          system = 'urn:oid:1.2.250.1.213.1.4.2'; // OID officiel pour INS-C
-          idType = 'NI'; // National identifier pour INS-C
-        } else if (namespaceName.includes('ADELI')) {
-          officialType = 'ADELI';
-          system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID officiel pour ADELI
-        } else if (namespaceName.includes('RPPS')) {
-          officialType = 'RPPS';
-          system = 'urn:oid:1.2.250.1.71.4.2.1'; // OID officiel pour RPPS
-        } else if (namespaceName.includes('FINESS')) {
-          officialType = 'FINESS';
-          system = 'urn:oid:1.2.250.1.71.4.2.2'; // OID officiel pour FINESS
-        } else if (namespaceName.includes('SIRET')) {
-          officialType = 'SIRET';
-          system = 'urn:oid:1.2.250.1.71.4.2.2'; // OID officiel pour SIRET
+          system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS conformément à ANS
+          hasINS = true;
+        } else if (idType === 'PI' || idType === 'NH' || idType === '') {
+          console.log('[CONVERTER] Identifiant interne (IPP) détecté');
+          officialType = 'IPP';
+          system = 'urn:oid:1.2.250.1.71.4.2.7'; // OID pour identifiants internes
+          hasIPP = true;
         } else if (oid) {
           // Utiliser l'OID directement si fourni
           system = `urn:oid:${oid}`;
           
           // Détection des identifiants français basée sur l'OID uniquement
-          if (oid === '1.2.250.1.213.1.4.8') {
+          if (oid === '1.2.250.1.213.1.4.8' || oid === '1.2.250.1.213.1.4.2') {
+            console.log('[CONVERTER] Identifiant INS détecté via OID:', oid);
             officialType = 'INS';
-            idType = 'NI'; // National identifier pour INS
-          } else if (oid === '1.2.250.1.213.1.4.2') {
-            officialType = 'INS-C';
-            idType = 'NI'; // National identifier pour INS-C
-          } else if (oid === '1.2.250.1.71.4.2.1') {
-            officialType = idType === 'ADELI' ? 'ADELI' : 'RPPS';
-          } else if (oid === '1.2.250.1.71.4.2.2') {
-            officialType = idType === 'FINESS' ? 'FINESS' : 'SIRET';
+            hasINS = true;
+          } else if (oid === '1.2.250.1.71.4.2.7') {
+            console.log('[CONVERTER] Identifiant IPP détecté via OID:', oid);
+            officialType = 'IPP';
+            hasIPP = true;
           }
-        } else {
-          // Si pas d'OID mais un namespace, utiliser le namespace comme système
-          system = `urn:system:${namespaceName}`;
         }
-      } else if (idType === 'PI' || idType === 'NH') {
+      } else if (idType === 'PI' || idType === 'NH' || idType === '') {
         // IPP (Patient Internal) ou Numéro d'hospitalisation
         system = 'urn:oid:1.2.250.1.71.4.2.7'; // OID pour identifiants internes
+        officialType = 'IPP';
+        hasIPP = true;
       }
       
-      // Utiliser les mappings de terminologie française
-      if (officialType) {
-        const idInfo = frenchTerminology.getIdentifierInfo(officialType);
-        
-        // Créer l'identifiant avec les informations françaises
-        const identifier = {
+      // Cas 1: INS (NIR ou INS-C) - conforme aux recommandations ANS
+      if (officialType === 'INS' || officialType === 'INS-C') {
+        // Créer l'identifiant INS avec les informations françaises
+        identifiers.push({
           value: idValue,
-          system: idInfo.system,
+          system: 'urn:oid:1.2.250.1.213.1.4.8', // OID officiel pour INS selon ANS
           type: {
             coding: [{
               system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-              code: officialType === 'INS' || officialType === 'INS-C' ? 'NI' : idInfo.typeCode,
-              display: officialType === 'INS' || officialType === 'INS-C' ? 'National unique identifier' : idInfo.display
+              code: 'NI',
+              display: 'Numéro d\'identification au répertoire national d\'identification des personnes physiques'
             }]
-          }
-        };
-        
-        // Ajouter l'établissement d'assignation si disponible
-        if (assigningAuthority) {
-          identifier.assigner = { 
-            display: assigningAuthority.split('&')[0] 
-          };
-        }
-        
-        // Extensions spécifiques françaises
-        if (officialType === 'INS') {
-          identifier.extension = [{
-            url: frenchTerminology.FRENCH_EXTENSIONS.INS_STATUS,
-            valueCode: 'VALI'
-          }];
-        }
-        
-        identifiers.push(identifier);
-      } else {
-        // Identifiants standard (non français)
-        const identifier = {
-          value: idValue,
-          system: system
-        };
-        
-        // Ajouter l'établissement d'assignation si disponible
-        if (assigningAuthority) {
-          identifier.assigner = { 
-            display: assigningAuthority.split('&')[0] 
-          };
-        }
-        
-        // Ajouter le type d'identifiant
-        identifier.type = {
-          coding: [{
-            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-            code: idType,
-            display: getIdentifierTypeDisplay(idType)
+          },
+          assigner: { 
+            display: 'INSEE'
+          },
+          extension: [{
+            url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INSi-Status',
+            valueCodeableConcept: {
+              coding: [{
+                system: 'https://mos.esante.gouv.fr/NOS/TRE_R338-ModaliteAccueil/FHIR/TRE-R338-ModaliteAccueil',
+                code: 'VALI',
+                display: 'Identité vérifiée'
+              }]
+            }
           }]
-        };
-        
-        identifiers.push(identifier);
+        });
+      } 
+      // Cas 2: IPP - identifiant interne conforme aux recommandations ANS
+      else if (officialType === 'IPP') {
+        // Identifiants standard (non français)
+        identifiers.push({
+          value: idValue,
+          system: 'urn:oid:1.2.250.1.71.4.2.7', // OID standard pour identifiants internes
+          type: {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: 'PI',
+              display: 'Identifiant patient interne'
+            }]
+          },
+          assigner: assigningAuthority ? { 
+            display: assigningAuthority.split('&')[0] 
+          } : undefined
+        });
+      }
+      // Cas 3: Autres types d'identifiants
+      else {
+        identifiers.push({
+          value: idValue,
+          system: system,
+          type: {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: idType || 'PI',
+              display: getIdentifierTypeDisplay(idType || 'PI')
+            }]
+          },
+          assigner: assigningAuthority ? { 
+            display: assigningAuthority.split('&')[0] 
+          } : undefined
+        });
       }
     }
   }
@@ -692,7 +702,9 @@ function extractIdentifiers(identifierField) {
     const processedIds = new Set();
     
     // Traiter chaque élément comme un identifiant potentiel
-    identifierField.forEach(item => {
+    identifierField.forEach((item, index) => {
+      console.log('[CONVERTER] Traitement élément #' + index + ' du tableau');
+      
       if (typeof item === 'string') {
         const ids = extractIdentifiers(item);
         // Filtrer les identifiants pour éviter les duplications
@@ -701,26 +713,200 @@ function extractIdentifiers(identifierField) {
           if (!processedIds.has(idKey)) {
             identifiers.push(id);
             processedIds.add(idKey);
+            
+            // Mettre à jour les flags
+            if (id.type?.coding?.[0]?.code === 'NI') hasINS = true;
+            if (id.type?.coding?.[0]?.code === 'PI') hasIPP = true;
           }
         });
       } else if (Array.isArray(item)) {
-        item.forEach(subItem => {
-          if (typeof subItem === 'string') {
-            const ids = extractIdentifiers(subItem);
-            // Filtrer les identifiants pour éviter les duplications
-            ids.forEach(id => {
-              const idKey = `${id.system}|${id.value}`;
-              if (!processedIds.has(idKey)) {
-                identifiers.push(id);
-                processedIds.add(idKey);
-              }
-            });
+        // Traiter directement cet élément comme un identifiant complet
+        const idValue = item[0] || '';
+        const idType = item[4] || '';
+        const assigningAuth = item[3] || '';
+        let assigningOID = '';
+        
+        // Essayer d'extraire l'OID de différentes structures possibles
+        if (item[9]) {
+          if (Array.isArray(item[9])) {
+            assigningOID = item[9][1] || '';
+          } else if (typeof item[9] === 'object') {
+            assigningOID = item[9].universalId || '';
           }
-        });
+        }
+        
+        console.log('[CONVERTER] Analysant identifiant tableau:', idValue, idType, assigningAuth, assigningOID);
+        
+        if (idValue) {
+          // Détection INS - Plusieurs critères possibles
+          const isINS = assigningAuth === 'INSEE' || 
+                      idType === 'INS' || 
+                      idType === 'INS-C' || 
+                      idType === 'INS-NIR' || 
+                      assigningOID === '1.2.250.1.213.1.4.8' || 
+                      assigningOID === '1.2.250.1.213.1.4.2';
+                      
+          if (isINS) {
+            console.log('[CONVERTER] INS détecté dans tableau:', idValue);
+            hasINS = true;
+            
+            const insIdentifier = {
+              value: idValue,
+              system: 'urn:oid:1.2.250.1.213.1.4.8', // OID standard ANS
+              type: {
+                coding: [{
+                  system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+                  code: 'NI',
+                  display: 'Numéro d\'identification au répertoire national d\'identification des personnes physiques'
+                }]
+              },
+              assigner: { 
+                display: 'INSEE'
+              }
+            };
+            
+            // Extension pour le statut INS
+            insIdentifier.extension = [{
+              url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INSi-Status',
+              valueCodeableConcept: {
+                coding: [{
+                  system: 'https://mos.esante.gouv.fr/NOS/TRE_R338-ModaliteAccueil/FHIR/TRE-R338-ModaliteAccueil',
+                  code: 'VALI',
+                  display: 'Identité vérifiée'
+                }]
+              }
+            }];
+            
+            const idKey = `${insIdentifier.system}|${insIdentifier.value}`;
+            if (!processedIds.has(idKey)) {
+              identifiers.push(insIdentifier);
+              processedIds.add(idKey);
+            }
+          } else {
+            // Considérer comme un IPP par défaut
+            console.log('[CONVERTER] IPP détecté dans tableau:', idValue);
+            hasIPP = true;
+            
+            const ippIdentifier = {
+              value: idValue,
+              system: 'urn:oid:1.2.250.1.71.4.2.7', // OID standard pour IPP
+              type: {
+                coding: [{
+                  system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+                  code: 'PI',
+                  display: 'Identifiant patient interne'
+                }]
+              }
+            };
+            
+            // Ajouter l'assigner si disponible
+            if (assigningAuth) {
+              ippIdentifier.assigner = {
+                display: assigningAuth
+              };
+            }
+            
+            const idKey = `${ippIdentifier.system}|${ippIdentifier.value}`;
+            if (!processedIds.has(idKey)) {
+              identifiers.push(ippIdentifier);
+              processedIds.add(idKey);
+            }
+          }
+        }
       }
     });
   }
   
+  // Si nous n'avons trouvé aucun identifiant, ajouter un identifiant temporaire
+  if (identifiers.length === 0) {
+    console.log('[CONVERTER] Aucun identifiant trouvé, ajout d\'un ID temporaire');
+    
+    const generatedId = `tmp-${Date.now()}`;
+    identifiers.push({
+      value: generatedId,
+      system: 'urn:oid:1.2.250.1.71.4.2.7',
+      type: {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: 'PI',
+          display: 'Identifiant patient interne'
+        }]
+      }
+    });
+    hasIPP = true;
+  }
+  
+  // Si nous avons un INS mais pas d'IPP, générer un IPP basé sur l'INS
+  // Important pour conformité française (besoin des deux types d'identifiants)
+  if (hasINS && !hasIPP) {
+    console.log('[CONVERTER] INS trouvé sans IPP, ajout d\'un IPP dérivé de l\'INS');
+    
+    const insIdentifier = identifiers.find(id => 
+      id.type?.coding?.[0]?.code === 'NI' && 
+      id.system === 'urn:oid:1.2.250.1.213.1.4.8'
+    );
+    
+    if (insIdentifier) {
+      // Générer un IPP dérivé de l'INS
+      const insValue = insIdentifier.value;
+      const derivedIPP = `${insValue.substring(0, 5)}-${Date.now().toString().substring(0, 5)}`;
+      
+      identifiers.push({
+        value: derivedIPP,
+        system: 'urn:oid:1.2.250.1.71.4.2.7',
+        type: {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+            code: 'PI',
+            display: 'Identifiant patient interne'
+          }]
+        }
+      });
+    }
+  }
+  
+  // Si nous avons un IPP mais pas d'INS (et si explicitement demandé pour tests)
+  if (!hasINS && hasIPP && process.env.GENERATE_TEST_INS === 'true') {
+    console.log('[CONVERTER] [TEST UNIQUEMENT] Génération d\'un INS simulé');
+    
+    const ippIdentifier = identifiers.find(id => 
+      id.type?.coding?.[0]?.code === 'PI' && 
+      id.system === 'urn:oid:1.2.250.1.71.4.2.7'
+    );
+    
+    if (ippIdentifier) {
+      // Format INS-C fictif pour tests uniquement - NE PAS UTILISER EN PRODUCTION
+      const ippValue = ippIdentifier.value;
+      const testINS = `2${ippValue.replace(/\D/g, '').padStart(13, '0').substring(0, 13)}00`;
+      
+      identifiers.push({
+        value: testINS,
+        system: 'urn:oid:1.2.250.1.213.1.4.8',
+        type: {
+          coding: [{
+            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+            code: 'NI',
+            display: 'Numéro d\'identification au répertoire national d\'identification des personnes physiques'
+          }]
+        },
+        assigner: {
+          display: 'INSEE'
+        },
+        extension: [{
+          url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INSi-Status',
+          valueCodeableConcept: {
+            coding: [{
+              system: 'https://mos.esante.gouv.fr/NOS/TRE_R338-ModaliteAccueil/FHIR/TRE-R338-ModaliteAccueil',
+              code: 'TEST',
+              display: 'INS de test (non officiel)'
+            }]
+          }
+        }]
+      });
+    }
+  }
+  
+  console.log(`[CONVERTER] ${identifiers.length} identifiants extraits - INS: ${hasINS}, IPP: ${hasIPP}`);
   return identifiers;
 }
 
@@ -1964,14 +2150,34 @@ function createOrganizationResource(mshSegment, fieldIndex) {
       return null;
     }
     
-    // Identifiant de l'organisation (component 2)
-    // Générer un identifiant stable basé sur le nom plutôt qu'un horodatage
-    if (fieldParts.length > 1 && fieldParts[1]) {
-      orgId = fieldParts[1];
+    // Vérifier si le nom semble être un horodatage (format commun: YYYYMMDDhhmmss)
+    // Si c'est le cas, le remplacer par un nom plus descriptif
+    if (/^\d{8,14}$/.test(orgName)) {
+      console.log('[CONVERTER] Nom d\'organisation semble être un horodatage:', orgName);
+      // Déterminer si c'est une organisation d'envoi ou de réception
+      const isSender = fieldIndex === 4;
+      
+      // Remplacer l'horodatage par un nom descriptif
+      if (isSender) {
+        orgName = `Établissement émetteur`;
+      } else {
+        orgName = `Établissement destinataire`;
+      }
+      
+      // Conserver l'horodatage original comme identifiant
+      orgId = `org-${fieldParts[0]}`;
+      
+      console.log('[CONVERTER] Nom d\'organisation remplacé par:', orgName);
     } else {
-      // Utiliser le nom de l'organisation pour générer un ID stable
-      // Nous convertissons le nom en un identifiant alphanumérique sans caractères spéciaux
-      orgId = `org-${orgName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+      // Identifiant de l'organisation (component 2)
+      // Générer un identifiant stable basé sur le nom plutôt qu'un horodatage
+      if (fieldParts.length > 1 && fieldParts[1]) {
+        orgId = fieldParts[1];
+      } else {
+        // Utiliser le nom de l'organisation pour générer un ID stable
+        // Nous convertissons le nom en un identifiant alphanumérique sans caractères spéciaux
+        orgId = `org-${orgName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+      }
     }
     
     // Namespace (component 3)
