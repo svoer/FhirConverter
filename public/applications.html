@@ -383,10 +383,16 @@
         
         if (data.success && data.data && data.data.length > 0) {
           renderApplications(data.data);
-          document.getElementById('noAppsMessage').style.display = 'none';
+          const noAppsMessage = document.getElementById('noAppsMessage');
+          if (noAppsMessage) {
+            noAppsMessage.style.display = 'none';
+          }
         } else {
           // Afficher le message "Aucune application"
-          document.getElementById('noAppsMessage').style.display = 'block';
+          const noAppsMessage = document.getElementById('noAppsMessage');
+          if (noAppsMessage) {
+            noAppsMessage.style.display = 'block';
+          }
         }
       } catch (error) {
         console.error('Erreur:', error);
