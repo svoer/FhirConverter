@@ -467,6 +467,10 @@ function createPatientResource(pidSegmentFields, pd1SegmentFields) {
   // PID-3 (Patient Identifiers) - Champ 3
   const patientIdentifiers = extractIdentifiers(pidSegmentFields[3]);
   
+  // Log du PID-13 et PID-14 pour le debugging des téléphones
+  console.log('[CONVERTER] PID-13 (Home Phone):', JSON.stringify(pidSegmentFields[13]));
+  console.log('[CONVERTER] PID-14 (Work Phone):', JSON.stringify(pidSegmentFields[14]));
+  
   // Extraction d'un ID simple pour l'URI
   const mainId = pidSegmentFields[3] ? (Array.isArray(pidSegmentFields[3]) ? 
     (pidSegmentFields[3][0] || '') : pidSegmentFields[3]) : '';
@@ -530,6 +534,79 @@ function createPatientResource(pidSegmentFields, pd1SegmentFields) {
   // 3. Tous les autres identifiants (limités à 1-2 maximum)
   optimizedIdentifiers.push(...otherIdentifiers.slice(0, 2));
   
+  // Extraire les télécom avec notre fonction standard
+  let telecomData = extractTelecoms(pidSegmentFields[13], pidSegmentFields[14]);
+  
+  // Si aucun télécom n'a été trouvé, utiliser une extraction de secours directe
+  if (!telecomData || telecomData.length === 0) {
+    console.log('[CONVERTER] Aucun télécom trouvé avec la méthode standard, tentative directe...');
+    telecomData = [];
+    
+    // Extraction directe du téléphone mobile
+    if (pidSegmentFields[13] && Array.isArray(pidSegmentFields[13])) {
+      // Format spécifique français PID-13: [["","PRN","PH","","","","","","","","","0608987212"]]
+      pidSegmentFields[13].forEach(field => {
+        if (Array.isArray(field) && field.length >= 12 && field[11]) {
+          const phoneNumber = field[11];
+          if (phoneNumber && /^\d+$/.test(phoneNumber)) {
+            console.log('[CONVERTER] Numéro de téléphone trouvé directement:', phoneNumber);
+            
+            // Déterminer si c'est un mobile (06/07)
+            const isMobile = phoneNumber.startsWith('06') || phoneNumber.startsWith('07');
+            
+            telecomData.push({
+              system: 'phone',
+              value: phoneNumber,
+              use: isMobile ? 'mobile' : 'home'
+            });
+          }
+        }
+      });
+    }
+    
+    // Extraction directe de l'email
+    if (pidSegmentFields[13] && Array.isArray(pidSegmentFields[13])) {
+      pidSegmentFields[13].forEach(field => {
+        // Format typique français: ["","NET","Internet","MARYSE.SECLET@WANADOO.FR"]
+        if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3]) {
+          const email = field[3];
+          if (email && email.includes('@')) {
+            console.log('[CONVERTER] Email trouvé directement:', email);
+            telecomData.push({
+              system: 'email',
+              value: email,
+              use: 'home'
+            });
+          }
+        }
+        
+        // Recherche dans les profondeurs du format HL7 (tout ce qui contient un @)
+        if (field && typeof field === 'string' && field.includes('@')) {
+          console.log('[CONVERTER] Email trouvé dans champ spécial:', field);
+          telecomData.push({
+            system: 'email',
+            value: field,
+            use: 'home'
+          });
+        }
+        
+        // Parcourir récursivement pour trouver les emails
+        if (field && Array.isArray(field)) {
+          field.forEach(subField => {
+            if (subField && typeof subField === 'string' && subField.includes('@')) {
+              console.log('[CONVERTER] Email trouvé dans sous-champ:', subField);
+              telecomData.push({
+                system: 'email',
+                value: subField,
+                use: 'home'
+              });
+            }
+          });
+        }
+      });
+    }
+  }
+  
   // Créer la ressource Patient
   const patientResource = {
     resourceType: 'Patient',
@@ -538,7 +615,7 @@ function createPatientResource(pidSegmentFields, pd1SegmentFields) {
     name: extractNames(pidSegmentFields[5]),
     gender: determineGender(pidSegmentFields[8]),
     birthDate: formatBirthDate(pidSegmentFields[7]),
-    telecom: extractTelecoms(pidSegmentFields[13], pidSegmentFields[14]),
+    telecom: telecomData,
     address: extractAddresses(pidSegmentFields[11]),
     maritalStatus: determineMaritalStatus(pidSegmentFields[16]),
     contact: []
