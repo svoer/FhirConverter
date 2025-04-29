@@ -1394,6 +1394,34 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
     console.log('[CONVERTER] Échec du log des télécom:', e.message);
   }
   
+  // NOUVELLE FONCTION d'extraction directe des emails
+  // Version simplifiée et directe, cible directement les emails au format spécifique
+  function extractFrenchEmails(telecoms, processedSet) {
+    if (Array.isArray(homePhoneFields)) {
+      homePhoneFields.forEach(field => {
+        if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3]) {
+          const emailValue = field[3];
+          if (emailValue && emailValue.includes('@')) {
+            console.log('[CONVERTER] Email français DIRECTEMENT trouvé :', emailValue);
+            
+            const emailTelecom = {
+              system: 'email',
+              value: emailValue,
+              use: 'home'
+            };
+            
+            const key = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+            if (!processedSet.has(key)) {
+              telecoms.push(emailTelecom);
+              processedSet.add(key);
+              console.log('[CONVERTER] Email français DIRECTEMENT ajouté au tableau final');
+            }
+          }
+        }
+      });
+    }
+  }
+  
   // Création d'un tableau pour stocker les emails trouvés dans le format de message HL7 français
   const foundEmailsInHL7French = [];
   
@@ -1480,9 +1508,14 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
     }
   }
   
+  // Création directe du tableau des télécom
   const telecoms = [];
+  
   // Set pour suivre les télécom déjà traités (éviter les doublons)
   const processedTelecoms = new Set();
+  
+  // Extraction prioritaire des emails français typiques
+  extractFrenchEmails(telecoms, processedTelecoms);
   
   // Optimisation spécifique pour les messages HL7 en format français avec des tableaux imbriqués
   // Spécifiquement pour gérer les cas comme : [["","PRN","PH","","","","","","","","","0608987212"]]
