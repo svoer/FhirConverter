@@ -810,12 +810,15 @@ function extractIdentifiers(identifierField) {
     // Garder une trace des identifiants déjà traités pour éviter les doublons
     const processedIds = new Set();
     
+    // Tableau pour stocker tous les identifiants INS trouvés
+    const insIdentifiers = [];
+    
     // Traiter chaque élément comme un identifiant potentiel
     identifierField.forEach((item, index) => {
       console.log('[CONVERTER] Traitement élément #' + index + ' du tableau');
       
-      // Debug uniquement pour les identifiants INS-A/INS-C/INS-NIR
-      if (index <= 5 && Array.isArray(item)) {
+      // Traitement spécifique pour les identifiants INS-A/INS-C/INS-NIR
+      if (Array.isArray(item)) {
         // Analyser si cet item pourrait être un INS
         if (item.length > 4) {
           const idValue = item[0] || '';
@@ -825,7 +828,24 @@ function extractIdentifiers(identifierField) {
           // Si c'est un nombre de 15 chiffres, c'est probablement un INS
           if (/^\d{15}$/.test(idValue) && 
               (idAuth.includes('ASIP-SANTE') || idAuth.includes('INS') || idType.includes('INS'))) {
-            console.log('[CONVERTER] Identifiant INS potentiel trouvé dans PID:', idValue, idType, idAuth);
+            console.log('[CONVERTER] Identifiant INS détecté dans PID:', idValue, idType, idAuth);
+            
+            // Déterminer le type exact d'INS
+            let insType = 'INS';
+            if (idAuth.includes('INS-C') || idType === 'INS-C') {
+              insType = 'INS-C';
+            } else if (idAuth.includes('INS-A') || idType === 'INS-A') {
+              insType = 'INS-A';
+            } else if (idAuth.includes('INS-NIR') || idType === 'INS-NIR') {
+              insType = 'INS-NIR';
+            }
+            
+            // Stocker l'identifiant INS pour un traitement ultérieur
+            insIdentifiers.push({
+              value: idValue,
+              type: insType,
+              auth: idAuth
+            });
           }
         }
       }
@@ -960,6 +980,49 @@ function extractIdentifiers(identifierField) {
         }
       }
     });
+    
+    // Traiter les identifiants INS spécifiques détectés
+    if (insIdentifiers.length > 0) {
+      console.log(`[CONVERTER] ${insIdentifiers.length} identifiants INS spécifiques détectés`);
+      
+      insIdentifiers.forEach(ins => {
+        // Créer un identifiant FHIR pour chaque INS détecté
+        const insId = {
+          value: ins.value,
+          system: 'urn:oid:1.2.250.1.213.1.4.8', // OID standard ANS pour INS
+          type: {
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+              code: 'NI',
+              display: 'Numéro d\'identification au répertoire national d\'identification des personnes physiques'
+            }]
+          },
+          assigner: { 
+            display: 'INSEE'
+          },
+          extension: [{
+            url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INSi-Status',
+            valueCodeableConcept: {
+              coding: [{
+                system: 'https://mos.esante.gouv.fr/NOS/TRE_R338-ModaliteAccueil/FHIR/TRE-R338-ModaliteAccueil',
+                code: 'VALI',
+                display: 'Identité vérifiée'
+              }]
+            }
+          }]
+        };
+        
+        // Vérifier si cet identifiant existe déjà
+        const idKey = `${insId.system}|${insId.value}`;
+        if (!processedIds.has(idKey)) {
+          identifiers.push(insId);
+          processedIds.add(idKey);
+          hasINS = true;
+          
+          console.log(`[CONVERTER] Ajout de l'identifiant INS (${ins.type}): ${ins.value}`);
+        }
+      });
+    }
   }
   
   // Si nous n'avons trouvé aucun identifiant, ajouter un identifiant temporaire
@@ -3504,6 +3567,46 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
         end: expirationDateFormatted
       };
       console.log('[CONVERTER] Date de fin de couverture définie:', expirationDateFormatted);
+    }
+  } else {
+    // Recherche approfondie de la date de validité dans tous les champs pertinents
+    // Format français: recherche dans plusieurs positions possibles selon le système
+    const possibleDateIndices = [12, 13, 14]; // Positions IN1-12, IN1-13, IN1-14
+    
+    for (const dateIndex of possibleDateIndices) {
+      if (in1Segment.length > dateIndex && in1Segment[dateIndex]) {
+        let potentialDate = in1Segment[dateIndex];
+        
+        // Vérifier si le champ ressemble à une date (numérique, longueur 8 pour YYYYMMDD)
+        if (/^\d{8}$/.test(potentialDate)) {
+          const year = potentialDate.substring(0, 4);
+          const month = potentialDate.substring(4, 6);
+          const day = potentialDate.substring(6, 8);
+          
+          // Validation basique des composants de date
+          if (parseInt(year) >= 2000 && parseInt(year) <= 2099 && 
+              parseInt(month) >= 1 && parseInt(month) <= 12 && 
+              parseInt(day) >= 1 && parseInt(day) <= 31) {
+            
+            const expirationDateFormatted = `${year}-${month}-${day}`;
+            coverageResource.period = {
+              end: expirationDateFormatted
+            };
+            console.log(`[CONVERTER] Date de fin de couverture trouvée à IN1-${dateIndex+1}: ${expirationDateFormatted}`);
+            break; // Sortir de la boucle une fois une date valide trouvée
+          }
+        }
+        
+        // Essayer le formatage standard pour les autres formats potentiels de date
+        const formattedDate = formatHL7DateTime(potentialDate);
+        if (formattedDate) {
+          coverageResource.period = {
+            end: formattedDate
+          };
+          console.log(`[CONVERTER] Date de fin de couverture trouvée à IN1-${dateIndex+1} et formatée: ${formattedDate}`);
+          break;
+        }
+      }
     }
   }
   
