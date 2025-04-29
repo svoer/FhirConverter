@@ -1,0 +1,193 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-04-29T00:00:00Z",
+  "description": "Mappage des terminologies françaises pour FHIR R4 selon les spécifications ANS",
+  
+  "systems": {
+    "PAYS": "https://mos.esante.gouv.fr/NOS/TRE_R20-Pays/FHIR/TRE-R20-Pays",
+    "GENDER": "https://mos.esante.gouv.fr/NOS/TRE_R303-HL7v3AdministrativeGender/FHIR/TRE-R303-HL7v3AdministrativeGender",
+    "ENCOUNTER_TYPE": "https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre",
+    "PROFESSION": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+    "ROLE_SOCIAL": "https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial",
+    "SPECIALITE": "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale",
+    "MODE_PRISE_EN_CHARGE": "https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge",
+    "TYPE_COUVERTURE": "https://mos.esante.gouv.fr/NOS/TRE_R28-TypeCouverture/FHIR/TRE-R28-TypeCouverture"
+  },
+
+  "oids": {
+    "INS": "1.2.250.1.213.1.4.8",
+    "INS_C": "1.2.250.1.213.1.4.2",
+    "ADELI": "1.2.250.1.71.4.2.1",
+    "RPPS": "1.2.250.1.71.4.2.1",
+    "STRUCTURE": "1.2.250.1.71.4.2.2",
+    "SIRET": "1.2.250.1.71.4.2.2",
+    "FINESS": "1.2.250.1.71.4.2.2",
+    "IPP": "1.2.250.1.71.4.2.7",
+    "VN": "1.2.250.1.71.4.2.7"
+  },
+
+  "extensions": {
+    "NATIONALITY": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/practitioner-nationality",
+    "PRACTITIONER_PROFESSION": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/practitionerRole-profession",
+    "HEALTHEVENT_TYPE": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-type",
+    "HEALTHEVENT_IDENTIFIER": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-identifier",
+    "MODE_PRISE_EN_CHARGE": "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/fr-mode-prise-en-charge",
+    "INS_STATUS": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Status"
+  },
+
+  "coverage_types": {
+    "AMO": {
+      "code": "AMO",
+      "display": "Assurance Maladie Obligatoire",
+      "description": "Régime général de sécurité sociale"
+    },
+    "AMC": {
+      "code": "AMC",
+      "display": "Assurance Maladie Complémentaire",
+      "description": "Mutuelles et assurances complémentaires"
+    },
+    "ALD": {
+      "code": "ALD",
+      "display": "Affection Longue Durée",
+      "description": "Prise en charge à 100% pour pathologie longue durée"
+    },
+    "ATMP": {
+      "code": "ATMP",
+      "display": "Accident du Travail - Maladie Professionnelle",
+      "description": "Couverture spécifique pour accidents du travail"
+    }
+  },
+
+  "professions": {
+    "ODRP": {
+      "code": "ODRP",
+      "display": "Médecin"
+    },
+    "INFI": {
+      "code": "INFI",
+      "display": "Infirmier"
+    },
+    "SM": {
+      "code": "SM",
+      "display": "Sage-Femme"
+    },
+    "SF": {
+      "code": "SF",
+      "display": "Sage-Femme"
+    },
+    "PHARM": {
+      "code": "PHARM",
+      "display": "Pharmacien"
+    },
+    "KINE": {
+      "code": "KINE",
+      "display": "Masseur-Kinésithérapeute"
+    },
+    "CHIR": {
+      "code": "CHIR",
+      "display": "Chirurgien-Dentiste"
+    }
+  },
+
+  "identifiers": {
+    "INS": {
+      "system": "urn:oid:1.2.250.1.213.1.4.8",
+      "typeCode": "INS",
+      "display": "Identifiant National de Santé",
+      "extension": {
+        "url": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Status",
+        "valueCode": "VALI"
+      }
+    },
+    "INS-C": {
+      "system": "urn:oid:1.2.250.1.213.1.4.2",
+      "typeCode": "INS-C",
+      "display": "Identifiant National de Santé Calculé"
+    },
+    "ADELI": {
+      "system": "urn:oid:1.2.250.1.71.4.2.1",
+      "typeCode": "ADELI",
+      "display": "Numéro ADELI"
+    },
+    "RPPS": {
+      "system": "urn:oid:1.2.250.1.71.4.2.1",
+      "typeCode": "RPPS",
+      "display": "Numéro RPPS"
+    },
+    "FINESS": {
+      "system": "urn:oid:1.2.250.1.71.4.2.2",
+      "typeCode": "FINESS",
+      "display": "Numéro FINESS"
+    },
+    "SIRET": {
+      "system": "urn:oid:1.2.250.1.71.4.2.2",
+      "typeCode": "SIRET",
+      "display": "Numéro SIRET"
+    },
+    "PI": {
+      "system": "urn:oid:1.2.250.1.71.4.2.7",
+      "typeCode": "PI",
+      "display": "Identifiant patient"
+    },
+    "NH": {
+      "system": "urn:oid:1.2.250.1.71.4.2.7",
+      "typeCode": "NH",
+      "display": "Numéro d'hospitalisation"
+    },
+    "VN": {
+      "system": "urn:oid:1.2.250.1.71.4.2.7",
+      "typeCode": "VN",
+      "display": "Numéro de visite"
+    }
+  },
+
+  "encounter_class": {
+    "H": { 
+      "code": "IMP", 
+      "display": "Hospitalisation",
+      "frenchCode": "HOSPITALT"
+    },
+    "U": { 
+      "code": "EMER", 
+      "display": "Urgences",
+      "frenchCode": "URMG"
+    },
+    "C": { 
+      "code": "AMB", 
+      "display": "Consultation externe",
+      "frenchCode": "CONSULT"
+    },
+    "E": { 
+      "code": "AMB", 
+      "display": "Consultation externe",
+      "frenchCode": "CONSULT"
+    }
+  },
+
+  "movement_types": {
+    "ADMIT": { 
+      "code": "ADMIT", 
+      "display": "Admission" 
+    },
+    "INSERT": { 
+      "code": "INSERT", 
+      "display": "Entrée" 
+    },
+    "DISCHARGE": { 
+      "code": "DISCHARGE", 
+      "display": "Sortie" 
+    },
+    "TRANSFER": { 
+      "code": "TRANSFER", 
+      "display": "Transfert" 
+    },
+    "VISIT": { 
+      "code": "VISIT", 
+      "display": "Visite" 
+    },
+    "APPOINTMENT": { 
+      "code": "APPOINTMENT", 
+      "display": "Rendez-vous" 
+    }
+  }
+}

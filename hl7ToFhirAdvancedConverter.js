@@ -360,7 +360,7 @@ function convertHL7ToFHIR(hl7Message) {
               url: 'https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/healthevent-identifier',
               valueIdentifier: {
                 system: 'urn:oid:1.2.250.1.71.4.2.1',
-                value: zbeData.movementId
+                value: Array.isArray(zbeData.movementId) ? zbeData.movementId[0] : zbeData.movementId // Assurer une valeur unique (string) et non un tableau
               }
             });
           }
@@ -625,16 +625,33 @@ function extractIdentifiers(identifierField) {
   }
   // Si nous avons un tableau, traiter chaque élément
   else if (Array.isArray(identifierField)) {
+    // Garder une trace des identifiants déjà traités pour éviter les doublons
+    const processedIds = new Set();
+    
     // Traiter chaque élément comme un identifiant potentiel
     identifierField.forEach(item => {
       if (typeof item === 'string') {
         const ids = extractIdentifiers(item);
-        identifiers.push(...ids);
+        // Filtrer les identifiants pour éviter les duplications
+        ids.forEach(id => {
+          const idKey = `${id.system}|${id.value}`;
+          if (!processedIds.has(idKey)) {
+            identifiers.push(id);
+            processedIds.add(idKey);
+          }
+        });
       } else if (Array.isArray(item)) {
         item.forEach(subItem => {
           if (typeof subItem === 'string') {
             const ids = extractIdentifiers(subItem);
-            identifiers.push(...ids);
+            // Filtrer les identifiants pour éviter les duplications
+            ids.forEach(id => {
+              const idKey = `${id.system}|${id.value}`;
+              if (!processedIds.has(idKey)) {
+                identifiers.push(id);
+                processedIds.add(idKey);
+              }
+            });
           }
         });
       }
