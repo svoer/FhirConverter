@@ -5,6 +5,10 @@
  * 
  * Intègre les terminologies et systèmes de codification français
  * Conforme au guide d'implémentation FHIR de l'ANS
+ * 
+ * @version 1.1.1
+ * @updated 2025-04-29
+ * @module hl7ToFhirAdvancedConverter
  */
 
 // Module UUID pour générer des identifiants uniques

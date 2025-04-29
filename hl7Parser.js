@@ -2,6 +2,10 @@
  * Module de parsing HL7 optimisé pour le projet FHIRHub
  * Cette implémentation utilise une approche plus directe pour extraire
  * les données de messages HL7 v2.5
+ *
+ * @version 1.1.1
+ * @updated 2025-04-29
+ * @module hl7Parser
  */
 
 /**

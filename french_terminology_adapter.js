@@ -1,6 +1,10 @@
 /**
  * Adaptateur pour les terminologies françaises FHIR
  * Compatible avec les spécifications de l'ANS (Agence du Numérique en Santé)
+ * 
+ * @version 1.1.1
+ * @updated 2025-04-29
+ * @module french_terminology_adapter
  */
 
 // Mapping des URL de systèmes FHIR français
