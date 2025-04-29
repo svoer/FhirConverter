@@ -1321,6 +1321,58 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   // Set pour suivre les télécom déjà traités (éviter les doublons)
   const processedTelecoms = new Set();
   
+  // Optimisation spécifique pour les messages HL7 en format français avec des tableaux imbriqués
+  // Spécifiquement pour gérer les cas comme : [["","PRN","PH","","","","","","","","","0608987212"]]
+  function checkNestedArray(field, use = 'home') {
+    if (Array.isArray(field) && field.length >= 12 && field[2] === 'PH' && field[11]) {
+      // C'est un format spécifique avec le numéro en position 11
+      const phoneNumber = field[11];
+      console.log('[CONVERTER] Téléphone détecté dans format spécifique:', phoneNumber);
+      
+      // Normalization
+      const normalized = normalizePhoneNumber(phoneNumber);
+      if (normalized.isValid) {
+        const telecomType = field[1] || 'PRN'; // PRN est souvent utilisé dans ce format
+        const useFHIR = mapContactUseToFHIR(telecomType) || use;
+        
+        const phoneTelecom = {
+          system: 'phone',
+          value: normalized.value,
+          use: normalized.isMobile ? 'mobile' : useFHIR
+        };
+        
+        const telecomKey = `${phoneTelecom.system}|${phoneTelecom.use}|${phoneTelecom.value}`;
+        if (!processedTelecoms.has(telecomKey)) {
+          telecoms.push(phoneTelecom);
+          processedTelecoms.add(telecomKey);
+          console.log('[CONVERTER] Téléphone ajouté depuis format spécifique:', JSON.stringify(phoneTelecom));
+          return true;
+        }
+      }
+    } else if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3]) {
+      // Format pour email: [,"NET","Internet","email@example.com"]
+      const emailValue = field[3];
+      if (emailValue && emailValue.includes('@')) {
+        console.log('[CONVERTER] Email détecté dans format spécifique:', emailValue);
+        
+        const emailTelecom = {
+          system: 'email',
+          value: emailValue,
+          use: use
+        };
+        
+        const telecomKey = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+        if (!processedTelecoms.has(telecomKey)) {
+          telecoms.push(emailTelecom);
+          processedTelecoms.add(telecomKey);
+          console.log('[CONVERTER] Email ajouté depuis format spécifique:', JSON.stringify(emailTelecom));
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
   /**
    * Fonction utilitaire pour normaliser et vérifier les numéros de téléphone
    * Spécifiquement optimisée pour les numéros français
@@ -1362,8 +1414,24 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   
   // Traitement des téléphones personnels (PID-13)
   if (homePhoneFields) {
-    // Si c'est un tableau, traiter chaque élément
+    // Cas spécial: structure particulière des téléphones français
     if (Array.isArray(homePhoneFields)) {
+      // Vérifier d'abord si nous avons le format spécifique au HL7 français
+      let hasSpecificFormat = false;
+      
+      // Traiter chaque sous-tableau dans le tableau principal
+      homePhoneFields.forEach(field => {
+        if (Array.isArray(field)) {
+          hasSpecificFormat = hasSpecificFormat || checkNestedArray(field, 'home');
+        }
+      });
+      
+      // Si on a trouvé un format spécifique, on peut s'arrêter ici
+      if (hasSpecificFormat) {
+        console.log('[CONVERTER] Téléphone personnel trouvé en format spécifique français');
+      }
+      
+      // Continuer avec le traitement standard pour tout autre format
       homePhoneFields.forEach(field => {
         if (!field) return;
         
@@ -1558,7 +1626,24 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   
   // Traitement des téléphones professionnels (PID-14)
   if (workPhoneFields) {
+    // Cas spécial: structure particulière des téléphones français professionnels
     if (Array.isArray(workPhoneFields)) {
+      // Vérifier d'abord si nous avons le format spécifique au HL7 français
+      let hasSpecificFormat = false;
+      
+      // Traiter chaque sous-tableau dans le tableau principal
+      workPhoneFields.forEach(field => {
+        if (Array.isArray(field)) {
+          hasSpecificFormat = hasSpecificFormat || checkNestedArray(field, 'work');
+        }
+      });
+      
+      // Si on a trouvé un format spécifique, on peut s'arrêter ici
+      if (hasSpecificFormat) {
+        console.log('[CONVERTER] Téléphone professionnel trouvé en format spécifique français');
+      }
+      
+      // Continuer avec le traitement standard pour tout autre format
       workPhoneFields.forEach(field => {
         if (!field) return;
         
