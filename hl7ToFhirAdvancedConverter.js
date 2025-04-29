@@ -814,6 +814,22 @@ function extractIdentifiers(identifierField) {
     identifierField.forEach((item, index) => {
       console.log('[CONVERTER] Traitement élément #' + index + ' du tableau');
       
+      // Debug uniquement pour les identifiants INS-A/INS-C/INS-NIR
+      if (index <= 5 && Array.isArray(item)) {
+        // Analyser si cet item pourrait être un INS
+        if (item.length > 4) {
+          const idValue = item[0] || '';
+          const idAuth = item[3] || '';
+          const idType = item[4] || '';
+          
+          // Si c'est un nombre de 15 chiffres, c'est probablement un INS
+          if (/^\d{15}$/.test(idValue) && 
+              (idAuth.includes('ASIP-SANTE') || idAuth.includes('INS') || idType.includes('INS'))) {
+            console.log('[CONVERTER] Identifiant INS potentiel trouvé dans PID:', idValue, idType, idAuth);
+          }
+        }
+      }
+      
       if (typeof item === 'string') {
         const ids = extractIdentifiers(item);
         // Filtrer les identifiants pour éviter les duplications
@@ -852,8 +868,16 @@ function extractIdentifiers(identifierField) {
                       idType === 'INS' || 
                       idType === 'INS-C' || 
                       idType === 'INS-NIR' || 
+                      idType === 'INS-A' ||
                       assigningOID === '1.2.250.1.213.1.4.8' || 
-                      assigningOID === '1.2.250.1.213.1.4.2';
+                      assigningOID === '1.2.250.1.213.1.4.2' ||
+                      (assigningAuth && (
+                        assigningAuth.includes('ASIP-SANTE-INS') ||
+                        assigningAuth.includes('ASIP-SANTE-INS-NIR') ||
+                        assigningAuth.includes('ASIP-SANTE-INS-A') ||
+                        assigningAuth.includes('ASIP-SANTE-INS-C') ||
+                        assigningAuth.includes('INSEE-NIR')
+                      ));
                       
           if (isINS) {
             console.log('[CONVERTER] INS détecté dans tableau:', idValue);
@@ -1043,6 +1067,8 @@ function getIdentifierTypeDisplay(idType) {
     'MR': 'Medical record number',
     'INS': 'National unique identifier',
     'INS-C': 'National unique identifier',
+    'INS-A': 'National unique identifier',
+    'INS-NIR': 'National unique identifier',
     'NI': 'National unique identifier',
     'NH': 'Numéro d\'hospitalisation'
   };
@@ -3459,11 +3485,25 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
   
   // Ajouter la période de validité
   if (expirationDate) {
-    const expirationDateFormatted = formatHL7DateTime(expirationDate);
+    let expirationDateFormatted = formatHL7DateTime(expirationDate);
+    
+    // Si le formatage automatique échoue, essayer des formats alternatifs
+    if (!expirationDateFormatted) {
+      // Format YYYYMMDD sans séparateurs (ex: 20251231)
+      if (/^\d{8}$/.test(expirationDate)) {
+        const year = expirationDate.substring(0, 4);
+        const month = expirationDate.substring(4, 6);
+        const day = expirationDate.substring(6, 8);
+        expirationDateFormatted = `${year}-${month}-${day}`;
+        console.log('[CONVERTER] Date de fin de couverture formatée manuellement:', expirationDateFormatted);
+      }
+    }
+    
     if (expirationDateFormatted) {
       coverageResource.period = {
         end: expirationDateFormatted
       };
+      console.log('[CONVERTER] Date de fin de couverture définie:', expirationDateFormatted);
     }
   }
   
@@ -3475,16 +3515,29 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
     }
   }
   
-  // Extension française: numéro AMC/AMO
+  // Extension française: numéro AMC/AMO (dernier champ IN1) - position 36 ou dernier champ
+  let insuredId = null;
   if (in1Segment.length > 36 && in1Segment[36]) {
-    const insuredId = in1Segment[36];
-    coverageResource.extension = [{
+    insuredId = in1Segment[36];
+  } else if (in1Segment.length > 0) {
+    // Vérifier le dernier champ qui pourrait contenir un INS
+    const lastField = in1Segment[in1Segment.length - 1];
+    if (lastField && typeof lastField === 'string' && lastField.match(/^\d{15}$/)) {
+      // Format français INS-A/INS-C: exactement 15 chiffres
+      insuredId = lastField;
+      console.log('[CONVERTER] INS détecté dans le dernier champ IN1:', insuredId);
+    }
+  }
+  
+  if (insuredId) {
+    coverageResource.extension = coverageResource.extension || [];
+    coverageResource.extension.push({
       url: 'https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/Coverage-InsuredID',
       valueIdentifier: {
         system: 'urn:oid:1.2.250.1.213.1.4.8',
         value: insuredId
       }
-    }];
+    });
   }
   
   return {
