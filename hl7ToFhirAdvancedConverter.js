@@ -1085,8 +1085,11 @@ function extractNames(nameFields) {
               }
             }
             
+            // Dédupliquer les prénoms (cas spécifique France)
             if (givenNames.length > 0) {
-              nameObj.given = givenNames;
+              // Utiliser un Set pour éliminer les doublons
+              const uniqueGivenNames = [...new Set(givenNames)];
+              nameObj.given = uniqueGivenNames;
             }
             
             // Préfixe
