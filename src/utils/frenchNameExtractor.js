@@ -60,6 +60,7 @@ function analyzeComplexFrenchName(nameString) {
 
 /**
  * Extrait nom et prénom(s) depuis un format HL7 français
+ * Regroupés dans un même objet pour conformité FHIR
  * @param {string} nameString - Chaîne de type "NOM^PRENOM^COMPLEMENT"
  * @returns {Object} Objet avec nom et prénoms formatés pour FHIR
  */
@@ -74,6 +75,13 @@ function extractFrenchNameComponents(nameString) {
   const parts = nameString.split('^');
   let family = parts[0] || '';
   let given = [];
+  let familyFromGiven = false;
+  
+  // Cas spécial: lettre unique (souvent une erreur)
+  if (family && family.length === 1) {
+    console.log('[FRENCH_NAME_EXTRACTOR] Ignorer la lettre unique:', family);
+    family = null;
+  }
   
   // Analyser la partie nom de famille pour détecter prénom composé potentiel
   if (family && family.includes(' ')) {
@@ -81,9 +89,34 @@ function extractFrenchNameComponents(nameString) {
     
     // Si le nom contient des prénoms
     if (analyzedFamily.givenNames && analyzedFamily.givenNames.length > 0) {
-      console.log('[FRENCH_NAME_EXTRACTOR] Prénoms extraits:', analyzedFamily.givenNames.join(', '));
-      given = [...analyzedFamily.givenNames];
-      family = analyzedFamily.familyName || family; // Si null, on garde le nom original
+      console.log('[FRENCH_NAME_EXTRACTOR] Prénoms extraits du nom de famille:', analyzedFamily.givenNames.join(', '));
+      
+      // Vérifier s'il existe une partie 'given' claire dans les champs XPN.2 ou XPN.3
+      const hasExplicitGivenPart = parts[1] || parts[2];
+      
+      if (!hasExplicitGivenPart) {
+        // Si nous n'avons pas de prénom explicite dans les autres champs,
+        // considérer que nous avons un nom composé 
+        given = [...analyzedFamily.givenNames];
+        family = analyzedFamily.familyName;
+        familyFromGiven = true;
+      } else {
+        // Si nous avons déjà des prénoms explicites, garder la structure originale
+        // sauf si nous avons des marqueurs de prénoms français très clairs
+        const frenchNameIndicators = ['JEAN', 'MARIE', 'PIERRE', 'PAUL', 'LOUIS', 'ANNE', 'MARC'];
+        
+        // Vérifier si les prénoms extraits contiennent des indicateurs forts
+        const containsFrenchIndicator = analyzedFamily.givenNames.some(name => 
+          frenchNameIndicators.includes(name)
+        );
+        
+        if (containsFrenchIndicator) {
+          console.log('[FRENCH_NAME_EXTRACTOR] Indicateur fort de prénom français détecté');
+          given = [...analyzedFamily.givenNames];
+          family = analyzedFamily.familyName;
+          familyFromGiven = true;
+        }
+      }
     }
   }
   
@@ -114,7 +147,19 @@ function extractFrenchNameComponents(nameString) {
   }
   
   // Dédupliquer les prénoms
-  const uniqueGiven = [...new Set(given)];
+  const uniqueGiven = [...new Set(given.filter(Boolean))];
+  
+  // Si nous avons extrait des prénoms du nom de famille mais n'avons pas trouvé de nom de famille,
+  // utiliser le premier prénom comme nom de famille (logique par défaut)
+  if (familyFromGiven && !family && uniqueGiven.length > 0) {
+    family = uniqueGiven.shift();
+  }
+  
+  // Si après toutes nos tentatives, nous n'avons toujours pas de nom de famille mais des prénoms,
+  // utiliser le premier prénom comme nom de famille (dernier recours)
+  if (!family && uniqueGiven.length > 0) {
+    family = uniqueGiven.shift();
+  }
   
   console.log('[FRENCH_NAME_EXTRACTOR] Nom extrait:', family, uniqueGiven.join(', '));
   return {
@@ -145,6 +190,9 @@ function determineNameUse(useCode) {
 
 /**
  * Crée un ensemble d'objets nom FHIR à partir d'une chaîne HL7
+ * Avec optimisations pour regrouper family et given dans un même bloc name
+ * conformément aux recommandations FHIR
+ * 
  * @param {string} nameString - Chaîne de type "NOM^PRENOM^COMPLEMENT"
  * @returns {Array} Tableau d'objets nom FHIR
  */
@@ -167,6 +215,7 @@ function extractFrenchNames(nameString) {
     // Construction de l'objet nom FHIR
     const nameObj = { use: useType };
     
+    // Regrouper nom et prénoms dans un même objet name conforme FHIR
     if (nameComponents.family) {
       nameObj.family = nameComponents.family;
     }
@@ -193,7 +242,10 @@ function extractFrenchNames(nameString) {
       nameObj.suffix = suffixes;
     }
     
-    result.push(nameObj);
+    // Ne pas ajouter les objets nom vides (sans family ni given)
+    if (nameObj.family || (nameObj.given && nameObj.given.length > 0)) {
+      result.push(nameObj);
+    }
   }
   // Cas 2: format simple (juste le nom)
   else {
@@ -211,8 +263,9 @@ function extractFrenchNames(nameString) {
       }
       
       result.push(nameObj);
-    } else {
+    } else if (nameString.trim()) {
       // Si pas d'analyse réussie, utiliser la chaîne comme nom de famille
+      // Mais uniquement si la chaîne n'est pas vide
       result.push({
         use: 'official',
         family: nameString

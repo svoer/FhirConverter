@@ -1,0 +1,71 @@
+Voici une analyse détaillée de ton bundle bundle-1745951441223 :
+✅ Conformité :
+Type du Bundle : "type": "transaction" ➔ ✅ Correct.
+
+Entrées (entry) :
+
+Patient avec deux identifiants : interne (PI) et national (NI) avec INSi.
+
+Encounter associé au patient.
+
+Organizations (EAI et établissement destinataire).
+
+Practitioner et son PractitionerRole associés à l'Encounter.
+
+RelatedPerson associé au Patient.
+
+Coverage associé au Patient.
+
+Terminologies :
+
+Utilisation correcte de v2-0203 (types d'identifiants), v3-ActCode (classe d'Encounter), v3-RoleCode (relation de personne liée), et terminologies NOS françaises (TRE_*).
+
+Référencement :
+
+Utilisation de urn:uuid: conforme pour fullUrl et références internes.
+
+Extensions françaises utilisées** :
+
+INSi Status pour le Patient (Identité vérifiée) ➔ conforme au guide ANS INSi FHIR.
+
+⚠️ Optimisations mineures suggérées :
+Correction de name du Patient :
+
+Actuellement, il y a un petit souci :
+
+Le premier name contient uniquement "family": "YEHOUESSI".
+
+Le deuxième name contient uniquement les given : "given": ["HERMAS", "JEAN", "RICHARD"].
+
+Normalement, dans FHIR, un seul bloc name devrait contenir à la fois family et given, par exemple :
+
+json
+Copier
+Modifier
+{
+  "use": "official",
+  "family": "YEHOUESSI",
+  "given": [
+    "HERMAS",
+    "JEAN",
+    "RICHARD"
+  ]
+}
+Ce découpage pourrait rendre l'interprétation difficile côté serveur ou client FHIR.
+
+Double présence de la valeur "Identité vérifiée" dans deux extension différentes pour Patient :
+
+Ce n’est pas bloquant, mais à rationaliser si possible (tu as la même extension sous identifier et sous la ressource principale Patient.extension).
+
+Code coverage "AMO" sans précisions supplémentaires :
+
+Si disponible, il serait intéressant d’ajouter un payor (assureur) dans Coverage pour une couverture complète, même s'il n'est pas obligatoire.
+
+✅ En résumé :
+
+Critère	Statut
+Syntaxe FHIR	✅ Conforme
+Terminologies	✅ Correctes
+Référencement	✅ Correct
+Optimisation	⚠️ Nom structuré à corriger
+Compatibilité IG ANS	✅ Oui

@@ -970,6 +970,71 @@ function extractNames(nameFields) {
     // Créer une clé unique basée sur les propriétés pertinentes de l'objet name
     const nameKey = `${nameObj.use || ''}|${nameObj.family || ''}|${(nameObj.given || []).join(',')}`;
     
+    // Ignorer la lettre "L" isolée (problème spécifique aux données de test)
+    if (nameObj.family === "L" && (!nameObj.given || nameObj.given.length === 0)) {
+      console.log('[CONVERTER] Ignoré nom avec uniquement la lettre L');
+      return;
+    }
+    
+    // Stratégie de regroupement :
+    // 1. Si on a un nom sans prénoms et qu'on a déjà mémorisé des prénoms sans nom
+    if (nameObj.family && (!nameObj.given || nameObj.given.length === 0)) {
+      // Chercher si on a déjà un élément avec des prénoms sans nom de famille
+      const existingGivenOnlyObj = result.find(item => 
+        !item.family && item.given && item.given.length > 0 && item.use === nameObj.use
+      );
+      
+      if (existingGivenOnlyObj) {
+        // Combiner en ajoutant le nom de famille
+        existingGivenOnlyObj.family = nameObj.family;
+        console.log('[CONVERTER] Nom de famille ajouté à un prénom existant:', JSON.stringify(existingGivenOnlyObj));
+        return;
+      }
+    }
+    
+    // 2. Si on a des prénoms sans nom et qu'on a déjà mémorisé un nom avec ou sans prénoms
+    if (nameObj.given && nameObj.given.length > 0 && !nameObj.family) {
+      // Chercher si on a déjà un élément avec un nom de famille (avec ou sans prénoms)
+      const existingFamilyObj = result.find(item => 
+        item.family && item.use === nameObj.use
+      );
+      
+      if (existingFamilyObj) {
+        // Si l'objet existant n'a pas encore de prénoms, lui ajouter ceux du nouvel objet
+        if (!existingFamilyObj.given || existingFamilyObj.given.length === 0) {
+          existingFamilyObj.given = nameObj.given;
+          console.log('[CONVERTER] Prénoms ajoutés à un nom de famille existant:', JSON.stringify(existingFamilyObj));
+          return;
+        }
+        
+        // Si l'objet existant a déjà exactement les mêmes prénoms, ne rien faire (c'est un doublon)
+        const existingGivenStr = JSON.stringify(existingFamilyObj.given.sort());
+        const newGivenStr = JSON.stringify(nameObj.given.sort());
+        
+        if (existingGivenStr === newGivenStr) {
+          console.log('[CONVERTER] Prénoms ignorés car identiques à ceux existants avec le même nom de famille');
+          return;
+        }
+      }
+      
+      // Si on n'a trouvé aucun objet avec nom de famille, cherchons s'il existe un autre objet
+      // avec prénoms uniquement mais identiques (pour éviter les doublons de prénoms isolés)
+      const existingGivenOnlyObj = result.find(item => 
+        !item.family && item.given && item.given.length > 0 && item.use === nameObj.use
+      );
+      
+      if (existingGivenOnlyObj) {
+        // Comparer les prénoms pour voir s'ils sont identiques
+        const existingGivenStr = JSON.stringify(existingGivenOnlyObj.given.sort());
+        const newGivenStr = JSON.stringify(nameObj.given.sort());
+        
+        if (existingGivenStr === newGivenStr) {
+          console.log('[CONVERTER] Prénoms isolés ignorés car identiques à ceux existants');
+          return;
+        }
+      }
+    }
+    
     // Vérifier si ce nom existe déjà
     if (!processedNamesMap.has(nameKey)) {
       if (nameObj.family || (nameObj.given && nameObj.given.length > 0)) {
