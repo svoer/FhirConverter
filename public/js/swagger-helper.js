@@ -53,6 +53,104 @@ document.addEventListener('DOMContentLoaded', function() {
         infoSection.appendChild(infoTip);
       }
     }, 1000);
+    // Fonction pour ajouter directement les boutons sans attendre
+    const addButtonsDirectly = () => {
+      console.log('Ajout direct des boutons dans Swagger UI');
+      
+      // Sélectionner la barre supérieure
+      setTimeout(() => {
+        const topbarContainer = document.querySelector('.swagger-ui .topbar .wrapper');
+        if (topbarContainer) {
+          console.log('Conteneur de topbar trouvé, ajout des boutons...');
+          
+          // Bouton Menu Principal
+          const navBtn = document.createElement('a');
+          navBtn.id = 'nav-menu-btn';
+          navBtn.href = '/';
+          navBtn.className = 'btn';
+          navBtn.style.backgroundColor = '#e74c3c';
+          navBtn.style.color = 'white';
+          navBtn.style.border = 'none';
+          navBtn.style.borderRadius = '4px';
+          navBtn.style.padding = '5px 10px';
+          navBtn.style.marginLeft = '10px';
+          navBtn.style.cursor = 'pointer';
+          navBtn.style.textDecoration = 'none';
+          navBtn.innerHTML = '🏠 Menu Principal';
+          topbarContainer.appendChild(navBtn);
+          
+          // Bouton Auth Test
+          const quickAuthBtn = document.createElement('button');
+          quickAuthBtn.id = 'quick-auth-btn';
+          quickAuthBtn.className = 'btn';
+          quickAuthBtn.style.backgroundColor = '#2ecc71';
+          quickAuthBtn.style.color = 'white';
+          quickAuthBtn.style.border = 'none';
+          quickAuthBtn.style.borderRadius = '4px';
+          quickAuthBtn.style.padding = '5px 10px';
+          quickAuthBtn.style.marginLeft = '10px';
+          quickAuthBtn.style.cursor = 'pointer';
+          quickAuthBtn.innerHTML = '⚡ Autoriser avec clé de test (dev-key)';
+          
+          quickAuthBtn.addEventListener('click', () => {
+            const testApiKey = 'dev-key';
+            
+            // Ouvrir le dialogue d'autorisation
+            const authorizeBtn = document.querySelector('.swagger-ui .auth-wrapper .authorize');
+            if (authorizeBtn) {
+              authorizeBtn.click();
+              
+              // Attendre que le dialogue s'ouvre
+              setTimeout(() => {
+                // Remplir le champ avec la clé API de test
+                const apiKeyInput = document.querySelector('.swagger-ui input[type="text"][data-param-name="api_key"]');
+                if (apiKeyInput) {
+                  apiKeyInput.value = testApiKey;
+                  
+                  // Simuler la saisie
+                  const event = new Event('input', { bubbles: true });
+                  apiKeyInput.dispatchEvent(event);
+                  
+                  // Cliquer sur Authorize
+                  const dialogAuthorizeBtn = document.querySelector('.swagger-ui .auth-btn-wrapper .btn-done');
+                  if (dialogAuthorizeBtn) {
+                    dialogAuthorizeBtn.click();
+                    
+                    // Afficher une notification
+                    const notif = document.createElement('div');
+                    notif.style.position = 'fixed';
+                    notif.style.top = '20px';
+                    notif.style.right = '20px';
+                    notif.style.backgroundColor = '#2ecc71';
+                    notif.style.color = 'white';
+                    notif.style.padding = '15px';
+                    notif.style.borderRadius = '4px';
+                    notif.style.zIndex = '9999';
+                    notif.innerHTML = '✅ Autorisé avec la clé de test (dev-key)';
+                    
+                    document.body.appendChild(notif);
+                    
+                    // Supprimer la notification après 3 secondes
+                    setTimeout(() => {
+                      notif.remove();
+                    }, 3000);
+                  }
+                }
+              }, 300);
+            }
+          });
+          
+          topbarContainer.appendChild(quickAuthBtn);
+          console.log('Boutons ajoutés avec succès');
+        } else {
+          console.log('Conteneur topbar non trouvé');
+        }
+      }, 2000); // Délai de 2 secondes pour s'assurer que Swagger UI est chargé
+    };
+    
+    // Exécuter immédiatement
+    addButtonsDirectly();
+    
     // Ajouter un bouton pour générer une clé API temporaire même sans être connecté
     const addTempKeyButton = () => {
       // Vérifier si le bouton existe déjà
