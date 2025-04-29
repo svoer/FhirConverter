@@ -1172,67 +1172,251 @@ function determineMaritalStatus(maritalStatusField) {
  * @returns {Array} Tableau de coordonnées FHIR
  */
 function extractTelecoms(homePhoneFields, workPhoneFields) {
+  console.log('[CONVERTER] Extraction des télécom à partir de:', JSON.stringify(homePhoneFields).substring(0, 200), '...');
+  
   const telecoms = [];
   
-  // Traitement des téléphones personnels
-  if (homePhoneFields && Array.isArray(homePhoneFields)) {
-    homePhoneFields.forEach(field => {
-      if (!field) return;
-      
-      const components = field.components || [];
-      
-      // Numéro (component 1)
-      const phoneNumber = components[0] ? components[0].value : '';
-      if (!phoneNumber) return;
-      
-      const telecom = {
-        value: phoneNumber,
-        use: 'home'
-      };
-      
-      // Type d'utilisation (component 2)
-      if (components[1] && components[1].value) {
-        telecom.use = mapContactUseToFHIR(components[1].value);
+  // Traitement des téléphones personnels (PID-13)
+  if (homePhoneFields) {
+    // Si c'est un tableau, traiter chaque élément
+    if (Array.isArray(homePhoneFields)) {
+      homePhoneFields.forEach(field => {
+        if (!field) return;
+        
+        // Cas 1: format de l'ancien parser avec components
+        if (field.components) {
+          const components = field.components;
+          
+          // Numéro (component 1)
+          const phoneNumber = components[0] ? components[0].value : '';
+          if (!phoneNumber) return;
+          
+          const telecom = {
+            value: phoneNumber,
+            use: 'home'
+          };
+          
+          // Type d'utilisation (component 2)
+          if (components[1] && components[1].value) {
+            telecom.use = mapContactUseToFHIR(components[1].value);
+          }
+          
+          // Type d'équipement (component 3)
+          if (components[2] && components[2].value) {
+            telecom.system = mapEquipmentTypeToFHIR(components[2].value);
+          } else {
+            telecom.system = 'phone';
+          }
+          
+          console.log('[CONVERTER] Télécom personnel (components) ajouté:', JSON.stringify(telecom));
+          telecoms.push(telecom);
+        }
+        // Cas 2: format du nouveau parser - tableau ou chaîne
+        else {
+          let parsedTelecom;
+          
+          // Si c'est une chaîne directe (numéro seul)
+          if (typeof field === 'string') {
+            const parts = field.split('^');
+            
+            // Numéro (component 1)
+            const phoneNumber = parts[0] || '';
+            if (!phoneNumber) return;
+            
+            parsedTelecom = {
+              value: phoneNumber,
+              use: 'home',
+              system: 'phone'
+            };
+            
+            // Type d'utilisation (component 2)
+            if (parts[1]) {
+              parsedTelecom.use = mapContactUseToFHIR(parts[1]);
+            }
+            
+            // Type d'équipement (component 3)
+            if (parts[2]) {
+              parsedTelecom.system = mapEquipmentTypeToFHIR(parts[2]);
+            }
+          }
+          // Si c'est un tableau (format du parser détaillé)
+          else if (Array.isArray(field)) {
+            const phoneNumber = field[0] || '';
+            if (!phoneNumber) return;
+            
+            parsedTelecom = {
+              value: phoneNumber,
+              use: 'home',
+              system: 'phone'
+            };
+            
+            // Type d'utilisation (component 2)
+            if (field.length > 1 && field[1]) {
+              parsedTelecom.use = mapContactUseToFHIR(field[1]);
+            }
+            
+            // Type d'équipement (component 3)
+            if (field.length > 2 && field[2]) {
+              parsedTelecom.system = mapEquipmentTypeToFHIR(field[2]);
+            }
+          }
+          
+          if (parsedTelecom) {
+            console.log('[CONVERTER] Télécom personnel (simple) ajouté:', JSON.stringify(parsedTelecom));
+            telecoms.push(parsedTelecom);
+            
+            // Détection d'email - traitement particulier pour les cas HL7 français
+            if (typeof field === 'string' && field.includes('@')) {
+              const emailTelecom = {
+                value: field,
+                use: 'home',
+                system: 'email'
+              };
+              console.log('[CONVERTER] Email détecté et ajouté:', JSON.stringify(emailTelecom));
+              telecoms.push(emailTelecom);
+            }
+            
+            // Détection de téléphone mobile (spécificité française)
+            if (parsedTelecom.value && parsedTelecom.value.match(/^0[67]\d{8}$/)) {
+              parsedTelecom.use = 'mobile';
+              console.log('[CONVERTER] Téléphone mobile français détecté');
+            }
+          }
+        }
+      });
+    }
+    // Si c'est une chaîne, essayer de l'interpréter directement
+    else if (typeof homePhoneFields === 'string') {
+      // Cas particulier: email direct
+      if (homePhoneFields.includes('@')) {
+        const emailTelecom = {
+          value: homePhoneFields,
+          use: 'home',
+          system: 'email'
+        };
+        console.log('[CONVERTER] Email détecté et ajouté (direct):', JSON.stringify(emailTelecom));
+        telecoms.push(emailTelecom);
       }
-      
-      // Type d'équipement (component 3)
-      if (components[2] && components[2].value) {
-        telecom.system = mapEquipmentTypeToFHIR(components[2].value);
-      } else {
-        telecom.system = 'phone';
+      // Cas d'un numéro de téléphone direct
+      else if (homePhoneFields.match(/^\d+$/)) {
+        const phoneTelecom = {
+          value: homePhoneFields,
+          use: 'home',
+          system: 'phone'
+        };
+        
+        // Détection de téléphone mobile français
+        if (homePhoneFields.match(/^0[67]\d{8}$/)) {
+          phoneTelecom.use = 'mobile';
+        }
+        
+        console.log('[CONVERTER] Téléphone personnel ajouté (direct):', JSON.stringify(phoneTelecom));
+        telecoms.push(phoneTelecom);
       }
-      
-      telecoms.push(telecom);
-    });
+    }
   }
   
-  // Traitement des téléphones professionnels
-  if (workPhoneFields && Array.isArray(workPhoneFields)) {
-    workPhoneFields.forEach(field => {
-      if (!field) return;
-      
-      const components = field.components || [];
-      
-      // Numéro (component 1)
-      const phoneNumber = components[0] ? components[0].value : '';
-      if (!phoneNumber) return;
-      
-      const telecom = {
-        value: phoneNumber,
-        use: 'work'
-      };
-      
-      // Type d'équipement (component 3)
-      if (components[2] && components[2].value) {
-        telecom.system = mapEquipmentTypeToFHIR(components[2].value);
-      } else {
-        telecom.system = 'phone';
+  // Traitement des téléphones professionnels (PID-14)
+  if (workPhoneFields) {
+    if (Array.isArray(workPhoneFields)) {
+      workPhoneFields.forEach(field => {
+        if (!field) return;
+        
+        // Cas 1: format de l'ancien parser avec components
+        if (field.components) {
+          const components = field.components;
+          
+          // Numéro (component 1)
+          const phoneNumber = components[0] ? components[0].value : '';
+          if (!phoneNumber) return;
+          
+          const telecom = {
+            value: phoneNumber,
+            use: 'work',
+            system: 'phone'
+          };
+          
+          // Type d'équipement (component 3)
+          if (components[2] && components[2].value) {
+            telecom.system = mapEquipmentTypeToFHIR(components[2].value);
+          }
+          
+          console.log('[CONVERTER] Télécom professionnel ajouté:', JSON.stringify(telecom));
+          telecoms.push(telecom);
+        }
+        // Cas 2: format du nouveau parser
+        else {
+          let parsedTelecom;
+          
+          // Si c'est une chaîne directe
+          if (typeof field === 'string') {
+            const parts = field.split('^');
+            
+            // Numéro (component 1)
+            const phoneNumber = parts[0] || '';
+            if (!phoneNumber) return;
+            
+            parsedTelecom = {
+              value: phoneNumber,
+              use: 'work',
+              system: 'phone'
+            };
+            
+            // Type d'équipement (component 3)
+            if (parts.length > 2 && parts[2]) {
+              parsedTelecom.system = mapEquipmentTypeToFHIR(parts[2]);
+            }
+          }
+          // Si c'est un tableau
+          else if (Array.isArray(field)) {
+            const phoneNumber = field[0] || '';
+            if (!phoneNumber) return;
+            
+            parsedTelecom = {
+              value: phoneNumber,
+              use: 'work',
+              system: 'phone'
+            };
+            
+            // Type d'équipement (component 3)
+            if (field.length > 2 && field[2]) {
+              parsedTelecom.system = mapEquipmentTypeToFHIR(field[2]);
+            }
+          }
+          
+          if (parsedTelecom) {
+            console.log('[CONVERTER] Télécom professionnel (simple) ajouté:', JSON.stringify(parsedTelecom));
+            telecoms.push(parsedTelecom);
+          }
+        }
+      });
+    }
+    // Si c'est une chaîne, essayer de l'interpréter directement
+    else if (typeof workPhoneFields === 'string') {
+      // Cas particulier: email direct
+      if (workPhoneFields.includes('@')) {
+        const emailTelecom = {
+          value: workPhoneFields,
+          use: 'work',
+          system: 'email'
+        };
+        console.log('[CONVERTER] Email professionnel détecté et ajouté (direct):', JSON.stringify(emailTelecom));
+        telecoms.push(emailTelecom);
       }
-      
-      telecoms.push(telecom);
-    });
+      // Cas d'un numéro de téléphone direct
+      else if (workPhoneFields.match(/^\d+$/)) {
+        const phoneTelecom = {
+          value: workPhoneFields,
+          use: 'work',
+          system: 'phone'
+        };
+        console.log('[CONVERTER] Téléphone professionnel ajouté (direct):', JSON.stringify(phoneTelecom));
+        telecoms.push(phoneTelecom);
+      }
+    }
   }
   
+  console.log(`[CONVERTER] Total de télécom extraits: ${telecoms.length}`);
   return telecoms;
 }
 
@@ -1282,52 +1466,208 @@ function mapContactUseToFHIR(useCode) {
  * @returns {Array} Tableau d'adresses FHIR
  */
 function extractAddresses(addressFields) {
-  if (!addressFields || !Array.isArray(addressFields)) {
+  console.log('[CONVERTER] Extraction des adresses à partir de:', JSON.stringify(addressFields).substring(0, 200), '...');
+  
+  if (!addressFields) {
+    console.log('[CONVERTER] Pas de champ d\'adresse fourni');
     return [];
   }
   
   const addresses = [];
   
-  addressFields.forEach(field => {
-    if (!field) return;
-    
-    const components = field.components || [];
-    
-    // Informations d'adresse
-    const street1 = components[0] ? components[0].value : '';
-    const street2 = components[1] ? components[1].value : '';
-    const city = components[2] ? components[2].value : '';
-    const state = components[3] ? components[3].value : '';
-    const postalCode = components[4] ? components[4].value : '';
-    const country = components[5] ? components[5].value : '';
-    
-    // Type d'adresse (component 7)
-    const addrType = components[6] ? components[6].value : '';
-    
-    if (street1 || city || postalCode || country) {
-      const address = {
-        use: mapAddressUseToFHIR(addrType),
-        type: mapAddressTypeToFHIR(addrType)
-      };
+  // Si c'est un tableau, parcourir chaque élément
+  if (Array.isArray(addressFields)) {
+    addressFields.forEach(field => {
+      if (!field) return;
       
-      // Lignes d'adresse
-      const lines = [];
-      if (street1) lines.push(street1);
-      if (street2) lines.push(street2);
-      
-      if (lines.length > 0) {
-        address.line = lines;
+      // Cas 1: Format ancien parser avec components
+      if (field.components) {
+        const components = field.components;
+        
+        // Informations d'adresse
+        const street1 = components[0] ? components[0].value : '';
+        const street2 = components[1] ? components[1].value : '';
+        const city = components[2] ? components[2].value : '';
+        const state = components[3] ? components[3].value : '';
+        const postalCode = components[4] ? components[4].value : '';
+        const country = components[5] ? components[5].value : '';
+        
+        // Type d'adresse (component 7)
+        const addrType = components[6] ? components[6].value : '';
+        
+        if (street1 || city || postalCode || country) {
+          const address = {
+            use: mapAddressUseToFHIR(addrType),
+            type: mapAddressTypeToFHIR(addrType)
+          };
+          
+          // Lignes d'adresse
+          const lines = [];
+          if (street1) lines.push(street1);
+          if (street2) lines.push(street2);
+          
+          if (lines.length > 0) {
+            address.line = lines;
+          }
+          
+          if (city) address.city = city;
+          if (state) address.state = state;
+          if (postalCode) address.postalCode = postalCode;
+          if (country) address.country = country;
+          
+          console.log('[CONVERTER] Adresse extraite (components):', JSON.stringify(address));
+          addresses.push(address);
+        }
       }
+      // Cas 2: Format du nouveau parser (chaîne ou tableau)
+      else {
+        let parsedAddress;
+        
+        // Si c'est une chaîne
+        if (typeof field === 'string') {
+          const parts = field.split('^');
+          
+          // Informations d'adresse
+          const street1 = parts[0] || '';
+          const street2 = parts[1] || '';
+          const city = parts[2] || '';
+          const state = parts[3] || '';
+          const postalCode = parts[4] || '';
+          const country = parts[5] || '';
+          
+          // Type d'adresse (component 7)
+          const addrType = parts.length > 6 ? parts[6] : '';
+          
+          if (street1 || city || postalCode || country) {
+            parsedAddress = {
+              use: mapAddressUseToFHIR(addrType),
+              type: mapAddressTypeToFHIR(addrType)
+            };
+            
+            // Lignes d'adresse
+            const lines = [];
+            if (street1) lines.push(street1);
+            if (street2) lines.push(street2);
+            
+            if (lines.length > 0) {
+              parsedAddress.line = lines;
+            }
+            
+            if (city) parsedAddress.city = city;
+            if (state) parsedAddress.state = state;
+            if (postalCode) parsedAddress.postalCode = postalCode;
+            if (country) parsedAddress.country = country;
+          }
+        }
+        // Si c'est un tableau
+        else if (Array.isArray(field)) {
+          // Informations d'adresse
+          const street1 = field[0] || '';
+          const street2 = field[1] || '';
+          const city = field[2] || '';
+          const state = field[3] || '';
+          const postalCode = field[4] || '';
+          const country = field[5] || '';
+          
+          // Type d'adresse (component 7)
+          const addrType = field.length > 6 ? field[6] : '';
+          
+          if (street1 || city || postalCode || country) {
+            parsedAddress = {
+              use: mapAddressUseToFHIR(addrType),
+              type: mapAddressTypeToFHIR(addrType)
+            };
+            
+            // Lignes d'adresse
+            const lines = [];
+            if (street1) lines.push(street1);
+            if (street2) lines.push(street2);
+            
+            if (lines.length > 0) {
+              parsedAddress.line = lines;
+            }
+            
+            if (city) parsedAddress.city = city;
+            if (state) parsedAddress.state = state;
+            if (postalCode) parsedAddress.postalCode = postalCode;
+            if (country) parsedAddress.country = country;
+          }
+        }
+        
+        if (parsedAddress) {
+          console.log('[CONVERTER] Adresse extraite (simple):', JSON.stringify(parsedAddress));
+          addresses.push(parsedAddress);
+        }
+      }
+    });
+  }
+  // Si c'est une chaîne (adresse directe)
+  else if (typeof addressFields === 'string') {
+    // Si l'adresse contient des séparateurs standard HL7 (^)
+    if (addressFields.includes('^')) {
+      const parts = addressFields.split('^');
       
-      if (city) address.city = city;
-      if (state) address.state = state;
-      if (postalCode) address.postalCode = postalCode;
-      if (country) address.country = country;
+      // Informations d'adresse
+      const street1 = parts[0] || '';
+      const street2 = parts[1] || '';
+      const city = parts[2] || '';
+      const state = parts[3] || '';
+      const postalCode = parts[4] || '';
+      const country = parts[5] || '';
       
-      addresses.push(address);
+      if (street1 || city || postalCode || country) {
+        const address = {
+          use: 'home',
+          type: 'physical'
+        };
+        
+        // Lignes d'adresse
+        const lines = [];
+        if (street1) lines.push(street1);
+        if (street2) lines.push(street2);
+        
+        if (lines.length > 0) {
+          address.line = lines;
+        }
+        
+        if (city) address.city = city;
+        if (state) address.state = state;
+        if (postalCode) address.postalCode = postalCode;
+        if (country) address.country = country;
+        
+        console.log('[CONVERTER] Adresse extraite (chaîne directe):', JSON.stringify(address));
+        addresses.push(address);
+      }
+    }
+    // Si c'est une adresse simple, traiter comme une ligne de rue
+    else {
+      console.log('[CONVERTER] Adresse simple détectée:', addressFields);
+      addresses.push({
+        use: 'home',
+        type: 'physical',
+        line: [addressFields]
+      });
+    }
+  }
+  
+  // Format spécifique français - Extension pour les codes INSEE des communes
+  addresses.forEach(address => {
+    if (address.city && address.postalCode) {
+      // Détection du format français avec code INSEE entre parenthèses
+      const codeInseeMatch = address.city.match(/\((\d{5})\)/);
+      if (codeInseeMatch) {
+        address.extension = [{
+          url: 'https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/commune-cog-insee',
+          valueString: codeInseeMatch[1]
+        }];
+        
+        // Nettoyer le nom de la ville
+        address.city = address.city.replace(/\s*\(\d{5}\)\s*/, '');
+      }
     }
   });
   
+  console.log(`[CONVERTER] Total d'adresses extraites: ${addresses.length}`);
   return addresses;
 }
 
@@ -1691,110 +2031,157 @@ function createPractitionerResource(rolSegment) {
     return null;
   }
   
-  // ROL-4 (Role Person)
+  // Récupération des données du praticien depuis ROL-4 (Role Person)
   const rolePerson = rolSegment[4];
   if (!rolePerson) {
     console.log('[CONVERTER] Échec: ROL-4 (Role Person) manquant');
     return null;
   }
   
-  let idValue = '';
-  let familyName = '';
-  let givenName = '';
-  let oid = '1.2.250.1.71.4.2.1'; // OID par défaut
-  
   console.log('[CONVERTER] Type de ROL-4:', typeof rolePerson, 'Valeur:', JSON.stringify(rolePerson));
   
+  // Variables pour extraire les informations du professionnel
+  let rppsOrAdeliId = '';  // Identifiant RPPS ou ADELI
+  let internalId = '';     // Identifiant interne
+  let familyName = '';     // Nom de famille
+  let givenName = '';      // Prénom(s)
+  let oid = '1.2.250.1.71.4.2.1'; // OID pour RPPS/ADELI en France
+  let authorityName = '';  // Nom de l'autorité d'assignation
+  let profession = '';     // Code de profession
+  
   try {
-    // Si c'est une chaîne, parser les composants
+    // Cas 1: Format chaîne de caractères (modèle classique)
     if (typeof rolePerson === 'string') {
       console.log('[CONVERTER] Parsing de ROL-4 (chaîne):', rolePerson);
       const rolePersonParts = rolePerson.split('^');
       
-      // Identifiant (component 1)
-      idValue = rolePersonParts[0] || '';
-      
-      // Nom (components 2-3)
+      // Identifier les composants
+      rppsOrAdeliId = rolePersonParts[0] || '';
       familyName = rolePersonParts.length > 1 ? rolePersonParts[1] || '' : '';
       givenName = rolePersonParts.length > 2 ? rolePersonParts[2] || '' : '';
       
-      // ROL-4.4 (Assigning Authority)
-      if (rolePersonParts.length > 3 && rolePersonParts[3] && rolePersonParts[3].includes('&')) {
-        const assigningAuthority = rolePersonParts[3];
-        const authorityComponents = assigningAuthority.split('&');
-        if (authorityComponents.length > 1 && authorityComponents[1]) {
-          oid = authorityComponents[1];
+      // Récupérer le type de praticien et l'autorité d'assignation si disponible
+      if (rolePersonParts.length > 3 && rolePersonParts[3]) {
+        profession = rolePersonParts.length > 6 ? rolePersonParts[6] || 'DOC' : 'DOC';
+        
+        // Autorité d'assignation et OID
+        if (rolePersonParts[3].includes('&')) {
+          const assigningAuthority = rolePersonParts[3];
+          const authorityComponents = assigningAuthority.split('&');
+          authorityName = authorityComponents[0] || '';
+          
+          if (authorityComponents.length > 1 && authorityComponents[1]) {
+            oid = authorityComponents[1];
+          }
+          
+          // Détection spécifique RPPS vs ADELI via l'autorité d'assignation
+          if (authorityName.includes('RPPS') || 
+              oid === '1.2.250.1.71.4.2.1' || 
+              (rppsOrAdeliId && rppsOrAdeliId.length === 11)) {
+            console.log('[CONVERTER] Numéro RPPS détecté:', rppsOrAdeliId);
+          } else if (authorityName.includes('ADELI')) {
+            console.log('[CONVERTER] Numéro ADELI détecté:', rppsOrAdeliId);
+          }
         }
       }
     }
-    // Si c'est un tableau (cas du nouveau parser)
+    // Cas 2: Format tableau (modèle du nouveau parser)
     else if (Array.isArray(rolePerson)) {
       console.log('[CONVERTER] Parsing de ROL-4 (tableau):', JSON.stringify(rolePerson));
       
-      // Identifiant (component 1)
-      idValue = rolePerson[0] || '';
-      
-      // Nom (components 2-3)
+      // Extraire les valeurs de base
+      rppsOrAdeliId = rolePerson[0] || '';
       familyName = rolePerson.length > 1 ? rolePerson[1] || '' : '';
       givenName = rolePerson.length > 2 ? rolePerson[2] || '' : '';
       
-      // ROL-4.4 (Assigning Authority)
-      if (rolePerson.length > 3 && rolePerson[3] && typeof rolePerson[3] === 'string' && rolePerson[3].includes('&')) {
-        const assigningAuthority = rolePerson[3];
-        const authorityComponents = assigningAuthority.split('&');
-        if (authorityComponents.length > 1 && authorityComponents[1]) {
-          oid = authorityComponents[1];
+      // Extraire les détails de l'autorité d'assignation
+      if (rolePerson.length > 3 && rolePerson[3]) {
+        profession = rolePerson.length > 6 ? rolePerson[6] || 'DOC' : 'DOC';
+        
+        // Cas 1: Autorité sous forme de chaîne
+        if (typeof rolePerson[3] === 'string') {
+          if (rolePerson[3].includes('&')) {
+            const authorityParts = rolePerson[3].split('&');
+            authorityName = authorityParts[0] || '';
+            oid = authorityParts.length > 1 ? authorityParts[1] : oid;
+          } else {
+            authorityName = rolePerson[3];
+          }
         }
-      } else if (rolePerson.length > 3 && rolePerson[3] && typeof rolePerson[3] === 'object') {
-        // Si c'est un objet complexe, essayons de trouver l'OID
-        const assigningAuth = rolePerson[3];
-        if (assigningAuth.namespaceId && assigningAuth.universalId) {
-          oid = assigningAuth.universalId;
+        // Cas 2: Autorité sous forme d'objet
+        else if (typeof rolePerson[3] === 'object') {
+          const assigningAuth = rolePerson[3];
+          if (assigningAuth.namespaceId) {
+            authorityName = assigningAuth.namespaceId;
+          }
+          if (assigningAuth.universalId) {
+            oid = assigningAuth.universalId;
+          }
+        }
+        
+        // Détection spécifique RPPS vs ADELI
+        if (authorityName.includes('RPPS') || 
+            oid === '1.2.250.1.71.4.2.1' || 
+            (rppsOrAdeliId && rppsOrAdeliId.length === 11)) {
+          console.log('[CONVERTER] Numéro RPPS détecté:', rppsOrAdeliId);
+        } else if (authorityName.includes('ADELI')) {
+          console.log('[CONVERTER] Numéro ADELI détecté:', rppsOrAdeliId);
         }
       }
     }
     
-    console.log('[CONVERTER] Données extraites - ID:', idValue, 'Nom:', familyName, 'Prénom:', givenName);
+    // Extraire également l'identifiant interne si disponible (ROL-1)
+    if (rolSegment[1]) {
+      internalId = typeof rolSegment[1] === 'string' ? rolSegment[1] : 
+                   (Array.isArray(rolSegment[1]) && rolSegment[1][0] ? rolSegment[1][0] : '');
+    }
+    
+    console.log('[CONVERTER] Données extraites - RPPS/ADELI:', rppsOrAdeliId, 
+                'Interne:', internalId,
+                'Nom:', familyName, 
+                'Prénom:', givenName, 
+                'Autorité:', authorityName);
+    
   } catch (error) {
     console.error('[CONVERTER] Erreur lors de l\'extraction des données du praticien:', error);
-    // Définir des valeurs par défaut en cas d'erreur
-    idValue = idValue || `unknown-${Date.now()}`;
-    familyName = familyName || 'Nom non spécifié';
+    // En cas d'erreur, utiliser les valeurs par défaut
+    if (!familyName) familyName = 'Praticien';
+    if (!givenName) givenName = '';
   }
   
-  console.log('[CONVERTER] Tentative de création du praticien avec ID:', idValue, 'Nom:', familyName, 'Prénom:', givenName);
-  if (!idValue && !familyName && !givenName) {
+  // Si nous n'avons pas d'identifiant RPPS/ADELI mais un identifiant interne, l'utiliser
+  if (!rppsOrAdeliId && internalId) {
+    rppsOrAdeliId = internalId;
+  }
+  
+  // Si nous n'avons ni identifiant, ni nom, c'est insuffisant
+  if (!rppsOrAdeliId && !familyName) {
     console.log('[CONVERTER] Données insuffisantes pour créer un praticien');
     return null;
   }
   
-  const practitionerId = `practitioner-${idValue || uuid.v4()}`;
+  // Générer un identifiant unique pour le praticien
+  // Prendre en priorité le RPPS/ADELI, puis l'ID interne, sinon générer un UUID
+  const practitionerId = `practitioner-${rppsOrAdeliId || uuid.v4()}`;
   
   // Créer la ressource Practitioner
   const practitionerResource = {
     resourceType: 'Practitioner',
-    id: practitionerId,
-    identifier: []
+    id: practitionerId
   };
   
-  // Ajouter l'identifiant
-  if (idValue) {
-    practitionerResource.identifier.push({
-      system: `urn:oid:${oid}`,
-      value: idValue
-    });
-  }
-  
-  // Ajouter le nom
+  // Ajouter le nom (toujours requis pour ANS)
   if (familyName || givenName) {
-    const humanName = {};
+    const humanName = {
+      use: 'official'
+    };
     
-    if (familyName) {
-      humanName.family = familyName;
-    }
+    // Nom de famille obligatoire
+    humanName.family = familyName || 'Praticien';
     
+    // Prénom(s) facultatif(s)
     if (givenName) {
-      // Gérer les prénoms composés
+      // Gérer les prénoms composés (splitter sur espace)
       if (givenName.includes(' ')) {
         humanName.given = givenName.split(' ').filter(Boolean);
       } else {
@@ -1803,48 +2190,82 @@ function createPractitionerResource(rolSegment) {
     }
     
     practitionerResource.name = [humanName];
+  } else {
+    // Nom par défaut requis pour la validité ANS
+    practitionerResource.name = [{
+      use: 'official',
+      family: 'Praticien'
+    }];
   }
   
-  // Traitement spécifique pour les médecins français
-  // Extensions pour RPPS, ADELI, spécialités, etc.
-  if (oid === '2.16.840.1.113883.3.31.2.2' || oid === '1.2.250.1.213.1.1.2') {
-    // ADELI ou RPPS
-    addFrenchPractitionerExtensions(practitionerResource, rolSegment);
-  }
+  // Ajouter les identifiants selon les règles de l'ANS
+  practitionerResource.identifier = [];
   
-  // Optimisation des identifiants pour conformité ANS
-  if (practitionerResource.identifier && practitionerResource.identifier.length > 0) {
-    // Déterminer si nous avons un identifiant RPPS ou ADELI
-    let hasRppsOrAdeli = false;
+  // 1. Identifiant RPPS/ADELI (Prioritaire)
+  if (rppsOrAdeliId) {
+    const isRpps = rppsOrAdeliId.length === 11 || 
+                  authorityName.includes('RPPS') || 
+                  (profession && profession === 'MD');
     
-    practitionerResource.identifier.forEach(id => {
-      if (id.system && id.system.includes('1.2.250.1.71.4.2.1')) {
-        // Identifier le type selon le système ou la valeur
-        if (id.value) {
-          // Ajouter le type d'identifiant explicite selon les spécifications ANS
-          id.type = {
-            coding: [{
-              system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-              code: id.value.length === 11 ? 'RPPS' : 'ADELI',
-              display: id.value.length === 11 ? 'Numéro RPPS' : 'Numéro ADELI'
-            }]
-          };
-          hasRppsOrAdeli = true;
-        }
+    const identifierType = isRpps ? 'RPPS' : 'ADELI';
+    const identifierDisplay = isRpps ? 'Numéro RPPS' : 'Numéro ADELI';
+    
+    practitionerResource.identifier.push({
+      system: `urn:oid:${oid}`,
+      value: rppsOrAdeliId,
+      type: {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: identifierType,
+          display: identifierDisplay
+        }]
       }
     });
     
-    // Si pas d'identifiant RPPS ou ADELI, marquer l'identifiant comme PI
-    if (!hasRppsOrAdeli && practitionerResource.identifier.length > 0) {
-      practitionerResource.identifier[0].type = {
+    // Ajouter l'autorité d'assignation si disponible
+    if (authorityName) {
+      practitionerResource.identifier[0].assigner = {
+        display: authorityName
+      };
+    }
+  }
+  
+  // 2. Identifiant interne (secondaire)
+  if (internalId && internalId !== rppsOrAdeliId) {
+    practitionerResource.identifier.push({
+      system: 'urn:system:local',
+      value: internalId,
+      type: {
         coding: [{
           system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
           code: 'PI',
           display: 'Identifiant interne'
         }]
-      };
-    }
+      }
+    });
   }
+  
+  // Si aucun identifiant n'est disponible, ajouter un identifiant temporaire
+  if (practitionerResource.identifier.length === 0) {
+    const temporaryId = uuid.v4();
+    practitionerResource.identifier.push({
+      system: 'urn:system:temporary',
+      value: temporaryId,
+      type: {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: 'TEMP',
+          display: 'Identifiant temporaire'
+        }]
+      }
+    });
+  }
+  
+  // Ajouter les extensions spécifiques françaises
+  // Extensions pour RPPS, ADELI, spécialités, etc.
+  addFrenchPractitionerExtensions(practitionerResource, rolSegment);
+  
+  console.log('[CONVERTER] Ressource Practitioner créée:', JSON.stringify(practitionerResource).substring(0, 200));
   
   return {
     fullUrl: `urn:uuid:${practitionerId}`,
