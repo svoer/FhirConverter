@@ -517,29 +517,95 @@ function convertHL7ToFHIR(hl7Message) {
               if (movementType === 'INSERT' || movementType === 'ADMISSION') {
                 // Identifiant de pré-admission si disponible
                 if (zbeSegment[1]) {
-                  encounterResource.hospitalization.preAdmissionIdentifier = {
-                    system: 'urn:oid:1.2.250.1.71.4.2.7',
-                    value: zbeSegment[1]
-                  };
+                  // Traiter pour obtenir une chaîne valide 
+                  let admissionId = '';
+                  
+                  if (Array.isArray(zbeSegment[1])) {
+                    // Si c'est un tableau, le convertir en format utilisable
+                    if (zbeSegment[1].length > 0) {
+                      // Essayer d'extraire comme premier élément
+                      admissionId = zbeSegment[1][0] || '';
+                      
+                      // Si c'est encore un tableau, extraire la première valeur
+                      if (Array.isArray(admissionId)) {
+                        admissionId = admissionId[0] || '';
+                      }
+                    }
+                  } else if (typeof zbeSegment[1] === 'string') {
+                    // Si c'est une chaîne, l'utiliser directement
+                    admissionId = zbeSegment[1];
+                    
+                    // Vérifier s'il y a un séparateur ^ dans la chaîne
+                    if (admissionId.includes('^')) {
+                      admissionId = admissionId.split('^')[0];
+                    }
+                  }
+                  
+                  // Ne créer l'identifiant que si une valeur significative a été trouvée
+                  if (admissionId && typeof admissionId === 'string' && admissionId.trim()) {
+                    encounterResource.hospitalization.preAdmissionIdentifier = {
+                      system: 'urn:oid:1.2.250.1.71.4.2.7',
+                      value: admissionId.trim()
+                    };
+                  }
                 }
               }
               
               // Provenance du patient (ZBE-7 souvent) - ajoute cette information si disponible
               if (zbeSegment.length > 7 && zbeSegment[7]) {
-                const sourceInfo = zbeSegment[7];
-                if (sourceInfo) {
+                let sourceInfo = '';
+                
+                // Traiter pour obtenir une chaîne valide
+                if (Array.isArray(zbeSegment[7])) {
+                  // Pour les tableaux, extraire la partie significative
+                  for (let i = 0; i < zbeSegment[7].length; i++) {
+                    const part = zbeSegment[7][i];
+                    if (part && typeof part === 'string' && part.length > 0 && !part.includes('""')) {
+                      sourceInfo = part.trim();
+                      break;
+                    }
+                  }
+                  
+                  // Si nous n'avons trouvé aucune partie significative mais qu'il y a une valeur UF
+                  if (!sourceInfo && zbeSegment[7].includes('UF')) {
+                    sourceInfo = 'Unité Fonctionnelle';
+                  }
+                } else if (typeof zbeSegment[7] === 'string') {
+                  // Chaîne directe
+                  sourceInfo = zbeSegment[7].replace(/\"\"/g, '').trim();
+                }
+                
+                // Ne créer l'origine que si une valeur significative a été trouvée
+                if (sourceInfo && sourceInfo.trim()) {
                   encounterResource.hospitalization.origin = {
-                    display: sourceInfo
+                    display: sourceInfo.trim()
                   };
                 }
               }
               
               // Destination du patient (ZBE-8 parfois) - ajoute cette information si disponible
               if (zbeSegment.length > 8 && zbeSegment[8]) {
-                const destinationInfo = zbeSegment[8];
-                if (destinationInfo) {
+                let destinationInfo = '';
+                
+                // Traiter pour obtenir une chaîne valide
+                if (Array.isArray(zbeSegment[8])) {
+                  // Pour les tableaux, extraire la partie significative
+                  for (let i = 0; i < zbeSegment[8].length; i++) {
+                    const part = zbeSegment[8][i];
+                    if (part && typeof part === 'string' && part.length > 0 && !part.includes('""')) {
+                      destinationInfo = part.trim();
+                      break;
+                    }
+                  }
+                } else if (typeof zbeSegment[8] === 'string') {
+                  // Chaîne directe
+                  destinationInfo = zbeSegment[8].replace(/\"\"/g, '').trim();
+                }
+                
+                // Ne créer la destination que si une valeur significative a été trouvée
+                if (destinationInfo && destinationInfo.trim()) {
                   encounterResource.hospitalization.destination = {
-                    display: destinationInfo
+                    display: destinationInfo.trim()
                   };
                 }
               }
