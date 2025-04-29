@@ -1945,7 +1945,8 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
     return null;
   }
   
-  const coverageId = `coverage-${Date.now()}`;
+  // Générer un ID stable basé sur l'identifiant du plan plutôt qu'un horodatage
+  const coverageId = `coverage-${planId ? planId.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() : uuid.v4()}`;
   
   // Créer la ressource Coverage
   const coverageResource = {
@@ -1957,13 +1958,36 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
     }
   };
   
-  // Ajouter le type de couverture
+  // Ajouter le type de couverture selon les normes ANS
   if (planId) {
+    // Mappages vers les codes de type de couverture français (TRE_R28-TypeCouverture)
+    // Nous utilisons des codes ANS standards au lieu des codes ActCode
+    let coverageType = 'AMO'; // Assurance Maladie Obligatoire par défaut
+    
+    // Tenter de déterminer le type exact de couverture
+    if (typeof planId === 'string') {
+      // Si c'est une couverture complémentaire (mutuelle)
+      if (planId.toUpperCase().includes('MUTUEL') || planId.toUpperCase().includes('COMPLEMENT')) {
+        coverageType = 'AMC'; // Assurance Maladie Complémentaire
+      }
+      // Si c'est une prise en charge à 100%
+      else if (planId.toUpperCase().includes('ALD') || planId.toUpperCase().includes('100%')) {
+        coverageType = 'ALD'; // Affection Longue Durée
+      }
+      // Si c'est lié à un accident du travail
+      else if (planId.toUpperCase().includes('AT') || planId.toUpperCase().includes('MP')) {
+        coverageType = 'ATMP'; // Accident du Travail - Maladie Professionnelle
+      }
+    }
+    
     coverageResource.type = {
       coding: [{
-        system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-        code: planId,
-        display: 'Insurance policy'
+        system: frenchTerminology.FRENCH_SYSTEMS.TYPE_COUVERTURE,
+        code: coverageType,
+        display: coverageType === 'AMO' ? 'Assurance Maladie Obligatoire' :
+                coverageType === 'AMC' ? 'Assurance Maladie Complémentaire' :
+                coverageType === 'ALD' ? 'Affection Longue Durée' :
+                coverageType === 'ATMP' ? 'Accident du Travail - Maladie Professionnelle' : 'Assurance Maladie'
       }]
     };
   }

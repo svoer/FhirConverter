@@ -13,6 +13,7 @@ const FRENCH_SYSTEMS = {
   ROLE_SOCIAL: "https://mos.esante.gouv.fr/NOS/TRE_R94-ProfessionSocial/FHIR/TRE-R94-ProfessionSocial",
   SPECIALITE: "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale",
   MODE_PRISE_EN_CHARGE: "https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge",
+  TYPE_COUVERTURE: "https://mos.esante.gouv.fr/NOS/TRE_R28-TypeCouverture/FHIR/TRE-R28-TypeCouverture",
   
   // OIDs français
   OID_INS: "urn:oid:1.2.250.1.213.1.4.8", // INS-NIR
