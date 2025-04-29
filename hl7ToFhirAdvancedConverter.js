@@ -799,10 +799,22 @@ function extractIdentifiers(identifierField) {
               }
             };
             
-            // Ajouter l'assigner si disponible
+            // Ajouter l'assigner si disponible, avec nettoyage si nécessaire
             if (assigningAuth) {
+              // Nettoyer les caractères spéciaux comme '&' qui peuvent être présents dans les séparateurs HL7
+              let cleanAuth = assigningAuth;
+              if (typeof cleanAuth === 'string') {
+                // Supprimer tout ce qui suit un & (séparateur HL7 standard)
+                cleanAuth = cleanAuth.split('&')[0];
+                // Nettoyer les séparateurs réseau et chaînes vides
+                cleanAuth = cleanAuth.replace(/\^+/g, ' ').trim();
+              } else if (Array.isArray(cleanAuth)) {
+                // Si c'est un tableau, prendre uniquement le premier élément
+                cleanAuth = cleanAuth[0] || '';
+              }
+              
               ippIdentifier.assigner = {
-                display: assigningAuth
+                display: cleanAuth || 'Établissement local'
               };
             }
             
@@ -1373,6 +1385,8 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   }
   
   const telecoms = [];
+  // Set pour suivre les télécom déjà traités (éviter les doublons)
+  const processedTelecoms = new Set();
   
   // Traitement des téléphones personnels (PID-13)
   if (homePhoneFields) {
@@ -1407,7 +1421,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           }
           
           console.log('[CONVERTER] Télécom personnel (components) ajouté:', JSON.stringify(telecom));
-          telecoms.push(telecom);
+          
+          // Vérifier si ce télécom existe déjà (éviter doublons)
+          const telecomKey = `${telecom.system}|${telecom.use}|${telecom.value}`;
+          if (!processedTelecoms.has(telecomKey)) {
+            telecoms.push(telecom);
+            processedTelecoms.add(telecomKey);
+          } else {
+            console.log('[CONVERTER] Télécom ignoré car doublon:', telecomKey);
+          }
         }
         // Cas 2: format du nouveau parser - tableau ou chaîne
         else {
@@ -1461,7 +1483,21 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           
           if (parsedTelecom) {
             console.log('[CONVERTER] Télécom personnel (simple) ajouté:', JSON.stringify(parsedTelecom));
-            telecoms.push(parsedTelecom);
+            
+            // Détection de téléphone mobile français (spécificité française)
+            if (parsedTelecom.value && parsedTelecom.value.match(/^0[67]\d{8}$/)) {
+              parsedTelecom.use = 'mobile';
+              console.log('[CONVERTER] Téléphone mobile français détecté');
+            }
+            
+            // Vérifier si ce télécom existe déjà (éviter doublons)
+            const telecomKey = `${parsedTelecom.system}|${parsedTelecom.use}|${parsedTelecom.value}`;
+            if (!processedTelecoms.has(telecomKey)) {
+              telecoms.push(parsedTelecom);
+              processedTelecoms.add(telecomKey);
+            } else {
+              console.log('[CONVERTER] Télécom ignoré car doublon:', telecomKey);
+            }
             
             // Détection d'email - traitement particulier pour les cas HL7 français
             if (typeof field === 'string' && field.includes('@')) {
@@ -1471,13 +1507,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
                 system: 'email'
               };
               console.log('[CONVERTER] Email détecté et ajouté:', JSON.stringify(emailTelecom));
-              telecoms.push(emailTelecom);
-            }
-            
-            // Détection de téléphone mobile (spécificité française)
-            if (parsedTelecom.value && parsedTelecom.value.match(/^0[67]\d{8}$/)) {
-              parsedTelecom.use = 'mobile';
-              console.log('[CONVERTER] Téléphone mobile français détecté');
+              
+              // Vérifier si l'email existe déjà
+              const emailKey = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+              if (!processedTelecoms.has(emailKey)) {
+                telecoms.push(emailTelecom);
+                processedTelecoms.add(emailKey);
+              } else {
+                console.log('[CONVERTER] Email ignoré car doublon:', emailKey);
+              }
             }
           }
         }
@@ -1493,7 +1531,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           system: 'email'
         };
         console.log('[CONVERTER] Email détecté et ajouté (direct):', JSON.stringify(emailTelecom));
-        telecoms.push(emailTelecom);
+        
+        // Vérifier si cet email existe déjà
+        const emailKey = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+        if (!processedTelecoms.has(emailKey)) {
+          telecoms.push(emailTelecom);
+          processedTelecoms.add(emailKey);
+        } else {
+          console.log('[CONVERTER] Email ignoré car doublon:', emailKey);
+        }
       }
       // Cas d'un numéro de téléphone direct
       else if (homePhoneFields.match(/^\d+$/)) {
@@ -1509,7 +1555,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
         }
         
         console.log('[CONVERTER] Téléphone personnel ajouté (direct):', JSON.stringify(phoneTelecom));
-        telecoms.push(phoneTelecom);
+        
+        // Vérifier si ce téléphone existe déjà
+        const phoneKey = `${phoneTelecom.system}|${phoneTelecom.use}|${phoneTelecom.value}`;
+        if (!processedTelecoms.has(phoneKey)) {
+          telecoms.push(phoneTelecom);
+          processedTelecoms.add(phoneKey);
+        } else {
+          console.log('[CONVERTER] Téléphone ignoré car doublon:', phoneKey);
+        }
       }
     }
   }
@@ -1540,7 +1594,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           }
           
           console.log('[CONVERTER] Télécom professionnel ajouté:', JSON.stringify(telecom));
-          telecoms.push(telecom);
+          
+          // Vérifier si ce télécom existe déjà
+          const telecomKey = `${telecom.system}|${telecom.use}|${telecom.value}`;
+          if (!processedTelecoms.has(telecomKey)) {
+            telecoms.push(telecom);
+            processedTelecoms.add(telecomKey);
+          } else {
+            console.log('[CONVERTER] Télécom professionnel ignoré car doublon:', telecomKey);
+          }
         }
         // Cas 2: format du nouveau parser
         else {
@@ -1584,7 +1646,15 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           
           if (parsedTelecom) {
             console.log('[CONVERTER] Télécom professionnel (simple) ajouté:', JSON.stringify(parsedTelecom));
-            telecoms.push(parsedTelecom);
+            
+            // Vérifier si ce télécom existe déjà
+            const telecomKey = `${parsedTelecom.system}|${parsedTelecom.use}|${parsedTelecom.value}`;
+            if (!processedTelecoms.has(telecomKey)) {
+              telecoms.push(parsedTelecom);
+              processedTelecoms.add(telecomKey);
+            } else {
+              console.log('[CONVERTER] Télécom professionnel simple ignoré car doublon:', telecomKey);
+            }
           }
         }
       });
