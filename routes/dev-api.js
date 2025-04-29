@@ -137,6 +137,96 @@ router.get('/key', (req, res) => {
  *       401:
  *         description: Non autorisé
  */
+/**
+ * @swagger
+ * /api/dev/generate-temp-key:
+ *   get:
+ *     summary: Générer une clé API temporaire
+ *     description: Crée une clé API temporaire valide pendant 24h pour faciliter les tests (disponible sans authentification)
+ *     tags:
+ *       - Admin API
+ *     responses:
+ *       200:
+ *         description: Clé API temporaire générée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     apiKey:
+ *                       type: string
+ *                       description: Clé API temporaire générée
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Date d'expiration de la clé (24h après génération)
+ *                     note:
+ *                       type: string
+ *                       description: Instructions d'utilisation
+ */
+router.get('/generate-temp-key', (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    // Générer une clé temporaire
+    const tempKey = 'temp-' + require('crypto').randomBytes(16).toString('hex');
+    
+    // Hasher la clé pour la stocker en base
+    const hashedKey = require('crypto').createHash('sha256').update(tempKey).digest('hex');
+    
+    // Créer une date d'expiration (24h à partir de maintenant)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    
+    // Vérifier si l'application par défaut existe
+    let defaultApp = db.prepare('SELECT id FROM applications WHERE name = ?').get('Application par défaut');
+    
+    // Créer l'application par défaut si elle n'existe pas
+    if (!defaultApp) {
+      const result = db.prepare('INSERT INTO applications (name, description, created_at) VALUES (?, ?, datetime("now"))').run(
+        'Application par défaut',
+        'Application créée automatiquement pour les besoins de test'
+      );
+      defaultApp = { id: result.lastInsertRowid };
+    }
+    
+    // Insérer la clé API temporaire
+    db.prepare(`
+      INSERT INTO api_keys (
+        application_id, key, hashed_key, description, is_active, expires_at, created_at
+      ) VALUES (?, ?, ?, ?, 1, ?, datetime('now'))
+    `).run(
+      defaultApp.id,
+      tempKey,
+      hashedKey,
+      'Clé temporaire générée pour les tests',
+      expiresAt.toISOString()
+    );
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        apiKey: tempKey,
+        expiresAt: expiresAt.toISOString(),
+        note: "Utilisez cette clé dans l'en-tête X-API-KEY pour accéder aux API protégées. Valide pendant 24h."
+      }
+    });
+  } catch (error) {
+    console.error('[DEV API]', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: 'Erreur lors de la génération de la clé temporaire'
+    });
+  }
+});
+
 router.get('/all-in-one', (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié avec un JWT
