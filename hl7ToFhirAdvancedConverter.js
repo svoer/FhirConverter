@@ -1394,15 +1394,88 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
     console.log('[CONVERTER] Échec du log des télécom:', e.message);
   }
   
+  // Création d'un tableau pour stocker les emails trouvés dans le format de message HL7 français
+  const foundEmailsInHL7French = [];
+  
+  // Recherche directe au format string pour les cas comme "~^NET^Internet^MARYSE.SECLET@WANADOO.FR"
+  if (homePhoneFields) {
+    // Si nous avons une chaîne unique représentant le champ PID-13
+    if (typeof homePhoneFields === 'string') {
+      // 1. Recherche dans le format avec tilde '~'
+      const tildePattern = /\~+\^NET\^[^\^]*\^([^\^~]+@[^\^~]+)/;
+      const tildeParts = homePhoneFields.split('~');
+      
+      for (const part of tildeParts) {
+        if (part.includes('@')) {
+          const emailParts = part.split('^');
+          let emailValue = '';
+          
+          for (const emailPart of emailParts) {
+            if (emailPart.includes('@')) {
+              emailValue = emailPart;
+              break;
+            }
+          }
+          
+          if (emailValue) {
+            console.log('[CONVERTER] Email trouvé dans format chaîne HL7 français avec ~:', emailValue);
+            foundEmailsInHL7French.push({
+              system: 'email',
+              value: emailValue,
+              use: 'home'
+            });
+          }
+        }
+      }
+      
+      // 2. Recherche directe par expression régulière
+      const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+      const emailMatches = homePhoneFields.match(emailRegex);
+      
+      if (emailMatches) {
+        for (const emailMatch of emailMatches) {
+          console.log('[CONVERTER] Email trouvé par regex dans le format HL7 français:', emailMatch);
+          foundEmailsInHL7French.push({
+            system: 'email',
+            value: emailMatch,
+            use: 'home'
+          });
+        }
+      }
+    }
+    
+    // Si nous avons un tableau, vérifier chaque élément
+    if (Array.isArray(homePhoneFields)) {
+      // Parcourir directement le tableau des champs télécom
+      homePhoneFields.forEach(field => {
+        // Format typique: ["","NET","Internet","MARYSE.SECLET@WANADOO.FR"]
+        if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3] && field[3].includes('@')) {
+          const emailValue = field[3];
+          console.log('[CONVERTER] Email trouvé au format tableau français spécifique:', emailValue);
+          foundEmailsInHL7French.push({
+            system: 'email',
+            value: emailValue,
+            use: 'home'
+          });
+        }
+      });
+    }
+  }
+  
   // Détection spécifique des emails dans le format français
   if (Array.isArray(homePhoneFields)) {
     for (let i = 0; i < homePhoneFields.length; i++) {
       const field = homePhoneFields[i];
+      
+      // Format typique: ["","NET","Internet","MARYSE.SECLET@WANADOO.FR"]
       if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3] && field[3].includes('@')) {
         const emailValue = field[3];
-        console.log('[CONVERTER] Email trouvé au format français spécifique:', emailValue);
-        
-        // Nous allons l'ajouter plus tard dans le processus
+        console.log('[CONVERTER] Email trouvé au format tableau français spécifique:', emailValue);
+      }
+      
+      // Recherche dans les chaînes directes
+      if (typeof field === 'string' && field.includes('@')) {
+        console.log('[CONVERTER] Email trouvé directement dans champ:', field);
       }
     }
   }
@@ -1446,7 +1519,7 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
       // Format pour email: [,"NET","Internet","email@example.com"]
       const emailValue = field[3];
       if (emailValue && emailValue.includes('@')) {
-        console.log('[CONVERTER] Email détecté dans format spécifique:', emailValue);
+        console.log('[CONVERTER] Email détecté dans format spécifique PRIORITAIRE:', emailValue);
         
         const emailTelecom = {
           system: 'email',
@@ -1459,7 +1532,7 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           telecoms.push(emailTelecom);
           processedTelecoms.add(telecomKey);
           console.log('[CONVERTER] Email ajouté depuis format spécifique:', JSON.stringify(emailTelecom));
-          return true;
+          // Ne pas retourner true, continuer à chercher d'autres télécom
         }
       }
     }
@@ -1893,6 +1966,43 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           }
         } else {
           console.log('[CONVERTER] Numéro de téléphone professionnel invalide ignoré:', workPhoneFields);
+        }
+      }
+    }
+  }
+  
+  // Ajouter les emails français détectés spécifiquement au début
+  if (foundEmailsInHL7French && foundEmailsInHL7French.length > 0) {
+    console.log('[CONVERTER] Ajout des emails français spécifiquement détectés:', foundEmailsInHL7French.length);
+    
+    // Éviter les doublons en vérifiant chaque email avant de l'ajouter
+    foundEmailsInHL7French.forEach(emailTelecom => {
+      const telecomKey = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+      if (!processedTelecoms.has(telecomKey)) {
+        telecoms.push(emailTelecom);
+        processedTelecoms.add(telecomKey);
+        console.log('[CONVERTER] Email français ajouté à la liste finale:', JSON.stringify(emailTelecom));
+      }
+    });
+  }
+  
+  // Recherche explicite de l'email français dans une dernière tentative
+  if (Array.isArray(homePhoneFields)) {
+    for (const field of homePhoneFields) {
+      if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3] && field[3].includes('@')) {
+        const emailValue = field[3];
+        console.log('[CONVERTER] Ajout direct de l\'email français au format NET:', emailValue);
+        
+        const emailTelecom = {
+          system: 'email',
+          value: emailValue,
+          use: 'home'
+        };
+        
+        const telecomKey = `${emailTelecom.system}|${emailTelecom.use}|${emailTelecom.value}`;
+        if (!processedTelecoms.has(telecomKey)) {
+          telecoms.push(emailTelecom);
+          processedTelecoms.add(telecomKey);
         }
       }
     }
