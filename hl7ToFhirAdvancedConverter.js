@@ -443,6 +443,12 @@ function convertHL7ToFHIR(hl7Message) {
       }
     }
     
+    // Ajouter les entrées additionnelles (comme les payors d'assurance) au bundle final
+    if (bundleEntries && bundleEntries.length > 0) {
+      console.log(`[CONVERTER] Ajout de ${bundleEntries.length} ressources additionnelles au bundle (organismes payeurs, etc.)`);
+      bundle.entry = bundle.entry.concat(bundleEntries);
+    }
+    
     console.log(`[CONVERTER] Conversion terminée avec ${bundle.entry.length} ressources FHIR générées`);
     return bundle;
   } catch (error) {
@@ -1315,6 +1321,45 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   // Set pour suivre les télécom déjà traités (éviter les doublons)
   const processedTelecoms = new Set();
   
+  /**
+   * Fonction utilitaire pour normaliser et vérifier les numéros de téléphone
+   * Spécifiquement optimisée pour les numéros français
+   * @param {string} phoneNumber - Le numéro à vérifier
+   * @returns {Object} Le numéro normalisé et des informations sur son type
+   */
+  function normalizePhoneNumber(phoneNumber) {
+    if (!phoneNumber) {
+      return { isValid: false };
+    }
+    
+    // Suppression des caractères non numériques sauf le +
+    let normalized = phoneNumber.replace(/[^\d+]/g, '');
+    
+    // Si ce n'est qu'un caractère unique ou vide, ignorer
+    if (normalized.length <= 1) {
+      return { isValid: false };
+    }
+    
+    // Détection des numéros de téléphone français
+    let isMobile = false;
+    
+    // Format +33 6xx... ou +33 7xx... (internationaux français mobiles)
+    if (normalized.startsWith('+336') || normalized.startsWith('+337')) {
+      isMobile = true;
+    }
+    // Format 06xx... ou 07xx... (français mobiles)
+    else if ((normalized.startsWith('06') || normalized.startsWith('07')) && 
+             (normalized.length === 10 || normalized.length === 12)) {
+      isMobile = true;
+    }
+    
+    return {
+      value: normalized,
+      isValid: true,
+      isMobile
+    };
+  }
+  
   // Traitement des téléphones personnels (PID-13)
   if (homePhoneFields) {
     // Si c'est un tableau, traiter chaque élément
@@ -1411,10 +1456,24 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           if (parsedTelecom) {
             console.log('[CONVERTER] Télécom personnel (simple) ajouté:', JSON.stringify(parsedTelecom));
             
-            // Détection de téléphone mobile français (spécificité française)
-            if (parsedTelecom.value && parsedTelecom.value.match(/^0[67]\d{8}$/)) {
-              parsedTelecom.use = 'mobile';
-              console.log('[CONVERTER] Téléphone mobile français détecté');
+            // Normalisation et vérification du numéro de téléphone pour FHIR
+            if (parsedTelecom.system === 'phone' && parsedTelecom.value) {
+              const normalized = normalizePhoneNumber(parsedTelecom.value);
+              
+              if (normalized.isValid) {
+                // Utiliser le numéro normalisé
+                parsedTelecom.value = normalized.value;
+                
+                // Détection des téléphones mobiles français
+                if (normalized.isMobile) {
+                  parsedTelecom.use = 'mobile';
+                  console.log('[CONVERTER] Téléphone mobile français détecté:', parsedTelecom.value);
+                }
+              } else {
+                // Numéro invalide, l'ignorer
+                console.log('[CONVERTER] Numéro de téléphone invalide ignoré:', parsedTelecom.value);
+                return;
+              }
             }
             
             // Vérifier si ce télécom existe déjà (éviter doublons)
@@ -1469,27 +1528,29 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
         }
       }
       // Cas d'un numéro de téléphone direct
-      else if (homePhoneFields.match(/^\d+$/)) {
-        const phoneTelecom = {
-          value: homePhoneFields,
-          use: 'home',
-          system: 'phone'
-        };
+      else {
+        // Utiliser la fonction de normalisation pour vérifier
+        const normalized = normalizePhoneNumber(homePhoneFields);
         
-        // Détection de téléphone mobile français
-        if (homePhoneFields.match(/^0[67]\d{8}$/)) {
-          phoneTelecom.use = 'mobile';
-        }
-        
-        console.log('[CONVERTER] Téléphone personnel ajouté (direct):', JSON.stringify(phoneTelecom));
-        
-        // Vérifier si ce téléphone existe déjà
-        const phoneKey = `${phoneTelecom.system}|${phoneTelecom.use}|${phoneTelecom.value}`;
-        if (!processedTelecoms.has(phoneKey)) {
-          telecoms.push(phoneTelecom);
-          processedTelecoms.add(phoneKey);
+        if (normalized.isValid) {
+          const phoneTelecom = {
+            value: normalized.value,
+            use: normalized.isMobile ? 'mobile' : 'home',
+            system: 'phone'
+          };
+          
+          console.log('[CONVERTER] Téléphone personnel ajouté (direct):', JSON.stringify(phoneTelecom));
+          
+          // Vérifier si ce téléphone existe déjà
+          const phoneKey = `${phoneTelecom.system}|${phoneTelecom.use}|${phoneTelecom.value}`;
+          if (!processedTelecoms.has(phoneKey)) {
+            telecoms.push(phoneTelecom);
+            processedTelecoms.add(phoneKey);
+          } else {
+            console.log('[CONVERTER] Téléphone ignoré car doublon:', phoneKey);
+          }
         } else {
-          console.log('[CONVERTER] Téléphone ignoré car doublon:', phoneKey);
+          console.log('[CONVERTER] Numéro de téléphone invalide ignoré:', homePhoneFields);
         }
       }
     }
@@ -1574,6 +1635,30 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           if (parsedTelecom) {
             console.log('[CONVERTER] Télécom professionnel (simple) ajouté:', JSON.stringify(parsedTelecom));
             
+            // Normalisation et vérification du numéro de téléphone pour FHIR
+            if (parsedTelecom.system === 'phone' && parsedTelecom.value) {
+              const normalized = normalizePhoneNumber(parsedTelecom.value);
+              
+              if (normalized.isValid) {
+                // Utiliser le numéro normalisé
+                parsedTelecom.value = normalized.value;
+                
+                // Détection des téléphones mobiles français (même au travail)
+                if (normalized.isMobile) {
+                  // On peut garder 'work' comme use mais ajouter une extension pour le mobile
+                  parsedTelecom.extension = [{
+                    url: "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/telecom-mobilite",
+                    valueBoolean: true
+                  }];
+                  console.log('[CONVERTER] Téléphone mobile professionnel français détecté:', parsedTelecom.value);
+                }
+              } else {
+                // Numéro invalide, l'ignorer
+                console.log('[CONVERTER] Numéro de téléphone professionnel invalide ignoré:', parsedTelecom.value);
+                return;
+              }
+            }
+            
             // Vérifier si ce télécom existe déjà
             const telecomKey = `${parsedTelecom.system}|${parsedTelecom.use}|${parsedTelecom.value}`;
             if (!processedTelecoms.has(telecomKey)) {
@@ -1599,14 +1684,38 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
         telecoms.push(emailTelecom);
       }
       // Cas d'un numéro de téléphone direct
-      else if (workPhoneFields.match(/^\d+$/)) {
-        const phoneTelecom = {
-          value: workPhoneFields,
-          use: 'work',
-          system: 'phone'
-        };
-        console.log('[CONVERTER] Téléphone professionnel ajouté (direct):', JSON.stringify(phoneTelecom));
-        telecoms.push(phoneTelecom);
+      else {
+        // Utiliser la fonction de normalisation pour vérifier
+        const normalized = normalizePhoneNumber(workPhoneFields);
+        
+        if (normalized.isValid) {
+          const phoneTelecom = {
+            value: normalized.value,
+            use: 'work',
+            system: 'phone'
+          };
+          
+          // Ajouter une extension pour les mobiles français utilisés au travail
+          if (normalized.isMobile) {
+            phoneTelecom.extension = [{
+              url: "https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/telecom-mobilite",
+              valueBoolean: true
+            }];
+          }
+          
+          console.log('[CONVERTER] Téléphone professionnel ajouté (direct):', JSON.stringify(phoneTelecom));
+          
+          // Vérifier les doublons
+          const telecomKey = `${phoneTelecom.system}|${phoneTelecom.use}|${phoneTelecom.value}`;
+          if (!processedTelecoms.has(telecomKey)) {
+            telecoms.push(phoneTelecom);
+            processedTelecoms.add(telecomKey);
+          } else {
+            console.log('[CONVERTER] Téléphone professionnel ignoré car doublon:', telecomKey);
+          }
+        } else {
+          console.log('[CONVERTER] Numéro de téléphone professionnel invalide ignoré:', workPhoneFields);
+        }
       }
     }
   }
