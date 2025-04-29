@@ -1,0 +1,68 @@
+Merci pour ce partage combiné du message **HL7 v2 ADT^A01** et de sa **conversion FHIR**. D'après mon analyse, la transformation vers un `Bundle.transaction` FHIR est **globalement correcte**, mais voici quelques **points d’alignement précis** (différences, bonnes pratiques ou améliorations) :
+
+---
+
+## ✅ CONFORMITÉS : éléments bien convertis
+
+| Élément HL7v2 | Élément FHIR | Observations |
+|---------------|--------------|--------------|
+| `PID-3` | `Patient.identifier` | Toutes les identifications (PI, INS-NIR) sont bien présentes avec `type.code` et `system`. |
+| `PID-5` | `Patient.name` | Nom de jeune fille (`maiden`) et nom courant (`official`) bien séparés. |
+| `PID-7` | `birthDate` | Formaté correctement (`YYYY-MM-DD`). |
+| `PID-13/14` | `telecom` | Numéro mobile et e-mail inclus, `use` conforme. |
+| `PID-11` | `address` | Une seule adresse correctement formatée. |
+| `NK1` | `RelatedPerson` | Relation de type `UNK`, nom et prénom bien présents. |
+| `ROL` | `Practitioner` et `PractitionerRole` | ADELI, MCK, RPPS présents, rôle (ODRP) bien défini. |
+| `PV1` | `Encounter` | `class = IMP`, `status = in-progress`, `identifier` (VN), `location` indirectement présent via org. |
+| `ZBE` | Extension `healthevent-identifier`, `healthevent-type`, `period.start` | Bon mappage du numéro de séjour et type d’événement. |
+| `ZFD` | Non mappé directement, mais `VALI` intégré à Patient.identifier.extension (INSI-Status) | C’est correct selon les guides FR. |
+
+---
+
+## ⚠️ POINTS À AMÉLIORER OU COMPLÉTER
+
+1. **Patient.identifier (PIP)**  
+   - Le champ `1000345108^^^CEGI&&M^PIP` n’a pas été intégré. Même s’il est optionnel, il pourrait être ajouté avec :
+     ```json
+     {
+       "system": "urn:oid:<à définir>",
+       "value": "1000345108",
+       "type": {
+         "coding": [{
+           "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+           "code": "PIP",
+           "display": "Patient internal identifier (payer)"
+         }]
+       }
+     }
+     ```
+
+2. **Encounter.location**  
+   - Le champ `PV1-3` mentionne `CLINIQUE VICTOR PAUCHET & 800009920 & M` → il serait plus conforme de créer une `Location` ressource liée à cette clinique, avec :
+     ```json
+     "location": [{
+       "location": {
+         "display": "CLINIQUE VICTOR PAUCHET"
+       }
+     }]
+     ```
+
+3. **Encounter.hospitalization.dischargeDisposition** (facultatif mais issu de `PV2`)  
+   - `PV2-9` donne une date de sortie attendue : cette date a bien été convertie en `encounter-expectedExitDate`, mais le champ `hospitalization.expectedDischargeDate` peut être préféré si vous suivez la base FHIR standard (hors guide France) :
+     ```json
+     "hospitalization": {
+       "expectedDischargeDate": "2024-03-26T23:59:00"
+     }
+     ```
+
+4. **Encounter.period.end** manquant (logique si encore en cours, mais à surveiller en cas d’UPDATE).
+
+---
+
+## ✅ Résumé
+
+- ✅ Transformation **correcte et conforme** dans l’ensemble.
+- 🛠 Quelques **éléments mineurs à compléter** (PIP, Location, Date sortie).
+- 📘 Alignement fort avec les **IG nationales françaises** (interop.esante.gouv.fr), surtout pour les extensions et les terminologies (TRE, INS, ADELI, RPPS…).
+
+Souhaitez-vous que je vous fournisse un exemple FHIR **Location** correspondant à "CLINIQUE VICTOR PAUCHET" ou souhaitez-vous ajouter la ressource `Coverage` (non transmise ici mais mentionnée dans d’autres bundles) ?

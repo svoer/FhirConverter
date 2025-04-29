@@ -935,6 +935,41 @@ function extractIdentifiers(identifierField) {
               identifiers.push(insIdentifier);
               processedIds.add(idKey);
             }
+          } else if (idType === 'PIP') {
+            // Gestion spécifique des identifiants Patient Internal Identifier (payer)
+            console.log('[CONVERTER] Identifiant PIP détecté dans tableau:', idValue);
+            
+            const pipIdentifier = {
+              value: idValue,
+              system: 'urn:oid:1.2.250.1.71.4.2.7', // OID standard pour identifiants locaux
+              type: {
+                coding: [{
+                  system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+                  code: 'PIP',
+                  display: 'Patient internal identifier (payer)'
+                }]
+              }
+            };
+            
+            // Ajouter l'assigner si disponible
+            if (assigningAuth) {
+              let cleanAuth = assigningAuth;
+              if (typeof cleanAuth === 'string') {
+                cleanAuth = cleanAuth.split('&')[0].trim();
+              } else if (Array.isArray(cleanAuth)) {
+                cleanAuth = cleanAuth[0] || '';
+              }
+              
+              pipIdentifier.assigner = {
+                display: cleanAuth || 'Organisme payeur'
+              };
+            }
+            
+            const idKey = `${pipIdentifier.system}|${pipIdentifier.value}`;
+            if (!processedIds.has(idKey)) {
+              identifiers.push(pipIdentifier);
+              processedIds.add(idKey);
+            }
           } else {
             // Considérer comme un IPP par défaut
             console.log('[CONVERTER] IPP détecté dans tableau:', idValue);
@@ -3547,67 +3582,81 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
   }
   
   // Ajouter la période de validité
-  if (expirationDate) {
-    let expirationDateFormatted = formatHL7DateTime(expirationDate);
+  // La date de fin de couverture peut être dans plusieurs positions selon le format HL7
+  // Dans le format standard, c'est normalement IN1-13 pour la date de fin de couverture (index 13)
+  const primaryExpirationDate = in1Segment.length > 13 ? in1Segment[13] : null;
+  
+  // Processus de traitement de date
+  function processExpirationDate(dateValue) {
+    if (!dateValue) return null;
+    
+    // Essayer d'abord le formatage standard
+    let formattedDate = formatHL7DateTime(dateValue);
     
     // Si le formatage automatique échoue, essayer des formats alternatifs
-    if (!expirationDateFormatted) {
+    if (!formattedDate) {
       // Format YYYYMMDD sans séparateurs (ex: 20251231)
-      if (/^\d{8}$/.test(expirationDate)) {
-        const year = expirationDate.substring(0, 4);
-        const month = expirationDate.substring(4, 6);
-        const day = expirationDate.substring(6, 8);
-        expirationDateFormatted = `${year}-${month}-${day}`;
-        console.log('[CONVERTER] Date de fin de couverture formatée manuellement:', expirationDateFormatted);
+      if (/^\d{8}$/.test(dateValue)) {
+        const year = dateValue.substring(0, 4);
+        const month = dateValue.substring(4, 6);
+        const day = dateValue.substring(6, 8);
+        
+        // Validation basique
+        if (parseInt(year) >= 2000 && parseInt(year) <= 2099 && 
+            parseInt(month) >= 1 && parseInt(month) <= 12 && 
+            parseInt(day) >= 1 && parseInt(day) <= 31) {
+          
+          formattedDate = `${year}-${month}-${day}`;
+          console.log('[CONVERTER] Date de fin de couverture formatée à partir de YYYYMMDD:', formattedDate);
+        }
       }
     }
     
-    if (expirationDateFormatted) {
-      coverageResource.period = {
-        end: expirationDateFormatted
-      };
-      console.log('[CONVERTER] Date de fin de couverture définie:', expirationDateFormatted);
-    }
-  } else {
-    // Recherche approfondie de la date de validité dans tous les champs pertinents
-    // Format français: recherche dans plusieurs positions possibles selon le système
-    const possibleDateIndices = [12, 13, 14]; // Positions IN1-12, IN1-13, IN1-14
+    return formattedDate;
+  }
+  
+  // Vérifier la date principale (IN1-13, index 13)
+  let expirationDateFormatted = processExpirationDate(primaryExpirationDate);
+  
+  // Si aucune date n'est trouvée à l'index principal, chercher dans d'autres positions
+  if (!expirationDateFormatted) {
+    // Positions alternatives connues selon différents formats
+    const alternatePositions = [12, 14]; // IN1-12, IN1-14
     
-    for (const dateIndex of possibleDateIndices) {
+    for (const dateIndex of alternatePositions) {
       if (in1Segment.length > dateIndex && in1Segment[dateIndex]) {
-        let potentialDate = in1Segment[dateIndex];
-        
-        // Vérifier si le champ ressemble à une date (numérique, longueur 8 pour YYYYMMDD)
-        if (/^\d{8}$/.test(potentialDate)) {
-          const year = potentialDate.substring(0, 4);
-          const month = potentialDate.substring(4, 6);
-          const day = potentialDate.substring(6, 8);
-          
-          // Validation basique des composants de date
-          if (parseInt(year) >= 2000 && parseInt(year) <= 2099 && 
-              parseInt(month) >= 1 && parseInt(month) <= 12 && 
-              parseInt(day) >= 1 && parseInt(day) <= 31) {
-            
-            const expirationDateFormatted = `${year}-${month}-${day}`;
-            coverageResource.period = {
-              end: expirationDateFormatted
-            };
-            console.log(`[CONVERTER] Date de fin de couverture trouvée à IN1-${dateIndex+1}: ${expirationDateFormatted}`);
-            break; // Sortir de la boucle une fois une date valide trouvée
-          }
-        }
-        
-        // Essayer le formatage standard pour les autres formats potentiels de date
-        const formattedDate = formatHL7DateTime(potentialDate);
-        if (formattedDate) {
-          coverageResource.period = {
-            end: formattedDate
-          };
-          console.log(`[CONVERTER] Date de fin de couverture trouvée à IN1-${dateIndex+1} et formatée: ${formattedDate}`);
+        expirationDateFormatted = processExpirationDate(in1Segment[dateIndex]);
+        if (expirationDateFormatted) {
+          console.log(`[CONVERTER] Date de fin de couverture trouvée à la position alternative IN1-${dateIndex+1}`);
           break;
         }
       }
     }
+    
+    // Si toujours pas de date, chercher dans un intervalle plus large
+    if (!expirationDateFormatted) {
+      // Chercher dans les 20 premiers champs
+      for (let i = 0; i < 20 && i < in1Segment.length; i++) {
+        // Sauter les positions déjà vérifiées
+        if (i === 12 || i === 13 || i === 14) continue;
+        
+        if (in1Segment[i] && /^\d{8}$/.test(in1Segment[i]) && in1Segment[i].startsWith('20')) {
+          expirationDateFormatted = processExpirationDate(in1Segment[i]);
+          if (expirationDateFormatted) {
+            console.log(`[CONVERTER] Date de fin de couverture trouvée à la position inhabituelle IN1-${i+1}`);
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Si une date a été trouvée, l'ajouter à la ressource
+  if (expirationDateFormatted) {
+    coverageResource.period = {
+      end: expirationDateFormatted
+    };
+    console.log('[CONVERTER] Date de fin de couverture définie:', expirationDateFormatted);
   }
   
   // Ajouter le nom de l'assuré
