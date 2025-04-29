@@ -1,146 +1,231 @@
 /**
- * Module d'extraction des noms français à partir de messages HL7
+ * Module d'extraction et de traitement des noms français
+ * Gère les cas spécifiques des noms composés, conventions de nommage 
+ * et normalisation selon les standards FHIR
  * 
- * Gère les spécificités des prénoms composés français dans le contexte de la conversion HL7 vers FHIR.
- * Par exemple: "MARYSE BERTHE ALICE" doit être correctement extrait comme 3 prénoms distincts.
+ * @module frenchNameExtractor
+ * @version 1.0.0
+ * @author FHIRHub Team
  */
 
 /**
- * Extraire les noms français d'un message HL7
- * @param {string} hl7Message - Message HL7 complet
- * @returns {Array} Tableau d'objets nom FHIR avec prénoms correctement extraits
+ * Analyse un nom potentiellement composé pour séparer nom de famille et prénoms
+ * @param {string} nameString - Chaîne de caractères contenant le nom complet
+ * @returns {Object} Objet contenant familyName et givenNames
  */
-function extractNames(hl7Message) {
-  try {
-    console.log('[FHIR_NAME_PROCESSOR] Traitement des noms FHIR');
-    
-    // Utiliser le même extracteur de noms que dans apply_french_names_fix.js
-    const names = extractFrenchNames(hl7Message);
-    
-    // Log des résultats
-    if (names.length > 0) {
-      console.log('[FHIR_NAME_PROCESSOR] Nom français ajouté à la ressource Patient');
-    }
-    
-    console.log('[FHIR_NAME_PROCESSOR] Nettoyage FHIR et traitement terminés avec succès');
-    
-    return names;
-  } catch (error) {
-    console.error('[FHIR_NAME_PROCESSOR] Erreur lors du traitement des noms FHIR:', error);
-    return [];
+function analyzeComplexFrenchName(nameString) {
+  if (!nameString || typeof nameString !== 'string') {
+    return { familyName: null, givenNames: [] };
   }
-}
 
-/**
- * Fonction interne pour extraire les prénoms composés français
- * @param {string} hl7Content - Message HL7 complet
- * @returns {Array} Tableau des noms extraits avec leurs prénoms composés
- */
-function extractFrenchNames(hl7Content) {
-  try {
-    console.log('[FRENCH_NAME_EXTRACTOR] Tentative d\'extraction des noms français');
+  // Cas spécial: nom unique d'une lettre (souvent une erreur)
+  if (nameString.length === 1) {
+    return { familyName: null, givenNames: [] };
+  }
+  
+  // Si le nom contient des espaces, possible nom composé français
+  if (nameString.includes(' ')) {
+    const parts = nameString.split(' ').filter(Boolean);
     
-    // Découper le message HL7 en segments
-    const segments = hl7Content.split(/[\r\n]+/);
-    
-    // Chercher le segment PID
-    const pidSegment = segments.find(seg => seg.startsWith('PID|'));
-    
-    if (!pidSegment) {
-      console.log('[FRENCH_NAME_EXTRACTOR] Aucun segment PID trouvé');
-      return [];
-    }
-    
-    console.log('[FRENCH_NAME_EXTRACTOR] Segment PID trouvé');
-    
-    // Extraire le champ PID-5 (nom)
-    const pidFields = pidSegment.split('|');
-    if (pidFields.length < 6) {
-      console.log('[FRENCH_NAME_EXTRACTOR] Champ PID-5 manquant');
-      return [];
-    }
-    
-    const nameField = pidFields[5];
-    console.log(`[FRENCH_NAME_EXTRACTOR] Champ PID-5 brut: "${nameField}"`);
-    
-    if (!nameField) {
-      console.log('[FRENCH_NAME_EXTRACTOR] Champ PID-5 vide');
-      return [];
-    }
-    
-    // Traiter les répétitions (plusieurs noms)
-    const nameValues = nameField.split('~');
-    console.log(`[FRENCH_NAME_EXTRACTOR] ${nameValues.length} valeurs de nom trouvées`);
-    
-    const names = [];
-    
-    // Chercher un nom légal (use=L)
-    const legalNameValue = nameValues.find(val => val.includes('^^^^L'));
-    
-    if (legalNameValue) {
-      console.log(`[FRENCH_NAME_EXTRACTOR] Nom légal trouvé: "${legalNameValue}"`);
+    // Si plus de 1 mot, possible nom+prénom composite
+    if (parts.length > 1) {
+      // Marqueurs de prénoms français courants
+      const frenchNameIndicators = ['JEAN', 'MARIE', 'PIERRE', 'PAUL', 'LOUIS', 'ANNE', 'MARC'];
       
-      // Extraire les composants du nom
-      const nameParts = legalNameValue.split('^');
-      
-      // Le format attendu est: family^given1^given2^given3^...
-      const family = nameParts[0];
-      console.log(`[FRENCH_NAME_EXTRACTOR] Nom de famille: "${family}"`);
-      
-      let given = [];
-      let compositeGiven = null;
-      
-      // Premier prénom standard
-      if (nameParts.length > 1 && nameParts[1]) {
-        console.log(`[FRENCH_NAME_EXTRACTOR] Prénom principal: "${nameParts[1]}"`);
-        given.push(nameParts[1]);
-      }
-      
-      // Traitement spécial pour les prénoms composés français
-      // Ils sont souvent mis dans le champ des prénoms supplémentaires
-      if (nameParts.length > 2 && nameParts[2]) {
-        // Vérifier si c'est un prénom composé (contient des espaces)
-        if (nameParts[2].includes(' ')) {
-          console.log(`[FRENCH_NAME_EXTRACTOR] Prénoms composés: "${nameParts[2]}"`);
-          compositeGiven = nameParts[2];
-          
-          // Diviser le prénom composé en parties individuelles
-          const compositeParts = nameParts[2].split(' ');
-          
-          // Si le premier prénom est déjà inclus, ne pas le dupliquer
-          if (given.length > 0 && compositeParts[0] === given[0]) {
-            // Ajouter seulement les prénoms supplémentaires
-            given = [...given, ...compositeParts.slice(1)];
-          } else {
-            // Ajouter tous les prénoms
-            given = [...given, ...compositeParts];
-          }
-        } else if (nameParts[2] !== given[0]) {
-          // Simple deuxième prénom
-          given.push(nameParts[2]);
+      // Vérifier si un des indicateurs de prénom composé est présent
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (frenchNameIndicators.includes(parts[i])) {
+          console.log('[FRENCH_NAME_EXTRACTOR] Prénom composé détecté:', nameString);
+          return {
+            familyName: null,
+            givenNames: parts
+          };
         }
       }
       
-      // Créer l'objet nom FHIR
-      const name = {
-        family: family,
-        given: given,
-        use: 'official'
+      // Si pas d'indicateur de prénom composé mais plusieurs parties, possible structure nom/prénom
+      // Dans la convention française, le premier mot est généralement le nom de famille
+      // et le reste sont les prénoms
+      console.log('[FRENCH_NAME_EXTRACTOR] Nom avec plusieurs parties:', nameString);
+      return {
+        familyName: parts[0],
+        givenNames: parts.slice(1)
       };
-      
-      console.log(`[FRENCH_NAME_EXTRACTOR] Nom complet créé avec ${given.length} prénoms:`, name);
-      
-      names.push(name);
     }
+  }
+  
+  // Si le nom est simple, le retourner comme nom de famille
+  return { familyName: nameString, givenNames: [] };
+}
+
+/**
+ * Extrait nom et prénom(s) depuis un format HL7 français
+ * @param {string} nameString - Chaîne de type "NOM^PRENOM^COMPLEMENT"
+ * @returns {Object} Objet avec nom et prénoms formatés pour FHIR
+ */
+function extractFrenchNameComponents(nameString) {
+  if (!nameString || typeof nameString !== 'string') {
+    return { family: null, given: [] };
+  }
+  
+  console.log('[FRENCH_NAME_EXTRACTOR] Tentative d\'extraction des noms français');
+  
+  // Diviser selon le format HL7 standard
+  const parts = nameString.split('^');
+  let family = parts[0] || '';
+  let given = [];
+  
+  // Analyser la partie nom de famille pour détecter prénom composé potentiel
+  if (family && family.includes(' ')) {
+    const analyzedFamily = analyzeComplexFrenchName(family);
     
-    return names;
-  } catch (error) {
-    console.error('[FRENCH_NAME_EXTRACTOR] Erreur lors de l\'extraction des noms:', error);
+    // Si le nom contient des prénoms
+    if (analyzedFamily.givenNames && analyzedFamily.givenNames.length > 0) {
+      console.log('[FRENCH_NAME_EXTRACTOR] Prénoms extraits:', analyzedFamily.givenNames.join(', '));
+      given = [...analyzedFamily.givenNames];
+      family = analyzedFamily.familyName || family; // Si null, on garde le nom original
+    }
+  }
+  
+  // Traiter la partie prénom (XPN.2)
+  if (parts[1]) {
+    const givenName = parts[1];
+    
+    // Prénoms composés avec espaces
+    if (givenName.includes(' ')) {
+      console.log('[FRENCH_NAME_EXTRACTOR] Prénom composé détecté:', givenName);
+      given.push(...givenName.split(' ').filter(Boolean));
+    } else {
+      given.push(givenName);
+    }
+  }
+  
+  // Traiter l'éventuel prénom additionnel (XPN.3)
+  if (parts[2]) {
+    const middleName = parts[2];
+    
+    // Prénoms additionnels avec espaces
+    if (middleName.includes(' ')) {
+      const additionalNames = middleName.split(' ').filter(Boolean);
+      given.push(...additionalNames);
+    } else {
+      given.push(middleName);
+    }
+  }
+  
+  // Dédupliquer les prénoms
+  const uniqueGiven = [...new Set(given)];
+  
+  console.log('[FRENCH_NAME_EXTRACTOR] Nom extrait:', family, uniqueGiven.join(', '));
+  return {
+    family: family || null,
+    given: uniqueGiven.length > 0 ? uniqueGiven : []
+  };
+}
+
+/**
+ * Détermine l'utilisation du nom selon les normes françaises
+ * @param {string} useCode - Code d'utilisation selon HL7
+ * @returns {string} Code d'utilisation FHIR
+ */
+function determineNameUse(useCode) {
+  const nameUseMap = {
+    'L': 'official', // Légal
+    'D': 'maiden',   // Nom de jeune fille (spécificité française)
+    'M': 'maiden',   // Nom de jeune fille
+    'N': 'nickname', // Surnom
+    'S': 'old',      // Nom marital (spécificité française)
+    'C': 'usual',    // Nom d'usage (spécificité française)
+    'A': 'anonymous',// Pseudonyme
+    'I': 'old'       // Précédent
+  };
+  
+  return nameUseMap[useCode] || 'official';
+}
+
+/**
+ * Crée un ensemble d'objets nom FHIR à partir d'une chaîne HL7
+ * @param {string} nameString - Chaîne de type "NOM^PRENOM^COMPLEMENT"
+ * @returns {Array} Tableau d'objets nom FHIR
+ */
+function extractFrenchNames(nameString) {
+  if (!nameString) {
     return [];
   }
+  
+  const result = [];
+  
+  // Cas 1: format HL7 standard avec séparateur ^
+  if (nameString.includes('^')) {
+    const parts = nameString.split('^');
+    const nameComponents = extractFrenchNameComponents(nameString);
+    
+    // Type d'utilisation du nom (7ème composant)
+    const useCode = parts.length > 6 ? parts[6] : 'L'; // Par défaut 'L' = legal/official
+    const useType = determineNameUse(useCode);
+    
+    // Construction de l'objet nom FHIR
+    const nameObj = { use: useType };
+    
+    if (nameComponents.family) {
+      nameObj.family = nameComponents.family;
+    }
+    
+    if (nameComponents.given && nameComponents.given.length > 0) {
+      nameObj.given = nameComponents.given;
+    }
+    
+    // Préfixe (5ème composant)
+    if (parts.length > 4 && parts[4]) {
+      nameObj.prefix = [parts[4]];
+    }
+    
+    // Suffixe (4ème et 6ème composants)
+    const suffixes = [];
+    if (parts.length > 3 && parts[3]) {
+      suffixes.push(parts[3]);
+    }
+    if (parts.length > 5 && parts[5]) {
+      suffixes.push(parts[5]);
+    }
+    
+    if (suffixes.length > 0) {
+      nameObj.suffix = suffixes;
+    }
+    
+    result.push(nameObj);
+  }
+  // Cas 2: format simple (juste le nom)
+  else {
+    const analyzedName = analyzeComplexFrenchName(nameString);
+    
+    if (analyzedName.familyName || (analyzedName.givenNames && analyzedName.givenNames.length > 0)) {
+      const nameObj = { use: 'official' };
+      
+      if (analyzedName.familyName) {
+        nameObj.family = analyzedName.familyName;
+      }
+      
+      if (analyzedName.givenNames && analyzedName.givenNames.length > 0) {
+        nameObj.given = analyzedName.givenNames;
+      }
+      
+      result.push(nameObj);
+    } else {
+      // Si pas d'analyse réussie, utiliser la chaîne comme nom de famille
+      result.push({
+        use: 'official',
+        family: nameString
+      });
+    }
+  }
+  
+  console.log('[FRENCH_NAME_EXTRACTOR] Total de noms extraits:', result.length);
+  return result;
 }
 
 module.exports = {
-  extractNames,
-  extractFrenchNames  // Exporter aussi la fonction interne pour les tests
+  extractFrenchNames,
+  analyzeComplexFrenchName,
+  determineNameUse
 };

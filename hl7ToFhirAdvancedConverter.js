@@ -25,6 +25,7 @@ const uuid = {
 // Import de l'adaptateur de terminologie française
 const frenchTerminology = require('./french_terminology_adapter');
 const hl7Parser = require('./hl7Parser');
+const { extractFrenchNames } = require('./src/utils/frenchNameExtractor');
 
 /**
  * Convertit un message HL7 en bundle FHIR conforme aux spécifications ANS (France)
