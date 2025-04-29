@@ -488,9 +488,10 @@
     // Charger les clés API depuis l'API
     async function loadApiKeys() {
       try {
+        const token = localStorage.getItem('token');
         const response = await fetch('/api/api-keys', {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           }
         });
         

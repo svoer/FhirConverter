@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const apiKeyAuth = require('../middleware/apiKeyAuth');
+const jwtAuth = require('../middleware/jwtAuth');
 
 /**
  * @swagger
@@ -53,7 +54,7 @@ const apiKeyAuth = require('../middleware/apiKeyAuth');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', apiKeyAuth(), (req, res) => {
+router.get('/', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
   try {
     const db = req.app.locals.db;
     
@@ -102,7 +103,7 @@ router.get('/', apiKeyAuth(), (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', apiKeyAuth(), (req, res) => {
+router.get('/:id', [apiKeyAuth({ required: false }), jwtAuth({ required: false })], (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;

@@ -368,7 +368,12 @@
     // Charger les applications depuis l'API
     async function loadApplications() {
       try {
-        const response = await fetch('/api/applications');
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/applications', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
         if (!response.ok) {
           throw new Error('Erreur lors de la récupération des applications');
@@ -485,7 +490,12 @@
     // Afficher le modal pour modifier une application
     async function editApplication(appId) {
       try {
-        const response = await fetch(`/api/applications/${appId}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/applications/${appId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
         if (!response.ok) {
           throw new Error('Erreur lors de la récupération des détails de l\'application');
