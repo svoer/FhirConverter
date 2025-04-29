@@ -30,12 +30,15 @@ const { extractFrenchNames } = require('./src/utils/frenchNameExtractor');
 /**
  * Convertit un message HL7 en bundle FHIR conforme aux spécifications ANS (France)
  * Optimisé pour les identifiants INS/INS-C et terminologies françaises
- * @version 1.1.1
+ * @version 1.1.2
  * @updated 2025-04-29
  * @param {string} hl7Message - Message HL7 au format texte
  * @returns {Object} Bundle FHIR au format R4 conforme ANS
  */
 function convertHL7ToFHIR(hl7Message) {
+  // Variable globale pour stocker toutes les entrées du bundle, y compris les ressources additionnelles
+  // comme les organismes d'assurance
+  const bundleEntries = [];
   try {
     console.log('[CONVERTER] Démarrage de la conversion HL7 vers FHIR');
     
@@ -2838,8 +2841,8 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
     return null;
   }
   
-  // Générer un ID stable basé sur l'identifiant du plan plutôt qu'un horodatage
-  const coverageId = `coverage-${planId ? planId.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase() : uuid.v4()}`;
+  // Générer un UUID unique pour chaque coverage afin d'éviter tout conflit
+  const coverageId = `coverage-${uuid.v4()}`;
   
   // Créer la ressource Coverage
   const coverageResource = {
@@ -2850,6 +2853,80 @@ function createCoverageResource(in1Segment, in2Segment, patientReference) {
       reference: patientReference
     }
   };
+  
+  // Ajouter le payeur (organisme d'assurance) si disponible
+  // IN1-4 (Nom de la compagnie d'assurance)
+  const insurerField = in1Segment.length > 4 ? in1Segment[4] : null;
+  
+  if (insurerField) {
+    let insurerName = '';
+    let insurerId = '';
+    
+    // Extraction du nom de l'assureur
+    if (Array.isArray(insurerField)) {
+      if (insurerField.length > 0) {
+        insurerId = insurerField[0] || '';
+      }
+      if (insurerField.length > 1) {
+        insurerName = insurerField[1] || '';
+      }
+    } else if (typeof insurerField === 'string') {
+      insurerId = insurerField;
+      
+      // Mapper les codes d'organismes français
+      const frenchInsurers = {
+        '101': 'CPAM',
+        '102': 'MSA',
+        '103': 'RSI',
+        '104': 'MGEN',
+        '105': 'Mutualité Fonction Publique',
+        '106': 'CNMSS',
+        '107': 'MGP',
+        '972': 'CGSS Martinique'
+      };
+      
+      insurerName = frenchInsurers[insurerId] || `Organisme ${insurerId}`;
+    }
+    
+    if (insurerName || insurerId) {
+      // Créer un ID unique pour l'organisme d'assurance
+      const insurerOrgId = `organization-insurer-${insurerId || uuid.v4()}`;
+      
+      // Référencer l'organisme payeur
+      coverageResource.payor = [
+        {
+          reference: `urn:uuid:${insurerOrgId}`,
+          display: insurerName || `Organisme ${insurerId}`
+        }
+      ];
+      
+      // Ajouter l'organisation de l'assureur au bundle principal
+      bundleEntries.push({
+        fullUrl: `urn:uuid:${insurerOrgId}`,
+        resource: {
+          resourceType: 'Organization',
+          id: insurerOrgId,
+          identifier: [{
+            system: 'urn:oid:1.2.250.1.71.4.2.2',
+            value: insurerId || `ins-${uuid.v4().substring(0, 8)}`
+          }],
+          name: insurerName || `Organisme ${insurerId}`,
+          active: true,
+          type: [{
+            coding: [{
+              system: 'http://terminology.hl7.org/CodeSystem/organization-type',
+              code: 'ins',
+              display: 'Compagnie d\'assurance'
+            }]
+          }]
+        },
+        request: {
+          method: 'POST',
+          url: 'Organization'
+        }
+      });
+    }
+  }
   
   // Ajouter le type de couverture selon les normes ANS
   if (planId) {
