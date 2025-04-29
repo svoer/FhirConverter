@@ -76,9 +76,16 @@ function convertHL7ToFHIR(hl7Message) {
       const patientResource = createPatientResource(segments.PID[0], segments.PD1 ? segments.PD1[0] : null);
       bundle.entry.push(patientResource);
       
-      // Encounter (à partir du segment PV1)
+      // Encounter (à partir des segments PV1 et PV2)
       if (segments.PV1 && segments.PV1.length > 0) {
-        const encounterResource = createEncounterResource(segments.PV1[0], patientResource.fullUrl);
+        // Récupérer le segment PV2 s'il est disponible
+        const pv2Segment = segments.PV2 && segments.PV2.length > 0 ? segments.PV2[0] : null;
+        
+        if (pv2Segment) {
+          console.log('[CONVERTER] Segment PV2 trouvé, ajout des informations supplémentaires');
+        }
+        
+        const encounterResource = createEncounterResource(segments.PV1[0], patientResource.fullUrl, pv2Segment);
         bundle.entry.push(encounterResource);
       }
       
@@ -2363,7 +2370,7 @@ function addFrenchExtensions(patientResource, pd1Segment) {
  * @param {string} patientReference - Référence à la ressource Patient
  * @returns {Object} Entrée de bundle pour un Encounter
  */
-function createEncounterResource(pv1Segment, patientReference) {
+function createEncounterResource(pv1Segment, patientReference, pv2Segment = null) {
   if (!pv1Segment) {
     return null;
   }
@@ -2383,6 +2390,13 @@ function createEncounterResource(pv1Segment, patientReference) {
   let admitDate = null;
   if (pv1Segment.length > 44 && pv1Segment[44]) {
     admitDate = formatHL7DateTime(pv1Segment[44]);
+  }
+  
+  // Date de sortie prévue (PV2-9)
+  let expectedExitDate = null;
+  if (pv2Segment && pv2Segment.length > 9 && pv2Segment[9]) {
+    expectedExitDate = formatHL7DateTime(pv2Segment[9]);
+    console.log('[CONVERTER] Date de sortie prévue détectée dans PV2-9:', pv2Segment[9], '→', expectedExitDate);
   }
   
   // Numéro de visite/séjour (PV1-19 = visit number)
@@ -2446,6 +2460,15 @@ function createEncounterResource(pv1Segment, patientReference) {
         }
       });
     }
+  }
+  
+  // Ajout de l'extension de date de sortie prévue si disponible
+  if (expectedExitDate) {
+    encounterResource.extension.push({
+      url: "http://hl7.org/fhir/StructureDefinition/encounter-expectedExitDate",
+      valueDateTime: expectedExitDate
+    });
+    console.log('[CONVERTER] Extension de date de sortie prévue ajoutée:', expectedExitDate);
   }
   
   // Ajouter la période si disponible
