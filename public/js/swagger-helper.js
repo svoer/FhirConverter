@@ -5,6 +5,54 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Vérifier si nous sommes sur la page Swagger
   if (window.location.pathname.includes('/api-docs')) {
+    // Ajouter des styles personnalisés pour améliorer l'apparence de Swagger UI
+    const customStyles = document.createElement('style');
+    customStyles.textContent = `
+      body {
+        padding-top: 0;
+      }
+      
+      .swagger-ui .topbar {
+        background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      }
+      
+      .swagger-ui .topbar .download-url-wrapper .select-label {
+        color: white !important;
+      }
+      
+      .swagger-ui .btn.authorize {
+        background-color: #4caf50;
+        color: white;
+        border-color: #43a047;
+      }
+      
+      .swagger-ui .btn.authorize svg {
+        fill: white;
+      }
+      
+      .info-text-with-api-key {
+        background-color: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        padding: 10px 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+    `;
+    document.head.appendChild(customStyles);
+    
+    // Ajouter une info-bulle pour expliquer comment utiliser les clés API
+    setTimeout(() => {
+      const infoSection = document.querySelector('.swagger-ui .information-container');
+      if (infoSection) {
+        const infoTip = document.createElement('div');
+        infoTip.className = 'info-text-with-api-key';
+        infoTip.innerHTML = `
+          <p><strong>💡 Conseil :</strong> Pour tester les API, utilisez le bouton vert <strong>⚡ Autoriser avec clé de test</strong> ci-dessus. 
+          La clé <code>dev-key</code> est automatiquement appliquée.</p>
+        `;
+        infoSection.appendChild(infoTip);
+      }
+    }, 1000);
     // Ajouter un bouton pour générer une clé API temporaire même sans être connecté
     const addTempKeyButton = () => {
       // Vérifier si le bouton existe déjà
@@ -14,6 +62,87 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const topbarContainer = document.querySelector('.swagger-ui .topbar .wrapper');
       if (topbarContainer) {
+        // Ajouter un bouton pour accéder à la navigation principale
+        const navBtn = document.createElement('a');
+        navBtn.id = 'nav-menu-btn';
+        navBtn.href = '/';
+        navBtn.className = 'btn';
+        navBtn.style.backgroundColor = '#e74c3c';
+        navBtn.style.color = 'white';
+        navBtn.style.border = 'none';
+        navBtn.style.borderRadius = '4px';
+        navBtn.style.padding = '5px 10px';
+        navBtn.style.marginLeft = '10px';
+        navBtn.style.cursor = 'pointer';
+        navBtn.style.textDecoration = 'none';
+        navBtn.innerHTML = '🏠 Menu Principal';
+        topbarContainer.appendChild(navBtn);
+        
+        // Ajouter un bouton pour autoriser directement avec une clé de test
+        const quickAuthBtn = document.createElement('button');
+        quickAuthBtn.id = 'quick-auth-btn';
+        quickAuthBtn.className = 'btn';
+        quickAuthBtn.style.backgroundColor = '#2ecc71';
+        quickAuthBtn.style.color = 'white';
+        quickAuthBtn.style.border = 'none';
+        quickAuthBtn.style.borderRadius = '4px';
+        quickAuthBtn.style.padding = '5px 10px';
+        quickAuthBtn.style.marginLeft = '10px';
+        quickAuthBtn.style.cursor = 'pointer';
+        quickAuthBtn.innerHTML = '⚡ Autoriser avec clé de test (dev-key)';
+        
+        quickAuthBtn.addEventListener('click', () => {
+          // Clé de test fixe pour les tests rapides
+          const testApiKey = 'dev-key';
+          
+          // Ouvrir le dialogue d'autorisation
+          const authorizeBtn = document.querySelector('.swagger-ui .auth-wrapper .authorize');
+          if (authorizeBtn) {
+            authorizeBtn.click();
+            
+            // Attendre que le dialogue s'ouvre
+            setTimeout(() => {
+              // Remplir le champ avec la clé API de test
+              const apiKeyInput = document.querySelector('.swagger-ui input[type="text"][data-param-name="api_key"]');
+              if (apiKeyInput) {
+                apiKeyInput.value = testApiKey;
+                
+                // Simuler la saisie
+                const event = new Event('input', { bubbles: true });
+                apiKeyInput.dispatchEvent(event);
+                
+                // Cliquer sur Authorize
+                const dialogAuthorizeBtn = document.querySelector('.swagger-ui .auth-btn-wrapper .btn-done');
+                if (dialogAuthorizeBtn) {
+                  dialogAuthorizeBtn.click();
+                  
+                  // Afficher une notification
+                  const notif = document.createElement('div');
+                  notif.style.position = 'fixed';
+                  notif.style.top = '20px';
+                  notif.style.right = '20px';
+                  notif.style.backgroundColor = '#2ecc71';
+                  notif.style.color = 'white';
+                  notif.style.padding = '15px';
+                  notif.style.borderRadius = '4px';
+                  notif.style.zIndex = '9999';
+                  notif.innerHTML = '✅ Autorisé avec la clé de test (dev-key)';
+                  
+                  document.body.appendChild(notif);
+                  
+                  // Supprimer la notification après 3 secondes
+                  setTimeout(() => {
+                    notif.remove();
+                  }, 3000);
+                }
+              }
+            }, 300);
+          }
+        });
+        
+        topbarContainer.appendChild(quickAuthBtn);
+        
+        // Bouton de génération de clé API temporaire
         const tempKeyBtn = document.createElement('button');
         tempKeyBtn.id = 'get-temp-api-key-btn';
         tempKeyBtn.className = 'btn';
