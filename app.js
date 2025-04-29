@@ -278,7 +278,7 @@ app.post('/api/convert', (req, res) => {
     
     // Utiliser le convertisseur avancé pour transformer HL7 en FHIR
     const startTime = Date.now();
-    const result = advancedConverter.convertHL7ToFHIR(hl7Message);
+    const result = convertHL7ToFHIR(hl7Message);
     const conversionTime = Date.now() - startTime;
     
     console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées`);
@@ -458,6 +458,45 @@ app.post('/api/convert/validate', (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
+ 
+/**
+ * @swagger
+ * /api/terminology/french:
+ *   get:
+ *     summary: Obtenir les informations sur les terminologies françaises
+ *     description: Retourne les informations sur les systèmes de terminologie français utilisés pour la conversion
+ *     tags:
+ *       - Terminologie
+ *     responses:
+ *       200:
+ *         description: Informations récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     version:
+ *                       type: string
+ *                       description: Version des mappings de terminologies françaises
+ *                     lastUpdated:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Date de dernière mise à jour des mappings
+ *                     systems:
+ *                       type: object
+ *                       description: Systèmes de terminologie français disponibles
+ *                     oids:
+ *                       type: object
+ *                       description: OIDs français disponibles
+ *       500:
+ *         description: Erreur serveur
+ */
 app.get('/api/stats', (req, res) => {
   try {
     const conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
@@ -498,6 +537,33 @@ app.use('/api/applications', applicationsRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth', authRoutes);
+
+/**
+ * Route pour obtenir les informations sur les terminologies françaises
+ */
+app.get('/api/terminology/french', (req, res) => {
+  try {
+    const terminologyData = {
+      version: fhirHub.getTerminologyVersion(),
+      lastUpdated: require('./data/french_terminology_mappings.json').lastUpdated,
+      systems: fhirHub.frenchTerminology.FRENCH_SYSTEMS,
+      oids: fhirHub.frenchTerminology.FRENCH_OIDS
+    };
+    
+    res.json({
+      success: true,
+      data: terminologyData
+    });
+  } catch (error) {
+    console.error('[TERMINOLOGY ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Terminology Error',
+      message: error.message || 'Erreur inconnue'
+    });
+  }
+});
 
 // Démarrage du serveur
 app.listen(PORT, () => {

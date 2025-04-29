@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Script de démarrage pour l'application FHIRHub
-# Convertisseur HL7 v2.5 vers FHIR R4
+# Convertisseur HL7 v2.5 vers FHIR R4 avec terminologies françaises
+# Version 1.1.0
 
 echo "Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
 echo "Initialisation du nouveau système de conversion HL7 vers FHIR..."
-echo "Utilisation du convertisseur HL7 vers FHIR optimisé..."
+echo "Utilisation du convertisseur HL7 vers FHIR optimisé avec mappings de terminologie ANS..."
 echo "----------------------------------------------------"
 echo "Préparation du Serveur Multi-Terminologies français terminée"
-echo "Systèmes terminologiques ANS intégrés (TRE-R316, TRE-R51, etc.)"
+echo "Systèmes terminologiques ANS intégrés via le système de mapping centralisé"
 echo "----------------------------------------------------"
 
 # Vérification de l'existence du dossier data
