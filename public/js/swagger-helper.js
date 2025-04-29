@@ -304,8 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
           tempKeyBtn.innerHTML = '<span style="font-size: 18px; margin-right: 8px;">⏳</span> Génération de la clé API...';
           
           try {
-            // Simuler la génération d'une clé API temporaire
-            const tempApiKey = 'temp-' + Math.random().toString(36).substring(2, 15);
+            // Utiliser une clé API temporaire en dur au lieu de la générer
+            const tempApiKey = 'test-api-key-2025';
             
             // Créer une boîte de message pour afficher la clé
             const messageBox = document.createElement('div');
