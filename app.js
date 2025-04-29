@@ -262,7 +262,13 @@ const { convertHL7ToFHIR } = fhirHub;
  *       500:
  *         description: Erreur serveur
  */
-app.post('/api/convert', (req, res) => {
+// Importer les middlewares d'authentification
+const apiKeyAuth = require('./middleware/apiKeyAuth');
+const jwtAuth = require('./middleware/jwtAuth');
+const authCombined = require('./middleware/authCombined');
+
+// Appliquer l'authentification combinée aux routes stratégiques
+app.post('/api/convert', authCombined, (req, res) => {
   try {
     const { hl7Message } = req.body;
     
@@ -363,7 +369,7 @@ app.post('/api/convert', (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-app.post('/api/convert/validate', (req, res) => {
+app.post('/api/convert/validate', authCombined, (req, res) => {
   try {
     const { hl7Message } = req.body;
     
@@ -531,17 +537,19 @@ const applicationsRoutes = require('./routes/applications');
 const apiKeysRoutes = require('./routes/api-keys');
 const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
+const devApiRoutes = require('./routes/dev-api');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/dev', devApiRoutes);
 
 /**
  * Route pour obtenir les informations sur les terminologies françaises
  */
-app.get('/api/terminology/french', (req, res) => {
+app.get('/api/terminology/french', authCombined, (req, res) => {
   try {
     const terminologyData = {
       version: fhirHub.getTerminologyVersion(),
