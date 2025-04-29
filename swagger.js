@@ -32,13 +32,23 @@ const swaggerOptions = {
         ApiKeyAuth: {
           type: 'apiKey',
           in: 'header',
-          name: 'X-API-KEY'
+          name: 'X-API-KEY',
+          description: 'Clé API pour l\'authentification'
+        },
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT pour l\'authentification (utilisateurs connectés)'
         }
       }
     },
     security: [
       {
         ApiKeyAuth: []
+      },
+      {
+        BearerAuth: []
       }
     ]
   },

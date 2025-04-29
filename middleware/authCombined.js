@@ -43,6 +43,36 @@ function authCombined() {
         jwtMiddleware(req, res, () => {
           if (req.user) {
             authSuccess = true;
+            
+            // Si l'utilisateur est admin, on lui attribue automatiquement des privilèges API
+            if (req.user.role === 'admin' && !hasApiKey) {
+              // Récupérer la clé API de développement
+              try {
+                const db = req.app.locals.db;
+                const keyData = db.prepare(`
+                  SELECT 
+                    ak.id, ak.application_id, ak.key, ak.is_active, ak.expires_at,
+                    a.name as app_name, a.cors_origins, a.settings
+                  FROM api_keys ak
+                  JOIN applications a ON ak.application_id = a.id
+                  WHERE ak.key = 'dev-key' AND ak.is_active = 1
+                  LIMIT 1
+                `).get();
+                
+                if (keyData) {
+                  // Ajouter les informations de clé API à la requête
+                  req.apiKey = keyData;
+                  req.application = {
+                    id: keyData.application_id,
+                    name: keyData.app_name,
+                    settings: keyData.settings ? JSON.parse(keyData.settings) : {},
+                    corsOrigins: keyData.cors_origins ? keyData.cors_origins.split(',') : []
+                  };
+                }
+              } catch (error) {
+                console.error('[AUTH COMBINED] Erreur lors de la récupération de la clé API admin:', error);
+              }
+            }
           }
           resolve();
         });
