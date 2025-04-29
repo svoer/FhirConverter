@@ -401,7 +401,13 @@
       appsList.innerHTML = '';
       
       applications.forEach(app => {
-        const settings = JSON.parse(app.settings || '{}');
+        let settings = {};
+        try {
+          settings = JSON.parse(app.settings || '{}');
+        } catch (error) {
+          console.error('Erreur de parsing des paramètres:', error);
+          // Continuer avec un objet vide en cas d'erreur
+        }
         
         const appCard = document.createElement('div');
         appCard.className = 'app-card';
@@ -532,11 +538,17 @@
     
     // Afficher le modal de confirmation de suppression
     function showDeleteModal(appId) {
-      document.getElementById('confirmDeleteBtn').setAttribute('data-id', appId);
+      // Supprimer les anciens event listeners en clonant et remplaçant l'élément
+      const oldButton = document.getElementById('confirmDeleteBtn');
+      const newButton = oldButton.cloneNode(true);
+      oldButton.parentNode.replaceChild(newButton, oldButton);
+      
+      // Définir l'ID de l'application à supprimer
+      newButton.setAttribute('data-id', appId);
       document.getElementById('deleteModal').style.display = 'flex';
       
       // Ajouter l'event listener pour le bouton de confirmation
-      document.getElementById('confirmDeleteBtn').addEventListener('click', deleteApplication);
+      newButton.addEventListener('click', deleteApplication);
     }
     
     // Fermer le modal de confirmation de suppression
