@@ -1,0 +1,38 @@
+e vais te donner un retour précis et structuré sur ton message HL7v2 et ton Bundle FHIR en mode FHIR R4 français (conforme au cadre ANS - "Interop'Santé France").
+
+Analyse rapide de ton HL7v2 (V2.5 FRA)
+✅ Ton MSH est correct pour la France (v2.5, FRA, charset ISO-8859-1).
+
+✅ Tu as utilisé correctement les segments PID, ROL, PV1, IN1, etc.
+
+⚠️ Quelques petites remarques :
+
+Attention aux types de téléphones : PRN, PH, CP sont bons, mais les numéros doivent être dans le format e164 si possible pour la conformité ANS stricte.
+
+Le champ PID-11 (adresse) contient plusieurs adresses dont certaines avec des champs vides. Il faut éviter les "~" pour des données vides inutiles.
+
+Les segments ZBE, ZFP, ZFV, ZFM semblent spécifiques à ton établissement (customs), donc il faudra vérifier s'ils sont bien documentés dans ton IG.
+
+Analyse de ton JSON FHIR (Bundle transaction)
+Ton bundle est globalement très bon pour de l'interopérabilité française ANS, mais voici quelques remarques importantes :
+
+
+Élément	Statut	Commentaire
+Patient	✅ correct	Quelques erreurs d'identifiants secondaires. Chaque identifier devrait avoir un système bien défini (urn:oid:... pour l'INS-C/NIR).
+Encounter	⚠️ petit problème	Le identifier de l'Encounter est mal formaté : value doit être une chaîne unique, pas une liste de valeurs.
+Practitioner	✅ correct	Bonne déclaration ADELI et interne MCK.
+PractitionerRole	✅ correct	Usage correct du code ODRP.
+Organization	⚠️ à vérifier	L'organisation "20250417050534" semble être un horodatage : attention, un nom d'organisation doit être stable.
+Coverage	⚠️ mineur	Le type "972" utilisé dans Coverage est un code ActCode, pas forcément conforme aux profils ANS-FHIR pour couverture santé (devrait plutôt s'appuyer sur Type de couverture complémentaire de l'ANS).
+RelatedPerson	✅ correct	Très propre pour définir la relation SPOUSE.
+Résumé global
+✅ Ton mapping HL7v2 ➔ FHIR R4 est fonctionnel, et respecte globalement les contraintes FHIR R4 France / ANS.
+
+⚠️ Petites corrections à faire pour être parfaitement aligné avec le Guide d’Implémentation ANS :
+
+Corriger les listes dans certains champs (ex : Encounter.identifier.value),
+
+Séparer mieux les identifiants INS-C/NIR/PI avec le bon system,
+
+Éviter d'utiliser des données générées dynamiquement (timestamps) comme identifiants d'Organization.
+
