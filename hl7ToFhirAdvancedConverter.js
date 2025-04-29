@@ -705,6 +705,14 @@ function extractIdentifiers(identifierField) {
           officialType = 'INS-C';
           system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS conformément à ANS
           hasINS = true;
+        } else if (namespaceName.includes('ASIP-SANTE-INS-A') || 
+                   namespaceName.includes('INS-A') ||
+                   idType === 'INS-A' ||
+                   idType === 'INS') {  // Parfois INS est utilisé pour les deux
+          console.log('[CONVERTER] Identifiant INS-A détecté');
+          officialType = 'INS';  // Même traitement que l'INS standard
+          system = 'urn:oid:1.2.250.1.213.1.4.8'; // OID officiel pour INS conformément à ANS
+          hasINS = true;
         } else if (idType === 'PI' || idType === 'NH' || idType === '') {
           console.log('[CONVERTER] Identifiant interne (IPP) détecté');
           officialType = 'IPP';
