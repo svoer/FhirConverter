@@ -92,8 +92,24 @@ function convertHL7ToFHIR(hl7Message) {
           }
         }
         
-        const encounterResource = createEncounterResource(segments.PV1[0], patientResource.fullUrl, pv2Segment);
-        bundle.entry.push(encounterResource);
+        const encounterResult = createEncounterResource(segments.PV1[0], patientResource.fullUrl, pv2Segment);
+        
+        // Le résultat peut contenir l'entrée principale et des entrées supplémentaires (comme des locations)
+        if (encounterResult) {
+          // Format 1: {main: encounter, entries: [location, ...]}
+          if (encounterResult.main && encounterResult.entries) {
+            // Ajouter d'abord les entrées supplémentaires
+            bundle.entry.push(...encounterResult.entries);
+            console.log(`[CONVERTER] ${encounterResult.entries.length} ressources additionnelles ajoutées au bundle (locations, etc.)`);
+            
+            // Puis ajouter l'entrée principale
+            bundle.entry.push(encounterResult.main);
+          } 
+          // Format 2: encounter direct
+          else {
+            bundle.entry.push(encounterResult);
+          }
+        }
       }
       
       // Organisation (à partir du segment MSH)
@@ -465,11 +481,15 @@ function convertHL7ToFHIR(hl7Message) {
     
     // Ajouter le support pour l'hospitalisation (propriété hospitalization) si date de sortie prévue
     if (bundle.entry.length > 0) {
-      const encounterEntry = bundle.entry.find(entry => 
+      // Rechercher toutes les ressources Encounter dans le bundle
+      const encounterEntries = bundle.entry.filter(entry => 
         entry.resource && entry.resource.resourceType === 'Encounter'
       );
       
-      if (encounterEntry) {
+      console.log(`[CONVERTER] ${encounterEntries.length} ressources Encounter trouvées dans le bundle pour enrichissement`);
+      
+      // Traiter chaque ressource Encounter pour ajouter/compléter hospitalization
+      encounterEntries.forEach(encounterEntry => {
         const encounterResource = encounterEntry.resource;
         
         // Vérifier s'il y a une extension pour la date de sortie prévue
@@ -478,12 +498,58 @@ function convertHL7ToFHIR(hl7Message) {
         );
         
         if (expectedExitDateExt && expectedExitDateExt.valueDateTime) {
-          // Ajouter ou mettre à jour la propriété hospitalization avec la date de sortie prévue
+          // Initialiser ou récupérer l'objet hospitalization
           encounterResource.hospitalization = encounterResource.hospitalization || {};
+          
+          // Ajouter la date de sortie prévue à hospitalization 
           encounterResource.hospitalization.expectedDischargeDate = expectedExitDateExt.valueDateTime;
-          console.log('[CONVERTER] Date de sortie prévue ajoutée à hospitalization:', expectedExitDateExt.valueDateTime);
+          
+          // Ajouter d'autres informations pertinentes issues des segments français spécifiques si disponibles
+          if (segments.ZBE && segments.ZBE.length > 0) {
+            // Récupérer le premier segment ZBE pour les informations d'hospitalisation
+            const zbeSegment = segments.ZBE[0];
+            
+            // Type de mouvement (ZBE-4) - INSERT = entrée, CANCEL = annulation, UPDATE = mise à jour, etc.
+            if (zbeSegment.length > 4 && zbeSegment[4]) {
+              const movementType = zbeSegment[4];
+              
+              // Si présent et pertinent, ajouter à l'objet hospitalization
+              if (movementType === 'INSERT' || movementType === 'ADMISSION') {
+                // Identifiant de pré-admission si disponible
+                if (zbeSegment[1]) {
+                  encounterResource.hospitalization.preAdmissionIdentifier = {
+                    system: 'urn:oid:1.2.250.1.71.4.2.7',
+                    value: zbeSegment[1]
+                  };
+                }
+              }
+              
+              // Provenance du patient (ZBE-7 souvent) - ajoute cette information si disponible
+              if (zbeSegment.length > 7 && zbeSegment[7]) {
+                const sourceInfo = zbeSegment[7];
+                if (sourceInfo) {
+                  encounterResource.hospitalization.origin = {
+                    display: sourceInfo
+                  };
+                }
+              }
+              
+              // Destination du patient (ZBE-8 parfois) - ajoute cette information si disponible
+              if (zbeSegment.length > 8 && zbeSegment[8]) {
+                const destinationInfo = zbeSegment[8];
+                if (destinationInfo) {
+                  encounterResource.hospitalization.destination = {
+                    display: destinationInfo
+                  };
+                }
+              }
+            }
+          }
+          
+          console.log('[CONVERTER] Hospitalization enrichie avec date de sortie prévue et contexte français:', 
+            JSON.stringify(encounterResource.hospitalization).substring(0, 200));
         }
-      }
+      });
     }
     
     console.log(`[CONVERTER] Conversion terminée avec ${bundle.entry.length} ressources FHIR générées`);
@@ -2597,6 +2663,10 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
     return null;
   }
   
+  // Tableau pour stocker les ressources supplémentaires liées à l'Encounter
+  // qui seront ajoutées au bundle final
+  const bundleEntries = [];
+  
   // Vérifier s'il y a des informations de localisation (PV1-3) pour créer une ressource Location
   let locationReference = null;
   let locationResource = null;
@@ -2839,7 +2909,8 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
     console.log('[CONVERTER] Ressource Location ajoutée pour l\'établissement:', locationResource.resource.name);
   }
   
-  return {
+  // Créer l'objet Encounter
+  const encounterEntry = {
     fullUrl: `urn:uuid:${encounterId}`,
     resource: encounterResource,
     request: {
@@ -2847,6 +2918,18 @@ function createEncounterResource(pv1Segment, patientReference, pv2Segment = null
       url: 'Encounter'
     }
   };
+  
+  // Si des ressources additionnelles ont été créées (comme Location)
+  if (bundleEntries.length > 0) {
+    // Retourner l'entrée principale ET les entrées supplémentaires
+    return {
+      main: encounterEntry,
+      entries: bundleEntries
+    };
+  }
+  
+  // Sinon, retourner simplement l'entrée Encounter
+  return encounterEntry;
 }
 
 /**
