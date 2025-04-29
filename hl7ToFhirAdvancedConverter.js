@@ -1394,6 +1394,19 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
     console.log('[CONVERTER] Échec du log des télécom:', e.message);
   }
   
+  // Détection spécifique des emails dans le format français
+  if (Array.isArray(homePhoneFields)) {
+    for (let i = 0; i < homePhoneFields.length; i++) {
+      const field = homePhoneFields[i];
+      if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3] && field[3].includes('@')) {
+        const emailValue = field[3];
+        console.log('[CONVERTER] Email trouvé au format français spécifique:', emailValue);
+        
+        // Nous allons l'ajouter plus tard dans le processus
+      }
+    }
+  }
+  
   const telecoms = [];
   // Set pour suivre les télécom déjà traités (éviter les doublons)
   const processedTelecoms = new Set();
@@ -1401,6 +1414,7 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
   // Optimisation spécifique pour les messages HL7 en format français avec des tableaux imbriqués
   // Spécifiquement pour gérer les cas comme : [["","PRN","PH","","","","","","","","","0608987212"]]
   function checkNestedArray(field, use = 'home') {
+    // Format téléphone spécifique français
     if (Array.isArray(field) && field.length >= 12 && field[2] === 'PH' && field[11]) {
       // C'est un format spécifique avec le numéro en position 11
       const phoneNumber = field[11];
@@ -1426,7 +1440,9 @@ function extractTelecoms(homePhoneFields, workPhoneFields) {
           return true;
         }
       }
-    } else if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3]) {
+    } 
+    // Format email spécifique français
+    else if (Array.isArray(field) && field.length >= 4 && field[1] === 'NET' && field[3]) {
       // Format pour email: [,"NET","Internet","email@example.com"]
       const emailValue = field[3];
       if (emailValue && emailValue.includes('@')) {
