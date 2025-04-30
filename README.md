@@ -29,21 +29,6 @@ npm install
 npm start
 ```
 
-### Déploiement avec Docker
-
-FHIRHub peut également être déployé avec Docker :
-
-```bash
-# Construction et démarrage avec docker-compose
-docker-compose up -d
-
-# Ou construction manuelle de l'image
-docker build -t fhirhub:latest .
-
-# Exécution du conteneur
-docker run -p 5000:5000 -v $(pwd)/data:/app/data fhirhub:latest
-```
-
 ## Utilisation
 
 Accédez à l'application via `http://localhost:5000` et connectez-vous avec les identifiants par défaut:

@@ -1,86 +1,92 @@
 #!/bin/bash
 
-# Couleurs pour les messages
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Script d'installation pour l'application FHIRHub
+# Version 1.0.0
 
-echo -e "${YELLOW}Installation de FHIRHub...${NC}"
+echo "=========================================================="
+echo "     Installation de FHIRHub - Convertisseur HL7 vers FHIR"
+echo "=========================================================="
 
-# Vérifier la version de Node.js
-NODE_VERSION=$(node -v)
-echo -e "Version de Node.js détectée : ${GREEN}$NODE_VERSION${NC}"
-
-# Vérifier si la variable d'environnement pour ignorer la vérification de version est définie
-if [ -n "$SKIP_NODE_VERSION_CHECK" ]; then
-    echo -e "${YELLOW}Vérification de version de Node.js ignorée (SKIP_NODE_VERSION_CHECK définie)${NC}"
-# Vérifier si la version de Node est compatible (v16-v20)
-elif [[ $NODE_VERSION =~ ^v2[2-9] ]]; then
-    echo -e "${RED}La version de Node.js est trop récente (v22+) et peut causer des problèmes avec better-sqlite3.${NC}"
-    echo -e "${YELLOW}Installation de Node.js v20 recommandée...${NC}"
-    
-    # Vérifier si nvm est disponible
-    if command -v nvm &> /dev/null; then
-        echo -e "Utilisation de nvm pour installer Node.js v20..."
-        nvm install 20
-        nvm use 20
-    # Vérifier si fnm est disponible
-    elif command -v fnm &> /dev/null; then
-        echo -e "Utilisation de fnm pour installer Node.js v20..."
-        fnm install 20
-        fnm use 20
-    else
-        echo -e "${RED}Veuillez installer Node.js v20 manuellement et relancer ce script.${NC}"
-        echo -e "Vous pouvez installer fnm ou nvm, ou télécharger Node.js depuis https://nodejs.org/"
-        exit 1
-    fi
-    
-    # Vérifier à nouveau la version après changement
-    NODE_VERSION=$(node -v)
-    echo -e "Nouvelle version de Node.js : ${GREEN}$NODE_VERSION${NC}"
+# Vérification de l'environnement
+echo "[1/6] Vérification de l'environnement..."
+if ! command -v node &> /dev/null; then
+  echo "❌ Node.js n'est pas installé. Veuillez installer Node.js v18+ avant de continuer."
+  echo "   https://nodejs.org/fr/download/"
+  exit 1
 fi
 
-# Supprimer node_modules et package-lock.json pour une installation propre
-echo -e "${YELLOW}Suppression des modules précédents...${NC}"
-rm -rf node_modules package-lock.json
+# Vérification de la version de Node.js
+NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
+if [ "$NODE_VERSION" -lt 18 ]; then
+  echo "❌ Version de Node.js trop ancienne: $(node -v). FHIRHub requiert Node.js v18+."
+  echo "   Veuillez mettre à jour Node.js avant de continuer."
+  exit 1
+fi
 
-# Installer les dépendances
-echo -e "${YELLOW}Installation des dépendances...${NC}"
+echo "✅ Environnement compatible (Node.js $(node -v))"
+
+# Création des répertoires nécessaires
+echo "[2/6] Création des répertoires..."
+mkdir -p ./data ./logs ./backups
+
+# Installation des dépendances
+echo "[3/6] Installation des dépendances..."
 npm install
 
-# Vérifier si les modules HL7 sont installés
-echo -e "${YELLOW}Vérification des modules HL7...${NC}"
-if ! npm list hl7 &> /dev/null || ! npm list simple-hl7 &> /dev/null || ! npm list hl7-standard &> /dev/null; then
-    echo -e "${YELLOW}Installation des modules HL7 manquants...${NC}"
-    npm install hl7 simple-hl7 hl7-standard hl7-parser --save
+# Configuration de l'environnement
+echo "[4/6] Configuration de l'environnement..."
+if [ ! -f "./.env" ]; then
+  cat > ./.env << EOF
+# Configuration FHIRHub
+PORT=5000
+DB_PATH=./data/fhirhub.db
+LOG_LEVEL=info
+JWT_SECRET=$(openssl rand -hex 32)
+EOF
+  echo "✅ Fichier .env créé avec succès"
+else
+  echo "ℹ️ Fichier .env existant conservé"
 fi
 
-# Vérifier si l'installation a réussi
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}Installation réussie!${NC}"
-    echo -e "${YELLOW}Création des dossiers requis...${NC}"
-    
-    # Créer les structures de dossiers nécessaires
-    echo -e "${YELLOW}Création des dossiers nécessaires...${NC}"
-    mkdir -p src/converters src/terminology data/conversions data/outputs data/history data/test
-    
-    # Vérifier si des adaptateurs sont nécessaires pour les différences de casse
-    if [ -f "src/converters/hl7ToFhirConverter.js" ] && [ ! -f "src/converters/HL7ToFHIRConverter.js" ]; then
-        echo -e "${YELLOW}Création d'un adaptateur pour résoudre les problèmes de casse...${NC}"
-        cat > src/converters/HL7ToFHIRConverter.js << 'EOF'
-/**
- * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR
- */
-const converter = require('./hl7ToFhirConverter');
-module.exports = converter;
+# Initialisation de la base de données
+echo "[5/6] Initialisation de la base de données..."
+echo "[TERMINOLOGY] Préparation des terminologies françaises..."
+mkdir -p ./french_terminology
+if [ ! -f "./french_terminology/mappings.json" ]; then
+  cat > ./french_terminology/mappings.json << EOF
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-04-28T10:15:30Z",
+  "systems": {
+    "ins": "urn:oid:1.2.250.1.213.1.4.8",
+    "rpps": "urn:oid:1.2.250.1.71.4.2.1",
+    "adeli": "urn:oid:1.2.250.1.71.4.2.2",
+    "finess": "urn:oid:1.2.250.1.71.4.2.2"
+  },
+  "codeSystemMap": {
+    "profession": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
+    "specialite": "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale"
+  }
+}
 EOF
-    fi
-    
-    echo -e "${GREEN}FHIRHub est prêt à être utilisé.${NC}"
-    echo -e "Pour démarrer l'application, exécutez: ${YELLOW}bash start.sh${NC}"
-else
-    echo -e "${RED}L'installation a échoué.${NC}"
-    echo -e "Veuillez consulter les messages d'erreur ci-dessus pour plus d'informations."
-    exit 1
 fi
+
+# Finalisation
+echo "[6/6] Finalisation de l'installation..."
+chmod +x ./start.sh
+
+echo "=========================================================="
+echo "     ✅ Installation de FHIRHub terminée avec succès"
+echo "=========================================================="
+echo ""
+echo "Pour démarrer l'application :"
+echo "  ./start.sh"
+echo ""
+echo "Site web accessible sur : http://localhost:5000"
+echo "Identifiants par défaut :"
+echo "  Utilisateur : admin"
+echo "  Mot de passe : adminfhirhub"
+echo ""
+echo "Clé API de test : dev-key"
+echo "Documentation API : http://localhost:5000/api-docs"
+echo "=========================================================="

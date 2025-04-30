@@ -1,43 +1,53 @@
 /**
- * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR
- * Résout les problèmes de casse dans les imports
+ * Module de conversion HL7 vers FHIR
+ * 
+ * Ce module fait le lien entre l'ancien convertisseur et la nouvelle architecture
+ * Il permet une transition en douceur tout en conservant la compatibilité arrière
  */
 
-// Ne pas importer le convertisseur pour éviter les problèmes de casse circulaires
+const advancedConverter = require('../../hl7ToFhirAdvancedConverter');
+const frenchTerminology = require('../terminology/FrenchTerminologyAdapter');
 
-// Fonction de conversion principale
-const convertHL7ToFHIR = function(hl7Message) {
-  console.log('[CONVERTER] Appel de convertHL7ToFHIR avec message:', hl7Message.substring(0, 50) + '...');
+/**
+ * Convertit un message HL7 en Bundle FHIR
+ * @param {string} hl7Message - Message HL7 au format texte
+ * @param {object} options - Options de conversion (optionnel)
+ * @returns {Object} Bundle FHIR au format R4
+ */
+function convertHL7ToFHIR(hl7Message, options = {}) {
+  console.log("[CONVERTER] Démarrage de la conversion HL7 vers FHIR");
   
-  // Créer un ID de bundle unique
-  const bundleId = `bundle-${Date.now()}`;
-  
-  // Créer un bundle FHIR basique pour le moment (sera amélioré plus tard)
-  return {
-    resourceType: 'Bundle',
-    id: bundleId,
-    type: 'transaction',
-    timestamp: new Date().toISOString(),
-    entry: [],
-    meta: {
-      source: 'FHIRHub Converter',
-      profile: ['https://interop.esante.gouv.fr/ig/fhir/core/StructureDefinition/fr-bundle']
+  // Pour l'instant, nous déléguons simplement à l'implémentation existante
+  // Mais cette structure nous permettra de migrer progressivement vers la nouvelle approche
+  try {
+    if (!hl7Message) {
+      throw new Error("Le message HL7 est requis");
     }
-  };
-};
+    
+    return advancedConverter.convertHL7ToFHIR(hl7Message, options);
+  } catch (error) {
+    console.error("[CONVERTER] Erreur lors de la conversion:", error);
+    throw error;
+  }
+}
 
-// Renvoyer la version des terminologies
-const getTerminologyVersion = function() {
-  return '1.0.0';
-};
+/**
+ * Obtient la version de l'adaptateur de terminologie française
+ * @returns {string} Version de l'adaptateur
+ */
+function getTerminologyVersion() {
+  return frenchTerminology.getVersion();
+}
 
-// Recharger les terminologies
-const reloadTerminology = function() {
-  console.log('[CONVERTER] Rechargement des terminologies');
-  return true;
-};
+/**
+ * Recharge les mappings de terminologie française
+ * @param {string} filePath - Chemin du fichier de mappings (optionnel)
+ * @returns {boolean} Réussite du rechargement
+ */
+function reloadTerminology(filePath) {
+  return frenchTerminology.reloadMappings(filePath);
+}
 
-// Exporter toutes les fonctions du convertisseur
 module.exports = {
   convertHL7ToFHIR,
   getTerminologyVersion,

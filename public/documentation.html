@@ -671,48 +671,13 @@ python extract_french_systems.py</pre>
         <ol>
           <li>Décompressez l'archive dans le dossier de votre choix</li>
           <li>Ouvrez un terminal dans ce dossier</li>
-          <li>Exécutez <code>bash install.sh</code> pour installer les dépendances</li>
+          <li>Exécutez <code>npm install</code> pour installer les dépendances</li>
           <li>Exécutez <code>bash start.sh</code> pour démarrer le serveur</li>
           <li>Accédez à <code>http://localhost:5000</code> dans votre navigateur</li>
         </ol>
         
-        <div class="warning-box">
-          <p><strong>Important :</strong> FHIRHub nécessite Node.js v16-v20. En raison de problèmes de compatibilité avec certaines bibliothèques comme better-sqlite3, il n'est pas recommandé d'utiliser Node.js v22+. Le script <code>install.sh</code> détectera automatiquement si vous avez une version incompatible et vous proposera d'installer Node.js v20.</p>
-        </div>
-        
         <div class="info-box">
           <p><strong>Note :</strong> Lors du premier démarrage, le système crée automatiquement un utilisateur administrateur avec les identifiants par défaut : <code>admin / adminfhirhub</code>. Il est fortement recommandé de changer ce mot de passe après la première connexion.</p>
-        </div>
-
-        <h3>Dockerisation (Optionnel)</h3>
-        <p>FHIRHub peut également être déployé en tant que conteneur Docker, ce qui facilite son déploiement dans différents environnements.</p>
-        
-        <pre class="code-block"># Créer une image Docker (disponible dans le fichier Dockerfile)
-FROM node:20-alpine
-
-# Installation des dépendances Python pour les scripts de terminologie
-RUN apk add --no-cache python3 py3-pip bash
-RUN pip3 install requests
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 5000
-CMD ["bash", "start.sh"]
-</pre>
-
-        <p>Pour construire et exécuter le conteneur :</p>
-        
-        <pre class="code-block"># Construire l'image
-docker build -t fhirhub:latest .
-
-# Exécuter le conteneur
-docker run -p 5000:5000 -v $(pwd)/data:/app/data fhirhub:latest
-</pre>
-
-        <div class="tip-box">
-          <p><strong>Astuce :</strong> L'utilisation d'un volume Docker pour le dossier <code>/data</code> permet de conserver les données de la base SQLite entre les redémarrages du conteneur.</p>
         </div>
         
         <h3>Sauvegarde</h3>
