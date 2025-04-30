@@ -1,144 +1,173 @@
-# Système de Cache Intelligent pour FHIRHub
+# Système de Cache Intelligent FHIRHub
 
-FHIRHub intègre un système de cache intelligent qui optimise considérablement les performances de conversion des messages HL7 vers FHIR, particulièrement pour les messages identiques ou similaires répétés.
+## Vue d'Ensemble
 
-## Architecture du Système de Cache
+Le système de cache intelligent de FHIRHub optimise les performances en mémorisant les résultats de conversion HL7 vers FHIR pour une réutilisation ultérieure. Cette approche réduit considérablement le temps de traitement des messages similaires ou identiques, particulièrement utile dans les environnements de santé où les mêmes structures de messages sont souvent répétées.
+
+## Architecture
+
+Le système de cache utilise une architecture à deux niveaux :
 
 ```mermaid
 graph TD
-    A[Message HL7] --> B{Présent dans le cache?}
-    B -->|Oui| C[Récupération depuis le cache]
-    B -->|Non| D[Conversion complète]
-    D --> E[Stockage dans le cache]
-    C --> F[Retour résultat FHIR]
-    E --> F
+    A[Message HL7 Entrant] --> B{Présent dans<br>le cache mémoire?}
+    B -->|Oui| C[Récupération depuis<br>le cache mémoire]
+    B -->|Non| D{Présent dans<br>le cache disque?}
+    D -->|Oui| E[Récupération depuis<br>le cache disque<br>et mise en cache mémoire]
+    D -->|Non| F[Conversion HL7 vers FHIR]
+    F --> G[Stockage dans les caches<br>mémoire et disque]
+    C --> H[Envoi du résultat FHIR]
+    E --> H
+    G --> H
 ```
 
-## Caractéristiques Principales
+### Cache Mémoire (Niveau 1)
 
-### 1. Cache à Deux Niveaux
-- **Cache en mémoire**: Pour des accès ultra-rapides aux messages récemment convertis
-- **Cache sur disque**: Pour la persistance des données entre les redémarrages du serveur
+- **Type** : Cache LRU (Least Recently Used)
+- **Capacité** : 500 entrées
+- **Persistance** : En mémoire uniquement, effacé au redémarrage
+- **Temps d'accès** : < 1ms
 
-### 2. Stratégies d'Éviction Intelligentes
-- **LRU (Least Recently Used)**: Supprime les entrées les moins récemment utilisées lorsque le cache atteint sa capacité maximale
-- **LFU (Least Frequently Used)**: Option configurable pour supprimer les entrées les moins fréquemment utilisées (idéal pour les charges de travail avec motifs récurrents)
+### Cache Disque (Niveau 2)
 
-### 3. Gestion Optimisée des Ressources
-- Taille maximale configurable (par défaut: 500 entrées en mémoire, 5000 sur disque)
-- Nettoyage automatique des entrées expirées
-- Configuration du Time-To-Live (TTL) pour contrôler la durée de validité des entrées
+- **Type** : Stockage persistant sur disque
+- **Capacité** : Limitée uniquement par l'espace disque disponible
+- **Persistance** : Conservé entre les redémarrages
+- **Temps d'accès** : 2-5ms
 
-### 4. Métriques et Statistiques
-- Taux de succès du cache (hit ratio)
-- Temps d'exécution comparatifs (avec/sans cache)
-- Utilisation mémoire et disque
+## Fonctionnement
 
-## Bénéfices du Cache Intelligent
+### Génération des Clés de Cache
 
-| Aspect | Sans Cache | Avec Cache | Amélioration |
-|--------|------------|------------|--------------|
-| Temps de conversion moyen | 10-50ms | <1ms (pour les hits) | >95% |
-| Utilisation CPU | Élevée | Réduite | >60% |
-| Charge serveur | Élevée | Équilibrée | Variable |
-| Expérience utilisateur | Bonne | Excellente | Perceptible |
+Le système utilise un hachage SHA-256 du message HL7 comme clé pour retrouver rapidement les résultats des conversions précédentes. Ce hachage est généré de la manière suivante :
+
+```javascript
+const crypto = require('crypto');
+
+function generateCacheKey(hl7Message) {
+  // Normaliser le message (retirer les espaces superflus, normaliser les sauts de ligne)
+  const normalizedMessage = hl7Message.trim().replace(/\r\n?/g, '\n');
+  
+  // Générer un hash SHA-256
+  return crypto.createHash('sha256').update(normalizedMessage).digest('hex');
+}
+```
+
+### Processus de Résolution
+
+1. **Vérification du cache mémoire** : Le système vérifie d'abord si le message se trouve dans le cache mémoire LRU.
+2. **Vérification du cache disque** : Si non trouvé en mémoire, le système cherche dans le cache persistant sur disque.
+3. **Conversion et mise en cache** : Si le message n'est pas trouvé dans aucun des caches, une conversion complète est effectuée, puis le résultat est stocké dans les deux niveaux de cache.
+
+## Configuration
+
+Le système de cache est configurable via les options suivantes :
+
+| Option | Description | Valeur par défaut |
+|--------|-------------|-------------------|
+| `maxMemoryCacheSize` | Nombre maximum d'entrées en mémoire | 500 |
+| `diskCachePath` | Chemin du dossier de cache sur disque | `./data/cache` |
+| `cacheStrategy` | Stratégie d'éviction | `lru` |
+| `diskCacheEnabled` | Activation du cache disque | `true` |
+| `memoryCacheEnabled` | Activation du cache mémoire | `true` |
+| `cacheExpirationDays` | Expiration des entrées du cache en jours | 30 |
+
+Ces options peuvent être modifiées dans le fichier de configuration `config.json`.
+
+## Performance
+
+Des tests de performance montrent les gains significatifs apportés par le système de cache :
+
+| Scenario | Temps Moyen | Amélioration |
+|----------|-------------|--------------|
+| Sans cache | 10-50ms | - |
+| Cache mémoire seulement | <1ms | 98-99% |
+| Cache disque seulement | 2-5ms | 90-95% |
+| Cache à deux niveaux | <1ms à 5ms | 90-99% |
+
+## Métriques et Surveillance
+
+Le système collecte automatiquement les métriques suivantes :
+
+- **Taux de succès (hit rate)** : Pourcentage de requêtes satisfaites par le cache
+- **Taux d'échec (miss rate)** : Pourcentage de requêtes nécessitant une conversion complète
+- **Latence moyenne** : Temps moyen de récupération des données du cache
+- **Taille du cache** : Nombre d'entrées actuellement en cache (mémoire et disque)
+
+Ces métriques sont accessibles via l'API `/api/cache/stats`.
 
 ## API de Gestion du Cache
 
-### Endpoints Disponibles
+### Endpoint : GET /api/cache/stats
 
-- **GET /api/cache/stats**: Récupère les statistiques détaillées du cache
-  - Taux de hit/miss
-  - Utilisation mémoire et disque
-  - Configuration actuelle
+Récupère les statistiques actuelles du cache.
 
-- **POST /api/cache/clear**: Vide le cache (mémoire et disque)
-  - Nécessite une authentification
-  - Utile lors de mises à jour majeures
-
-### Exemple de Réponse Statistiques
-
+**Exemple de réponse :**
 ```json
 {
   "success": true,
   "data": {
     "memory": {
-      "entries": 42,
+      "size": 127,
       "maxSize": 500,
-      "usage": 0.084
+      "hits": 3892,
+      "misses": 347,
+      "hitRate": 91.8
     },
     "disk": {
-      "entries": 156,
-      "maxEntries": 5000,
-      "size": 2456782,
-      "sizeFormatted": "2.34 MB",
-      "usage": 0.0312
+      "size": 1243,
+      "entries": 1243,
+      "hits": 217,
+      "misses": 130,
+      "hitRate": 62.5
     },
-    "performance": {
-      "hitPercentage": "87.25%",
-      "hits": 345,
-      "misses": 50,
-      "total": 395
-    },
-    "config": {
-      "ttl": 86400,
-      "strategy": "lru",
-      "diskCacheEnabled": true
+    "combined": {
+      "hits": 4109,
+      "misses": 130,
+      "hitRate": 96.9
     }
   }
 }
 ```
 
-## Configuration
+### Endpoint : POST /api/cache/clear
 
-Le système de cache est configurable à travers le fichier `src/cache/conversionCache.js`:
+Vide complètement le cache (mémoire et disque). Nécessite les droits d'administrateur.
 
-```javascript
-// Configuration du cache
-const CONFIG = {
-  // Taille maximale du cache en mémoire (nombre d'entrées)
-  MAX_MEMORY_CACHE_SIZE: 500,
-  // Durée de vie des entrées du cache (en secondes)
-  TTL: 86400, // 24 heures par défaut
-  // Répertoire pour le cache persistant
-  DISK_CACHE_DIR: './data/cache',
-  // Taille maximale du cache disque (en nombre de fichiers)
-  MAX_DISK_CACHE_SIZE: 5000,
-  // Stratégie d'éviction : 'lru' ou 'lfu'
-  EVICTION_STRATEGY: 'lru',
-  // Active le cache persistant sur disque
-  ENABLE_DISK_CACHE: true,
-  // Seuil de similarité pour détecter des messages similaires
-  SIMILARITY_THRESHOLD: 0.9,
-  // Taille minimale pour être mis en cache
-  MIN_MESSAGE_SIZE: 100
-};
-```
-
-## Indicateurs de Performance
-
-Les résultats de conversion via l'API incluent automatiquement des métadonnées indiquant si la réponse provient du cache et le temps de conversion:
-
+**Corps de la requête :**
 ```json
 {
-  "success": true,
-  "data": {
-    "resourceType": "Bundle",
-    "id": "bundle-123456789",
-    "type": "transaction",
-    "entry": [...]
-  },
-  "meta": {
-    "conversionTime": 0,
-    "resourceCount": 5,
-    "fromCache": true
-  }
+  "type": "all" // Options: "memory", "disk", "all"
 }
 ```
 
-## Cas d'Utilisation Idéaux
+**Exemple de réponse :**
+```json
+{
+  "success": true,
+  "message": "Le cache a été vidé avec succès."
+}
+```
 
-1. **Environnements à forte charge**: Systèmes traitant un grand volume de messages HL7
-2. **Messages répétitifs**: Systèmes où les mêmes messages sont souvent envoyés
-3. **Interfaces de test**: Permet des tests rapides et répétitifs
-4. **Applications critiques**: Situations où la latence doit être minimisée
+## Éviction et Expiration
+
+Le système utilise deux mécanismes pour gérer la taille du cache :
+
+1. **Stratégie LRU (Least Recently Used)** : Lorsque le cache mémoire atteint sa capacité maximale, les entrées les moins récemment utilisées sont supprimées.
+
+2. **Expiration basée sur la date** : Les entrées du cache disque plus anciennes que la période de rétention configurée (30 jours par défaut) sont automatiquement supprimées lors du démarrage du serveur.
+
+## Considérations Techniques
+
+- **Atomicité** : Les opérations d'écriture et de lecture du cache disque sont atomiques pour éviter la corruption des données.
+- **Compression** : Les données stockées sur disque sont compressées pour réduire l'espace de stockage nécessaire.
+- **Journalisation** : Toutes les opérations de cache importantes sont enregistrées dans les logs du système pour le débogage.
+
+## Considérations de Sécurité
+
+- **Isolation des données** : Chaque entrée de cache est isolée pour éviter les fuites de données entre différentes conversions.
+- **Validation des entrées** : Les données récupérées du cache sont validées avant d'être renvoyées à l'utilisateur pour empêcher l'injection de données malveillantes.
+
+## Conclusion
+
+Le système de cache intelligent de FHIRHub offre une amélioration significative des performances tout en maintenant la fiabilité des conversions. Son architecture à deux niveaux combine la vitesse du cache mémoire avec la persistance du stockage sur disque, offrant ainsi une solution optimale pour les environnements de production à forte charge.

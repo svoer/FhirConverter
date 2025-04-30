@@ -213,6 +213,8 @@
         <a href="#terminology">Terminologies</a>
         <a href="#message-types">Types de Messages</a>
         <a href="#api">APIs</a>
+        <a href="#cache">Système de Cache</a>
+        <a href="#database">Base de Données</a>
         <a href="#prerequites">Prérequis</a>
       </div>
       
@@ -712,6 +714,84 @@ python extract_french_systems.py</pre>
      -H "Content-Type: application/json" \
      -H "X-API-KEY: your-api-key" \
      -d '{"hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"}'</pre>
+      </div>
+      
+      <div id="cache" class="documentation-section">
+        <h2>Système de Cache Intelligent</h2>
+        <p>FHIRHub intègre un système de cache intelligent pour optimiser les performances lors de la conversion de messages HL7 vers FHIR. Ce système permet de réduire drastiquement le temps de traitement pour les messages identiques ou similaires.</p>
+        
+        <h3>Architecture du système de cache</h3>
+        <p>Le cache fonctionne à deux niveaux :</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Cache mémoire (LRU)</div>
+            <div class="step-description">Stockage en mémoire vive des 500 dernières conversions avec une stratégie Least Recently Used pour optimiser l'utilisation de la mémoire.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Cache persistant sur disque</div>
+            <div class="step-description">Sauvegarde sur disque pour conserver les résultats des conversions entre les redémarrages du serveur.</div>
+          </div>
+        </div>
+        
+        <h3>Fonctionnement du cache</h3>
+        <p>Le système utilise un hachage SHA-256 du message HL7 comme clé pour retrouver rapidement les résultats des conversions précédentes.</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Performance</div>
+          <ul>
+            <li><strong>Sans cache :</strong> ~10-50ms par conversion selon la complexité du message</li>
+            <li><strong>Avec cache mémoire :</strong> &lt;1ms (presque instantané)</li>
+            <li><strong>Avec cache disque :</strong> ~2-5ms</li>
+          </ul>
+        </div>
+        
+        <p>Pour des détails complets sur le système de cache, consultez la <a href="/docs/cache_system">documentation dédiée</a>.</p>
+        
+        <h3>API de gestion du cache</h3>
+        <div class="tech-spec">
+          <div class="tech-spec-title">Endpoints pour le cache</div>
+          <ul>
+            <li><strong>GET /api/cache/stats</strong> - Statistiques du cache (taille, hits, misses)</li>
+            <li><strong>POST /api/cache/clear</strong> - Vider le cache (admin uniquement)</li>
+          </ul>
+        </div>
+      </div>
+      
+      <div id="database" class="documentation-section">
+        <h2>Structure de la Base de Données</h2>
+        <p>FHIRHub utilise SQLite comme système de gestion de base de données pour garantir une portabilité maximale sans dépendance externe.</p>
+        
+        <h3>Schéma de la base de données</h3>
+        <p>La base de données est organisée en plusieurs tables qui stockent l'ensemble des données nécessaires au fonctionnement de l'application :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Tables principales</div>
+          <ul>
+            <li><strong>users</strong> - Informations utilisateurs (admin, user)</li>
+            <li><strong>applications</strong> - Applications enregistrées dans le système</li>
+            <li><strong>api_keys</strong> - Clés API associées aux applications</li>
+            <li><strong>conversion_logs</strong> - Historique des conversions HL7 vers FHIR</li>
+            <li><strong>system_metrics</strong> - Métriques système (CPU, mémoire)</li>
+            <li><strong>notifications</strong> - Notifications système</li>
+            <li><strong>api_activity_logs</strong> - Journaux d'activité des API</li>
+            <li><strong>api_usage_limits</strong> - Limites d'utilisation des API</li>
+          </ul>
+        </div>
+        
+        <p>Pour une description détaillée du schéma de base de données, y compris les relations entre les tables et les champs spécifiques, consultez la <a href="/docs/database_schema">documentation complète du schéma</a>.</p>
+        
+        <h3>Gestion des données</h3>
+        <p>La base de données est automatiquement initialisée lors du premier démarrage de l'application. Des sauvegardes automatiques sont effectuées quotidiennement dans le dossier <code>data/backups</code>.</p>
+        
+        <div class="info-box">
+          <p><strong>Note :</strong> Par défaut, les logs de conversion sont conservés pendant 30 jours maximum pour éviter une croissance excessive de la base de données.</p>
+        </div>
       </div>
       
       <div id="prerequites" class="documentation-section">
