@@ -26,6 +26,36 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(bodyParser.text({ limit: '10mb', type: 'text/plain' }));
+
+// Middleware pour parser les trames MLLP
+app.use((req, res, next) => {
+  if (req.headers['content-type'] === 'application/mllp' || req.headers['content-type'] === 'application/x-mllp') {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk.toString();
+    });
+    req.on('end', () => {
+      // Extraire le message entre les caractères de contrôle MLLP
+      // VT (0x0B) au début et FS (0x1C) CR (0x0D) à la fin
+      const startChar = String.fromCharCode(0x0B); // VT
+      const endChar1 = String.fromCharCode(0x1C); // FS
+      const endChar2 = String.fromCharCode(0x0D); // CR
+
+      let message = data;
+      // Extraire le contenu entre VT et FS CR
+      if (message.startsWith(startChar) && message.includes(endChar1)) {
+        message = message.substring(1, message.lastIndexOf(endChar1));
+      }
+      
+      req.body = message;
+      req.mllpMessage = message;
+      next();
+    });
+  } else {
+    next();
+  }
+});
 
 // Configuration de Swagger
 setupSwagger(app);
@@ -214,8 +244,8 @@ const { convertHL7ToFHIR } = fhirHub;
  * @swagger
  * /api/convert:
  *   post:
- *     summary: Convertir un message HL7 v2.5 en FHIR R4
- *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS
+ *     summary: Convertir un message HL7 v2.5 en FHIR R4 (format JSON)
+ *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS. Le message doit être envoyé au format JSON.
  *     tags:
  *       - Conversion
  *     requestBody:
@@ -263,27 +293,90 @@ const { convertHL7ToFHIR } = fhirHub;
  *                   example: Le message HL7 est requis
  *       500:
  *         description: Erreur serveur
+ *
+ * /api/convert/raw:
+ *   post:
+ *     summary: Convertir un message HL7 v2.5 en FHIR R4 (format texte brut)
+ *     description: Convertit un message HL7 v2.5 en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS. Le message doit être envoyé au format texte brut.
+ *     tags:
+ *       - Conversion
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *             description: Message HL7 v2.5 à convertir en texte brut
+ *             example: "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F|||123 AVENUE DES HÔPITAUX^^PARIS^^75001^FRANCE^H||0123456789^PRN^CP~email@test.fr^NET^^|||||78123456789|||||||||^FR-LYON^N"
+ *     responses:
+ *       200:
+ *         description: Conversion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Bundle FHIR R4 contenant les ressources converties
+ *       400:
+ *         description: Requête invalide
+ *       500:
+ *         description: Erreur serveur
+ *
+ * /api/convert/mllp:
+ *   post:
+ *     summary: Convertir un message HL7 v2.5 en FHIR R4 (format MLLP)
+ *     description: Convertit un message HL7 v2.5 encapsulé dans le protocole MLLP en ressources FHIR R4 (Bundle Transaction) selon les spécifications de l'ANS.
+ *     tags:
+ *       - Conversion
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/mllp:
+ *           schema:
+ *             type: string
+ *             description: Message HL7 v2.5 au format MLLP (avec caractères de contrôle)
+ *     responses:
+ *       200:
+ *         description: Conversion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Bundle FHIR R4 contenant les ressources converties
+ *       400:
+ *         description: Requête invalide
+ *       500:
+ *         description: Erreur serveur
  */
 // Importer les middlewares d'authentification
 const apiKeyAuth = require('./middleware/apiKeyAuth');
 const jwtAuth = require('./middleware/jwtAuth');
 const authCombined = require('./middleware/authCombined');
 
-// Appliquer l'authentification combinée aux routes stratégiques
-app.post('/api/convert', authCombined, (req, res) => {
+// Fonction commune pour traiter les conversions HL7 vers FHIR
+function processHL7Conversion(hl7Message, res) {
+  if (!hl7Message) {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'Le message HL7 est requis'
+    });
+  }
+  
+  console.log('[API] Démarrage de la conversion HL7 vers FHIR');
+  
   try {
-    const { hl7Message } = req.body;
-    
-    if (!hl7Message) {
-      return res.status(400).json({
-        success: false,
-        error: 'Bad Request',
-        message: 'Le message HL7 est requis'
-      });
-    }
-    
-    console.log('[API] Démarrage de la conversion HL7 vers FHIR');
-    
     // Utiliser le convertisseur avancé pour transformer HL7 en FHIR
     const startTime = Date.now();
     const result = convertHL7ToFHIR(hl7Message);
@@ -326,6 +419,31 @@ app.post('/api/convert', authCombined, (req, res) => {
       message: error.message || 'Erreur inconnue'
     });
   }
+}
+
+// 1. Endpoint JSON qui accepte un message HL7 encapsulé dans un champ JSON
+app.post('/api/convert', authCombined, (req, res) => {
+  const { hl7Message } = req.body;
+  return processHL7Conversion(hl7Message, res);
+});
+
+// 2. Endpoint pour texte brut qui accepte directement le message HL7
+app.post('/api/convert/raw', authCombined, (req, res) => {
+  const hl7Message = req.body; // req.body contient directement le texte (grâce à bodyParser.text())
+  return processHL7Conversion(hl7Message, res);
+});
+
+// 3. Endpoint pour MLLP (Minimal Lower Layer Protocol)
+app.post('/api/convert/mllp', authCombined, (req, res) => {
+  const hl7Message = req.mllpMessage; // Obtenu via le middleware MLLP
+  if (!hl7Message) {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: 'Message MLLP invalide'
+    });
+  }
+  return processHL7Conversion(hl7Message, res);
 });
 
 /**
