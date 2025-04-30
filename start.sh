@@ -8,6 +8,12 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Démarrage de FHIRHub...${NC}"
 
+# Exécuter le script de correction des modules s'il existe
+if [ -f "fix_converters.sh" ]; then
+    echo -e "${YELLOW}Exécution des corrections automatiques pour les modules...${NC}"
+    bash fix_converters.sh
+fi
+
 # Vérifier si app.js existe (point d'entrée principal)
 if [ -f "app.js" ]; then
     echo -e "${GREEN}Démarrage du serveur via app.js${NC}"
