@@ -83,7 +83,23 @@ if exist "node_modules" (
 )
 
 echo Installation des dépendances Node.js...
-call npm install
+call npm cache clean --force
+echo Nettoyage du cache npm terminé
+
+REM Utiliser npm install avec l'option --no-optional pour éviter les problèmes de compilation sous Windows
+echo Installation des packages avec --no-optional pour éviter les problèmes de compilation...
+call npm install --no-optional
+
+REM Vérifier que les dépendances critiques sont bien installées
+echo Vérification des dépendances critiques...
+if not exist "node_modules\express" (
+  echo Dépendance express manquante. Installation spécifique...
+  call npm install express --save
+)
+if not exist "node_modules\better-sqlite3" (
+  echo Dépendance better-sqlite3 manquante. Installation spécifique...
+  call npm install better-sqlite3 --save
+)
 
 REM Configuration de l'environnement
 echo [4/6] Configuration de l'environnement...
