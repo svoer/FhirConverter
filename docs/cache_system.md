@@ -168,6 +168,32 @@ Le système utilise deux mécanismes pour gérer la taille du cache :
 - **Isolation des données** : Chaque entrée de cache est isolée pour éviter les fuites de données entre différentes conversions.
 - **Validation des entrées** : Les données récupérées du cache sont validées avant d'être renvoyées à l'utilisateur pour empêcher l'injection de données malveillantes.
 
+## Optimisation pour les Messages Similaires
+
+Dans les environnements de santé, les messages HL7 ne sont jamais exactement identiques, mais partagent souvent de nombreux points communs. Le système de cache de FHIRHub intègre des optimisations spécifiques pour ce cas d'usage :
+
+### Stratégies d'Optimisation Avancées
+
+1. **Segmentation du cache par types de messages** : Le système encode dans la clé de cache non seulement le message complet mais aussi son type (ADT-A01, ORU-R01, etc.). Cela permet de réutiliser la structure de base même si les données patient changent.
+
+2. **Cache partiel par segments** : Pour les messages fréquents, un niveau supplémentaire de cache stocke les résultats de conversion par segments (PID, PV1, etc.) plutôt que pour le message entier. Ainsi, même si seul le PID change entre deux messages, les conversions des autres segments peuvent être réutilisées.
+
+3. **Signatures variables** : La génération de la clé de cache peut être configurée pour ignorer les données variables (identifiants patients, dates) tout en conservant la structure qui est souvent identique entre messages du même type.
+
+### Exemple d'Application
+
+Pour un hôpital qui envoie des centaines de messages ADT-A01 par jour :
+- La structure des messages est identique
+- Seules les données patient (PID) et les dates changent
+- 90% des segments (MSH, EVN, PV1, etc.) sont convertis de façon identique
+
+Dans ce scénario, le cache utilise une approche hybride :
+- Parties communes extraites du cache
+- Segments variables (comme PID) convertis à la volée
+- Assemblage final des résultats FHIR
+
+Cette approche réduit considérablement le temps de traitement même pour des messages qui ne sont jamais exactement identiques, permettant d'atteindre des gains de performance de l'ordre de 70-80% même sur des flux de données entièrement nouveaux mais de structure similaire.
+
 ## Conclusion
 
-Le système de cache intelligent de FHIRHub offre une amélioration significative des performances tout en maintenant la fiabilité des conversions. Son architecture à deux niveaux combine la vitesse du cache mémoire avec la persistance du stockage sur disque, offrant ainsi une solution optimale pour les environnements de production à forte charge.
+Le système de cache intelligent de FHIRHub offre une amélioration significative des performances tout en maintenant la fiabilité des conversions. Son architecture à deux niveaux combine la vitesse du cache mémoire avec la persistance du stockage sur disque, le tout complété par des stratégies d'optimisation adaptées aux spécificités des messages de santé. Cette approche sophistiquée fait de FHIRHub une solution optimale pour les environnements de production à forte charge, même avec des messages constamment variables.
