@@ -18,6 +18,16 @@ if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; the
         bash fix_converters.sh
     fi
     
+    # Vérifier si le Dockerfile existe et le mettre à jour pour éviter les problèmes avec pip
+    if [ -f "Dockerfile" ]; then
+        echo -e "${YELLOW}Mise à jour du Dockerfile pour éviter les problèmes avec pip...${NC}"
+        # Sauvegarder le Dockerfile original
+        cp Dockerfile Dockerfile.bak
+        
+        # Remplacer l'installation pip par apk pour requests
+        sed -i 's/RUN pip3 install requests/# Utilisation de py3-requests au lieu de pip install requests pour éviter les erreurs PEP 668\nRUN apk add --no-cache python3 py3-pip bash py3-requests/' Dockerfile
+    fi
+
     # Construire et démarrer le conteneur avec docker-compose
     echo -e "${YELLOW}Construction et démarrage du conteneur...${NC}"
     docker-compose up --build -d
@@ -28,7 +38,20 @@ if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; the
         echo -e "Pour voir les logs: ${YELLOW}docker-compose logs -f${NC}"
     else
         echo -e "${RED}Échec du déploiement Docker.${NC}"
-        exit 1
+        echo -e "${YELLOW}Tentative de déploiement en mode standard...${NC}"
+        
+        # Exécuter le script d'installation
+        echo -e "${YELLOW}Installation des dépendances...${NC}"
+        bash install.sh
+        
+        if [ $? -eq 0 ]; then
+            # Démarrer l'application
+            echo -e "${YELLOW}Démarrage de l'application...${NC}"
+            bash start.sh
+        else
+            echo -e "${RED}L'installation a échoué.${NC}"
+            exit 1
+        fi
     fi
 else
     echo -e "${YELLOW}Docker non détecté. Déploiement en mode standard...${NC}"

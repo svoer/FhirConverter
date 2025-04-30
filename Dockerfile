@@ -2,8 +2,8 @@
 FROM node:20-alpine
 
 # Installation des dépendances Python pour les scripts de mise à jour des terminologies
-RUN apk add --no-cache python3 py3-pip bash
-RUN pip3 install requests
+# Utilisation de py3-requests au lieu de pip install requests pour éviter les erreurs PEP 668
+RUN apk add --no-cache python3 py3-pip bash py3-requests
 
 WORKDIR /app
 
