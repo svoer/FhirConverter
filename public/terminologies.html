@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion des terminologies - FHIRHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <div class="admin-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <a href="/dashboard.html">
+          <i class="fas fa-fire-alt"></i>
+          <span>FHIRHub</span>
+        </a>
+      </div>
+      
+      <ul class="nav-links">
+        <li>
+          <a href="/dashboard.html">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Tableau de bord</span>
+          </a>
+        </li>
+        <li>
+          <a href="/applications.html">
+            <i class="fas fa-laptop-code"></i>
+            <span>Applications</span>
+          </a>
+        </li>
+        <li>
+          <a href="/users.html">
+            <i class="fas fa-users"></i>
+            <span>Utilisateurs</span>
+          </a>
+        </li>
+        <li class="active">
+          <a href="/terminologies.html">
+            <i class="fas fa-language"></i>
+            <span>Terminologies</span>
+          </a>
+        </li>
+        <li>
+          <a href="/api-keys.html">
+            <i class="fas fa-key"></i>
+            <span>Clés API</span>
+          </a>
+        </li>
+        <li>
+          <a href="/convert.html">
+            <i class="fas fa-exchange-alt"></i>
+            <span>Conversion</span>
+          </a>
+        </li>
+        <li>
+          <a href="/documentation.html" target="_blank">
+            <i class="fas fa-book"></i>
+            <span>Documentation</span>
+          </a>
+        </li>
+      </ul>
+      
+      <div class="user-actions">
+        <a href="#" id="logout-link">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Déconnexion</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="main-content">
+      <header class="content-header">
+        <h1>Gestion des terminologies françaises</h1>
+        <div class="user-info">
+          <span id="username">Administrateur</span>
+          <i class="fas fa-user-circle"></i>
+        </div>
+      </header>
+
+      <!-- Statistiques des terminologies -->
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-code-branch"></i>
+          </div>
+          <div class="stat-info">
+            <h3>Version</h3>
+            <p id="terminology-version">Chargement...</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="stat-info">
+            <h3>Dernière mise à jour</h3>
+            <p id="terminology-last-updated">Chargement...</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-sitemap"></i>
+          </div>
+          <div class="stat-info">
+            <h3>Systèmes</h3>
+            <p id="terminology-systems-count">Chargement...</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="fas fa-tags"></i>
+          </div>
+          <div class="stat-info">
+            <h3>OIDs</h3>
+            <p id="terminology-oids-count">Chargement...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions sur les terminologies -->
+      <div class="action-buttons">
+        <button id="btn-upload-terminology" class="btn btn-primary">
+          <i class="fas fa-cloud-upload-alt"></i> Importer des terminologies
+        </button>
+        <input type="file" id="terminology-file-input" multiple accept=".json" style="display: none;">
+        
+        <button id="btn-export-terminology" class="btn btn-secondary">
+          <i class="fas fa-download"></i> Exporter les terminologies
+        </button>
+      </div>
+
+      <!-- Liste des fichiers de terminologie -->
+      <div class="card-container">
+        <div class="card">
+          <div class="card-header">
+            <h2>Fichiers de terminologie</h2>
+            <button id="refresh-terminology-files" class="btn btn-icon">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nom du fichier</th>
+                  <th>Description</th>
+                  <th>Dernière mise à jour</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="terminology-files-table">
+                <tr>
+                  <td colspan="4" class="loading-row">Chargement des fichiers...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone de logs des mises à jour -->
+      <div class="card-container">
+        <div class="card">
+          <div class="card-header">
+            <h2>Logs des mises à jour</h2>
+            <button id="clear-logs" class="btn btn-icon">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="log-container" id="update-logs">
+              <div class="log-empty">Aucun log de mise à jour disponible</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal" id="file-upload-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Importer des terminologies</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="dropzone-container" id="terminology-dropzone">
+          <i class="fas fa-cloud-upload-alt dropzone-icon"></i>
+          <h3 class="dropzone-title">Déposez vos fichiers JSON ici</h3>
+          <p class="dropzone-desc">Faites glisser vos fichiers JSON depuis l'API ANS ou cliquez pour parcourir</p>
+          <button class="dropzone-button" id="browse-terminology-files">Parcourir</button>
+        </div>
+        
+        <div id="selected-files-container">
+          <h3>Fichiers sélectionnés</h3>
+          <div id="selected-files-list">
+            <div class="file-list-empty" id="upload-empty-message">Aucun fichier sélectionné</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary close-modal">Annuler</button>
+        <button class="btn btn-primary" id="upload-selected-files">Importer les fichiers</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="file-preview-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="preview-filename">Aperçu du fichier</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="file-preview-content" class="code-preview"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary close-modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Éléments DOM
+      const terminologyVersionEl = document.getElementById('terminology-version');
+      const terminologyLastUpdatedEl = document.getElementById('terminology-last-updated');
+      const terminologySystemsCountEl = document.getElementById('terminology-systems-count');
+      const terminologyOidsCountEl = document.getElementById('terminology-oids-count');
+      const terminologyFilesTableEl = document.getElementById('terminology-files-table');
+      const updateLogsEl = document.getElementById('update-logs');
+      const fileInputEl = document.getElementById('terminology-file-input');
+      const selectedFilesListEl = document.getElementById('selected-files-list');
+      const fileUploadModal = document.getElementById('file-upload-modal');
+      const filePreviewModal = document.getElementById('file-preview-modal');
+      const filePreviewContent = document.getElementById('file-preview-content');
+      const previewFilename = document.getElementById('preview-filename');
+      
+      // Boutons et actions
+      const btnUploadTerminology = document.getElementById('btn-upload-terminology');
+      const btnExportTerminology = document.getElementById('btn-export-terminology');
+      const btnRefreshFiles = document.getElementById('refresh-terminology-files');
+      const btnClearLogs = document.getElementById('clear-logs');
+      const btnBrowseFiles = document.getElementById('browse-terminology-files');
+      const btnUploadSelectedFiles = document.getElementById('upload-selected-files');
+      const terminologyDropzone = document.getElementById('terminology-dropzone');
+      const logoutLink = document.getElementById('logout-link');
+      
+      // Fermeture des modals
+      document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+          fileUploadModal.style.display = 'none';
+          filePreviewModal.style.display = 'none';
+        });
+      });
+      
+      // Ouverture du modal d'upload
+      btnUploadTerminology.addEventListener('click', () => {
+        fileUploadModal.style.display = 'flex';
+      });
+      
+      // Gestion du glisser-déposer
+      terminologyDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        terminologyDropzone.classList.add('active');
+      });
+      
+      terminologyDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        terminologyDropzone.classList.remove('active');
+      });
+      
+      terminologyDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        terminologyDropzone.classList.remove('active');
+        
+        if (e.dataTransfer.files.length > 0) {
+          handleFiles(e.dataTransfer.files);
+        }
+      });
+      
+      // Sélection de fichiers via le bouton parcourir
+      btnBrowseFiles.addEventListener('click', () => {
+        fileInputEl.click();
+      });
+      
+      fileInputEl.addEventListener('change', () => {
+        if (fileInputEl.files.length > 0) {
+          handleFiles(fileInputEl.files);
+        }
+      });
+      
+      // Gestion des fichiers sélectionnés
+      function handleFiles(files) {
+        selectedFilesListEl.innerHTML = '';
+        
+        if (files.length === 0) {
+          selectedFilesListEl.innerHTML = '<div class="file-list-empty">Aucun fichier sélectionné</div>';
+          return;
+        }
+        
+        Array.from(files).forEach(file => {
+          const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const fileItem = document.createElement('div');
+          fileItem.className = 'selected-file-item';
+          fileItem.dataset.filename = file.name;
+          fileItem.innerHTML = `
+            <div class="file-icon"><i class="fas fa-file-code"></i></div>
+            <div class="file-info">
+              <div class="file-name">${file.name}</div>
+              <div class="file-size">${formatFileSize(file.size)}</div>
+            </div>
+            <div class="file-actions">
+              <button class="btn-preview" data-fileid="${fileId}"><i class="fas fa-eye"></i></button>
+              <button class="btn-remove" data-fileid="${fileId}"><i class="fas fa-times"></i></button>
+            </div>
+          `;
+          
+          selectedFilesListEl.appendChild(fileItem);
+          
+          // Stocker le fichier dans un Map pour référence ultérieure
+          selectedFiles.set(fileId, file);
+          
+          // Ajouter les gestionnaires d'événements
+          fileItem.querySelector('.btn-preview').addEventListener('click', () => {
+            previewFile(file);
+          });
+          
+          fileItem.querySelector('.btn-remove').addEventListener('click', () => {
+            fileItem.remove();
+            selectedFiles.delete(fileId);
+            
+            if (selectedFilesListEl.children.length === 0) {
+              selectedFilesListEl.innerHTML = '<div class="file-list-empty">Aucun fichier sélectionné</div>';
+            }
+          });
+        });
+      }
+      
+      // Map pour stocker les fichiers sélectionnés
+      const selectedFiles = new Map();
+      
+      // Aperçu du fichier
+      function previewFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target.result;
+            const json = JSON.parse(content);
+            filePreviewContent.textContent = JSON.stringify(json, null, 2);
+            previewFilename.textContent = `Aperçu : ${file.name}`;
+            filePreviewModal.style.display = 'flex';
+          } catch (err) {
+            alert(`Erreur lors de la lecture du fichier : ${err.message}`);
+          }
+        };
+        reader.onerror = () => {
+          alert('Erreur lors de la lecture du fichier');
+        };
+        reader.readAsText(file);
+      }
+      
+      // Upload des fichiers sélectionnés
+      btnUploadSelectedFiles.addEventListener('click', async () => {
+        if (selectedFiles.size === 0) {
+          alert('Veuillez sélectionner au moins un fichier à importer');
+          return;
+        }
+        
+        try {
+          // Créer un FormData pour chaque fichier et l'envoyer individuellement
+          for (const [fileId, file] of selectedFiles.entries()) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Déterminer le type de terminologie en fonction du nom du fichier
+            let terminologyType = '';
+            if (file.name.includes('oids')) {
+              terminologyType = 'oids';
+            } else if (file.name.includes('common_codes')) {
+              terminologyType = 'common_codes';
+            } else if (file.name.includes('terminology_systems') || file.name.includes('codesystems')) {
+              terminologyType = 'systems';
+            } else if (file.name.includes('valuesets')) {
+              terminologyType = 'valuesets';
+            } else if (file.name.includes('r4_french')) {
+              terminologyType = 'r4_systems';
+            } else if (file.name.includes('r5_french')) {
+              terminologyType = 'r5_systems';
+            } else {
+              // Essayer de déterminer le type en regardant le contenu
+              terminologyType = 'auto';
+            }
+            
+            // Ajouter le type à la requête
+            formData.append('type', terminologyType);
+            
+            // Envoyer le fichier
+            const response = await fetch('/api/terminology/import', {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.message || 'Erreur lors de l\'importation');
+            }
+            
+            // Ajouter un log
+            addLog(`Fichier ${file.name} importé avec succès`);
+          }
+          
+          // Fermer le modal d'upload
+          fileUploadModal.style.display = 'none';
+          
+          // Réinitialiser les fichiers sélectionnés
+          selectedFiles.clear();
+          selectedFilesListEl.innerHTML = '<div class="file-list-empty">Aucun fichier sélectionné</div>';
+          
+          // Rafraîchir les données
+          loadTerminologyStats();
+          loadTerminologyFiles();
+          
+          alert('Importation terminée avec succès');
+        } catch (err) {
+          alert(`Erreur lors de l'importation : ${err.message}`);
+        }
+      });
+      
+      // Chargement des statistiques des terminologies
+      async function loadTerminologyStats() {
+        try {
+          const response = await fetch('/api/terminology/french');
+          if (!response.ok) throw new Error('Erreur lors du chargement des statistiques');
+          
+          const data = await response.json();
+          if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+          
+          terminologyVersionEl.textContent = data.data.version || 'N/A';
+          terminologyLastUpdatedEl.textContent = formatDate(data.data.lastUpdated) || 'N/A';
+          terminologySystemsCountEl.textContent = data.data.systems ? Object.keys(data.data.systems).length : 0;
+          terminologyOidsCountEl.textContent = data.data.oids ? Object.keys(data.data.oids).length : 0;
+        } catch (err) {
+          console.error('Erreur lors du chargement des statistiques :', err);
+          terminologyVersionEl.textContent = 'Erreur';
+          terminologyLastUpdatedEl.textContent = 'Erreur';
+          terminologySystemsCountEl.textContent = 'Erreur';
+          terminologyOidsCountEl.textContent = 'Erreur';
+        }
+      }
+      
+      // Chargement des fichiers de terminologie
+      async function loadTerminologyFiles() {
+        try {
+          const response = await fetch('/api/terminology/files');
+          if (!response.ok) throw new Error('Erreur lors du chargement des fichiers');
+          
+          const data = await response.json();
+          if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+          
+          terminologyFilesTableEl.innerHTML = '';
+          
+          if (data.data.length === 0) {
+            terminologyFilesTableEl.innerHTML = '<tr><td colspan="4" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
+            return;
+          }
+          
+          data.data.forEach(file => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${file.name}</td>
+              <td>${getFileDescription(file.name)}</td>
+              <td>${formatDate(file.lastModified)}</td>
+              <td class="actions-cell">
+                <button class="btn-action preview-file" data-file="${file.name}"><i class="fas fa-eye"></i></button>
+                <button class="btn-action download-file" data-file="${file.name}"><i class="fas fa-download"></i></button>
+              </td>
+            `;
+            terminologyFilesTableEl.appendChild(row);
+            
+            // Ajouter les gestionnaires d'événements
+            row.querySelector('.preview-file').addEventListener('click', () => {
+              previewTerminologyFile(file.name);
+            });
+            
+            row.querySelector('.download-file').addEventListener('click', () => {
+              downloadTerminologyFile(file.name);
+            });
+          });
+        } catch (err) {
+          console.error('Erreur lors du chargement des fichiers :', err);
+          terminologyFilesTableEl.innerHTML = '<tr><td colspan="4" class="error-row">Erreur lors du chargement des fichiers</td></tr>';
+        }
+      }
+      
+      // Aperçu d'un fichier de terminologie
+      async function previewTerminologyFile(filename) {
+        try {
+          const response = await fetch(`/api/terminology/files/${encodeURIComponent(filename)}`);
+          if (!response.ok) throw new Error('Erreur lors du chargement du fichier');
+          
+          const data = await response.json();
+          filePreviewContent.textContent = JSON.stringify(data, null, 2);
+          previewFilename.textContent = `Aperçu : ${filename}`;
+          filePreviewModal.style.display = 'flex';
+        } catch (err) {
+          alert(`Erreur lors de l'aperçu du fichier : ${err.message}`);
+        }
+      }
+      
+      // Téléchargement d'un fichier de terminologie
+      function downloadTerminologyFile(filename) {
+        const url = `/api/terminology/files/${encodeURIComponent(filename)}/download`;
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      
+      // Export des terminologies
+      btnExportTerminology.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/terminology/export');
+          if (!response.ok) throw new Error('Erreur lors de l\'exportation');
+          
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `terminologies_export_${new Date().toISOString().substring(0, 10)}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          addLog('Exportation des terminologies réussie');
+        } catch (err) {
+          alert(`Erreur lors de l'exportation : ${err.message}`);
+        }
+      });
+      
+      // Rafraîchissement des fichiers
+      btnRefreshFiles.addEventListener('click', () => {
+        loadTerminologyFiles();
+      });
+      
+      // Effacer les logs
+      btnClearLogs.addEventListener('click', () => {
+        updateLogsEl.innerHTML = '<div class="log-empty">Aucun log de mise à jour disponible</div>';
+      });
+      
+      // Déconnexion
+      logoutLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        try {
+          const response = await fetch('/api/auth/logout');
+          if (response.ok) {
+            window.location.href = '/login.html';
+          } else {
+            alert('Erreur lors de la déconnexion');
+          }
+        } catch (err) {
+          console.error('Erreur lors de la déconnexion :', err);
+          alert('Erreur lors de la déconnexion');
+        }
+      });
+      
+      // Ajouter un log
+      function addLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item';
+        logItem.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
+        
+        // Supprimer le message "Aucun log" s'il existe
+        const emptyLog = updateLogsEl.querySelector('.log-empty');
+        if (emptyLog) {
+          updateLogsEl.removeChild(emptyLog);
+        }
+        
+        updateLogsEl.appendChild(logItem);
+        updateLogsEl.scrollTop = updateLogsEl.scrollHeight;
+      }
+      
+      // Formater la taille des fichiers
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+        else return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+      }
+      
+      // Formater une date
+      function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        return date.toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      
+      // Obtenir la description d'un fichier en fonction de son nom
+      function getFileDescription(filename) {
+        if (filename.includes('oids')) {
+          return 'OIDs français pour identifiants';
+        } else if (filename.includes('common_codes')) {
+          return 'Codes communs ANS (professions, mouvements)';
+        } else if (filename.includes('terminology_systems')) {
+          return 'Systèmes de terminologie français';
+        } else if (filename.includes('codesystems')) {
+          return 'CodeSystems FHIR complets';
+        } else if (filename.includes('valuesets')) {
+          return 'ValueSets FHIR';
+        } else if (filename.includes('r4_french')) {
+          return 'Systèmes français pour FHIR R4';
+        } else if (filename.includes('r5_french')) {
+          return 'Systèmes français pour FHIR R5';
+        } else if (filename.includes('terminologies_list')) {
+          return 'Liste des terminologies disponibles';
+        } else if (filename.includes('system_urls')) {
+          return 'URLs des systèmes de terminologie';
+        } else if (filename.includes('rapport')) {
+          return 'Rapport de synthèse des terminologies';
+        } else {
+          return 'Fichier de terminologie';
+        }
+      }
+      
+      // Charger les données au démarrage
+      loadTerminologyStats();
+      loadTerminologyFiles();
+      
+      // Ajouter un log initial
+      addLog('Page de gestion des terminologies chargée');
+    });
+  </script>
+</body>
+</html>
