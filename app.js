@@ -14,6 +14,9 @@ const fs = require('fs');
 const { setupSwagger } = require('./swagger');
 const documentationRoutes = require('./server/routes/documentation');
 
+// Importer le convertisseur avec cache intégré 
+const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
+
 /**
  * Configuration de l'application
  */
@@ -240,9 +243,8 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// Importation du convertisseur HL7 vers FHIR avancé avec prise en charge ANS
-const fhirHub = require('./src/index');
-const { convertHL7ToFHIR } = fhirHub;
+// REMARQUE: Nous utilisons maintenant le convertisseur avec cache de src/cacheEnabledConverter.js
+// qui est importé en haut du fichier
 
 /**
  * @swagger
@@ -381,12 +383,13 @@ function processHL7Conversion(hl7Message, res) {
   console.log('[API] Démarrage de la conversion HL7 vers FHIR');
   
   try {
-    // Utiliser le convertisseur avancé pour transformer HL7 en FHIR
+    // Utiliser le convertisseur avec cache pour transformer HL7 en FHIR
     const startTime = Date.now();
     const result = convertHL7ToFHIR(hl7Message);
     const conversionTime = Date.now() - startTime;
+    const fromCache = result._meta && result._meta.fromCache;
     
-    console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées`);
+    console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées${fromCache ? ' (depuis le cache)' : ''}`);
     
     // Enregistrement de la conversion
     db.prepare(`
@@ -406,12 +409,18 @@ function processHL7Conversion(hl7Message, res) {
       result.entry ? result.entry.length : 0
     );
     
+    // Nettoyer les métadonnées internes avant de retourner le résultat
+    if (result._meta) {
+      delete result._meta;
+    }
+    
     return res.status(200).json({
       success: true,
       data: result,
       meta: {
         conversionTime: conversionTime,
-        resourceCount: result.entry.length
+        resourceCount: result.entry.length,
+        fromCache: fromCache || false
       }
     });
   } catch (error) {
@@ -694,6 +703,7 @@ const apiKeysRoutes = require('./routes/api-keys');
 const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const devApiRoutes = require('./routes/dev-api');
+const cacheRoutes = require('./routes/cache');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
