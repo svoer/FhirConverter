@@ -22,6 +22,18 @@ if %NODE_VERSION% LSS 18 (
   echo   Veuillez mettre à jour Node.js avant de continuer.
   exit /b 1
 )
+if %NODE_VERSION% GTR 20 (
+  echo X Version de Node.js trop récente: v%NODE_VERSION%. FHIRHub requiert Node.js v18-v20.
+  echo   Certaines dépendances comme better-sqlite3 peuvent ne pas être compatibles avec Node.js v%NODE_VERSION%.
+  echo   Nous recommandons d'utiliser Node.js v20.x LTS pour une compatibilité optimale.
+  echo.
+  choice /c ON /m "Voulez-vous quand même continuer"
+  if errorlevel 2 (
+    echo Installation annulée.
+    exit /b 1
+  )
+  echo [33m^![0m Installation avec Node.js v%NODE_VERSION% - certaines fonctionnalités pourraient ne pas fonctionner correctement.
+)
 
 echo ✓ Environnement compatible (Node.js v%NODE_VERSION%)
 

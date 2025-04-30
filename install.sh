@@ -22,6 +22,19 @@ if [ "$NODE_VERSION" -lt 18 ]; then
   echo "   Veuillez mettre à jour Node.js avant de continuer."
   exit 1
 fi
+if [ "$NODE_VERSION" -gt 20 ]; then
+  echo "❌ Version de Node.js trop récente: $(node -v). FHIRHub requiert Node.js v18-v20."
+  echo "   Certaines dépendances comme better-sqlite3 peuvent ne pas être compatibles avec Node.js v$(node -v)."
+  echo "   Nous recommandons d'utiliser Node.js v20.x LTS pour une compatibilité optimale."
+  echo
+  echo "Voulez-vous quand même continuer? (o/n)"
+  read -r response
+  if [[ ! "$response" =~ ^[oO]$ ]]; then
+    echo "Installation annulée."
+    exit 1
+  fi
+  echo "⚠️ Installation avec Node.js $(node -v) - certaines fonctionnalités pourraient ne pas fonctionner correctement."
+fi
 
 echo "✅ Environnement compatible (Node.js $(node -v))"
 

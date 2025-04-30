@@ -8,13 +8,18 @@ Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub –
 
 ![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Licence](https://img.shields.io/badge/licence-Propriétaire-red.svg)
-![Node.js](https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg)
+![Node.js](https://img.shields.io/badge/node-18.x%20%7C%2020.x-green.svg)
 
 ## Prérequis
 
-- Node.js 18.0.0 ou supérieur
+- **Node.js 18.x ou 20.x** (versions recommendées et testées)
+  - ⚠️ Node.js 22+ peut causer des problèmes de compatibilité avec certaines dépendances
 - NPM 8.0.0 ou supérieur
 - Git (pour le clonage du dépôt)
+- Outils de compilation natifs (pour better-sqlite3) :
+  - **Windows** : Visual C++ Build Tools et Python
+  - **Linux** : build-essential et python
+  - **macOS** : Xcode Command Line Tools
 - Pour l'utilisation des scripts Python (en option) : Python 3.6 ou supérieur
 
 ## Caractéristiques
