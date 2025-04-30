@@ -68,6 +68,32 @@ npm run dev
 npm test
 ```
 
+## Mise à jour des terminologies ANS
+
+Les fichiers de terminologie française se trouvent dans le dossier `french_terminology/`. Voici les principaux fichiers que vous pouvez mettre à jour:
+
+### Fichiers de terminologie:
+
+- `french_terminology/ans_common_codes.json` - Codes communs de l'ANS (mouvements, professions, etc.)
+- `french_terminology/ans_oids.json` - Liste des OIDs français pour les identifiants
+- `french_terminology/ans_terminology_systems.json` - Systèmes de terminologie français
+- `french_terminology/fhir_r4_french_systems.json` - Systèmes FHIR R4 français
+
+### Outils de mise à jour:
+
+- `get_french_terminology.py` - Script pour récupérer les dernières terminologies depuis l'API de l'ANS
+- `extract_french_systems.py` - Script pour extraire et organiser les systèmes français
+
+Pour mettre à jour les terminologies, exécutez:
+
+```bash
+# Récupérer les dernières terminologies
+python get_french_terminology.py
+
+# Extraire et organiser les systèmes pertinents
+python extract_french_systems.py
+```
+
 ## Licence
 
 Ce projet est distribué sous licence [MIT](LICENSE).
