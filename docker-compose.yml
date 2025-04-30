@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  fhirhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      # Vous pouvez ajouter d'autres variables d'environnement si nécessaire
+    # healthcheck pour s'assurer que l'application fonctionne correctement
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

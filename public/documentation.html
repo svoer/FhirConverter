@@ -679,6 +679,31 @@ python extract_french_systems.py</pre>
         <div class="info-box">
           <p><strong>Note :</strong> Lors du premier démarrage, le système crée automatiquement un utilisateur administrateur avec les identifiants par défaut : <code>admin / adminfhirhub</code>. Il est fortement recommandé de changer ce mot de passe après la première connexion.</p>
         </div>
+
+        <h3>Dockerisation (Optionnel)</h3>
+        <p>FHIRHub peut également être déployé en tant que conteneur Docker, ce qui facilite son déploiement dans différents environnements.</p>
+        
+        <pre class="code-block"># Créer une image Docker
+FROM node:18-alpine
+WORKDIR /app
+COPY . .
+RUN npm install
+EXPOSE 5000
+CMD ["bash", "start.sh"]
+</pre>
+
+        <p>Pour construire et exécuter le conteneur :</p>
+        
+        <pre class="code-block"># Construire l'image
+docker build -t fhirhub:latest .
+
+# Exécuter le conteneur
+docker run -p 5000:5000 -v $(pwd)/data:/app/data fhirhub:latest
+</pre>
+
+        <div class="tip-box">
+          <p><strong>Astuce :</strong> L'utilisation d'un volume Docker pour le dossier <code>/data</code> permet de conserver les données de la base SQLite entre les redémarrages du conteneur.</p>
+        </div>
         
         <h3>Sauvegarde</h3>
         <p>Pour sauvegarder vos données, il suffit de copier le fichier <code>data/fhirhub.db</code> qui contient toute la base de données (utilisateurs, applications, clés API, logs).</p>

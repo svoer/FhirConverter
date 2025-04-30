@@ -1,0 +1,46 @@
+# Ignore node modules
+node_modules
+
+# Ignore sensitive data
+.env
+.env.local
+
+# Ignore git and version control
+.git
+.gitignore
+
+# Ignore logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ignore development and test files
+test_data/*
+!test_data/.gitkeep
+
+# Ignore SQLite databases (will be persisted in volume)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Keep data structure but ignore contents
+data/conversions/*
+!data/conversions/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
+data/history/*
+!data/history/.gitkeep
+data/test/*
+!data/test/.gitkeep
+
+# Ignore Docker files in case of multi-stage builds
+Dockerfile*
+.dockerignore
+
+# Ignore custom editor files
+.vscode
+.idea
+*.sublime-*
+
+# Ignore system files
+.DS_Store
