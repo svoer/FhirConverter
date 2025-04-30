@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  fhirhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fhirhub
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_PATH=/app/data/fhirhub.db
+      - JWT_SECRET=${JWT_SECRET:-fhirhub-secure-jwt-secret}
+    volumes:
+      # Utiliser des chemins absolus pour les volumes
+      - ${DATA_DIR:-./volumes/data}:/app/data
+      - ${LOGS_DIR:-./volumes/logs}:/app/logs
+      - ${BACKUPS_DIR:-./volumes/backups}:/app/backups
+      - ${TERMINOLOGY_DIR:-./volumes/french_terminology}:/app/french_terminology
