@@ -78,13 +78,19 @@ router.get('/french', adminAuthMiddleware, async (req, res) => {
     const oids = getJsonFileContent('ans_oids.json');
     const commonCodes = getJsonFileContent('ans_common_codes.json');
     
+    // Compter le nombre d'éléments
+    const systemsCount = systems ? Object.keys(systems).length : 0;
+    const oidsCount = oids?.identifier_systems ? Object.keys(oids.identifier_systems).length : 0;
+    
     res.json({
       success: true,
       data: {
-        version: systems?.version || oids?.version || commonCodes?.version || '1.0.0',
-        lastUpdated: systems?.lastUpdated || oids?.lastUpdated || commonCodes?.lastUpdated || new Date().toISOString(),
-        systems: systems?.codeSystemMap || systems?.systems || {},
-        oids: oids?.systems || {}
+        version: '1.0.0', // Valeur par défaut hardcodée
+        lastUpdated: new Date().toISOString(),
+        systems: systems || {},
+        oids: oids?.identifier_systems || {},
+        systemsCount: systemsCount,
+        oidsCount: oidsCount
       }
     });
   } catch (error) {

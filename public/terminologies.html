@@ -455,8 +455,8 @@
           
           terminologyVersionEl.textContent = data.data.version || 'N/A';
           terminologyLastUpdatedEl.textContent = formatDate(data.data.lastUpdated) || 'N/A';
-          terminologySystemsCountEl.textContent = data.data.systems ? Object.keys(data.data.systems).length : 0;
-          terminologyOidsCountEl.textContent = data.data.oids ? Object.keys(data.data.oids).length : 0;
+          terminologySystemsCountEl.textContent = data.data.systemsCount || 0;
+          terminologyOidsCountEl.textContent = data.data.oidsCount || 0;
         } catch (err) {
           console.error('Erreur lors du chargement des statistiques :', err);
           terminologyVersionEl.textContent = 'Erreur';
