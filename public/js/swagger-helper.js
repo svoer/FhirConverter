@@ -54,115 +54,51 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }, 1000);
     
-    // Fonction pour ajouter une barre de navigation en haut
+    // Fonction pour ajouter un bouton retour en haut
     const addNavigation = () => {
       // Vérifier si la navigation existe déjà
-      if (document.querySelector('.fhirhub-nav')) {
+      if (document.querySelector('.fhirhub-back-btn')) {
         return;
       }
       
-      // Créer la barre de navigation
-      const navBar = document.createElement('div');
-      navBar.className = 'fhirhub-nav';
-      navBar.style.backgroundColor = '#e74c3c';
-      navBar.style.background = 'linear-gradient(to right, #e74c3c, #f39c12)';
-      navBar.style.color = 'white';
-      navBar.style.padding = '10px 20px';
-      navBar.style.display = 'flex';
-      navBar.style.alignItems = 'center';
-      navBar.style.justifyContent = 'space-between';
-      navBar.style.width = '100%';
-      navBar.style.position = 'fixed';
-      navBar.style.top = '0';
-      navBar.style.left = '0';
-      navBar.style.zIndex = '9999';
-      navBar.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+      // Créer le bouton de retour
+      const backBtn = document.createElement('a');
+      backBtn.className = 'fhirhub-back-btn';
+      backBtn.href = '/dashboard.html';
+      backBtn.style.backgroundColor = '#e74c3c';
+      backBtn.style.background = 'linear-gradient(to right, #e74c3c, #f39c12)';
+      backBtn.style.color = 'white';
+      backBtn.style.padding = '8px 16px';
+      backBtn.style.display = 'inline-flex';
+      backBtn.style.alignItems = 'center';
+      backBtn.style.position = 'fixed';
+      backBtn.style.top = '10px';
+      backBtn.style.left = '10px';
+      backBtn.style.zIndex = '9999';
+      backBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+      backBtn.style.borderRadius = '4px';
+      backBtn.style.fontWeight = 'bold';
+      backBtn.style.fontSize = '14px';
+      backBtn.style.textDecoration = 'none';
       
-      // Logo et titre
-      const logoDiv = document.createElement('div');
-      logoDiv.style.display = 'flex';
-      logoDiv.style.alignItems = 'center';
+      // Icône de retour
+      const backIcon = document.createElement('span');
+      backIcon.innerHTML = '&larr; ';
+      backIcon.style.marginRight = '5px';
       
-      // Icône flamme
-      const flameIcon = document.createElement('img');
-      flameIcon.src = '/img/flame-icon-white.svg';
-      flameIcon.alt = 'FHIRHub';
-      flameIcon.style.height = '24px';
-      flameIcon.style.marginRight = '10px';
+      // Texte du bouton
+      const backText = document.createTextNode('Retour');
       
-      // Titre
-      const title = document.createElement('h1');
-      title.style.margin = '0';
-      title.style.fontSize = '18px';
-      title.style.fontWeight = 'bold';
-      title.textContent = 'FHIRHub';
+      backBtn.appendChild(backIcon);
+      backBtn.appendChild(backText);
       
-      logoDiv.appendChild(flameIcon);
-      logoDiv.appendChild(title);
-      
-      // Créer un menu de navigation similaire à celui du dashboard
-      const navMenu = document.createElement('ul');
-      navMenu.style.display = 'flex';
-      navMenu.style.gap = '20px';
-      navMenu.style.listStyle = 'none';
-      navMenu.style.margin = '0';
-      navMenu.style.padding = '0';
-      
-      const createNavItem = (text, href, icon) => {
-        const li = document.createElement('li');
-        
-        const link = document.createElement('a');
-        link.href = href;
-        link.style.color = 'white';
-        link.style.textDecoration = 'none';
-        link.style.fontWeight = '500';
-        link.style.display = 'flex';
-        link.style.alignItems = 'center';
-        
-        // Ajouter l'icône (utilisation des emojis comme substitut aux icônes Font Awesome)
-        const iconSpan = document.createElement('span');
-        iconSpan.innerHTML = icon + ' ';
-        iconSpan.style.marginRight = '5px';
-        
-        link.appendChild(iconSpan);
-        link.appendChild(document.createTextNode(text));
-        li.appendChild(link);
-        return li;
-      };
-      
-      const dashboardLink = createNavItem('Tableau de bord', '/dashboard.html', '📊');
-      const convertLink = createNavItem('Convertir', '/convert.html', '🔄');
-      const appsLink = createNavItem('Applications', '/applications.html', '⚙️');
-      const apiKeysLink = createNavItem('Clés API', '/api-keys.html', '🔑');
-      const docsLink = createNavItem('Documentation', '/documentation.html', '📚');
-      const apiDocsLink = createNavItem('API Docs', '/api-docs', '📋');
-      
-      navMenu.appendChild(dashboardLink);
-      navMenu.appendChild(convertLink);
-      navMenu.appendChild(appsLink);
-      navMenu.appendChild(apiKeysLink);
-      navMenu.appendChild(docsLink);
-      
-      // Créer un conteneur pour le menu
-      const navLinks = document.createElement('div');
-      navLinks.appendChild(navMenu);
-      
-      navBar.appendChild(logoDiv);
-      navBar.appendChild(navLinks);
-      
-      // Ajouter la navigation au début du body
-      document.body.insertBefore(navBar, document.body.firstChild);
-      
-      // Ajouter un espace pour éviter que le contenu ne soit caché sous la barre de navigation
-      const spacer = document.createElement('div');
-      spacer.style.height = '50px';
-      document.body.insertBefore(spacer, navBar.nextSibling);
+      // Ajouter le bouton au début du body
+      document.body.insertBefore(backBtn, document.body.firstChild);
       
       // Ajuster la position de la barre Swagger pour éviter qu'elle ne soit cachée
       const swaggerTopbar = document.querySelector('.swagger-ui .topbar');
       if (swaggerTopbar) {
-        swaggerTopbar.style.top = '50px';
-        swaggerTopbar.style.position = 'sticky';
+        swaggerTopbar.style.paddingLeft = '100px';
       }
     };
     
