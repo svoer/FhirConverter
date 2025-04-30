@@ -335,6 +335,42 @@
         return;
       }
       
+      // Récupérer les informations de l'utilisateur
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Vérifier si l'utilisateur est admin (seul l'admin peut gérer les applications)
+      if (user.role !== 'admin') {
+        // Afficher un message d'erreur explicatif et un bouton de retour
+        const container = document.querySelector('.main-content .container');
+        container.innerHTML = `
+          <div class="alert alert-error" style="margin: 20px 0; padding: 20px; border-radius: 5px; background-color: #ffdddd; border-left: 5px solid #f44336; color: #333;">
+            <h3 style="margin-top: 0; color: #d32f2f;">Accès restreint</h3>
+            <p>Cette page est réservée aux administrateurs. Seuls les comptes disposant de droits d'administration peuvent gérer les applications du système.</p>
+            <p>Les applications définissent les paramètres et les limites de conversion pour différents services ou établissements utilisant FHIRHub.</p>
+            <p>Pour accéder à cette fonctionnalité, veuillez contacter votre administrateur système ou vous connecter avec un compte disposant des privilèges appropriés.</p>
+            <button id="returnToDashboard" class="btn btn-primary" style="margin-top: 15px;">Retourner au tableau de bord</button>
+          </div>
+        `;
+        
+        // Ajouter l'événement pour retourner au tableau de bord
+        document.getElementById('returnToDashboard').addEventListener('click', function() {
+          window.location.href = '/dashboard.html';
+        });
+        
+        // Masquer les éléments de gestion des applications
+        const appsContainer = document.getElementById('appsContainer');
+        if (appsContainer) {
+          appsContainer.style.display = 'none';
+        }
+        
+        const newAppBtn = document.getElementById('newAppBtn');
+        if (newAppBtn) {
+          newAppBtn.style.display = 'none';
+        }
+        
+        return; // Arrêter l'exécution du reste du script
+      }
+      
       // Gestion de la déconnexion
       document.getElementById('logoutBtn').addEventListener('click', function(e) {
         e.preventDefault();
