@@ -9,7 +9,7 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Crée une instance de middleware d'authentification combinée
+ * Vérifie si l'utilisateur est authentifié, quelle que soit sa méthode d'authentification
  * @returns {Function} Middleware Express
  */
 function createAuthCombinedMiddleware() {
@@ -31,6 +31,7 @@ function createAuthCombinedMiddleware() {
       
       // 1. Vérifier d'abord la présence d'un token JWT
       const authHeader = req.headers.authorization;
+      let isJwtAuthenticated = false;
       
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
@@ -39,51 +40,50 @@ function createAuthCombinedMiddleware() {
           // Vérifier et décoder le token
           const decoded = jwt.verify(token, JWT_SECRET);
           
-          // Vérifier si l'utilisateur existe et a le rôle admin
+          // Vérifier si l'utilisateur existe
           const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(decoded.id);
           
-          if (user && user.role === 'admin') {
-            // Si l'utilisateur est admin, pas besoin de vérifier la clé API
+          if (user) {
+            // Stocker les informations utilisateur
             req.user = user;
-            return next();
+            req.isAuthenticated = function() { return true; };
+            isJwtAuthenticated = true;
           }
-          
-          // Si l'utilisateur n'est pas admin, continuer avec la vérification de la clé API
         } catch (error) {
           // Erreur avec le JWT - on continue avec la vérification de l'API Key
           console.log('[AUTH] JWT invalide ou expiré, vérification de la clé API');
         }
       }
       
-      // 2. Vérifier ensuite la présence d'une clé API
-      const apiKey = req.headers['x-api-key'];
-      
-      if (!apiKey) {
-        return res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-          message: 'Authentification requise (JWT ou clé API)'
-        });
+      // 2. Vérifier ensuite la présence d'une clé API si JWT non authentifié
+      if (!isJwtAuthenticated) {
+        const apiKey = req.headers['x-api-key'];
+        
+        if (!apiKey) {
+          // Définir isAuthenticated à false, mais ne pas bloquer
+          // la requête ici pour permettre aux routes de gérer 
+          // elles-mêmes leur logique d'authentification
+          req.isAuthenticated = function() { return false; };
+          return next();
+        }
+        
+        // Vérifier si la clé API existe dans la base de données
+        const keyData = db.prepare(`
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = ? AND ak.is_active = 1
+        `).get(apiKey);
+        
+        if (!keyData) {
+          req.isAuthenticated = function() { return false; };
+          return next();
+        }
+        
+        // Stocker les informations de l'application dans req pour utilisation ultérieure
+        req.apiKeyData = keyData;
+        req.isAuthenticated = function() { return true; };
       }
-      
-      // Vérifier si la clé API existe dans la base de données
-      const keyData = db.prepare(`
-        SELECT ak.*, a.name as app_name
-        FROM api_keys ak
-        JOIN applications a ON ak.application_id = a.id
-        WHERE ak.key = ? AND ak.is_active = 1
-      `).get(apiKey);
-      
-      if (!keyData) {
-        return res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-          message: 'Clé API invalide ou inactive'
-        });
-      }
-      
-      // Stocker les informations de l'application dans req pour utilisation ultérieure
-      req.apiKeyData = keyData;
       
       // Continuer avec la requête
       next();
