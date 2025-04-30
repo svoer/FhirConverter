@@ -47,8 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const infoTip = document.createElement('div');
         infoTip.className = 'info-text-with-api-key';
         infoTip.innerHTML = `
-          <p><strong>💡 Conseil :</strong> Pour tester les API, utilisez le bouton vert <strong>⚡ Autoriser avec clé de test</strong> ci-dessus. 
-          La clé <code>dev-key</code> est automatiquement appliquée.</p>
+          <p><strong>💡 Conseil :</strong> Pour tester les API, utilisez le bouton vert <strong>⚡ Autoriser</strong> ci-dessus et saisissez la clé de test : <code>dev-key</code> dans le champ apiKey.</p>
         `;
         infoSection.appendChild(infoTip);
       }
