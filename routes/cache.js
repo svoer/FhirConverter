@@ -5,15 +5,24 @@
 
 const express = require('express');
 const router = express.Router();
-const { getCacheStats, clearCache } = require('../src/cacheEnabledConverter');
+const jwtAuth = require('../middleware/jwtAuth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
 const authCombined = require('../middleware/authCombined');
+const cacheManager = require('../src/cache');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Cache
+ *   description: Gestion du cache de conversion
+ */
 
 /**
  * @swagger
  * /api/cache/stats:
  *   get:
  *     summary: Obtenir les statistiques du cache
- *     description: Retourne des informations détaillées sur le cache de conversion
+ *     description: Retourne les statistiques détaillées sur l'utilisation du cache (taille, hits, misses)
  *     tags:
  *       - Cache
  *     security:
@@ -35,12 +44,55 @@ const authCombined = require('../middleware/authCombined');
  *                   properties:
  *                     memory:
  *                       type: object
+ *                       properties:
+ *                         size:
+ *                           type: integer
+ *                           description: Nombre d'entrées actuellement en cache mémoire
+ *                         maxSize:
+ *                           type: integer
+ *                           description: Taille maximale du cache mémoire
+ *                         hits:
+ *                           type: integer
+ *                           description: Nombre de fois où une entrée a été trouvée dans le cache mémoire
+ *                         misses:
+ *                           type: integer
+ *                           description: Nombre de fois où une entrée n'a pas été trouvée dans le cache mémoire
+ *                         hitRate:
+ *                           type: number
+ *                           format: float
+ *                           description: Pourcentage de succès du cache mémoire
  *                     disk:
  *                       type: object
- *                     performance:
+ *                       properties:
+ *                         size:
+ *                           type: integer
+ *                           description: Taille actuelle du cache disque en octets
+ *                         entries:
+ *                           type: integer
+ *                           description: Nombre d'entrées dans le cache disque
+ *                         hits:
+ *                           type: integer
+ *                           description: Nombre de fois où une entrée a été trouvée dans le cache disque
+ *                         misses:
+ *                           type: integer
+ *                           description: Nombre de fois où une entrée n'a pas été trouvée dans le cache disque
+ *                         hitRate:
+ *                           type: number
+ *                           format: float
+ *                           description: Pourcentage de succès du cache disque
+ *                     combined:
  *                       type: object
- *                     config:
- *                       type: object
+ *                       properties:
+ *                         hits:
+ *                           type: integer
+ *                           description: Nombre total de hits (mémoire + disque)
+ *                         misses:
+ *                           type: integer
+ *                           description: Nombre total de misses (mémoire + disque)
+ *                         hitRate:
+ *                           type: number
+ *                           format: float
+ *                           description: Pourcentage de succès global du système de cache
  *       401:
  *         description: Non autorisé
  *       500:
@@ -48,18 +100,16 @@ const authCombined = require('../middleware/authCombined');
  */
 router.get('/stats', authCombined, (req, res) => {
   try {
-    const stats = getCacheStats();
-    
-    return res.json({
+    const stats = cacheManager.getStats();
+    res.json({
       success: true,
       data: stats
     });
   } catch (error) {
-    console.error('[API] Erreur lors de la récupération des statistiques du cache:', error);
-    return res.status(500).json({
+    console.error('[CACHE] Erreur lors de la récupération des statistiques:', error);
+    res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Erreur lors de la récupération des statistiques du cache'
+      error: 'Erreur lors de la récupération des statistiques du cache'
     });
   }
 });
@@ -68,13 +118,24 @@ router.get('/stats', authCombined, (req, res) => {
  * @swagger
  * /api/cache/clear:
  *   post:
- *     summary: Vider le cache de conversion
- *     description: Supprime toutes les entrées du cache (mémoire et disque)
+ *     summary: Vider le cache
+ *     description: Vide une partie ou la totalité du cache de conversion. Nécessite des droits d'administrateur.
  *     tags:
  *       - Cache
  *     security:
- *       - ApiKeyAuth: []
  *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [memory, disk, all]
+ *                 description: Type de cache à vider
+ *                 default: all
  *     responses:
  *       200:
  *         description: Cache vidé avec succès
@@ -88,26 +149,52 @@ router.get('/stats', authCombined, (req, res) => {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Cache vidé avec succès
+ *                   example: Le cache a été vidé avec succès.
  *       401:
  *         description: Non autorisé
+ *       403:
+ *         description: Accès interdit (nécessite des droits d'administrateur)
  *       500:
  *         description: Erreur serveur
  */
-router.post('/clear', authCombined, (req, res) => {
+router.post('/clear', jwtAuth, (req, res) => {
+  // Vérifier si l'utilisateur est administrateur
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Cette opération nécessite des droits d\'administrateur'
+    });
+  }
+
   try {
-    clearCache();
+    const { type = 'all' } = req.body;
     
-    return res.json({
+    switch (type) {
+      case 'memory':
+        cacheManager.clearMemoryCache();
+        break;
+      case 'disk':
+        cacheManager.clearDiskCache();
+        break;
+      case 'all':
+        cacheManager.clearAllCache();
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Type de cache invalide. Options valides: memory, disk, all'
+        });
+    }
+    
+    res.json({
       success: true,
-      message: 'Cache vidé avec succès'
+      message: `Le cache ${type} a été vidé avec succès.`
     });
   } catch (error) {
-    console.error('[API] Erreur lors du vidage du cache:', error);
-    return res.status(500).json({
+    console.error('[CACHE] Erreur lors de la suppression du cache:', error);
+    res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Erreur lors du vidage du cache'
+      error: 'Erreur lors de la suppression du cache'
     });
   }
 });
