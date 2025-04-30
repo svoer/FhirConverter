@@ -411,13 +411,9 @@
             // Ajouter le type à la requête
             formData.append('type', terminologyType);
             
-            // Envoyer le fichier
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/terminology/import', {
+            // Envoyer le fichier avec authentification
+            const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/import', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`
-              },
               body: formData
             });
             
