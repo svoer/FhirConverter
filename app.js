@@ -76,7 +76,41 @@ const DATA_DIR = './data';
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-const db = new Database('./data/fhirhub.db');
+
+// Définition du chemin de la base de données
+let DB_PATH = './data/fhirhub.db';
+
+// Vérification des permissions
+try {
+  // Création du fichier s'il n'existe pas
+  if (!fs.existsSync(DB_PATH)) {
+    fs.writeFileSync(DB_PATH, '', { mode: 0o666 });
+    console.log('Fichier de base de données créé');
+  }
+  
+  // S'assurer que le fichier est accessible en écriture
+  fs.accessSync(DB_PATH, fs.constants.W_OK);
+  console.log('Permissions d\'écriture vérifiées pour la base de données');
+} catch (error) {
+  console.error('Erreur de permission sur la base de données:', error);
+  // Si erreur de permission, utiliser un chemin alternatif dans /tmp
+  console.log('Utilisation d\'un chemin alternatif pour la base de données');
+  const DB_PATH_ALT = '/tmp/fhirhub.db';
+  
+  if (fs.existsSync(DB_PATH) && !fs.existsSync(DB_PATH_ALT)) {
+    // Copier la base de données existante vers /tmp
+    try {
+      fs.copyFileSync(DB_PATH, DB_PATH_ALT);
+      console.log('Base de données copiée vers', DB_PATH_ALT);
+    } catch (copyError) {
+      console.error('Erreur lors de la copie de la base de données:', copyError);
+    }
+  }
+  DB_PATH = DB_PATH_ALT;
+}
+
+// Ouvrir la base de données avec les options appropriées
+const db = new Database(DB_PATH, { fileMustExist: false, verbose: console.log });
 
 // Initialisation de la base de données
 function initDb() {
