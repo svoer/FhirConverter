@@ -11,78 +11,28 @@
   <script src="/js/auth-utils.js"></script>
 </head>
 <body>
-  <div class="admin-container">
-    <!-- Sidebar -->
-    <div class="sidebar">
+  <header class="header">
+    <div class="container">
       <div class="logo">
-        <a href="/dashboard.html">
-          <i class="fas fa-fire-alt"></i>
-          <span>FHIRHub</span>
-        </a>
+        <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
       </div>
       
-      <ul class="nav-links">
-        <li>
-          <a href="/dashboard.html">
-            <i class="fas fa-tachometer-alt"></i>
-            <span>Tableau de bord</span>
-          </a>
-        </li>
-        <li>
-          <a href="/applications.html">
-            <i class="fas fa-laptop-code"></i>
-            <span>Applications</span>
-          </a>
-        </li>
-        <li>
-          <a href="/users.html">
-            <i class="fas fa-users"></i>
-            <span>Utilisateurs</span>
-          </a>
-        </li>
-        <li class="active">
-          <a href="/terminologies.html">
-            <i class="fas fa-language"></i>
-            <span>Nomenclatures ANS</span>
-          </a>
-        </li>
-        <li>
-          <a href="/api-keys.html">
-            <i class="fas fa-key"></i>
-            <span>Clés API</span>
-          </a>
-        </li>
-        <li>
-          <a href="/convert.html">
-            <i class="fas fa-exchange-alt"></i>
-            <span>Conversion</span>
-          </a>
-        </li>
-        <li>
-          <a href="/documentation.html" target="_blank">
-            <i class="fas fa-book"></i>
-            <span>Documentation</span>
-          </a>
-        </li>
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/applications.html"><i class="fas fa-cogs"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="/terminologies.html" class="active"><i class="fas fa-list"></i> Nomenclatures Médicales Françaises</a></li>
+        <li><a href="/users.html"><i class="fas fa-users"></i> Utilisateurs</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
       </ul>
-      
-      <div class="user-actions">
-        <a href="#" id="logout-link">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Déconnexion</span>
-        </a>
-      </div>
     </div>
-
-    <!-- Contenu principal -->
-    <div class="main-content">
-      <header class="content-header">
-        <h1>Gestion des Nomenclatures Médicales ANS</h1>
-        <div class="user-info">
-          <span id="username">Administrateur</span>
-          <i class="fas fa-user-circle"></i>
-        </div>
-      </header>
+  </header>
+  
+  <div class="main-content">
+    <div class="container">
+      <h1>Gestion des Nomenclatures Médicales Françaises</h1>
 
       <!-- Statistiques des terminologies -->
       <div class="stats-container">
@@ -236,8 +186,13 @@
         return; // Arrêter l'exécution si l'utilisateur n'est pas administrateur
       }
       
-      // Initialiser les listeners d'authentification
-      FHIRHubAuth.initAuthListeners();
+      // Gestionnaire pour le bouton de déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
       
       // Éléments DOM
       const terminologyVersionEl = document.getElementById('terminology-version');
