@@ -28,9 +28,15 @@ if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; the
         sed -i 's/RUN pip3 install requests/# Utilisation de py3-requests au lieu de pip install requests pour éviter les erreurs PEP 668\nRUN apk add --no-cache python3 py3-pip bash py3-requests/' Dockerfile
     fi
 
-    # Construire et démarrer le conteneur avec docker-compose
-    echo -e "${YELLOW}Construction et démarrage du conteneur...${NC}"
-    docker-compose up --build -d
+    # Utiliser le lanceur Docker spécial qui prépare la structure des dossiers
+    if [ -f "docker_launcher.sh" ]; then
+        echo -e "${YELLOW}Utilisation du lanceur Docker spécial...${NC}"
+        bash docker_launcher.sh
+    else
+        # Construire et démarrer le conteneur avec docker-compose
+        echo -e "${YELLOW}Construction et démarrage du conteneur...${NC}"
+        docker-compose up --build -d
+    fi
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Déploiement Docker réussi!${NC}"

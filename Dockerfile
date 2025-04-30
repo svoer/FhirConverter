@@ -22,5 +22,15 @@ RUN mkdir -p data/conversions data/outputs data/history data/test
 # Exposition du port
 EXPOSE 5000
 
+# Créer des fichiers de compatibilité pour les problèmes de casse
+RUN mkdir -p src/converters src/terminology
+
+# S'assurer que les deux versions de casse existent pour les fichiers critiques
+RUN if [ -f src/converters/hl7ToFhirConverter.js ] && [ ! -f src/converters/HL7ToFHIRConverter.js ]; then \
+    echo "/**\n * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR\n */\nconst converter = require('./hl7ToFhirConverter');\nmodule.exports = converter;" > src/converters/HL7ToFHIRConverter.js; \
+    elif [ ! -f src/converters/hl7ToFhirConverter.js ] && [ -f src/converters/HL7ToFHIRConverter.js ]; then \
+    echo "/**\n * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR\n */\nconst converter = require('./HL7ToFHIRConverter');\nmodule.exports = converter;" > src/converters/hl7ToFhirConverter.js; \
+    fi
+
 # Commande de démarrage
 CMD ["bash", "start.sh"]
