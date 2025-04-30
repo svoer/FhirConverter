@@ -8,10 +8,19 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Démarrage de FHIRHub...${NC}"
 
-# Exécuter le script de correction des modules s'il existe
-if [ -f "fix_converters.sh" ]; then
-    echo -e "${YELLOW}Exécution des corrections automatiques pour les modules...${NC}"
-    bash fix_converters.sh
+# Créer les structures nécessaires
+mkdir -p src/converters src/terminology data/conversions data/outputs data/history data/test
+
+# Vérifier si les fichiers avec différentes casses existent et créer des adaptateurs si nécessaire
+if [ -f "src/converters/hl7ToFhirConverter.js" ] && [ ! -f "src/converters/HL7ToFHIRConverter.js" ]; then
+    echo -e "${YELLOW}Création d'un adaptateur pour HL7ToFHIRConverter.js...${NC}"
+    cat > src/converters/HL7ToFHIRConverter.js << 'EOF'
+/**
+ * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR
+ */
+const converter = require('./hl7ToFhirConverter');
+module.exports = converter;
+EOF
 fi
 
 # Vérifier si app.js existe (point d'entrée principal)

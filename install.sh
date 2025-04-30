@@ -61,13 +61,20 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}Installation réussie!${NC}"
     echo -e "${YELLOW}Création des dossiers requis...${NC}"
     
-    # Créer les dossiers nécessaires
-    mkdir -p data/conversions data/outputs data/history data/test
+    # Créer les structures de dossiers nécessaires
+    echo -e "${YELLOW}Création des dossiers nécessaires...${NC}"
+    mkdir -p src/converters src/terminology data/conversions data/outputs data/history data/test
     
-    # Si le fichier de correction existe, l'exécuter
-    if [ -f "fix_converters.sh" ]; then
-        echo -e "${YELLOW}Application des corrections de modules...${NC}"
-        bash fix_converters.sh
+    # Vérifier si des adaptateurs sont nécessaires pour les différences de casse
+    if [ -f "src/converters/hl7ToFhirConverter.js" ] && [ ! -f "src/converters/HL7ToFHIRConverter.js" ]; then
+        echo -e "${YELLOW}Création d'un adaptateur pour résoudre les problèmes de casse...${NC}"
+        cat > src/converters/HL7ToFHIRConverter.js << 'EOF'
+/**
+ * Point d'entrée uniformisé pour le convertisseur HL7 vers FHIR
+ */
+const converter = require('./hl7ToFhirConverter');
+module.exports = converter;
+EOF
     fi
     
     echo -e "${GREEN}FHIRHub est prêt à être utilisé.${NC}"
