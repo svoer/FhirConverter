@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion des utilisateurs - FHIRHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
+      </div>
+      
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/applications.html"><i class="fas fa-cogs"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="/users.html" class="active"><i class="fas fa-users"></i> Utilisateurs</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Gestion des utilisateurs</h1>
+        <div class="btn-container" id="adminOnlyButtons">
+          <button id="createUserBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Créer un utilisateur</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Liste des utilisateurs</h2>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nom d'utilisateur</th>
+                <th>Rôle</th>
+                <th>Date de création</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersList">
+              <!-- Les utilisateurs seront chargés ici dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de création d'utilisateur -->
+  <div class="modal" id="createUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Créer un nouvel utilisateur</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="createUserForm">
+          <div class="form-group">
+            <label for="username">Nom d'utilisateur</label>
+            <input type="text" id="username" name="username" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" name="password" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="role">Rôle</label>
+            <select id="role" name="role" class="form-control" required>
+              <option value="admin">Administrateur</option>
+              <option value="user">Utilisateur</option>
+            </select>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Créer</button>
+            <button type="button" class="btn btn-secondary" id="cancelCreateUser">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation de suppression -->
+  <div class="modal" id="deleteUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Confirmer la suppression</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ?</p>
+        <input type="hidden" id="deleteUserId">
+        
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" id="confirmDeleteUser">Supprimer</button>
+          <button type="button" class="btn btn-secondary" id="cancelDeleteUser">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal d'édition d'utilisateur -->
+  <div class="modal" id="editUserModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Modifier l'utilisateur</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="editUserForm">
+          <input type="hidden" id="editUserId">
+          
+          <div class="form-group">
+            <label for="editUsername">Nom d'utilisateur</label>
+            <input type="text" id="editUsername" name="editUsername" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="editPassword">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+            <input type="password" id="editPassword" name="editPassword" class="form-control">
+          </div>
+          
+          <div class="form-group">
+            <label for="editRole">Rôle</label>
+            <select id="editRole" name="editRole" class="form-control" required>
+              <option value="admin">Administrateur</option>
+              <option value="user">Utilisateur</option>
+            </select>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Mettre à jour</button>
+            <button type="button" class="btn btn-secondary" id="cancelEditUser">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="/documentation.html">Documentation</a></li>
+        <li><a href="/api-docs">API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      // Récupérer les informations de l'utilisateur
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Vérifier si l'utilisateur est admin
+      if (user.role !== 'admin') {
+        // Masquer les boutons d'administration
+        document.getElementById('adminOnlyButtons').style.display = 'none';
+      }
+      
+      // Gestion de la déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+      
+      // Charger la liste des utilisateurs
+      fetchUsers();
+      
+      // Gestion du modal de création d'utilisateur
+      const createUserModal = document.getElementById('createUserModal');
+      const createUserBtn = document.getElementById('createUserBtn');
+      const cancelCreateUser = document.getElementById('cancelCreateUser');
+      const closeCreateUserBtn = createUserModal.querySelector('.close');
+      
+      createUserBtn.addEventListener('click', function() {
+        createUserModal.style.display = 'block';
+      });
+      
+      cancelCreateUser.addEventListener('click', function() {
+        createUserModal.style.display = 'none';
+      });
+      
+      closeCreateUserBtn.addEventListener('click', function() {
+        createUserModal.style.display = 'none';
+      });
+      
+      // Gestion de la soumission du formulaire de création
+      document.getElementById('createUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
+        
+        createUser(username, password, role);
+      });
+      
+      // Gestion du modal de suppression
+      const deleteUserModal = document.getElementById('deleteUserModal');
+      const cancelDeleteUser = document.getElementById('cancelDeleteUser');
+      const closeDeleteUserBtn = deleteUserModal.querySelector('.close');
+      
+      cancelDeleteUser.addEventListener('click', function() {
+        deleteUserModal.style.display = 'none';
+      });
+      
+      closeDeleteUserBtn.addEventListener('click', function() {
+        deleteUserModal.style.display = 'none';
+      });
+      
+      // Confirmation de suppression
+      document.getElementById('confirmDeleteUser').addEventListener('click', function() {
+        const userId = document.getElementById('deleteUserId').value;
+        deleteUser(userId);
+      });
+      
+      // Gestion du modal d'édition
+      const editUserModal = document.getElementById('editUserModal');
+      const cancelEditUser = document.getElementById('cancelEditUser');
+      const closeEditUserBtn = editUserModal.querySelector('.close');
+      
+      cancelEditUser.addEventListener('click', function() {
+        editUserModal.style.display = 'none';
+      });
+      
+      closeEditUserBtn.addEventListener('click', function() {
+        editUserModal.style.display = 'none';
+      });
+      
+      // Gestion de la soumission du formulaire d'édition
+      document.getElementById('editUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const userId = document.getElementById('editUserId').value;
+        const username = document.getElementById('editUsername').value;
+        const password = document.getElementById('editPassword').value;
+        const role = document.getElementById('editRole').value;
+        
+        updateUser(userId, username, password, role);
+      });
+      
+      // Fermer les modals en cliquant en dehors
+      window.addEventListener('click', function(event) {
+        if (event.target === createUserModal) {
+          createUserModal.style.display = 'none';
+        }
+        if (event.target === deleteUserModal) {
+          deleteUserModal.style.display = 'none';
+        }
+        if (event.target === editUserModal) {
+          editUserModal.style.display = 'none';
+        }
+      });
+    });
+    
+    // Fonction pour récupérer les utilisateurs
+    function fetchUsers() {
+      const headers = {
+        'X-API-KEY': 'dev-key',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+      
+      fetch('/api/users', {
+        method: 'GET',
+        headers: headers
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          displayUsers(data.data);
+        } else {
+          showNotification('Erreur', data.message || 'Impossible de récupérer les utilisateurs', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        showNotification('Erreur', 'Une erreur s\'est produite lors de la récupération des utilisateurs', 'error');
+      });
+    }
+    
+    // Fonction pour afficher les utilisateurs
+    function displayUsers(users) {
+      const usersList = document.getElementById('usersList');
+      usersList.innerHTML = '';
+      
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      users.forEach(user => {
+        const row = document.createElement('tr');
+        
+        // Colonnes des informations
+        row.innerHTML = `
+          <td>${user.id}</td>
+          <td>${user.username}</td>
+          <td>${user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</td>
+          <td>${formatDate(user.created_at)}</td>
+          <td class="actions">
+            ${currentUser.role === 'admin' ? `
+              <button class="btn-icon edit-user" data-id="${user.id}" data-username="${user.username}" data-role="${user.role}">
+                <i class="fas fa-edit"></i>
+              </button>
+              ${user.id !== currentUser.id ? `
+                <button class="btn-icon delete-user" data-id="${user.id}">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              ` : ''}
+            ` : ''}
+          </td>
+        `;
+        
+        usersList.appendChild(row);
+      });
+      
+      // Ajouter les écouteurs d'événements pour les boutons d'édition et de suppression
+      document.querySelectorAll('.edit-user').forEach(button => {
+        button.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          const username = this.getAttribute('data-username');
+          const role = this.getAttribute('data-role');
+          
+          document.getElementById('editUserId').value = userId;
+          document.getElementById('editUsername').value = username;
+          document.getElementById('editPassword').value = '';
+          document.getElementById('editRole').value = role;
+          
+          document.getElementById('editUserModal').style.display = 'block';
+        });
+      });
+      
+      document.querySelectorAll('.delete-user').forEach(button => {
+        button.addEventListener('click', function() {
+          const userId = this.getAttribute('data-id');
+          document.getElementById('deleteUserId').value = userId;
+          document.getElementById('deleteUserModal').style.display = 'block';
+        });
+      });
+    }
+    
+    // Fonction pour créer un utilisateur
+    function createUser(username, password, role) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': 'dev-key',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+      
+      fetch('/api/users', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          username,
+          password,
+          role
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('createUserModal').style.display = 'none';
+          document.getElementById('createUserForm').reset();
+          showNotification('Succès', 'Utilisateur créé avec succès', 'success');
+          fetchUsers();
+        } else {
+          showNotification('Erreur', data.message || 'Impossible de créer l\'utilisateur', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la création de l\'utilisateur:', error);
+        showNotification('Erreur', 'Une erreur s\'est produite lors de la création de l\'utilisateur', 'error');
+      });
+    }
+    
+    // Fonction pour mettre à jour un utilisateur
+    function updateUser(userId, username, password, role) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': 'dev-key',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+      
+      const userData = {
+        username,
+        role
+      };
+      
+      // Ajouter le mot de passe seulement s'il est fourni
+      if (password) {
+        userData.password = password;
+      }
+      
+      fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(userData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('editUserModal').style.display = 'none';
+          showNotification('Succès', 'Utilisateur mis à jour avec succès', 'success');
+          fetchUsers();
+          
+          // Mettre à jour les informations de l'utilisateur connecté si c'est lui-même
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          if (currentUser.id == userId) {
+            currentUser.username = username;
+            currentUser.role = role;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+          }
+        } else {
+          showNotification('Erreur', data.message || 'Impossible de mettre à jour l\'utilisateur', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+        showNotification('Erreur', 'Une erreur s\'est produite lors de la mise à jour de l\'utilisateur', 'error');
+      });
+    }
+    
+    // Fonction pour supprimer un utilisateur
+    function deleteUser(userId) {
+      const headers = {
+        'X-API-KEY': 'dev-key',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+      
+      fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: headers
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('deleteUserModal').style.display = 'none';
+          showNotification('Succès', 'Utilisateur supprimé avec succès', 'success');
+          fetchUsers();
+        } else {
+          showNotification('Erreur', data.message || 'Impossible de supprimer l\'utilisateur', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la suppression de l\'utilisateur:', error);
+        showNotification('Erreur', 'Une erreur s\'est produite lors de la suppression de l\'utilisateur', 'error');
+      });
+    }
+    
+    // Fonction pour formater une date
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      
+      const date = new Date(dateStr);
+      return date.toLocaleString('fr-FR', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Fonction pour afficher une notification
+    function showNotification(title, message, type = 'info') {
+      // Vérifier si l'élément de notification existe déjà
+      let notification = document.querySelector('.notification');
+      
+      // Si non, créer un nouvel élément
+      if (!notification) {
+        notification = document.createElement('div');
+        notification.className = 'notification';
+        document.body.appendChild(notification);
+      }
+      
+      // Définir le contenu et le type
+      notification.innerHTML = `
+        <div class="notification-title">${title}</div>
+        <div class="notification-message">${message}</div>
+      `;
+      
+      notification.className = `notification ${type}`;
+      notification.style.display = 'block';
+      
+      // Faire disparaître la notification après 3 secondes
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+          notification.style.display = 'none';
+          notification.style.opacity = '1';
+        }, 500);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
