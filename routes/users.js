@@ -54,8 +54,9 @@ const { hashPassword, verifyPassword } = require('../utils/auth');
  */
 router.get('/', authCombined, async (req, res) => {
   try {
-    // Vérifier si l'utilisateur est admin
-    if (req.isAuthenticated()) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
       if (req.user.role !== 'admin') {
         return res.status(403).json({
           success: false,
@@ -136,8 +137,9 @@ router.get('/', authCombined, async (req, res) => {
  */
 router.get('/:id', authCombined, async (req, res) => {
   try {
-    // Vérifier si l'utilisateur est admin ou c'est son propre profil
-    if (req.isAuthenticated()) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin ou c'est son propre profil
       if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
         return res.status(403).json({
           success: false,
@@ -241,8 +243,9 @@ router.get('/:id', authCombined, async (req, res) => {
  */
 router.post('/', authCombined, async (req, res) => {
   try {
-    // Vérifier si l'utilisateur est admin
-    if (req.isAuthenticated()) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
       if (req.user.role !== 'admin') {
         return res.status(403).json({
           success: false,
@@ -383,8 +386,9 @@ router.put('/:id', authCombined, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
-    // Vérifier si l'utilisateur est admin ou c'est son propre profil
-    if (req.isAuthenticated()) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin ou c'est son propre profil
       if (req.user.role !== 'admin' && req.user.id !== userId) {
         return res.status(403).json({
           success: false,
@@ -532,8 +536,9 @@ router.delete('/:id', authCombined, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
-    // Vérifier si l'utilisateur est admin
-    if (req.isAuthenticated()) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
       if (req.user.role !== 'admin') {
         return res.status(403).json({
           success: false,
