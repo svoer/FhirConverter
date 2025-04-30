@@ -246,6 +246,9 @@ app.get('/', (req, res) => {
 // REMARQUE: Nous utilisons maintenant le convertisseur avec cache de src/cacheEnabledConverter.js
 // qui est importé en haut du fichier
 
+// Nous devons toujours importer le module fhirHub pour accéder aux terminologies françaises
+const fhirHub = require('./src/index');
+
 /**
  * @swagger
  * /api/convert:
@@ -711,6 +714,7 @@ app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dev', devApiRoutes);
+app.use('/api/cache', cacheRoutes);
 
 /**
  * Route pour obtenir les informations sur les terminologies françaises

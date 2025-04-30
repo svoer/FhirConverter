@@ -52,7 +52,7 @@ const swaggerOptions = {
       }
     ]
   },
-  apis: ['./app.js', './routes/*.js', './api/*.js'] // Fichiers contenant les annotations Swagger
+  apis: ['./app.js', './routes/*.js', './api/*.js', './src/**/*.js'] // Fichiers contenant les annotations Swagger
 };
 
 // Initialisation du générateur de spécification Swagger
