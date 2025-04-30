@@ -143,8 +143,30 @@ FOR /F "tokens=5" %%P IN ('netstat -ano ^| findstr :5000 ^| findstr LISTENING') 
   echo Processus arrêté.
 )
 
-REM Démarrage direct avec Node.js
-echo Démarrage avec Node.js...
-node app.js
+REM Vérifier si on doit utiliser Node.js local
+if exist ".nodejsrc" (
+  echo Configuration Node.js locale détectée...
+  
+  REM Variables pour le chemin de Node.js
+  set NODE_LOCAL_PATH=vendor\nodejs
+  
+  if exist "%NODE_LOCAL_PATH%\node.exe" (
+    echo ✓ Utilisation de Node.js local
+    for /f "delims=" %%a in ('"%NODE_LOCAL_PATH%\node.exe" -v') do set NODE_VERSION=%%a
+    echo Version: %NODE_VERSION%
+    "%cd%\%NODE_LOCAL_PATH%\node.exe" app.js
+  ) else (
+    echo ⚠️ Node.js local non trouvé, utilisation de Node.js système...
+    echo Démarrage avec Node.js système:
+    for /f "delims=" %%a in ('node -v') do set NODE_VERSION=%%a
+    echo Version: %NODE_VERSION%
+    node app.js
+  )
+) else (
+  echo Node.js système utilisé
+  for /f "delims=" %%a in ('node -v') do set NODE_VERSION=%%a
+  echo Démarrage avec Node.js système: %NODE_VERSION%
+  node app.js
+)
 
 pause

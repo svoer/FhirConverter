@@ -330,8 +330,25 @@ if not exist "french_terminology\config.json" (
 }> french_terminology\config.json
 )
 
+REM Configuration de Node.js
+echo [6/7] Configuration du système Node.js...
+
+REM Créer un fichier de configuration pour Node.js
+if %use_local_nodejs% equ 1 (
+  echo Enregistrement de la configuration Node.js locale...
+  
+  echo {^
+  "use_local_nodejs": true,^
+  "node_version": "%NODE_VERSION%",^
+  "node_path": "%NODE_LOCAL_PATH%",^
+  "installation_date": "%date:~6,4%-%date:~3,2%-%date:~0,2%"^
+}> .nodejsrc
+  
+  echo ✓ Configuration Node.js locale enregistrée
+)
+
 REM Finalisation
-echo [6/7] Finalisation de l'installation...
+echo [7/7] Finalisation de l'installation...
 
 echo ==========================================================
 echo      ✓ Installation de FHIRHub terminée avec succès

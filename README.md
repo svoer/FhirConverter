@@ -12,18 +12,19 @@ Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub –
 
 ## Prérequis
 
-- **Node.js 18.x ou 20.x** (versions recommendées et testées)
-  - ⚠️ Node.js 22+ peut causer des problèmes de compatibilité avec certaines dépendances
-- NPM 8.0.0 ou supérieur
-- Git (pour le clonage du dépôt)
-- Outils de compilation natifs (pour better-sqlite3) :
-  - **Windows** : Visual C++ Build Tools et Python
-  - **Linux** : build-essential et python
-  - **macOS** : Xcode Command Line Tools
+- **Node.js** : Support automatique intégré 🆕
+  - ✅ Node.js v20.15.1 est automatiquement intégré dans les scripts d'installation
+  - ✅ Aucune installation préalable de Node.js n'est nécessaire
+  - Si Node.js est déjà installé sur votre système, vous pourrez choisir d'utiliser votre version système ou la version intégrée
+  - Versions compatibles : 18.x ou 20.x
+  - ⚠️ Node.js 22+ n'est pas compatible avec certaines dépendances
+- Git (uniquement pour le clonage du dépôt)
+- Connexion Internet temporaire (uniquement pour l'installation initiale)
 - Pour l'utilisation des scripts Python (en option) : Python 3.6 ou supérieur
 
 ## Caractéristiques
 
+- 🆕 **Runtime Node.js intégré** - Installation automatique de Node.js v20.15.1 pour une compatibilité garantie
 - Conversion complète de messages HL7 v2.5 vers FHIR R4
 - Support des terminologies françaises (compatible ANS)
 - Interface utilisateur intuitive pour la conversion directe
@@ -35,6 +36,23 @@ Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub –
 - Système de cache intelligent pour optimiser les performances
 - Scripts d'installation et de démarrage pour Windows, Linux et macOS
 - Déploiement facilité via Docker
+
+## Node.js intégré 🆕
+
+FHIRHub intègre désormais Node.js v20.15.1 directement dans ses scripts d'installation, offrant plusieurs avantages majeurs :
+
+- **Aucune installation préalable requise** - Fonctionne sur des machines sans Node.js préinstallé
+- **Compatibilité garantie** - Évite les problèmes avec des versions non compatibles de Node.js
+- **Installation homogène** - Expérience d'installation identique sur tous les systèmes
+- **Isolation** - Évite les conflits avec d'autres applications Node.js installées sur le système
+- **Portabilité accrue** - Peut fonctionner dans des environnements restreints sans accès administrateur
+
+Ce système :
+1. Détecte si Node.js est déjà installé sur le système
+2. Propose d'utiliser la version système si elle est compatible (v18.x ou v20.x)
+3. Télécharge et installe automatiquement Node.js v20.15.1 localement si nécessaire
+4. Configure les scripts de démarrage pour utiliser la version appropriée
+5. Préserve l'information dans un fichier `.nodejsrc` pour une utilisation cohérente
 
 ## Installation
 
@@ -88,7 +106,28 @@ chmod +x install.sh start.sh
 ./start.sh
 ```
 
-Les scripts d'installation vérifient la présence de Node.js, créent les répertoires nécessaires, installent les dépendances et initialisent la base de données SQLite avec les données par défaut. Les scripts de démarrage configurent l'environnement et lancent l'application.
+Les scripts d'installation effectuent les opérations suivantes automatiquement :
+
+1. **Installation de Node.js intégré** 🆕 :
+   - Téléchargement et installation locale de Node.js v20.15.1 si nécessaire
+   - Possibilité de choisir entre le Node.js système (si déjà installé et compatible) ou la version intégrée
+   - Configuration du chemin d'accès pour une utilisation cohérente à travers tous les scripts
+   
+2. **Préparation de l'environnement** :
+   - Création des répertoires nécessaires pour les données, logs et backups
+   - Initialisation des fichiers de configuration (.env)
+   - Installation des dépendances NPM requises
+   
+3. **Configuration des terminologies françaises** :
+   - Initialisation des mappings de terminologies françaises de l'ANS
+   - Préparation des systèmes d'identifiants et codes standards français
+   
+4. **Initialisation de la base de données** :
+   - Création et configuration de la base de données SQLite
+   - Génération des identifiants administrateur par défaut
+   - Création des clés API de développement
+
+Les scripts de démarrage détectent la configuration de Node.js utilisée lors de l'installation et utilisent automatiquement la même version pour assurer la cohérence et la compatibilité.
 
 ### Installation manuelle
 
@@ -128,9 +167,16 @@ fhirhub/
 ├── routes/                 # Routes Express
 ├── src/                    # Code source principal
 ├── utils/                  # Utilitaires et fonctions d'aide
+├── vendor/                 # 🆕 Dépendances intégrées (Node.js local)
+│   └── nodejs/             # 🆕 Installation locale de Node.js v20.15.1
 ├── app.js                  # Point d'entrée principal
 ├── hl7Parser.js            # Parseur HL7 optimisé
 ├── hl7ToFhirAdvancedConverter.js  # Convertisseur HL7 vers FHIR
+├── install.sh              # Script d'installation Linux/macOS
+├── install.bat             # Script d'installation Windows
+├── start.sh                # Script de démarrage Linux/macOS
+├── start.bat               # Script de démarrage Windows
+├── .nodejsrc               # 🆕 Configuration de Node.js intégré
 └── server.js               # Configuration du serveur
 ```
 
