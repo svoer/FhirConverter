@@ -1,0 +1,61 @@
+# Dépendances
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Fichiers d'environnement
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Fichiers de build
+/dist
+/build
+.DS_Store
+
+# Fichiers de logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers de base de données SQLite
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Fichiers temporaires
+.tmp/
+.temp/
+*.swp
+*.swo
+*~
+
+# Fichiers de configuration IDE
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Fichiers de test générés
+/coverage
+.nyc_output
+
+# Fichiers spécifiques à FHIRHub
+/data/*.db
+/data/conversions/*
+!/data/conversions/.gitkeep
+/data/outputs/*
+!/data/outputs/.gitkeep
+/data/history/*
+!/data/history/.gitkeep
+/data/test/*
+!/data/test/.gitkeep
+/test_data/*
+!/test_data/.gitkeep
+/attached_assets/*
+!/attached_assets/.gitkeep
