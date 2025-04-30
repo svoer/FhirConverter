@@ -678,7 +678,9 @@ python extract_french_systems.py</pre>
         <div class="tech-spec">
           <div class="tech-spec-title">API de Conversion</div>
           <ul>
-            <li><strong>POST /api/convert</strong> - Convertit un message HL7 v2.5 en FHIR R4</li>
+            <li><strong>POST /api/convert</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format JSON)</li>
+            <li><strong>POST /api/convert/raw</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format texte brut)</li>
+            <li><strong>POST /api/convert/mllp</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format MLLP)</li>
             <li><strong>POST /api/convert/validate</strong> - Valide la syntaxe d'un message HL7</li>
           </ul>
         </div>
@@ -691,12 +693,45 @@ python extract_french_systems.py</pre>
         </div>
         
         <div class="tech-spec">
+          <div class="tech-spec-title">API de Cache</div>
+          <ul>
+            <li><strong>GET /api/cache/stats</strong> - Récupère les statistiques du système de cache</li>
+            <li><strong>POST /api/cache/clear</strong> - Vide le cache de conversion (admin uniquement)</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
           <div class="tech-spec-title">API Système</div>
           <ul>
             <li><strong>GET /api/stats</strong> - Récupère les statistiques du système</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API de Gestion</div>
+          <ul>
             <li><strong>GET /api/applications</strong> - Liste les applications enregistrées</li>
+            <li><strong>POST /api/applications</strong> - Crée une nouvelle application</li>
+            <li><strong>GET /api/applications/:id</strong> - Récupère les détails d'une application</li>
+            <li><strong>PUT /api/applications/:id</strong> - Met à jour une application</li>
+            <li><strong>DELETE /api/applications/:id</strong> - Supprime une application</li>
             <li><strong>GET /api/api-keys</strong> - Liste les clés API</li>
+            <li><strong>POST /api/api-keys</strong> - Crée une nouvelle clé API</li>
+            <li><strong>PUT /api/api-keys/:id</strong> - Met à jour une clé API</li>
+            <li><strong>DELETE /api/api-keys/:id</strong> - Révoque une clé API</li>
             <li><strong>GET /api/users</strong> - Liste les utilisateurs (admin uniquement)</li>
+            <li><strong>POST /api/users</strong> - Crée un nouvel utilisateur (admin uniquement)</li>
+            <li><strong>PUT /api/users/:id</strong> - Met à jour un utilisateur (admin uniquement)</li>
+            <li><strong>DELETE /api/users/:id</strong> - Supprime un utilisateur (admin uniquement)</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API d'Authentification</div>
+          <ul>
+            <li><strong>POST /api/login</strong> - Authentifie un utilisateur et retourne un JWT</li>
+            <li><strong>POST /api/logout</strong> - Déconnecte l'utilisateur actuel</li>
+            <li><strong>GET /api/user</strong> - Récupère les informations de l'utilisateur connecté</li>
           </ul>
         </div>
         
@@ -711,11 +746,202 @@ python extract_french_systems.py</pre>
           <p><strong>Conseil :</strong> Pour tester les API via la documentation Swagger, utilisez le bouton <strong>Autoriser</strong> et saisissez la clé de test : <code>dev-key</code> dans le champ apiKey.</p>
         </div>
         
-        <h3>Exemple d'utilisation avec cURL</h3>
-        <pre class="code-block">curl -X POST "http://localhost:5000/api/convert" \
+        <h3>Exemples d'utilisation</h3>
+        
+        <div class="code-tabs">
+          <div class="tab-buttons">
+            <button class="tab-button active" onclick="switchTab(event, 'curl-tab')">cURL</button>
+            <button class="tab-button" onclick="switchTab(event, 'js-tab')">JavaScript</button>
+            <button class="tab-button" onclick="switchTab(event, 'python-tab')">Python</button>
+          </div>
+          
+          <div id="curl-tab" class="tab-content" style="display: block;">
+            <h4>Conversion avec JSON (POST /api/convert)</h4>
+            <pre class="code-block">curl -X POST "http://localhost:5000/api/convert" \
      -H "Content-Type: application/json" \
      -H "X-API-KEY: your-api-key" \
      -d '{"hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"}'</pre>
+            
+            <h4>Conversion avec texte brut (POST /api/convert/raw)</h4>
+            <pre class="code-block">curl -X POST "http://localhost:5000/api/convert/raw" \
+     -H "Content-Type: text/plain" \
+     -H "X-API-KEY: your-api-key" \
+     -d 'MSH|^~\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F'</pre>
+            
+            <h4>Statistiques du système (GET /api/stats)</h4>
+            <pre class="code-block">curl -X GET "http://localhost:5000/api/stats" \
+     -H "X-API-KEY: your-api-key"</pre>
+          </div>
+          
+          <div id="js-tab" class="tab-content" style="display: none;">
+            <h4>Conversion avec fetch API</h4>
+            <pre class="code-block">const convertHL7ToFHIR = async (hl7Message) => {
+  try {
+    const response = await fetch('http://localhost:5000/api/convert', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': 'your-api-key'
+      },
+      body: JSON.stringify({ hl7Message })
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || 'Erreur de conversion');
+    }
+    
+    return result.data;
+  } catch (error) {
+    console.error('Erreur lors de la conversion:', error);
+    throw error;
+  }
+};
+
+// Exemple d'utilisation
+const hl7Message = `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F`;
+
+convertHL7ToFHIR(hl7Message)
+  .then(fhirBundle => {
+    console.log('Bundle FHIR généré:', fhirBundle);
+  })
+  .catch(error => {
+    console.error('Erreur:', error);
+  });</pre>
+          </div>
+          
+          <div id="python-tab" class="tab-content" style="display: none;">
+            <h4>Conversion avec requests</h4>
+            <pre class="code-block">import requests
+import json
+
+def convert_hl7_to_fhir(hl7_message, api_key, base_url='http://localhost:5000'):
+    """
+    Convertit un message HL7 en FHIR à l'aide de l'API FHIRHub
+    
+    Args:
+        hl7_message (str): Message HL7 à convertir
+        api_key (str): Clé API pour l'authentification
+        base_url (str): URL de base de l'API
+        
+    Returns:
+        dict: Bundle FHIR résultant
+    """
+    url = f"{base_url}/api/convert"
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': api_key
+    }
+    
+    payload = {
+        'hl7Message': hl7_message
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # Lève une exception pour les codes d'erreur HTTP
+        
+        result = response.json()
+        
+        if not result.get('success'):
+            raise ValueError(result.get('message', 'Erreur inconnue lors de la conversion'))
+            
+        return result['data']
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur réseau: {e}")
+        raise
+    except ValueError as e:
+        print(f"Erreur de traitement: {e}")
+        raise
+    except Exception as e:
+        print(f"Erreur inattendue: {e}")
+        raise
+
+# Exemple d'utilisation
+if __name__ == "__main__":
+    hl7_message = """MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"""
+    
+    try:
+        fhir_bundle = convert_hl7_to_fhir(hl7_message, api_key="your-api-key")
+        print(f"Bundle FHIR généré avec {len(fhir_bundle['entry'])} ressources")
+        
+        # Sauvegarder le résultat dans un fichier
+        with open('fhir_bundle.json', 'w', encoding='utf-8') as f:
+            json.dump(fhir_bundle, f, ensure_ascii=False, indent=2)
+            
+        print("Résultat sauvegardé dans fhir_bundle.json")
+    except Exception as e:
+        print(f"Échec de la conversion: {e}")</pre>
+          </div>
+        </div>
+        
+        <script>
+          function switchTab(event, tabId) {
+            // Masquer tous les contenus d'onglets
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+              tabContents[i].style.display = "none";
+            }
+            
+            // Désactiver tous les boutons d'onglets
+            const tabButtons = document.getElementsByClassName("tab-button");
+            for (let i = 0; i < tabButtons.length; i++) {
+              tabButtons[i].className = tabButtons[i].className.replace(" active", "");
+            }
+            
+            // Afficher le contenu d'onglet actif et activer le bouton correspondant
+            document.getElementById(tabId).style.display = "block";
+            event.currentTarget.className += " active";
+          }
+        </script>
+        
+        <style>
+          .code-tabs {
+            margin: 20px 0;
+          }
+          
+          .tab-buttons {
+            display: flex;
+            margin-bottom: -1px;
+          }
+          
+          .tab-button {
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            cursor: pointer;
+            margin-right: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+          }
+          
+          .tab-button.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            position: relative;
+            z-index: 1;
+            font-weight: bold;
+            color: #ff5722;
+          }
+          
+          .tab-content {
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #fff;
+          }
+          
+          .tab-content h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #ff5722;
+          }
+        </style>
       </div>
       
       <div id="cache" class="documentation-section">
