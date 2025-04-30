@@ -48,6 +48,38 @@
         </div>
       </div>
       
+      <!-- Statistiques de conversion -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Statistiques de conversion</h2>
+        </div>
+        
+        <div class="conversion-stats">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Temps moyen de conversion</span>
+              <span class="metric-value" id="avg-conversion-time">0 ms</span>
+            </div>
+            
+            <div class="metric-card">
+              <span class="metric-label">Dernière conversion</span>
+              <span class="metric-value" id="last-conversion-time">0 ms</span>
+            </div>
+            
+            <div class="metric-card">
+              <span class="metric-label">Temps min/max</span>
+              <span class="metric-value" id="minmax-conversion-time">0 / 0 ms</span>
+            </div>
+            
+            <div class="metric-card">
+              <span class="metric-label">Ressources moyennes générées</span>
+              <span class="metric-value" id="avg-resources">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Métriques système -->
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Métriques système</h2>
@@ -114,12 +146,53 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
+          // Mise à jour du compteur de conversions
           document.getElementById('conversionsCount').textContent = data.data.conversions;
+          
+          // Mise à jour des statistiques de conversion
+          if (data.data.conversionStats) {
+            const stats = data.data.conversionStats;
+            
+            // Temps moyen de conversion
+            document.getElementById('avg-conversion-time').textContent = `${stats.avgTime} ms`;
+            
+            // Dernier temps de conversion
+            document.getElementById('last-conversion-time').textContent = `${stats.lastTime} ms`;
+            
+            // Temps min/max
+            document.getElementById('minmax-conversion-time').textContent = `${stats.minTime} / ${stats.maxTime} ms`;
+            
+            // Ressources moyennes générées
+            document.getElementById('avg-resources').textContent = stats.avgResources;
+          }
+          
+          // Mise à jour des métriques système réelles
+          updateSystemMetrics(data.data.memory);
         }
       })
       .catch(error => {
         console.error('Erreur lors de la récupération des statistiques:', error);
       });
+    }
+    
+    function updateSystemMetrics(memory) {
+      if (!memory) return;
+      
+      // Calculer l'utilisation de la mémoire en MB
+      const usedMemory = Math.round(memory.heapUsed / 1024 / 1024);
+      const totalMemory = Math.round(memory.heapTotal / 1024 / 1024);
+      const memPercent = Math.round((usedMemory / totalMemory) * 100);
+      
+      // Mettre à jour les données du graphique de mémoire
+      const memoryChart = Chart.getChart(document.getElementById('memoryChart'));
+      if (memoryChart) {
+        // Ajouter la nouvelle valeur et supprimer la plus ancienne
+        memoryChart.data.datasets[0].data.push(usedMemory);
+        memoryChart.data.datasets[0].data.shift();
+        
+        // Mettre à jour le graphique
+        memoryChart.update();
+      }
     }
     
     function fetchApplicationsCount() {

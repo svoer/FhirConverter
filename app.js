@@ -87,7 +87,9 @@ function initDb() {
       output_message TEXT,
       status TEXT NOT NULL,
       timestamp TEXT NOT NULL,
-      api_key_id INTEGER
+      api_key_id INTEGER,
+      processing_time INTEGER DEFAULT 0,
+      resource_count INTEGER DEFAULT 0
     )`);
     
     // Table des utilisateurs
@@ -295,12 +297,16 @@ app.post('/api/convert', authCombined, (req, res) => {
         input_message,
         output_message,
         status,
-        timestamp
-      ) VALUES (?, ?, ?, datetime('now'))
+        timestamp,
+        processing_time,
+        resource_count
+      ) VALUES (?, ?, ?, datetime('now'), ?, ?)
     `).run(
       hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
       JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
-      'success'
+      'success',
+      conversionTime,
+      result.entry ? result.entry.length : 0
     );
     
     return res.status(200).json({
@@ -507,12 +513,40 @@ app.get('/api/stats', (req, res) => {
   try {
     const conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
     
+    // Récupérer les statistiques de temps de conversion
+    const conversionStats = db.prepare(`
+      SELECT 
+        AVG(processing_time) as avg_time,
+        MIN(processing_time) as min_time,
+        MAX(processing_time) as max_time,
+        AVG(resource_count) as avg_resources
+      FROM conversion_logs
+      WHERE processing_time > 0
+    `).get();
+    
+    // Récupérer le dernier temps de conversion
+    const lastConversion = db.prepare(`
+      SELECT processing_time, resource_count
+      FROM conversion_logs
+      WHERE processing_time > 0
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `).get();
+    
     res.json({
       success: true,
       data: {
         conversions: conversionCount.count,
         uptime: process.uptime(),
-        memory: process.memoryUsage()
+        memory: process.memoryUsage(),
+        conversionStats: {
+          avgTime: conversionStats ? Math.round(conversionStats.avg_time || 0) : 0,
+          minTime: conversionStats ? conversionStats.min_time || 0 : 0,
+          maxTime: conversionStats ? conversionStats.max_time || 0 : 0,
+          avgResources: conversionStats ? Math.round(conversionStats.avg_resources || 0) : 0,
+          lastTime: lastConversion ? lastConversion.processing_time : 0,
+          lastResources: lastConversion ? lastConversion.resource_count : 0
+        }
       }
     });
   } catch (error) {
