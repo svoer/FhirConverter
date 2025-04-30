@@ -56,3 +56,10 @@ yarn-error.log*
 # Dossiers d'attachements
 attached_assets/*
 !attached_assets/.gitkeep
+
+# Node.js intégré
+vendor/nodejs/
+vendor/temp/
+vendor/node-*.zip
+vendor/node-*.tar.gz
+.nodejsrc
