@@ -5,40 +5,180 @@ echo ==========================================================
 echo      Installation de FHIRHub - Convertisseur HL7 vers FHIR
 echo ==========================================================
 
+REM Définir les variables pour Node.js intégré
+set NODE_VERSION=20.15.1
+set NODE_DIR=node-v%NODE_VERSION%-win-x64
+set NODE_ARCHIVE=%NODE_DIR%.zip
+set NODE_URL=https://nodejs.org/download/release/v%NODE_VERSION%/%NODE_ARCHIVE%
+set NODE_LOCAL_PATH=vendor\nodejs
+set TEMP_PATH=vendor\temp
+
+REM Créer le répertoire vendor s'il n'existe pas
+if not exist "vendor" mkdir vendor
+if not exist "vendor\temp" mkdir vendor\temp
+
 REM Vérification de l'environnement
-echo [1/6] Vérification de l'environnement...
-where node >nul 2>nul
-if %errorlevel% neq 0 (
-  echo X Node.js n'est pas installé. Veuillez installer Node.js v18+ avant de continuer.
-  echo   https://nodejs.org/fr/download/
-  exit /b 1
+echo [1/7] Vérification de l'environnement...
+
+goto :check_system_nodejs
+
+REM Fonction pour télécharger et installer Node.js localement
+:install_local_nodejs
+echo 📦 Installation locale de Node.js v%NODE_VERSION%...
+
+REM Vérifier si l'archive existe déjà
+if not exist "vendor\%NODE_ARCHIVE%" (
+  echo    Téléchargement de Node.js v%NODE_VERSION%...
+  
+  REM Téléchargement avec PowerShell
+  powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('%NODE_URL%', 'vendor\%NODE_ARCHIVE%')}"
+  
+  if %errorlevel% neq 0 (
+    echo ❌ Échec du téléchargement de Node.js. Erreur PowerShell: %errorlevel%
+    echo    Essai avec bitsadmin...
+    
+    REM Tentative avec bitsadmin si PowerShell échoue
+    bitsadmin /transfer nodeDownload /download /priority normal %NODE_URL% "%cd%\vendor\%NODE_ARCHIVE%"
+    
+    if %errorlevel% neq 0 (
+      echo ❌ Échec du téléchargement avec bitsadmin. Veuillez télécharger manuellement Node.js v%NODE_VERSION% depuis:
+      echo    %NODE_URL%
+      echo    et placez-le dans le dossier vendor.
+      exit /b 1
+    )
+  )
+) else (
+  echo    Archive Node.js déjà téléchargée.
 )
 
-REM Vérification de la version de Node.js
-for /f "tokens=1,2,3 delims=." %%a in ('node -v') do set NODE_VERSION=%%a
-set NODE_VERSION=%NODE_VERSION:~1%
-if %NODE_VERSION% LSS 18 (
-  echo X Version de Node.js trop ancienne: %NODE_VERSION%. FHIRHub requiert Node.js v18+.
-  echo   Veuillez mettre à jour Node.js avant de continuer.
-  exit /b 1
-)
-if %NODE_VERSION% GTR 20 (
-  echo X Version de Node.js trop récente: v%NODE_VERSION%. FHIRHub requiert Node.js v18-v20.
-  echo   Certaines dépendances comme better-sqlite3 peuvent ne pas être compatibles avec Node.js v%NODE_VERSION%.
-  echo   Nous recommandons d'utiliser Node.js v20.x LTS pour une compatibilité optimale.
-  echo.
-  choice /c ON /m "Voulez-vous quand même continuer"
-  if errorlevel 2 (
-    echo Installation annulée.
+REM Extraire l'archive si le répertoire n'existe pas
+if not exist "%NODE_LOCAL_PATH%" (
+  echo    Extraction de Node.js...
+  mkdir "%NODE_LOCAL_PATH%" 2>nul
+  
+  REM Extraction avec PowerShell
+  powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('vendor\%NODE_ARCHIVE%', 'vendor\temp')}"
+  
+  if %errorlevel% neq 0 (
+    echo ❌ Échec de l'extraction de Node.js.
     exit /b 1
   )
-  echo [33m^![0m Installation avec Node.js v%NODE_VERSION% - certaines fonctionnalités pourraient ne pas fonctionner correctement.
+  
+  REM Déplacer les fichiers extraits
+  xcopy "vendor\temp\%NODE_DIR%\*" "%NODE_LOCAL_PATH%\" /E /Y /Q
+  rmdir /s /q "vendor\temp\%NODE_DIR%"
+) else (
+  echo    Node.js déjà extrait.
 )
 
-echo ✓ Environnement compatible (Node.js v%NODE_VERSION%)
+REM Vérifier l'installation
+if not exist "%NODE_LOCAL_PATH%\node.exe" (
+  echo ❌ L'installation de Node.js local a échoué.
+  exit /b 1
+)
+
+set USE_LOCAL_NODEJS=1
+echo ✅ Node.js v%NODE_VERSION% installé localement avec succès.
+goto :nodejs_choice_done
+
+REM Déterminer si Node.js est déjà installé sur le système
+:check_system_nodejs
+set use_system_nodejs=0
+set use_local_nodejs=1
+
+where node >nul 2>nul
+if %errorlevel% equ 0 (
+  REM Node.js est installé, vérifier la version
+  for /f "tokens=1,2,3 delims=." %%a in ('node -v') do set SYSTEM_NODE_VERSION=%%a
+  set SYSTEM_NODE_VERSION=%SYSTEM_NODE_VERSION:~1%
+  
+  if %SYSTEM_NODE_VERSION% GEQ 18 (
+    if %SYSTEM_NODE_VERSION% LEQ 20 (
+      echo ✅ Node.js v%SYSTEM_NODE_VERSION% trouvé et compatible.
+      echo    Options disponibles:
+      echo    1) Utiliser Node.js v%SYSTEM_NODE_VERSION% du système
+      echo    2) Installer Node.js v%NODE_VERSION% localement (recommandé pour la compatibilité)
+      echo.
+      choice /c 12 /m "Votre choix (1 ou 2)"
+      
+      if errorlevel 2 (
+        echo    ✓ Installation et utilisation de Node.js v%NODE_VERSION% localement...
+        goto :install_local_nodejs
+      ) else (
+        echo    ✓ Utilisation de Node.js du système.
+        set use_system_nodejs=1
+        set use_local_nodejs=0
+      )
+    ) else (
+      echo ⚠️ Node.js v%SYSTEM_NODE_VERSION% détecté, mais trop récent pour FHIRHub.
+      echo    Installation de Node.js v%NODE_VERSION% localement pour assurer la compatibilité...
+      goto :install_local_nodejs
+    )
+  ) else (
+    echo ⚠️ Node.js v%SYSTEM_NODE_VERSION% détecté, mais trop ancien pour FHIRHub.
+    echo    Installation de Node.js v%NODE_VERSION% localement pour assurer la compatibilité...
+    goto :install_local_nodejs
+  )
+) else (
+  echo ❓ Node.js non détecté sur le système.
+  echo    Installation de Node.js v%NODE_VERSION% localement...
+  goto :install_local_nodejs
+)
+
+:nodejs_choice_done
+
+REM Modification du script de démarrage pour utiliser le Node.js local si nécessaire
+if %use_local_nodejs% equ 1 (
+  REM Sauvegarder une copie du script de démarrage original si nécessaire
+  if not exist "start.bat.orig" (
+    copy start.bat start.bat.orig >nul
+  )
+  
+  REM Créer un nouveau script de démarrage qui utilise le Node.js local
+  echo @echo off> start_temp.bat
+  echo setlocal enableextensions>> start_temp.bat
+  echo.>> start_temp.bat
+  echo REM Script de démarrage généré par le programme d'installation>> start_temp.bat
+  echo REM Utilise Node.js v%NODE_VERSION% local>> start_temp.bat
+  echo.>> start_temp.bat
+  echo echo Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4>> start_temp.bat
+  echo echo Initialisation du système de conversion HL7 vers FHIR...>> start_temp.bat
+  echo.>> start_temp.bat
+  echo if exist ".nodejsrc" (>> start_temp.bat
+  echo   echo Configuration Node.js locale détectée...>> start_temp.bat
+  echo.>> start_temp.bat
+  echo   if exist "%NODE_LOCAL_PATH%\node.exe" (>> start_temp.bat
+  echo     echo ✓ Utilisation de Node.js local v%NODE_VERSION%>> start_temp.bat
+  echo     "%cd%\%NODE_LOCAL_PATH%\node.exe" app.js>> start_temp.bat
+  echo   ^) else (>> start_temp.bat
+  echo     echo ⚠️ Node.js local non trouvé, utilisation de Node.js système...>> start_temp.bat
+  echo     node app.js>> start_temp.bat
+  echo   ^)>> start_temp.bat
+  echo ^) else (>> start_temp.bat
+  echo   echo Node.js système utilisé>> start_temp.bat
+  echo   node app.js>> start_temp.bat
+  echo ^)>> start_temp.bat
+  echo.>> start_temp.bat
+  echo pause>> start_temp.bat
+  
+  REM Remplacer l'ancien script par le nouveau
+  move /y start_temp.bat start.bat >nul
+  echo    ✓ Script de démarrage modifié pour utiliser Node.js local.
+)
+
+REM Configurer les variables pour l'installation
+if %use_local_nodejs% equ 1 (
+  set NODE_CMD=%cd%\%NODE_LOCAL_PATH%\node.exe
+  set NPM_CMD=%cd%\%NODE_LOCAL_PATH%\npm.cmd
+) else (
+  set NODE_CMD=node
+  set NPM_CMD=npm
+)
+
+echo ✅ Environnement compatible (Node.js v%NODE_VERSION%)
 
 REM Création des répertoires nécessaires
-echo [2/6] Création des répertoires...
+echo [2/7] Création des répertoires...
 if not exist "data\conversions" mkdir data\conversions
 if not exist "data\history" mkdir data\history
 if not exist "data\outputs" mkdir data\outputs
@@ -48,7 +188,7 @@ if not exist "backups" mkdir backups
 echo ✓ Structure des dossiers de données créée
 
 REM Installation des dépendances
-echo [3/6] Installation des dépendances...
+echo [3/7] Installation des dépendances...
 
 REM Vérification du fichier package.json
 if not exist "package.json" (
@@ -95,26 +235,26 @@ if exist "node_modules" (
 )
 
 echo Installation des dépendances Node.js...
-call npm cache clean --force
+call %NPM_CMD% cache clean --force
 echo Nettoyage du cache npm terminé
 
 REM Utiliser npm install avec l'option --no-optional pour éviter les problèmes de compilation sous Windows
 echo Installation des packages avec --no-optional pour éviter les problèmes de compilation...
-call npm install --no-optional
+call %NPM_CMD% install --no-optional
 
 REM Vérifier que les dépendances critiques sont bien installées
 echo Vérification des dépendances critiques...
 if not exist "node_modules\express" (
   echo Dépendance express manquante. Installation spécifique...
-  call npm install express --save
+  call %NPM_CMD% install express --save
 )
 if not exist "node_modules\better-sqlite3" (
   echo Dépendance better-sqlite3 manquante. Installation spécifique...
-  call npm install better-sqlite3 --save
+  call %NPM_CMD% install better-sqlite3 --save
 )
 
 REM Configuration de l'environnement
-echo [4/6] Configuration de l'environnement...
+echo [4/7] Configuration de l'environnement...
 if not exist ".env" (
   echo PORT=5000> .env
   echo DB_PATH=./data/fhirhub.db>> .env
@@ -126,7 +266,7 @@ if not exist ".env" (
 )
 
 REM Initialisation de la base de données
-echo [5/6] Initialisation de la base de données...
+echo [5/7] Initialisation de la base de données...
 echo [TERMINOLOGY] Préparation des terminologies françaises...
 
 REM Vérifier que le dossier french_terminology existe et contient les fichiers nécessaires
@@ -191,7 +331,7 @@ if not exist "french_terminology\config.json" (
 )
 
 REM Finalisation
-echo [6/6] Finalisation de l'installation...
+echo [6/7] Finalisation de l'installation...
 
 echo ==========================================================
 echo      ✓ Installation de FHIRHub terminée avec succès

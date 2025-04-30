@@ -140,6 +140,23 @@ if [ ! -z "$PORT_USED" ]; then
   echo "Processus arrêté."
 fi
 
-# Démarrage direct avec Node.js
-echo "Démarrage avec Node.js..."
-node app.js
+# Vérifier si nous avons un Node.js local installé
+if [ -f "./.nodejsrc" ]; then
+  echo "Configuration Node.js locale détectée..."
+  source ./.nodejsrc
+  
+  if [ "$USE_LOCAL_NODEJS" = "1" ] && [ -n "$NODE_PATH" ] && [ -f "$NODE_PATH/node" ]; then
+    echo "✓ Utilisation de Node.js local: $(\"$NODE_PATH/node\" -v)"
+    
+    # Démarrage avec le Node.js local
+    "$NODE_PATH/node" app.js
+  else
+    # Démarrage avec Node.js système
+    echo "Démarrage avec Node.js système: $(node -v)"
+    node app.js
+  fi
+else
+  # Démarrage avec Node.js système
+  echo "Démarrage avec Node.js système: $(node -v)"
+  node app.js
+fi
