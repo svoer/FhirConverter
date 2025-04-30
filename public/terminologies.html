@@ -186,6 +186,9 @@
         return; // Arrêter l'exécution si l'utilisateur n'est pas administrateur
       }
       
+      // Initialiser les listeners d'authentification
+      FHIRHubAuth.initAuthListeners();
+      
       // Gestionnaire pour le bouton de déconnexion
       document.getElementById('logoutBtn').addEventListener('click', function(e) {
         e.preventDefault();
