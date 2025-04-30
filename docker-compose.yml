@@ -13,8 +13,6 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      # Désactiver la détection des versions de Node.js trop récentes dans le conteneur
-      - SKIP_NODE_VERSION_CHECK=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/stats"]
       interval: 30s
