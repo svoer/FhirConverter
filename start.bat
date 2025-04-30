@@ -135,6 +135,14 @@ if not exist "node_modules" (
   )
 )
 
+REM Vérifier si le port 5000 est déjà utilisé et le libérer si nécessaire
+echo Vérification si le port 5000 est déjà utilisé...
+FOR /F "tokens=5" %%P IN ('netstat -ano ^| findstr :5000 ^| findstr LISTENING') DO (
+  echo Port 5000 utilisé par le processus %%P, tentative d'arrêt...
+  taskkill /F /PID %%P
+  echo Processus arrêté.
+)
+
 REM Démarrage direct avec Node.js
 echo Démarrage avec Node.js...
 node app.js

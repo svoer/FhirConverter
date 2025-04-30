@@ -131,6 +131,15 @@ if ! command -v npx &> /dev/null; then
   npm install --no-save typescript ts-node @types/node
 fi
 
+# Vérifier si le port 5000 est déjà utilisé et le libérer si nécessaire
+echo "Vérification si le port 5000 est déjà utilisé..."
+PORT_USED=$(lsof -i:5000 -t 2>/dev/null)
+if [ ! -z "$PORT_USED" ]; then
+  echo "Port 5000 utilisé par le(s) processus $PORT_USED, tentative d'arrêt..."
+  kill -9 $PORT_USED 2>/dev/null
+  echo "Processus arrêté."
+fi
+
 # Démarrage direct avec Node.js
 echo "Démarrage avec Node.js..."
 node app.js

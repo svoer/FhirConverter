@@ -725,7 +725,18 @@ app.get('/api/terminology/french', authCombined, (req, res) => {
   }
 });
 
-// Démarrage du serveur
-app.listen(PORT, () => {
+// Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
+const server = app.listen(PORT, () => {
   console.log(`[SERVER] FHIRHub démarré sur le port ${PORT}`);
+});
+
+// Gestion des erreurs de démarrage du serveur
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`[SERVER ERROR] Le port ${PORT} est déjà utilisé par une autre application. Essayez de modifier la variable PORT dans le fichier .env ou d'arrêter l'application qui utilise ce port.`);
+    process.exit(1);
+  } else {
+    console.error('[SERVER ERROR]', error);
+    process.exit(1);
+  }
 });
