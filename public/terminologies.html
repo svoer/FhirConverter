@@ -404,8 +404,12 @@
             formData.append('type', terminologyType);
             
             // Envoyer le fichier
+            const token = localStorage.getItem('token');
             const response = await fetch('/api/terminology/import', {
               method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
               body: formData
             });
             
@@ -438,7 +442,12 @@
       // Chargement des statistiques des terminologies
       async function loadTerminologyStats() {
         try {
-          const response = await fetch('/api/terminology/french');
+          const token = localStorage.getItem('token');
+          const response = await fetch('/api/terminology/french', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (!response.ok) throw new Error('Erreur lors du chargement des statistiques');
           
           const data = await response.json();
@@ -460,7 +469,12 @@
       // Chargement des fichiers de terminologie
       async function loadTerminologyFiles() {
         try {
-          const response = await fetch('/api/terminology/files');
+          const token = localStorage.getItem('token');
+          const response = await fetch('/api/terminology/files', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (!response.ok) throw new Error('Erreur lors du chargement des fichiers');
           
           const data = await response.json();
@@ -504,7 +518,12 @@
       // Aperçu d'un fichier de terminologie
       async function previewTerminologyFile(filename) {
         try {
-          const response = await fetch(`/api/terminology/files/${encodeURIComponent(filename)}`);
+          const token = localStorage.getItem('token');
+          const response = await fetch(`/api/terminology/files/${encodeURIComponent(filename)}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (!response.ok) throw new Error('Erreur lors du chargement du fichier');
           
           const data = await response.json();
@@ -518,20 +537,44 @@
       
       // Téléchargement d'un fichier de terminologie
       function downloadTerminologyFile(filename) {
+        const token = localStorage.getItem('token');
         const url = `/api/terminology/files/${encodeURIComponent(filename)}/download`;
         
+        // Créer un élément temporaire d'ancrage
         const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        
+        // Créer une requête pour télécharger avec authentification
+        fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(response => response.blob())
+        .then(blob => {
+          const objectUrl = URL.createObjectURL(blob);
+          a.href = objectUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(objectUrl);
+          addLog(`Téléchargement du fichier ${filename} réussi`);
+        })
+        .catch(error => {
+          console.error("Erreur lors du téléchargement:", error);
+          alert(`Erreur lors du téléchargement : ${error.message}`);
+        });
       }
       
       // Export des terminologies
       btnExportTerminology.addEventListener('click', async () => {
         try {
-          const response = await fetch('/api/terminology/export');
+          const token = localStorage.getItem('token');
+          const response = await fetch('/api/terminology/export', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           if (!response.ok) throw new Error('Erreur lors de l\'exportation');
           
           const blob = await response.blob();
