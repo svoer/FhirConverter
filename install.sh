@@ -1,54 +1,152 @@
 #!/bin/bash
 
 # Script d'installation pour l'application FHIRHub
-# Version 1.0.0
+# Version 1.1.0
 
 echo "=========================================================="
 echo "     Installation de FHIRHub - Convertisseur HL7 vers FHIR"
 echo "=========================================================="
 
-# Vérification de l'environnement
-echo "[1/6] Vérification de l'environnement..."
-if ! command -v node &> /dev/null; then
-  echo "❌ Node.js n'est pas installé. Veuillez installer Node.js v18+ avant de continuer."
-  echo "   https://nodejs.org/fr/download/"
-  exit 1
-fi
+# Définir les variables pour Node.js intégré
+NODE_VERSION="20.15.1"
+NODE_DIR="node-v${NODE_VERSION}-linux-x64"
+NODE_ARCHIVE="${NODE_DIR}.tar.gz"
+NODE_URL="https://nodejs.org/download/release/v${NODE_VERSION}/${NODE_ARCHIVE}"
+NODE_LOCAL_PATH="./vendor/nodejs"
 
-# Vérification de la version de Node.js
-NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
-if [ "$NODE_VERSION" -lt 18 ]; then
-  echo "❌ Version de Node.js trop ancienne: $(node -v). FHIRHub requiert Node.js v18+."
-  echo "   Veuillez mettre à jour Node.js avant de continuer."
-  exit 1
-fi
-if [ "$NODE_VERSION" -gt 20 ]; then
-  echo "❌ Version de Node.js trop récente: $(node -v). FHIRHub requiert Node.js v18-v20."
-  echo "   Certaines dépendances comme better-sqlite3 peuvent ne pas être compatibles avec Node.js v$(node -v)."
-  echo "   Nous recommandons d'utiliser Node.js v20.x LTS pour une compatibilité optimale."
-  echo
-  echo "Voulez-vous quand même continuer? (o/n)"
-  read -r response
-  if [[ ! "$response" =~ ^[oO]$ ]]; then
-    echo "Installation annulée."
+# Créer le répertoire vendor s'il n'existe pas
+mkdir -p ./vendor
+
+# Vérification de l'environnement
+echo "[1/7] Vérification de l'environnement..."
+
+# Fonction pour télécharger et installer Node.js localement
+install_local_nodejs() {
+  echo "📦 Installation locale de Node.js v${NODE_VERSION}..."
+  
+  # Vérifier si l'archive existe déjà
+  if [ ! -f "./vendor/${NODE_ARCHIVE}" ]; then
+    echo "   Téléchargement de Node.js v${NODE_VERSION}..."
+    
+    # Vérifier si curl ou wget est disponible
+    if command -v curl &> /dev/null; then
+      curl -L -o "./vendor/${NODE_ARCHIVE}" "${NODE_URL}" --progress-bar
+    elif command -v wget &> /dev/null; then
+      wget -O "./vendor/${NODE_ARCHIVE}" "${NODE_URL}" --show-progress
+    else
+      echo "❌ Ni curl ni wget n'est installé. Impossible de télécharger Node.js."
+      echo "   Veuillez installer curl ou wget, ou installer Node.js manuellement."
+      exit 1
+    fi
+    
+    if [ $? -ne 0 ]; then
+      echo "❌ Échec du téléchargement de Node.js."
+      exit 1
+    fi
+  else
+    echo "   Archive Node.js déjà téléchargée."
+  fi
+  
+  # Extraire l'archive si le répertoire n'existe pas
+  if [ ! -d "${NODE_LOCAL_PATH}" ]; then
+    echo "   Extraction de Node.js..."
+    mkdir -p "${NODE_LOCAL_PATH}"
+    tar -xzf "./vendor/${NODE_ARCHIVE}" -C "./vendor/"
+    mv "./vendor/${NODE_DIR}"/* "${NODE_LOCAL_PATH}/"
+    rm -rf "./vendor/${NODE_DIR}"
+    
+    if [ $? -ne 0 ]; then
+      echo "❌ Échec de l'extraction de Node.js."
+      exit 1
+    fi
+  else
+    echo "   Node.js déjà extrait."
+  fi
+  
+  echo "✅ Node.js v${NODE_VERSION} installé localement avec succès."
+  
+  # Exporter les variables d'environnement pour utiliser la version locale
+  export PATH="${PWD}/${NODE_LOCAL_PATH}/bin:$PATH"
+  export USE_LOCAL_NODEJS=1
+  
+  # Vérifier l'installation
+  if ! command -v "${PWD}/${NODE_LOCAL_PATH}/bin/node" &> /dev/null; then
+    echo "❌ L'installation locale de Node.js a échoué."
     exit 1
   fi
-  echo "⚠️ Installation avec Node.js $(node -v) - certaines fonctionnalités pourraient ne pas fonctionner correctement."
+  
+  echo "   Version locale de Node.js utilisée: $("${PWD}/${NODE_LOCAL_PATH}/bin/node" -v)"
+}
+
+# Déterminer si Node.js est déjà installé sur le système
+use_system_nodejs=false
+use_local_nodejs=true
+
+if command -v node &> /dev/null; then
+  INSTALLED_NODE_VERSION=$(node -v | cut -d 'v' -f 2)
+  MAJOR_VERSION=$(echo $INSTALLED_NODE_VERSION | cut -d '.' -f 1)
+  
+  if [ "$MAJOR_VERSION" -ge 18 ] && [ "$MAJOR_VERSION" -le 20 ]; then
+    echo "✅ Node.js v${INSTALLED_NODE_VERSION} trouvé et compatible."
+    echo "   Options disponibles :"
+    echo "   1) Utiliser Node.js ${INSTALLED_NODE_VERSION} du système"
+    echo "   2) Installer Node.js v${NODE_VERSION} localement (recommandé pour la compatibilité)"
+    echo "   Votre choix (1 ou 2) ? "
+    read -r choice
+    
+    if [ "$choice" = "1" ]; then
+      use_system_nodejs=true
+      use_local_nodejs=false
+      echo "   ✓ Utilisation de Node.js $(node -v) du système."
+    else
+      echo "   ✓ Installation et utilisation de Node.js v${NODE_VERSION} localement..."
+      install_local_nodejs
+    fi
+  else
+    echo "⚠️ Node.js v${INSTALLED_NODE_VERSION} détecté, mais non optimal pour FHIRHub."
+    echo "   Installation de Node.js v${NODE_VERSION} localement pour assurer la compatibilité..."
+    install_local_nodejs
+  fi
+else
+  echo "❓ Node.js non détecté sur le système."
+  echo "   Installation de Node.js v${NODE_VERSION} localement..."
+  install_local_nodejs
 fi
 
-echo "✅ Environnement compatible (Node.js $(node -v))"
+# Modification du script de démarrage pour utiliser le Node.js local
+if [ "$use_local_nodejs" = true ]; then
+  # Sauvegarder une copie du script de démarrage original si nécessaire
+  if [ ! -f "./start.sh.orig" ]; then
+    cp ./start.sh ./start.sh.orig
+  fi
+  
+  # Modifier le script de démarrage pour utiliser le Node.js local
+  sed -i "s|^node app.js|\"${PWD}/${NODE_LOCAL_PATH}/bin/node\" app.js|g" ./start.sh
+  echo "   ✓ Script de démarrage modifié pour utiliser Node.js local."
+fi
+
+# Utiliser le Node.js local pour le reste de l'installation si nécessaire
+if [ "$use_local_nodejs" = true ]; then
+  NODE_CMD="${PWD}/${NODE_LOCAL_PATH}/bin/node"
+  NPM_CMD="${PWD}/${NODE_LOCAL_PATH}/bin/npm"
+else
+  NODE_CMD="node"
+  NPM_CMD="npm"
+fi
+
+echo "✅ Environnement compatible (Node.js $(${NODE_CMD} -v))"
 
 # Création des répertoires nécessaires
-echo "[2/6] Création des répertoires..."
+echo "[2/7] Création des répertoires..."
 mkdir -p ./data/conversions ./data/history ./data/outputs ./data/test ./logs ./backups
 echo "✅ Structure des dossiers de données créée"
 
 # Installation des dépendances
-echo "[3/6] Installation des dépendances..."
-npm install
+echo "[3/7] Installation des dépendances..."
+$NPM_CMD install
 
 # Configuration de l'environnement
-echo "[4/6] Configuration de l'environnement..."
+echo "[4/7] Configuration de l'environnement..."
 if [ ! -f "./.env" ]; then
   cat > ./.env << EOF
 # Configuration FHIRHub
@@ -63,7 +161,7 @@ else
 fi
 
 # Initialisation de la base de données
-echo "[5/6] Initialisation de la base de données..."
+echo "[5/7] Initialisation de la base de données..."
 echo "[TERMINOLOGY] Préparation des terminologies françaises..."
 
 # Vérifier que le dossier french_terminology existe et contient les fichiers nécessaires
@@ -136,8 +234,30 @@ EOF
 fi
 
 # Finalisation
-echo "[6/6] Finalisation de l'installation..."
+echo "[6/7] Finalisation de l'installation..."
 chmod +x ./start.sh
+
+# Sauvegarder les informations sur le Node.js utilisé
+echo "[7/7] Enregistrement des informations d'environnement..."
+if [ "$use_local_nodejs" = true ]; then
+  echo "✅ Node.js local intégré: v${NODE_VERSION}"
+  cat > ./.nodejsrc << EOF
+# FHIRHub Node.js Configuration
+NODE_VERSION=${NODE_VERSION}
+NODE_PATH=${PWD}/${NODE_LOCAL_PATH}/bin
+USE_LOCAL_NODEJS=1
+EOF
+  echo "✅ Fichier .nodejsrc créé pour utiliser le Node.js intégré"
+else
+  echo "✅ Node.js système utilisé: $(node -v)"
+  cat > ./.nodejsrc << EOF
+# FHIRHub Node.js Configuration
+NODE_VERSION=$(node -v)
+NODE_PATH=
+USE_LOCAL_NODEJS=0
+EOF
+  echo "✅ Fichier .nodejsrc créé pour utiliser le Node.js système"
+fi
 
 echo "=========================================================="
 echo "     ✅ Installation de FHIRHub terminée avec succès"
