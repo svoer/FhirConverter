@@ -1,5 +1,5 @@
 // Script simple pour analyser la structure du segment IN1
-const in1Segment = "IN1|1|972|||||||||||20251231|||YEHOUESSI^HERMAS JEAN RICHARD|||||||||||||||||||||||||||||||||160059932710027";
+const in1Segment = "IN1|1|123|||||||||||20251231|||DUPONT^JEAN MARIE|||||||||||||||||||||||||||||||||123456789012345";
 
 console.log("Analyse du segment IN1:", in1Segment);
 const fields = in1Segment.split('|');

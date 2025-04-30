@@ -31,7 +31,7 @@
         "identifier": [
           {
             "system": "urn:CEGI",
-            "value": "442777",
+            "value": "123456",
             "type": {
               "coding": [
                 {
@@ -47,7 +47,7 @@
           },
           {
             "system": "urn:oid:1.2.250.1.213.1.4.8",
-            "value": "248098060602525",
+            "value": "987654321654321",
             "type": {
               "coding": [
                 {
@@ -77,7 +77,7 @@
           },
           {
             "system": "urn:CEGI",
-            "value": "1000345108",
+            "value": "987654321",
             "type": {
               "coding": [
                 {
@@ -94,14 +94,14 @@
         ],
         "name": [
           {
-            "family": "SECLET",
+            "family": "DURAND",
             "use": "official",
             "prefix": [
               "MME"
             ]
           },
           {
-            "family": "SECLET",
+            "family": "DURAND",
             "use": "official",
             "prefix": [
               "MME"
@@ -113,10 +113,10 @@
         "address": [
           {
             "line": [
-              "7 RUE DU BOUJONNIER"
+              "7 RUE DE LA MAIRIE"
             ],
-            "city": "FORMERIE",
-            "postalCode": "60220",
+            "city": "PARIS",
+            "postalCode": "75001",
             "country": "FRA",
             "use": "home",
             "extension": [
@@ -140,14 +140,14 @@
         "id": "3b9d25a9-c9b8-4a1a-aeb4-fda31c83fda3",
         "name": [
           {
-            "family": "SECLET",
+            "family": "DURAND",
             "use": "official",
             "prefix": [
               "MME"
             ]
           },
           {
-            "family": "SECLET",
+            "family": "DURAND",
             "use": "official",
             "prefix": [
               "MME"
@@ -159,10 +159,10 @@
         "address": [
           {
             "line": [
-              "7 RUE DU BOUJONNIER"
+              "7 RUE DE LA MAIRIE"
             ],
-            "city": "FORMERIE",
-            "postalCode": "60220",
+            "city": "PARIS",
+            "postalCode": "75001",
             "country": "FRA",
             "use": "home",
             "extension": [

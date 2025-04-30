@@ -9,12 +9,12 @@
         "identifier": [
           {
             "system": "urn:oid:1.2.250.1.213.1.4.8",
-            "value": "442777"
+            "value": "123456"
           }
         ],
         "name": [
           {
-            "family": "SECLET",
+            "family": "DURAND",
             "given": [
               ""
             ],
