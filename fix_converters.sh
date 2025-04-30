@@ -35,6 +35,31 @@ elif [ ! -f "src/converters/hl7ToFhirConverter.js" ] && [ ! -f "src/converters/H
     exit 1
 fi
 
+# Vérifier s'il existe des différences de casse pour les fichiers de terminologie
+if [ -f "french_terminology_adapter.js" ] && [ ! -f "src/terminology/french_terminology_adapter.js" ] && [ -f "src/terminology/FrenchTerminologyAdapter.js" ]; then
+    echo -e "${YELLOW}Problème potentiel détecté : Fichier de terminologie avec des casses différentes${NC}"
+    
+    # Créer un lien de compatibilité pour le fichier french_terminology_adapter.js
+    echo -e "Création d'un lien symbolique pour la compatibilité de french_terminology_adapter.js..."
+    
+    # Créer un fichier relais à la racine si nécessaire
+    if [ -f "french_terminology_adapter.js" ]; then
+        cat > french_terminology_adapter.js << 'EOF'
+/**
+ * Point d'entrée uniformisé pour l'adaptateur de terminologie française
+ * Résout les problèmes de casse dans les imports
+ */
+
+// Importer le vrai adaptateur (avec une casse cohérente)
+const adapter = require('./src/terminology/FrenchTerminologyAdapter');
+
+// Exporter toutes les fonctions de l'adaptateur
+module.exports = adapter;
+EOF
+        echo -e "${GREEN}Lien créé avec succès pour french_terminology_adapter.js${NC}"
+    fi
+fi
+
 # Vérifier si le fichier src/index.js existe
 if [ -f "src/index.js" ]; then
     echo -e "${YELLOW}Mise à jour de src/index.js pour garantir des imports corrects...${NC}"

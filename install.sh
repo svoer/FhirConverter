@@ -49,6 +49,13 @@ rm -rf node_modules package-lock.json
 echo -e "${YELLOW}Installation des dépendances...${NC}"
 npm install
 
+# Vérifier si les modules HL7 sont installés
+echo -e "${YELLOW}Vérification des modules HL7...${NC}"
+if ! npm list hl7 &> /dev/null || ! npm list simple-hl7 &> /dev/null || ! npm list hl7-standard &> /dev/null; then
+    echo -e "${YELLOW}Installation des modules HL7 manquants...${NC}"
+    npm install hl7 simple-hl7 hl7-standard hl7-parser --save
+fi
+
 # Vérifier si l'installation a réussi
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}Installation réussie!${NC}"
@@ -56,6 +63,12 @@ if [ $? -eq 0 ]; then
     
     # Créer les dossiers nécessaires
     mkdir -p data/conversions data/outputs data/history data/test
+    
+    # Si le fichier de correction existe, l'exécuter
+    if [ -f "fix_converters.sh" ]; then
+        echo -e "${YELLOW}Application des corrections de modules...${NC}"
+        bash fix_converters.sh
+    fi
     
     echo -e "${GREEN}FHIRHub est prêt à être utilisé.${NC}"
     echo -e "Pour démarrer l'application, exécutez: ${YELLOW}bash start.sh${NC}"
