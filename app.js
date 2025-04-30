@@ -741,6 +741,7 @@ const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const devApiRoutes = require('./routes/dev-api');
 const cacheRoutes = require('./routes/cache');
+const terminologyRoutes = require('./routes/terminology');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
@@ -749,33 +750,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dev', devApiRoutes);
 app.use('/api/cache', cacheRoutes);
-
-/**
- * Route pour obtenir les informations sur les terminologies françaises
- */
-app.get('/api/terminology/french', authCombined, (req, res) => {
-  try {
-    const terminologyData = {
-      version: fhirHub.getTerminologyVersion(),
-      lastUpdated: require('./data/french_terminology_mappings.json').lastUpdated,
-      systems: fhirHub.frenchTerminology.FRENCH_SYSTEMS,
-      oids: fhirHub.frenchTerminology.FRENCH_OIDS
-    };
-    
-    res.json({
-      success: true,
-      data: terminologyData
-    });
-  } catch (error) {
-    console.error('[TERMINOLOGY ERROR]', error);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Terminology Error',
-      message: error.message || 'Erreur inconnue'
-    });
-  }
-});
+app.use('/api/terminology', terminologyRoutes);
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
 const server = app.listen(PORT, () => {
