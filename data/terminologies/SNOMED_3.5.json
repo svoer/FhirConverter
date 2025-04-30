@@ -1,8 +1,0 @@
-{
-  "name": "SNOMED 3.5",
-  "url": "https://mos.esante.gouv.fr/NOS/SNOMED_35/FHIR/SNOMED35",
-  "oid": "1.2.250.1.213.2.12",
-  "concepts": [],
-  "cached": true,
-  "offline": true
-}

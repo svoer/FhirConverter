@@ -1,8 +1,0 @@
-{
-  "name": "SNOMED CT",
-  "url": "http://snomed.info/sct",
-  "oid": "2.16.840.1.113883.6.96",
-  "concepts": [],
-  "cached": true,
-  "offline": true
-}

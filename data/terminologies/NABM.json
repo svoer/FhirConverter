@@ -1,8 +1,0 @@
-{
-  "name": "NABM",
-  "url": "https://mos.esante.gouv.fr/NOS/NABM/FHIR/NABM",
-  "oid": "1.2.250.1.213.1.1.5.5",
-  "concepts": [],
-  "cached": true,
-  "offline": true
-}

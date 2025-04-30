@@ -1,8 +1,0 @@
-{
-  "name": "UCD",
-  "url": "https://mos.esante.gouv.fr/NOS/UCD/FHIR/UCD",
-  "oid": "1.2.250.1.213.2.3.1",
-  "concepts": [],
-  "cached": true,
-  "offline": true
-}
