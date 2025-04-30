@@ -478,15 +478,11 @@
         });
         
         // Masquer les éléments de gestion des clés API
-        const cardContent = document.querySelector('.card-content');
-        if (cardContent) {
-          cardContent.style.display = 'none';
-        }
-        
-        const newKeyBtn = document.getElementById('newKeyBtn');
-        if (newKeyBtn) {
-          newKeyBtn.style.display = 'none';
-        }
+        document.querySelectorAll('.card, .page-header .btn-container').forEach(element => {
+          if (element) {
+            element.style.display = 'none';
+          }
+        });
         
         return; // Arrêter l'exécution du reste du script
       }

@@ -358,15 +358,11 @@
         });
         
         // Masquer les éléments de gestion des applications
-        const appsContainer = document.getElementById('appsContainer');
-        if (appsContainer) {
-          appsContainer.style.display = 'none';
-        }
-        
-        const newAppBtn = document.getElementById('newAppBtn');
-        if (newAppBtn) {
-          newAppBtn.style.display = 'none';
-        }
+        document.querySelectorAll('.applications-list, .applications-header, .page-header .btn-container').forEach(element => {
+          if (element) {
+            element.style.display = 'none';
+          }
+        });
         
         return; // Arrêter l'exécution du reste du script
       }
