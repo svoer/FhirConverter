@@ -23,6 +23,7 @@
     "hl7-parser": "^0.2.1",
     "hl7-standard": "^1.0.4",
     "jsonwebtoken": "^9.0.2",
+    "marked": "^15.0.11",
     "morgan": "^1.10.0",
     "simple-hl7": "^3.3.0",
     "swagger-jsdoc": "^6.2.8",

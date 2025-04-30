@@ -12,6 +12,7 @@ const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
 const { setupSwagger } = require('./swagger');
+const documentationRoutes = require('./server/routes/documentation');
 
 /**
  * Configuration de l'application
@@ -62,6 +63,9 @@ setupSwagger(app);
 
 // Servir les fichiers statiques
 app.use(express.static('public'));
+
+// Routes pour la documentation markdown des types de messages
+app.use('/docs', documentationRoutes);
 
 // Base de données SQLite simplifiée
 const Database = require('better-sqlite3');
