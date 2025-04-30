@@ -66,6 +66,18 @@ npm run dev
 npm test
 ```
 
+## Déploiement avec Docker
+
+FHIRHub peut être facilement déployé avec Docker, ce qui simplifie l'installation et la maintenance:
+
+```bash
+# Initialisation rapide
+./docker-init.sh
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+Pour plus d'informations sur le déploiement Docker, consultez [la documentation Docker](docs/docker_deployment.md).
+
 ## Mise à jour des terminologies ANS
 
 Les fichiers de terminologie française se trouvent dans le dossier `french_terminology/`. Voici les principaux fichiers que vous pouvez mettre à jour:
@@ -91,6 +103,8 @@ python get_french_terminology.py
 # Extraire et organiser les systèmes pertinents
 python extract_french_systems.py
 ```
+
+Pour plus d'informations sur les scripts de terminologie, consultez [la documentation des scripts](docs/french_terminology_scripts.md).
 
 ## Licence
 

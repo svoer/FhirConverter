@@ -215,6 +215,8 @@
         <a href="#api">APIs</a>
         <a href="#cache">Système de Cache</a>
         <a href="#database">Base de Données</a>
+        <a href="#docker">Déploiement Docker</a>
+        <a href="#terminology-scripts">Scripts Terminologie</a>
         <a href="#prerequites">Prérequis</a>
       </div>
       
@@ -792,6 +794,96 @@ python extract_french_systems.py</pre>
         <div class="info-box">
           <p><strong>Note :</strong> Par défaut, les logs de conversion sont conservés pendant 30 jours maximum pour éviter une croissance excessive de la base de données.</p>
         </div>
+      </div>
+      
+      <div id="docker" class="documentation-section">
+        <h2>Déploiement avec Docker</h2>
+        <p>FHIRHub offre une solution de déploiement basée sur Docker qui facilite l'installation, la maintenance et les mises à jour de l'application.</p>
+        
+        <h3>Architecture Docker</h3>
+        <p>L'architecture Docker de FHIRHub s'appuie sur des volumes persistants pour garantir la pérennité des données :</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Volumes persistants</div>
+            <div class="step-description">Les données essentielles (base de données, cache, logs, terminologies) sont stockées dans des volumes persistants indépendants du conteneur.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Script d'initialisation</div>
+            <div class="step-description">Le script <code>docker-init.sh</code> automatise la configuration pour un déploiement rapide et simplifié.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Configuration par environnement</div>
+            <div class="step-description">Les variables d'environnement permettent de personnaliser le déploiement selon les besoins (ports, chemins, secrets).</div>
+          </div>
+        </div>
+        
+        <h3>Méthodes de déploiement</h3>
+        <pre class="code-block"># Méthode rapide (recommandée)
+./docker-init.sh
+docker-compose -f docker-compose.prod.yml up -d
+
+# Accès à l'application
+http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Fonctionnalités Docker</div>
+          <ul>
+            <li><strong>Sauvegarde automatique</strong> des données dans des volumes persistants</li>
+            <li><strong>Multi-environnement</strong> avec configurations développement et production</li>
+            <li><strong>Mises à jour simplifiées</strong> sans perte de données</li>
+            <li><strong>Support HTTPS</strong> via configuration avec reverse proxy</li>
+          </ul>
+        </div>
+        
+        <p>Pour une documentation complète sur le déploiement Docker, consultez <a href="/docs/docker_deployment">le guide détaillé de déploiement</a>.</p>
+      </div>
+      
+      <div id="terminology-scripts" class="documentation-section">
+        <h2>Scripts de Gestion des Terminologies Françaises</h2>
+        <p>FHIRHub intègre des scripts Python pour maintenir à jour les terminologies françaises nécessaires à la conversion des messages HL7 vers FHIR.</p>
+        
+        <h3>Scripts disponibles</h3>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">get_french_terminology.py</div>
+            <div class="step-description">Script principal qui récupère les terminologies depuis le Serveur Multi-Terminologies (SMT) de l'ANS.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">extract_french_systems.py</div>
+            <div class="step-description">Script d'extraction qui traite les données brutes pour générer les mappings utilisés par le convertisseur.</div>
+          </div>
+        </div>
+        
+        <h3>Terminologies supportées</h3>
+        <div class="tech-spec">
+          <div class="tech-spec-title">Systèmes de terminologie français</div>
+          <ul>
+            <li><strong>SNOMED CT</strong> - Nomenclature médicale</li>
+            <li><strong>LOINC</strong> - Analyses et observations</li>
+            <li><strong>CIM-10/CIM-11</strong> - Classifications des maladies</li>
+            <li><strong>CCAM</strong> - Classification des actes médicaux</li>
+            <li><strong>INS</strong> - Identifiants nationaux de santé</li>
+            <li><strong>CPS</strong> - Cartes de professionnels de santé</li>
+          </ul>
+        </div>
+        
+        <p>Pour une documentation complète sur les scripts de terminologie, consultez <a href="/docs/french_terminology_scripts">le guide détaillé des scripts de terminologie</a>.</p>
       </div>
       
       <div id="prerequites" class="documentation-section">
