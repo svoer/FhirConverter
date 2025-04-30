@@ -37,6 +37,52 @@ echo ✓ Structure des dossiers de données créée
 
 REM Installation des dépendances
 echo [3/6] Installation des dépendances...
+
+REM Vérification du fichier package.json
+if not exist "package.json" (
+  echo X Erreur: Fichier package.json introuvable.
+  echo   Création d'un fichier package.json par défaut...
+  
+  echo {^
+  "name": "fhirhub",^
+  "version": "1.0.0",^
+  "description": "Convertisseur HL7 vers FHIR avec terminologies françaises",^
+  "main": "app.js",^
+  "scripts": {^
+    "start": "node app.js",^
+    "dev": "nodemon app.js"^
+  },^
+  "dependencies": {^
+    "better-sqlite3": "^8.5.0",^
+    "body-parser": "^1.20.2",^
+    "cors": "^2.8.5",^
+    "dotenv": "^16.0.3",^
+    "express": "^4.18.2",^
+    "fhir": "^4.12.0",^
+    "fhir.js": "^0.0.22",^
+    "helmet": "^7.0.0",^
+    "hl7-parser": "^1.0.1",^
+    "hl7-standard": "^1.0.2",^
+    "jsonwebtoken": "^9.0.0",^
+    "morgan": "^1.10.0",^
+    "simple-hl7": "^3.2.0",^
+    "swagger-jsdoc": "^6.2.8",^
+    "swagger-ui-express": "^4.6.3",^
+    "uuid": "^9.0.0"^
+  },^
+  "devDependencies": {^
+    "nodemon": "^2.0.22"^
+  }^
+}> package.json
+)
+
+REM Suppression complet du node_modules s'il existe pour une installation propre
+if exist "node_modules" (
+  echo Suppression des modules existants pour une installation propre...
+  rmdir /s /q node_modules
+)
+
+echo Installation des dépendances Node.js...
 call npm install
 
 REM Configuration de l'environnement

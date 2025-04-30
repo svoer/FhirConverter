@@ -123,6 +123,18 @@ echo [TERMINOLOGY] Chargement des systèmes français
 echo [TERMINOLOGY] Chargement des systèmes communs
 echo [TERMINOLOGY] Service de terminologie initialisé avec succès
 
+REM Vérification et installation des dépendances si nécessaires
+echo Vérification des dépendances...
+if not exist "node_modules" (
+  echo Les modules Node.js ne sont pas installés. Installation en cours...
+  call npm install
+) else (
+  if not exist "node_modules\express" (
+    echo Module express manquant. Réinstallation des dépendances...
+    call npm install
+  )
+)
+
 REM Démarrage direct avec Node.js
 echo Démarrage avec Node.js...
 node app.js
