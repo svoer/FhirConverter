@@ -10,7 +10,16 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const archiver = require('archiver');
-const { adminRequired } = require('../middleware/authMiddleware');
+const authCombined = require('../middleware/authCombined');
+
+// Middleware pour vérifier si l'utilisateur est administrateur
+const jwtAuth = require('../middleware/jwtAuth');
+
+// Middleware d'authentification administrateur avec JWT
+const adminAuthMiddleware = jwtAuth({
+  required: true,
+  roles: ['admin']
+});
 
 // Configuration de multer pour l'upload de fichiers
 const storage = multer.diskStorage({
@@ -102,7 +111,7 @@ router.get('/french', async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/files', adminRequired, async (req, res) => {
+router.get('/files', adminAuthMiddleware, async (req, res) => {
   try {
     const files = fs.readdirSync(TERMINOLOGY_DIR)
       .filter(file => file.endsWith('.json'))
@@ -155,7 +164,7 @@ router.get('/files', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/files/:filename', adminRequired, async (req, res) => {
+router.get('/files/:filename', adminAuthMiddleware, async (req, res) => {
   try {
     const filename = req.params.filename;
     const filePath = path.join(TERMINOLOGY_DIR, filename);
@@ -205,7 +214,7 @@ router.get('/files/:filename', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/files/:filename/download', adminRequired, async (req, res) => {
+router.get('/files/:filename/download', adminAuthMiddleware, async (req, res) => {
   try {
     const filename = req.params.filename;
     const filePath = path.join(TERMINOLOGY_DIR, filename);
@@ -265,7 +274,7 @@ router.get('/files/:filename/download', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/import', adminRequired, upload.single('file'), async (req, res) => {
+router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -387,7 +396,7 @@ router.post('/import', adminRequired, upload.single('file'), async (req, res) =>
  *       500:
  *         description: Erreur serveur
  */
-router.get('/export', adminRequired, async (req, res) => {
+router.get('/export', adminAuthMiddleware, async (req, res) => {
   try {
     const exportFilename = `terminologies_export_${new Date().toISOString().substring(0, 10)}.zip`;
     
