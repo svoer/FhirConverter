@@ -61,13 +61,17 @@ const TERMINOLOGY_DIR = path.join(__dirname, '../french_terminology');
  *     description: Retourne les informations sur les systèmes de terminologie français utilisés pour la conversion
  *     tags:
  *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
  *     responses:
  *       200:
  *         description: Informations récupérées avec succès
+ *       401:
+ *         description: Non autorisé
  *       500:
  *         description: Erreur serveur
  */
-router.get('/french', async (req, res) => {
+router.get('/french', adminAuthMiddleware, async (req, res) => {
   try {
     // Récupérer les données des terminologies
     const systems = getJsonFileContent('ans_terminology_systems.json');
