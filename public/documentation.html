@@ -211,6 +211,7 @@
         <a href="#parser">Analyse HL7</a>
         <a href="#converter">Convertisseur</a>
         <a href="#terminology">Terminologies</a>
+        <a href="#message-types">Types de Messages</a>
         <a href="#api">APIs</a>
         <a href="#prerequites">Prérequis</a>
       </div>
@@ -376,6 +377,68 @@ function parseHL7Message(hl7Message) {
           <li><strong>Gestion des exceptions</strong> pour les structures non-standard parfois rencontrées dans les SIH français.</li>
           <li><strong>Analyse contextuelle</strong> pour déterminer le bon type d'identifiant (IPP, INS, INS-C) selon les OIDs français.</li>
         </ul>
+      </div>
+      
+      <div id="message-types" class="documentation-section">
+        <h2>Types de Messages HL7 supportés</h2>
+        <p>FHIRHub est conçu pour prendre en charge différents types de messages HL7, avec une prise en charge complète des messages ADT et une extension progressive vers d'autres types.</p>
+        
+        <h3>Documentation détaillée par type de message</h3>
+        <p>Une documentation technique détaillée est disponible pour chaque type de message, accessible dans le dossier <code>docs/message_types</code> du projet :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Types de messages documentés</div>
+          <table class="terminology-mapping">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Statut</th>
+                <th>Documentation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>ADT</strong></td>
+                <td>Admission, Discharge, Transfer</td>
+                <td><span style="color: #28a745;">Implémenté</span></td>
+                <td><a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/ADT/README.md" target="_blank">Documentation ADT</a></td>
+              </tr>
+              <tr>
+                <td><strong>ORU</strong></td>
+                <td>Observation Results Unsolicited</td>
+                <td><span style="color: #ffc107;">Documentation</span></td>
+                <td>
+                  <a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/ORU/README.md" target="_blank">README</a> | 
+                  <a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/ORU/MAPPING.md" target="_blank">Mapping</a> | 
+                  <a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/ORU/REQUIREMENTS.md" target="_blank">Requirements</a>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>SIU</strong></td>
+                <td>Scheduling Information Unsolicited</td>
+                <td><span style="color: #ffc107;">Documentation</span></td>
+                <td><a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/SIU/README.md" target="_blank">Documentation SIU</a></td>
+              </tr>
+              <tr>
+                <td><strong>MDM</strong></td>
+                <td>Medical Document Management</td>
+                <td><span style="color: #ffc107;">Documentation</span></td>
+                <td><a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/MDM/README.md" target="_blank">Documentation MDM</a></td>
+              </tr>
+              <tr>
+                <td><strong>ORM</strong></td>
+                <td>Order Message</td>
+                <td><span style="color: #ffc107;">Documentation</span></td>
+                <td><a href="https://github.com/votre-org/fhirhub/blob/main/docs/message_types/ORM/README.md" target="_blank">Documentation ORM</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="info-box">
+          <p><strong>Comment contribuer :</strong> Pour ajouter la prise en charge d'un nouveau type de message, consultez la documentation dans le dossier correspondant. Chaque dossier contient des informations détaillées sur les mappings entre les segments HL7 et les ressources FHIR, ainsi que les exigences pour l'implémentation.</p>
+        </div>
       </div>
       
       <div id="converter" class="documentation-section">
