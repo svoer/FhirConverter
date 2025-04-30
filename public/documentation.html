@@ -576,12 +576,32 @@ function parseHL7Message(hl7Message) {
           </tbody>
         </table>
         
-        <h3>Mise à jour des terminologies</h3>
+        <h3>Terminologies préchargées</h3>
         <p>FHIRHub est conçu pour fonctionner entièrement hors-ligne avec des terminologies préchargées. Ces terminologies peuvent être mises à jour via les fonctionnalités d'administration lorsqu'une connexion Internet est disponible.</p>
         
         <div class="warning-box">
           <p><strong>Note importante :</strong> Par défaut, FHIRHub inclut les terminologies françaises les plus récentes publiées par l'ANS. Assurez-vous de maintenir ces terminologies à jour pour garantir la conformité avec les dernières exigences réglementaires.</p>
         </div>
+
+        <h3>Mise à jour des terminologies</h3>
+        <p>Les terminologies françaises peuvent être mises à jour en modifiant les fichiers suivants dans le dossier <code>french_terminology/</code> :</p>
+        
+        <ul>
+          <li><strong>ans_common_codes.json</strong> - Codes communs de l'ANS (mouvements, professions, etc.)</li>
+          <li><strong>ans_oids.json</strong> - Liste des OIDs français pour les identifiants</li>
+          <li><strong>ans_terminology_systems.json</strong> - Systèmes de terminologie français</li>
+          <li><strong>fhir_r4_french_systems.json</strong> - Systèmes FHIR R4 français</li>
+        </ul>
+        
+        <p>Pour mettre à jour automatiquement ces fichiers, deux scripts Python sont fournis :</p>
+        
+        <pre class="code-block"># Récupérer les dernières terminologies depuis l'API de l'ANS
+python get_french_terminology.py
+
+# Extraire et organiser les systèmes pertinents
+python extract_french_systems.py</pre>
+        
+        <p>Ces scripts permettent de maintenir les terminologies à jour avec les dernières publications de l'ANS.</p>
       </div>
       
       <div id="api" class="documentation-section">

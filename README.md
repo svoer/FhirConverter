@@ -1,6 +1,4 @@
-# FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
-
-![FHIRHub Logo](/public/img/flame-icon-white.svg)
+# 🔥 FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
 
 ## Le futur du partage de données santé, dès aujourd'hui.
 
@@ -96,7 +94,8 @@ python extract_french_systems.py
 
 ## Licence
 
-Ce projet est distribué sous licence [MIT](LICENSE).
+Ce projet est distribué sous licence propriétaire. Tous droits réservés.
+Aucune utilisation, modification ou distribution n'est autorisée sans l'accord écrit préalable du propriétaire.
 
 ## Support
 
