@@ -27,7 +27,8 @@ echo "✅ Environnement compatible (Node.js $(node -v))"
 
 # Création des répertoires nécessaires
 echo "[2/6] Création des répertoires..."
-mkdir -p ./data ./logs ./backups
+mkdir -p ./data/conversions ./data/history ./data/outputs ./data/test ./logs ./backups
+echo "✅ Structure des dossiers de données créée"
 
 # Installation des dépendances
 echo "[3/6] Installation des dépendances..."
@@ -51,9 +52,18 @@ fi
 # Initialisation de la base de données
 echo "[5/6] Initialisation de la base de données..."
 echo "[TERMINOLOGY] Préparation des terminologies françaises..."
-mkdir -p ./french_terminology
-if [ ! -f "./french_terminology/mappings.json" ]; then
-  cat > ./french_terminology/mappings.json << EOF
+
+# Vérifier que le dossier french_terminology existe et contient les fichiers nécessaires
+if [ ! -d "./french_terminology" ]; then
+  echo "⚠️ Le dossier french_terminology n'existe pas. Création..."
+  mkdir -p ./french_terminology
+  mkdir -p ./french_terminology/cache
+fi
+
+# Créer ou vérifier le fichier de configuration des OIDs
+if [ ! -f "./french_terminology/ans_oids.json" ]; then
+  echo "⚠️ Création du fichier ans_oids.json par défaut..."
+  cat > ./french_terminology/ans_oids.json << EOF
 {
   "version": "1.0.0",
   "lastUpdated": "2025-04-28T10:15:30Z",
@@ -62,11 +72,52 @@ if [ ! -f "./french_terminology/mappings.json" ]; then
     "rpps": "urn:oid:1.2.250.1.71.4.2.1",
     "adeli": "urn:oid:1.2.250.1.71.4.2.2",
     "finess": "urn:oid:1.2.250.1.71.4.2.2"
-  },
+  }
+}
+EOF
+fi
+
+# Créer ou vérifier le fichier de codes communs
+if [ ! -f "./french_terminology/ans_common_codes.json" ]; then
+  echo "⚠️ Création du fichier ans_common_codes.json par défaut..."
+  cat > ./french_terminology/ans_common_codes.json << EOF
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-04-28T10:15:30Z",
   "codeSystemMap": {
     "profession": "https://mos.esante.gouv.fr/NOS/TRE_G15-ProfessionSante/FHIR/TRE-G15-ProfessionSante",
     "specialite": "https://mos.esante.gouv.fr/NOS/TRE_R38-SpecialiteOrdinale/FHIR/TRE-R38-SpecialiteOrdinale"
   }
+}
+EOF
+fi
+
+# Créer ou vérifier le fichier des systèmes de terminologie
+if [ ! -f "./french_terminology/ans_terminology_systems.json" ]; then
+  echo "⚠️ Création du fichier ans_terminology_systems.json par défaut..."
+  cat > ./french_terminology/ans_terminology_systems.json << EOF
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-04-28T10:15:30Z",
+  "systems": {
+    "LOINC": "http://loinc.org",
+    "UCUM": "http://unitsofmeasure.org",
+    "SNOMED-CT": "http://snomed.info/sct"
+  }
+}
+EOF
+fi
+
+# Vérifier que la configuration est complète
+if [ ! -f "./french_terminology/config.json" ]; then
+  echo "⚠️ Création du fichier config.json par défaut..."
+  cat > ./french_terminology/config.json << EOF
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-04-28T10:15:30Z",
+  "cacheEnabled": true,
+  "cacheDuration": 86400,
+  "defaultLanguage": "fr"
 }
 EOF
 fi

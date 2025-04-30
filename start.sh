@@ -12,15 +12,25 @@ echo "Préparation du Serveur Multi-Terminologies français terminée"
 echo "Systèmes terminologiques ANS intégrés via le système de mapping centralisé"
 echo "----------------------------------------------------"
 
-# Vérification de l'existence du dossier data
+# Vérification de l'existence du dossier data et ses sous-dossiers
 if [ ! -d "./data" ]; then
-  mkdir -p ./data
-  echo "Création du dossier data pour la base de données SQLite"
+  echo "Création des dossiers de données..."
+  mkdir -p ./data/conversions ./data/history ./data/outputs ./data/test
+  echo "✅ Structure des dossiers de données créée"
+else
+  # Vérification des sous-dossiers
+  for subdir in conversions history outputs test; do
+    if [ ! -d "./data/$subdir" ]; then
+      mkdir -p "./data/$subdir"
+      echo "✅ Création du sous-dossier manquant: ./data/$subdir"
+    fi
+  done
 fi
 
-# Vérification de l'existence du dossier src
-if [ ! -d "./src" ]; then
-  echo "Erreur: Le dossier src n'existe pas."
+# Vérification de l'existence des dossiers importants
+if [ ! -d "./src" ] && [ ! -f "./app.js" ]; then
+  echo "Erreur: Structure du projet incorrecte. Ni le dossier src ni le fichier app.js n'ont été trouvés."
+  echo "Vérifiez que vous êtes dans le bon répertoire."
   exit 1
 fi
 
@@ -32,8 +42,8 @@ if [ ! -f "./.env" ]; then
   echo "NODE_ENV=development" >> ./.env
 fi
 
-# Vérification du fichier tsconfig.json
-if [ ! -f "./tsconfig.json" ]; then
+# Vérification des fichiers TypeScript seulement si le dossier src existe
+if [ -d "./src" ] && [ ! -f "./tsconfig.json" ]; then
   echo "Création du fichier tsconfig.json par défaut..."
   cat > ./tsconfig.json << EOF
 {
