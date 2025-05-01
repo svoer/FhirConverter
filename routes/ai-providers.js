@@ -5,6 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const aiProviderService = require('../src/services/aiProviderService');
+const jwtAuth = require('../middleware/jwtAuth');
 const { adminRequired } = require('../middleware/authMiddleware');
 
 /**
@@ -98,7 +99,7 @@ router.get('/', adminRequired, async (req, res) => {
  *       403:
  *         description: Accès refusé
  */
-router.get('/supported', adminRequired, async (req, res) => {
+router.get('/supported', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const supportedProviders = aiProviderService.getSupportedProviders();
     res.json(supportedProviders);
