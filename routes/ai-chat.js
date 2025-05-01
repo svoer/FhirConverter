@@ -11,9 +11,68 @@ const aiProviderService = require('../src/services/aiProviderService');
 const axios = require('axios');
 
 /**
- * @route POST /api/ai/chat
- * @description Envoie une requête au modèle d'IA pour obtenir une réponse
- * @access Privé (Nécessite une authentification JWT)
+ * @swagger
+ * tags:
+ *   name: AI Chat
+ *   description: API pour interagir avec les modèles d'IA
+ */
+
+/**
+ * @swagger
+ * /api/ai/chat:
+ *   post:
+ *     summary: Envoie une requête au modèle d'IA
+ *     description: Permet d'envoyer une conversation au modèle d'IA configuré et de recevoir une réponse
+ *     tags: [AI Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - provider
+ *               - messages
+ *             properties:
+ *               provider:
+ *                 type: string
+ *                 description: Nom du fournisseur d'IA à utiliser
+ *               messages:
+ *                 type: array
+ *                 description: Historique des messages de la conversation
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     role:
+ *                       type: string
+ *                       enum: [system, user, assistant]
+ *                     content:
+ *                       type: string
+ *               max_tokens:
+ *                 type: integer
+ *                 description: Nombre maximum de tokens à générer
+ *                 default: 1000
+ *     responses:
+ *       200:
+ *         description: Réponse générée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 content:
+ *                   type: string
+ *                   description: Contenu de la réponse générée
+ *       400:
+ *         description: Paramètres invalides
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Fournisseur d'IA non trouvé
+ *       500:
+ *         description: Erreur serveur
  */
 router.post('/chat', jwtAuth, async (req, res) => {
   try {
@@ -78,9 +137,21 @@ router.post('/chat', jwtAuth, async (req, res) => {
 });
 
 /**
- * @route GET /api/ai/providers/active
- * @description Récupère la liste des fournisseurs d'IA actifs
- * @access Privé (Nécessite une authentification JWT)
+ * @swagger
+ * /api/ai/providers/active:
+ *   get:
+ *     summary: Récupère la liste des fournisseurs d'IA actifs
+ *     description: Renvoie la liste des fournisseurs d'IA actifs sans leurs clés API
+ *     tags: [AI Chat]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des fournisseurs d'IA actifs
+ *       401:
+ *         description: Non authentifié
+ *       500:
+ *         description: Erreur serveur
  */
 router.get('/providers/active', jwtAuth, async (req, res) => {
   try {
@@ -100,221 +171,207 @@ router.get('/providers/active', jwtAuth, async (req, res) => {
 });
 
 /**
- * Gère les requêtes pour Mistral AI
+ * Gestion des requêtes pour Mistral AI
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-latest';
+  
   try {
-    const url = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
-    
-    // Extraire le modèle à utiliser (par défaut mistral-medium)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['mistral-medium'];
-    const model = models[0];
-    
-    const response = await axios.post(url, {
-      model,
-      messages,
-      max_tokens
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.api_key}`
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: models,
+        messages: messages,
+        max_tokens: max_tokens
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.api_key}`
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.choices[0].message.content,
-      model: model,
-      provider: 'mistral'
+      content: response.data.choices[0].message.content
     };
   } catch (error) {
     console.error('Erreur Mistral AI:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`Erreur Mistral AI: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Gère les requêtes pour OpenAI
+ * Gestion des requêtes pour OpenAI
  */
 async function handleOpenAIRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'https://api.openai.com/v1/chat/completions';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'gpt-4o';
+  
   try {
-    const url = provider.api_url || 'https://api.openai.com/v1/chat/completions';
-    
-    // Extraire le modèle à utiliser (par défaut gpt-4o)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['gpt-4o'];
-    const model = models[0];
-    
-    const response = await axios.post(url, {
-      model,
-      messages,
-      max_tokens
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.api_key}`
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: models,
+        messages: messages,
+        max_tokens: max_tokens
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.api_key}`
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.choices[0].message.content,
-      model: model,
-      provider: 'openai'
+      content: response.data.choices[0].message.content
     };
   } catch (error) {
     console.error('Erreur OpenAI:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`Erreur OpenAI: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Gère les requêtes pour Anthropic (Claude)
+ * Gestion des requêtes pour Anthropic
  */
 async function handleAnthropicRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'https://api.anthropic.com/v1/messages';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'claude-3-7-sonnet-20250219';
+  
   try {
-    const url = provider.api_url || 'https://api.anthropic.com/v1/messages';
+    // Convertir les messages au format Anthropic
+    const anthropicMessages = messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'assistant' : 'user',
+      content: msg.content
+    }));
     
-    // Extraire le modèle à utiliser (par défaut claude-3-7-sonnet-20250219)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['claude-3-7-sonnet-20250219'];
-    const model = models[0];
-    
-    // Convertir le format des messages pour compatibilité Anthropic
-    const systemMessage = messages.find(m => m.role === 'system');
-    const filteredMessages = messages.filter(m => m.role !== 'system');
-    
-    const response = await axios.post(url, {
-      model,
-      messages: filteredMessages,
-      system: systemMessage?.content || '',
-      max_tokens
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': provider.api_key,
-        'anthropic-version': '2023-06-01'
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: models,
+        messages: anthropicMessages,
+        max_tokens: max_tokens
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': provider.api_key,
+          'anthropic-version': '2023-06-01'
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.content[0].text,
-      model: model,
-      provider: 'anthropic'
+      content: response.data.content[0].text
     };
   } catch (error) {
     console.error('Erreur Anthropic:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`Erreur Anthropic: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Gère les requêtes pour Google (Gemini)
+ * Gestion des requêtes pour Google
  */
 async function handleGoogleRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  
   try {
-    // Pour Google, l'URL doit inclure la clé API en tant que paramètre de requête
-    const baseUrl = provider.api_url || 'https://generativelanguage.googleapis.com/v1beta/models';
+    // Convertir les messages au format Google
+    const geminiMessages = messages.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.content }]
+    }));
     
-    // Extraire le modèle à utiliser (par défaut gemini-pro)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['gemini-pro'];
-    const model = models[0];
-    
-    // Construire l'URL avec le modèle et la clé API
-    const url = `${baseUrl}/${model}:generateContent?key=${provider.api_key}`;
-    
-    // Convertir le format des messages pour compatibilité Google
-    const systemMessage = messages.find(m => m.role === 'system');
-    const userMessages = messages.filter(m => m.role !== 'system');
-    
-    // Structure de la requête pour Google
-    const requestBody = {
-      contents: userMessages.map(msg => ({
-        role: msg.role === 'assistant' ? 'MODEL' : 'USER',
-        parts: [{ text: msg.content }]
-      }))
-    };
-    
-    // Ajouter les instructions système si présentes
-    if (systemMessage) {
-      requestBody.systemInstruction = { parts: [{ text: systemMessage.content }] };
-    }
-    
-    const response = await axios.post(url, requestBody, {
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      `${apiUrl}?key=${provider.api_key}`,
+      {
+        contents: geminiMessages,
+        generationConfig: {
+          maxOutputTokens: max_tokens
+        }
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.candidates[0].content.parts[0].text,
-      model: model,
-      provider: 'google'
+      content: response.data.candidates[0].content.parts[0].text
     };
   } catch (error) {
-    console.error('Erreur Google:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    console.error('Erreur Google AI:', error.response?.data || error.message);
+    throw new Error(`Erreur Google AI: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Gère les requêtes pour DeepSeek
+ * Gestion des requêtes pour DeepSeek
  */
 async function handleDeepSeekRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'https://api.deepseek.com/v1/chat/completions';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'deepseek-chat';
+  
   try {
-    const url = provider.api_url || 'https://api.deepseek.com/v1/chat/completions';
-    
-    // Extraire le modèle à utiliser (par défaut deepseek-chat)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['deepseek-chat'];
-    const model = models[0];
-    
-    const response = await axios.post(url, {
-      model,
-      messages,
-      max_tokens
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${provider.api_key}`
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: models,
+        messages: messages,
+        max_tokens: max_tokens
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.api_key}`
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.choices[0].message.content,
-      model: model,
-      provider: 'deepseek'
+      content: response.data.choices[0].message.content
     };
   } catch (error) {
     console.error('Erreur DeepSeek:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`Erreur DeepSeek: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
 /**
- * Gère les requêtes pour Ollama (auto-hébergé)
+ * Gestion des requêtes pour Ollama
  */
 async function handleOllamaRequest(provider, messages, max_tokens) {
+  const apiUrl = provider.api_url || 'http://localhost:11434/api/chat';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'llama2';
+  
   try {
-    const url = provider.api_url || 'http://localhost:11434/api/chat';
-    
-    // Extraire le modèle à utiliser (par défaut llama2)
-    const models = provider.models ? provider.models.split(',').map(m => m.trim()) : ['llama2'];
-    const model = models[0];
-    
-    const response = await axios.post(url, {
-      model,
-      messages,
-      stream: false
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: models,
+        messages: messages,
+        options: {
+          num_predict: max_tokens
+        }
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
     
     return {
-      message: response.data.message.content,
-      model: model,
-      provider: 'ollama'
+      content: response.data.message.content
     };
   } catch (error) {
     console.error('Erreur Ollama:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`Erreur Ollama: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 
