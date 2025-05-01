@@ -56,6 +56,15 @@
         </div>
         <div class="stat-card">
           <div class="stat-icon">
+            <i class="fas fa-file-alt"></i>
+          </div>
+          <div class="stat-info">
+            <h3>Fichiers</h3>
+            <p id="terminology-files-count">Chargement...</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
             <i class="fas fa-sitemap"></i>
           </div>
           <div class="stat-info">
@@ -202,6 +211,7 @@
       const terminologyLastUpdatedEl = document.getElementById('terminology-last-updated');
       const terminologySystemsCountEl = document.getElementById('terminology-systems-count');
       const terminologyOidsCountEl = document.getElementById('terminology-oids-count');
+      const terminologyFilesCountEl = document.getElementById('terminology-files-count');
       const terminologyFilesTableEl = document.getElementById('terminology-files-table');
       const updateLogsEl = document.getElementById('update-logs');
       const fileInputEl = document.getElementById('terminology-file-input');
@@ -450,6 +460,9 @@
           terminologySystemsCountEl.textContent = data.data.systemsCount || 0;
           terminologyOidsCountEl.textContent = data.data.oidsCount || 0;
           
+          // Charger aussi le nombre de fichiers
+          updateFilesCount();
+          
           // Ajouter un log après chargement réussi
           addLog('Statistiques des terminologies chargées avec succès');
         } catch (err) {
@@ -458,12 +471,38 @@
           terminologyLastUpdatedEl.textContent = 'Erreur';
           terminologySystemsCountEl.textContent = 'Erreur';
           terminologyOidsCountEl.textContent = 'Erreur';
+          terminologyFilesCountEl.textContent = 'Erreur';
           
           // Ajouter un log d'erreur
           addLog(`Erreur lors du chargement des statistiques: ${err.message}`);
         }
       }
       
+      // Mettre à jour le compteur de fichiers
+      function updateFilesCount() {
+        try {
+          // Utiliser le fetch asynchrone mais sans attendre le résultat
+          FHIRHubAuth.fetchWithAuth('/api/terminology/files')
+            .then(response => {
+              if (!response.ok) throw new Error('Erreur lors du comptage des fichiers');
+              return response.json();
+            })
+            .then(data => {
+              if (!data.success) throw new Error('Erreur lors du comptage des fichiers');
+              const filesCount = data.data.length;
+              terminologyFilesCountEl.textContent = filesCount;
+              highlightElement(terminologyFilesCountEl);
+            })
+            .catch(err => {
+              console.error('Erreur lors du comptage des fichiers:', err);
+              terminologyFilesCountEl.textContent = 'Erreur';
+            });
+        } catch (err) {
+          console.error('Erreur lors du comptage des fichiers:', err);
+          terminologyFilesCountEl.textContent = 'Erreur';
+        }
+      }
+
       // Chargement des fichiers de terminologie
       async function loadTerminologyFiles() {
         try {
@@ -472,6 +511,10 @@
           
           const data = await response.json();
           if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+          
+          // Mettre à jour le compteur de fichiers
+          terminologyFilesCountEl.textContent = data.data.length;
+          highlightElement(terminologyFilesCountEl);
           
           terminologyFilesTableEl.innerHTML = '';
           
