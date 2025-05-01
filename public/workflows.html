@@ -519,7 +519,8 @@
                 try {
                     const response = await fetch('/api/applications', {
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
                     });
                     
@@ -527,7 +528,15 @@
                         throw new Error('Erreur lors du chargement des applications');
                     }
                     
-                    const applications = await response.json();
+                    const result = await response.json();
+                    console.log('Applications chargées:', result);
+                    
+                    // Vérifier que la réponse contient les données attendues
+                    if (!result.success || !result.data || !Array.isArray(result.data)) {
+                        throw new Error('Format de réponse invalide pour les applications');
+                    }
+                    
+                    const applications = result.data;
                     
                     // Remplir le filtre d'applications
                     applicationFilter.innerHTML = '<option value="all">Toutes les applications</option>';
@@ -565,7 +574,8 @@
                     
                     const response = await fetch(url, {
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
                     });
                     
@@ -573,9 +583,20 @@
                         throw new Error('Erreur lors du chargement des workflows');
                     }
                     
-                    const workflows = await response.json();
+                    const result = await response.json();
+                    console.log('Workflows chargés:', result);
                     
                     loadingSpinner.style.display = 'none';
+                    
+                    // Vérifier que la réponse contient les données attendues
+                    let workflows = [];
+                    if (result.success && result.data) {
+                        workflows = result.data;
+                    } else if (Array.isArray(result)) {
+                        workflows = result;
+                    } else {
+                        console.warn('Format de réponse inattendu pour les workflows:', result);
+                    }
                     
                     if (workflows.length === 0) {
                         workflowGrid.innerHTML = '<p>Aucun workflow trouvé.</p>';
@@ -643,7 +664,8 @@
                 try {
                     const response = await fetch(`/api/workflows/${id}`, {
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
                     });
                     
@@ -651,7 +673,16 @@
                         throw new Error('Erreur lors de la récupération du workflow');
                     }
                     
-                    const workflow = await response.json();
+                    const result = await response.json();
+                    console.log('Workflow récupéré pour édition:', result);
+                    
+                    // Vérifier que la réponse contient les données attendues
+                    let workflow;
+                    if (result.success && result.data) {
+                        workflow = result.data;
+                    } else {
+                        workflow = result;
+                    }
                     
                     modalTitle.textContent = 'Modifier le Workflow';
                     document.getElementById('workflow-id').value = workflow.id;
@@ -682,7 +713,8 @@
                     const response = await fetch(`/api/workflows/${id}`, {
                         method: 'DELETE',
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
                     });
                     
@@ -703,7 +735,8 @@
                 try {
                     const response = await fetch(`/api/workflows/${id}/editor`, {
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
                     });
                     
@@ -711,12 +744,28 @@
                         throw new Error('Erreur lors de la récupération de l\'URL de l\'éditeur');
                     }
                     
-                    const data = await response.json();
-                    const workflow = await fetch(`/api/workflows/${id}`, {
+                    const result = await response.json();
+                    console.log('URL de l\'éditeur récupérée:', result);
+                    
+                    let data = result;
+                    if (result.success && result.data) {
+                        data = result.data;
+                    }
+                    
+                    const workflowResponse = await fetch(`/api/workflows/${id}`, {
                         headers: {
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         }
-                    }).then(res => res.json());
+                    });
+                    
+                    const workflowResult = await workflowResponse.json();
+                    console.log('Workflow récupéré pour l\'éditeur:', workflowResult);
+                    
+                    let workflow = workflowResult;
+                    if (workflowResult.success && workflowResult.data) {
+                        workflow = workflowResult.data;
+                    }
                     
                     editorTitle.textContent = `Éditeur: ${workflow.name}`;
                     nodeRedIframe.src = data.editor_url;
@@ -760,7 +809,8 @@
                         method: method,
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getToken()}`
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
                         },
                         body: JSON.stringify(workflowData)
                     });
