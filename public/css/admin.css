@@ -333,6 +333,250 @@
   display: block;
 }
 
+/* Styles pour les modales */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.close-modal {
+  font-size: 24px;
+  color: #777;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Styles pour la zone de glisser-déposer */
+.dropzone-container {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  background-color: #f9f9f9;
+}
+
+.dropzone-container.active {
+  border-color: #e74c3c;
+  background-color: rgba(231, 76, 60, 0.05);
+}
+
+.dropzone-icon {
+  font-size: 40px;
+  color: #e74c3c;
+  margin-bottom: 15px;
+}
+
+.dropzone-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.dropzone-desc {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.dropzone-button {
+  background-color: #f0f0f0;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.dropzone-button:hover {
+  background-color: #ddd;
+}
+
+/* Styles pour la liste des fichiers sélectionnés */
+#selected-files-container {
+  margin-top: 20px;
+}
+
+#selected-files-container h3 {
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.selected-file-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background-color: white;
+}
+
+.file-icon {
+  font-size: 20px;
+  color: #e74c3c;
+  margin-right: 10px;
+}
+
+.file-info {
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.file-size {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.file-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.file-actions button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.btn-preview {
+  color: #3498db;
+}
+
+.btn-preview:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.btn-remove {
+  color: #e74c3c;
+}
+
+.btn-remove:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.file-list-empty {
+  text-align: center;
+  padding: 15px;
+  color: #666;
+  font-style: italic;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+}
+
+/* Styles pour l'aperçu du code */
+.code-preview {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 400px;
+  font-family: monospace;
+  white-space: pre;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+/* Styles pour les logs */
+.log-container {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  height: 200px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.log-item {
+  margin-bottom: 5px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.log-time {
+  color: #e74c3c;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.log-empty {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .stats-grid {
@@ -349,6 +593,11 @@
     width: 100%;
     justify-content: flex-end;
   }
+  
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
 }
 
 @media (max-width: 576px) {
@@ -363,5 +612,13 @@
   
   .admin-header h1 {
     margin-bottom: 15px;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .modal-body {
+    padding: 15px;
   }
 }
