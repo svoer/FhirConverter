@@ -1159,6 +1159,105 @@ router.post('/analyze', adminAuthMiddleware, async (req, res) => {
 
 /**
  * @swagger
+ * /api/terminology/refresh:
+ *   post:
+ *     summary: Rafraîchir les statistiques de terminologie
+ *     description: Recharge tous les fichiers de terminologie et met à jour les statistiques
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     responses:
+ *       200:
+ *         description: Rafraîchissement terminé avec succès
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/refresh', adminAuthMiddleware, async (req, res) => {
+  try {
+    console.log('[TERMINOLOGY] Démarrage du rafraîchissement des statistiques');
+    
+    // Récupérer les fichiers de terminologie
+    const files = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json'));
+    
+    // Résultats du rafraîchissement
+    const results = {
+      filesRefreshed: files.length,
+      systemsCount: 0,
+      oidsCount: 0,
+      codeSystemsCount: 0,
+      valueSetsCount: 0
+    };
+    
+    // Parcourir chaque fichier pour compter les éléments
+    for (const filename of files) {
+      const filePath = path.join(TERMINOLOGY_DIR, filename);
+      
+      try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(fileContent);
+        
+        // Analyser les types de contenu
+        if (filename === 'ans_terminology_systems.json') {
+          // Fichier de systèmes principal
+          results.systemsCount += Object.keys(jsonData).length;
+        } else if (filename === 'ans_oids.json' && jsonData.identifier_systems) {
+          // Fichier d'OIDs
+          results.oidsCount += Object.keys(jsonData.identifier_systems).length;
+        } else if (jsonData.resourceType === 'CodeSystem') {
+          // Fichier contenant un CodeSystem individuel
+          results.codeSystemsCount++;
+        } else if (jsonData.resourceType === 'ValueSet') {
+          // Fichier contenant un ValueSet individuel
+          results.valueSetsCount++;
+        } else if (Array.isArray(jsonData)) {
+          // Fichier contenant un tableau d'éléments
+          for (const item of jsonData) {
+            if (item.resourceType === 'CodeSystem') {
+              results.codeSystemsCount++;
+            } else if (item.resourceType === 'ValueSet') {
+              results.valueSetsCount++;
+            }
+          }
+        } else if (jsonData.entry && Array.isArray(jsonData.entry)) {
+          // Fichier contenant un Bundle FHIR
+          for (const entry of jsonData.entry) {
+            if (entry.resource) {
+              if (entry.resource.resourceType === 'CodeSystem') {
+                results.codeSystemsCount++;
+              } else if (entry.resource.resourceType === 'ValueSet') {
+                results.valueSetsCount++;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier ${filename}:`, err);
+        // Continuer avec le fichier suivant
+      }
+    }
+    
+    console.log(`[TERMINOLOGY] Rafraîchissement terminé. ${results.systemsCount} systèmes, ${results.oidsCount} OIDs, ${results.codeSystemsCount} CodeSystems, ${results.valueSetsCount} ValueSets.`);
+    
+    res.json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors du rafraîchissement des terminologies :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du rafraîchissement des terminologies',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/terminology/check-duplicates:
  *   get:
  *     summary: Vérifier les fichiers de terminologie en doublon
