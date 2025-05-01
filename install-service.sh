@@ -25,61 +25,14 @@ if [ -z "$CURRENT_USER" ]; then
 fi
 echo "Utilisateur courant: $CURRENT_USER"
 
-# Vérifier la présence et l'installation de Node.js
-if [ -f "./setup-nodejs.sh" ]; then
-  echo "Utilisation du script d'installation Node.js spécifique à FHIRHub..."
-  
-  # Rendre le script exécutable si nécessaire
-  chmod +x ./setup-nodejs.sh
-  
-  # Utiliser notre script d'installation de Node.js
-  if [ "$EUID" -eq 0 ]; then
-    # Si root, installer au niveau système
-    ./setup-nodejs.sh
-  else
-    # Si non-root, on pourrait demander sudo
-    echo "Pour une installation système de Node.js, sudo peut être nécessaire."
-    sudo ./setup-nodejs.sh
-  fi
-  
-  # Vérifier si une installation locale a été faite
-  if [ -f "./.nodejsrc" ]; then
-    echo "Configuration Node.js locale détectée, chargement..."
-    source ./.nodejsrc
-  fi
-else
-  # La méthode standard si le script spécifique n'est pas disponible
-  if ! command -v node &> /dev/null; then
-    echo "ERREUR: Node.js n'est pas installé et le script d'installation n'est pas disponible."
-    echo "Veuillez installer Node.js v20 ou supérieur manuellement avant de continuer."
-    echo "Visitez https://nodejs.org/en/download/ pour les instructions."
-    exit 1
-  fi
-fi
-
-# Vérifier que Node.js est bien détecté maintenant
+# Vérifier que Node.js est installé
 if ! command -v node &> /dev/null; then
-  echo "ERREUR: Node.js n'est toujours pas détecté dans le PATH après la tentative d'installation."
-  echo "Veuillez vérifier l'installation de Node.js et réessayer."
+  echo "ERREUR: Node.js n'est pas installé. Veuillez installer Node.js v18+"
   exit 1
 fi
 
-# Vérifier la version de Node.js
-NODE_VERSION=$(node -v | cut -c 2- | cut -d '.' -f 1)
 NODE_PATH=$(which node)
-echo "Node.js détecté: $(node -v) à $NODE_PATH"
-
-if [ "$NODE_VERSION" -lt 14 ]; then
-  echo "AVERTISSEMENT: La version de Node.js ($NODE_VERSION) est inférieure à la version recommandée (20+)."
-  echo "L'application pourrait rencontrer des problèmes de compatibilité."
-  
-  read -p "Voulez-vous continuer avec cette version? (o/n): " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Oo]$ ]]; then
-    echo "Installation annulée. Veuillez installer Node.js 20 ou supérieur."
-    exit 1
-  fi
-fi
+echo "Chemin Node.js: $NODE_PATH"
 
 # Vérifier si un service systemd existe déjà
 if [ -f "/etc/systemd/system/fhirhub.service" ]; then
@@ -94,67 +47,6 @@ if [ -f "/etc/systemd/system/fhirhub.service" ]; then
   echo "Arrêt et désactivation du service existant..."
   systemctl stop fhirhub.service
   systemctl disable fhirhub.service
-fi
-
-# Vérifier et installer les dépendances NodeJS
-echo "Vérification des dépendances Node.js..."
-
-# Exécuter en tant que l'utilisateur approprié
-if [ "$CURRENT_USER" != "root" ]; then
-  # Si l'installation est faite en root mais le service s'exécutera en tant qu'autre utilisateur
-  echo "Installation des dépendances pour l'utilisateur $CURRENT_USER..."
-  
-  # Vérifier si node_modules existe
-  if [ ! -d "$APP_DIR/node_modules" ] || [ -z "$(ls -A "$APP_DIR/node_modules" 2>/dev/null)" ]; then
-    echo "Dépendances Node.js non installées ou incomplètes."
-    
-    # S'assurer que l'utilisateur peut écrire dans le répertoire
-    chown -R $CURRENT_USER:$CURRENT_USER "$APP_DIR"
-    
-    # Installer les dépendances en tant que l'utilisateur cible
-    if [ -f "$APP_DIR/package.json" ]; then
-      echo "Installation des dépendances avec npm..."
-      su - $CURRENT_USER -c "cd $APP_DIR && npm install --production"
-      
-      # S'assurer que les modules HL7 spécifiques sont installés (critiques pour le convertisseur)
-      echo "Installation des modules HL7 essentiels..."
-      su - $CURRENT_USER -c "cd $APP_DIR && npm install hl7 simple-hl7 hl7-parser hl7-standard"
-      
-      if [ $? -ne 0 ]; then
-        echo "AVERTISSEMENT: Problème lors de l'installation des dépendances."
-        echo "Le service pourrait ne pas démarrer correctement."
-      fi
-    else
-      echo "ERREUR: Le fichier package.json est manquant."
-      echo "Vérifiez que vous êtes dans le bon répertoire."
-    fi
-  else
-    echo "Dépendances Node.js déjà installées."
-  fi
-else
-  # Si l'installation et l'exécution sont en tant que root
-  if [ ! -d "$APP_DIR/node_modules" ] || [ -z "$(ls -A "$APP_DIR/node_modules" 2>/dev/null)" ]; then
-    echo "Dépendances Node.js non installées ou incomplètes."
-    
-    if [ -f "$APP_DIR/package.json" ]; then
-      echo "Installation des dépendances avec npm..."
-      cd "$APP_DIR" && npm install --production
-      
-      # S'assurer que les modules HL7 spécifiques sont installés (critiques pour le convertisseur)
-      echo "Installation des modules HL7 essentiels..."
-      cd "$APP_DIR" && npm install hl7 simple-hl7 hl7-parser hl7-standard
-      
-      if [ $? -ne 0 ]; then
-        echo "AVERTISSEMENT: Problème lors de l'installation des dépendances."
-        echo "Le service pourrait ne pas démarrer correctement."
-      fi
-    else
-      echo "ERREUR: Le fichier package.json est manquant."
-      echo "Vérifiez que vous êtes dans le bon répertoire."
-    fi
-  else
-    echo "Dépendances Node.js déjà installées."
-  fi
 fi
 
 # Créer le fichier de service systemd
