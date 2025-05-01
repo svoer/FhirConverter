@@ -1585,13 +1585,15 @@ router.post('/remove-duplicates', adminAuthMiddleware, async (req, res) => {
       console.log(`[TERMINOLOGY] Fichier en doublon supprimé: ${file.name}`);
     }
     
-    console.log(`[TERMINOLOGY] ${deletedCount} fichiers en doublon supprimés sur ${safeFilesToDelete.length} identifiés.`);
+    const logMessage = `[TERMINOLOGY] ${deletedCount} fichiers en doublon supprimés sur ${safeFilesToDelete.length} identifiés.`;
+    console.log(logMessage);
     
     res.json({
       success: true,
       data: {
         duplicatesFound: safeFilesToDelete.length,
-        deleted: deletedCount
+        deleted: deletedCount,
+        message: logMessage.replace('[TERMINOLOGY] ', '')
       }
     });
   } catch (error) {

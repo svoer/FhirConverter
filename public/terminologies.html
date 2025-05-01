@@ -803,7 +803,12 @@
             let result = await response.json();
             
             if (result.success) {
-              addLog(`Rafraîchissement terminé: ${result.data.systemsCount || 0} systèmes, ${result.data.oidsCount || 0} OIDs`);
+              // Utiliser le message de l'API s'il est disponible, sinon utiliser notre message formaté
+              if (result.data.message) {
+                addLog(result.data.message);
+              } else {
+                addLog(`Rafraîchissement terminé: ${result.data.systemsCount || 0} systèmes, ${result.data.oidsCount || 0} OIDs`);
+              }
               
               // Étape 2: Lancer l'analyse approfondie
               addLog('Lancement de l\'analyse approfondie des fichiers...');
@@ -1023,8 +1028,12 @@
                 });
               }
               
-              // Log détaillé
-              addLog(`${totalDuplicates} fichiers en doublon identifiés.`);
+              // Log détaillé - utiliser le message fourni par l'API s'il est disponible
+              if (result.data.message) {
+                addLog(result.data.message);
+              } else {
+                addLog(`${totalDuplicates} fichiers en doublon identifiés.`);
+              }
               
               message += `Souhaitez-vous supprimer les doublons les plus anciens?`;
               
@@ -1040,7 +1049,13 @@
                 }
                 
                 const deleteResult = await deleteResponse.json();
-                addLog(`${deleteResult.data.deleted} fichiers en doublon supprimés.`);
+                
+                // Utiliser le message fourni par l'API s'il est disponible
+                if (deleteResult.data.message) {
+                  addLog(deleteResult.data.message);
+                } else {
+                  addLog(`${deleteResult.data.deleted} fichiers en doublon supprimés.`);
+                }
                 
                 // Mettre à jour les statistiques et la liste des fichiers
                 loadTerminologyStats();
