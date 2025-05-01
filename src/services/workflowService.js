@@ -48,8 +48,8 @@ async function initialize() {
     
     // Configuration de Node-RED
     redSettings = {
-      httpAdminRoot: '/red',
-      httpNodeRoot: '/api/workflow-engine',
+      httpAdminRoot: '/',
+      httpNodeRoot: '/api',
       userDir: userDir,
       functionGlobalContext: {
         // On peut ajouter ici des objets accessibles dans les fonctions Node-RED
@@ -87,13 +87,30 @@ async function initialize() {
     // Initialiser Node-RED
     RED.init(redServer, redSettings);
     
-    // Enregistrer nos nœuds personnalisés
-    const nodesDir = path.join(process.cwd(), 'src', 'node-red');
-    RED.nodes.registerType('fhirhub-hl7-input', require(path.join(nodesDir, 'nodes', 'hl7-input.js')));
-    RED.nodes.registerType('fhirhub-fhir-converter', require(path.join(nodesDir, 'nodes', 'fhir-converter.js')));
-    RED.nodes.registerType('fhirhub-segment-extractor', require(path.join(nodesDir, 'nodes', 'segment-extractor.js')));
-    
-    console.log('[WORKFLOW] Nœuds personnalisés FHIRHub enregistrés');
+    // Charger les nœuds personnalisés
+    try {
+      // Spécifier le répertoire des nœuds personnalisés
+      const nodesDir = path.join(process.cwd(), 'src', 'node-red', 'nodes');
+      
+      // Configuration pour les nœuds personnalisés
+      redSettings.nodesDir = nodesDir;
+      
+      // Charger les nœuds manuellement en appelant leur fonction module
+      const hl7InputNode = require(path.join(nodesDir, 'hl7-input.js'));
+      const fhirConverterNode = require(path.join(nodesDir, 'fhir-converter.js'));
+      const segmentExtractorNode = require(path.join(nodesDir, 'segment-extractor.js'));
+      const fhirOutputNode = require(path.join(nodesDir, 'fhir-output.js'));
+      
+      // Enregistrer les nœuds dans Node-RED
+      hl7InputNode(RED);
+      fhirConverterNode(RED);
+      segmentExtractorNode(RED);
+      fhirOutputNode(RED);
+      
+      console.log('[WORKFLOW] Nœuds personnalisés FHIRHub enregistrés manuellement');
+    } catch (error) {
+      console.error('[WORKFLOW] Erreur lors du chargement des nœuds personnalisés:', error);
+    }
     
     // Ajouter les routes de l'éditeur Node-RED à notre application Express
     redApp.use(redSettings.httpAdminRoot, RED.httpAdmin);
