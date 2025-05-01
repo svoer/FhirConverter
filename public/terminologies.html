@@ -784,12 +784,14 @@
       });
       
       // Bouton de rafraîchissement des statistiques de terminologie
+      // Inclut maintenant l'analyse complète des fichiers (fusion des fonctionnalités)
       document.getElementById('btn-refresh-terminology').addEventListener('click', async () => {
-        if (confirm('Voulez-vous rafraîchir les statistiques de tous les fichiers de terminologie? Cette opération peut prendre plusieurs secondes.')) {
+        if (confirm('Voulez-vous rafraîchir les statistiques et analyser tous les fichiers de terminologie? Cette opération peut prendre plusieurs secondes.')) {
           try {
-            addLog('Rafraîchissement des statistiques de terminologie...');
+            addLog('Rafraîchissement des statistiques et analyse des terminologies...');
             
-            const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/refresh', {
+            // Étape 1: Rafraîchir les statistiques
+            let response = await FHIRHubAuth.fetchWithAuth('/api/terminology/refresh', {
               method: 'POST'
             });
             
@@ -798,16 +800,92 @@
               throw new Error(error.message || 'Erreur lors du rafraîchissement');
             }
             
-            const result = await response.json();
+            let result = await response.json();
             
             if (result.success) {
               addLog(`Rafraîchissement terminé: ${result.data.systemsCount || 0} systèmes, ${result.data.oidsCount || 0} OIDs`);
               
+              // Étape 2: Lancer l'analyse approfondie
+              addLog('Lancement de l\'analyse approfondie des fichiers...');
+              response = await FHIRHubAuth.fetchWithAuth('/api/terminology/analyze', {
+                method: 'POST'
+              });
+              
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Erreur lors de l\'analyse');
+              }
+              
+              result = await response.json();
+              
+              if (result.success) {
+                // Créer une présentation détaillée des résultats
+                const analysisData = result.data;
+                const totalFiles = analysisData.filesAnalyzed || 0;
+                const totalItems = analysisData.totalItems || 0;
+                
+                // Préparer un message détaillé pour l'alerte
+                let detailedMessage = `=== RAPPORT D'ANALYSE DES TERMINOLOGIES ===\n\n`;
+                detailedMessage += `Fichiers analysés: ${totalFiles}\n`;
+                detailedMessage += `Éléments totaux: ${totalItems}\n\n`;
+                
+                // Ajouter des informations sur les CodeSystems
+                if (analysisData.codeSystemsCount > 0) {
+                  detailedMessage += `CodeSystems: ${analysisData.codeSystemsCount}\n`;
+                }
+                
+                // Ajouter des informations sur les ValueSets
+                if (analysisData.valueSetsCount > 0) {
+                  detailedMessage += `ValueSets: ${analysisData.valueSetsCount}\n`;
+                }
+                
+                // Ajouter des informations sur les ConceptMaps
+                if (analysisData.conceptMapCount > 0) {
+                  detailedMessage += `ConceptMaps: ${analysisData.conceptMapCount}\n`;
+                }
+                
+                // Ajouter les détails par fichier
+                if (analysisData.details && analysisData.details.length > 0) {
+                  detailedMessage += '\n=== DÉTAILS PAR FICHIER ===\n';
+                  analysisData.details.forEach(detail => {
+                    detailedMessage += `\n${detail.filename}:\n`;
+                    detailedMessage += `  - Type: ${detail.fileType || 'Non spécifié'}\n`;
+                    detailedMessage += `  - Éléments: ${detail.totalElements || 0}\n`;
+                    
+                    if (detail.codeSystems > 0) {
+                      detailedMessage += `  - CodeSystems: ${detail.codeSystems}\n`;
+                    }
+                    
+                    if (detail.valueSets > 0) {
+                      detailedMessage += `  - ValueSets: ${detail.valueSets}\n`;
+                    }
+                    
+                    if (detail.conceptMaps > 0) {
+                      detailedMessage += `  - ConceptMaps: ${detail.conceptMaps}\n`;
+                    }
+                  });
+                }
+                
+                // Ajouter des informations sur les doublons potentiels
+                if (analysisData.possibleDuplicates && analysisData.possibleDuplicates.length > 0) {
+                  detailedMessage += '\n=== DOUBLONS POTENTIELS ===\n';
+                  analysisData.possibleDuplicates.forEach((group, index) => {
+                    detailedMessage += `\nGroupe ${index + 1}:\n`;
+                    group.forEach(item => {
+                      detailedMessage += `  - ${item.file}: ${item.url}\n`;
+                    });
+                  });
+                }
+                
+                addLog(`Analyse approfondie terminée: ${totalFiles} fichiers, ${totalItems} éléments.`);
+                
+                // Afficher les résultats détaillés
+                alert(detailedMessage);
+              }
+              
               // Mettre à jour les statistiques et la liste des fichiers
               loadTerminologyStats();
               loadTerminologyFiles();
-              
-              alert('Rafraîchissement terminé avec succès');
             } else {
               throw new Error(result.message || 'Erreur lors du rafraîchissement');
             }
@@ -819,102 +897,8 @@
         }
       });
       
-      // Bouton d'analyse approfondie du contenu
-      document.getElementById('btn-analyze-terminology').addEventListener('click', async () => {
-        if (confirm('Voulez-vous lancer une analyse approfondie de tous les fichiers de terminologie? Cette opération peut prendre plusieurs secondes.')) {
-          try {
-            addLog('Lancement de l\'analyse approfondie des fichiers de terminologie...');
-            
-            const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/analyze', {
-              method: 'POST'
-            });
-            
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.message || 'Erreur lors de l\'analyse');
-            }
-            
-            const result = await response.json();
-            
-            if (result.success) {
-              // Créer une présentation détaillée des résultats
-              const analysisData = result.data;
-              const totalFiles = analysisData.filesAnalyzed || 0;
-              const totalItems = analysisData.totalItems || 0;
-              
-              // Préparer un message détaillé pour l'alerte
-              let detailedMessage = `=== RAPPORT D'ANALYSE DES TERMINOLOGIES ===\n\n`;
-              detailedMessage += `Fichiers analysés: ${totalFiles}\n`;
-              detailedMessage += `Éléments totaux: ${totalItems}\n\n`;
-              
-              // Ajouter des informations sur les CodeSystems
-              if (analysisData.codeSystems) {
-                detailedMessage += `=== CodeSystems ===\n`;
-                detailedMessage += `Total: ${analysisData.codeSystems.count || 0}\n`;
-                detailedMessage += `URLs uniques: ${analysisData.codeSystems.uniqueUrls || 0}\n`;
-                
-                if (analysisData.codeSystems.topSystems && analysisData.codeSystems.topSystems.length > 0) {
-                  detailedMessage += `\nTop 5 des systèmes les plus utilisés:\n`;
-                  analysisData.codeSystems.topSystems.slice(0, 5).forEach((system, i) => {
-                    detailedMessage += `${i+1}. ${system.url || 'Sans URL'} (${system.count} occurrences)\n`;
-                  });
-                }
-                detailedMessage += `\n`;
-              }
-              
-              // Ajouter des informations sur les ValueSets
-              if (analysisData.valueSets) {
-                detailedMessage += `=== ValueSets ===\n`;
-                detailedMessage += `Total: ${analysisData.valueSets.count || 0}\n`;
-                detailedMessage += `URLs uniques: ${analysisData.valueSets.uniqueUrls || 0}\n\n`;
-              }
-              
-              // Ajouter des informations sur les OIDs
-              if (analysisData.oids) {
-                detailedMessage += `=== OIDs Français ===\n`;
-                detailedMessage += `Total: ${analysisData.oids.count || 0}\n`;
-                detailedMessage += `OIDs uniques: ${analysisData.oids.uniqueOids || 0}\n`;
-                
-                if (analysisData.oids.categoriesCount) {
-                  detailedMessage += `\nRépartition par catégories:\n`;
-                  Object.entries(analysisData.oids.categoriesCount).forEach(([category, count]) => {
-                    detailedMessage += `- ${category}: ${count}\n`;
-                  });
-                }
-                detailedMessage += `\n`;
-              }
-              
-              // Ajouter des informations sur les systèmes
-              if (analysisData.systems) {
-                detailedMessage += `=== Systèmes de Terminologie ===\n`;
-                detailedMessage += `Total: ${analysisData.systems.count || 0}\n`;
-                
-                if (analysisData.systems.domains && Object.keys(analysisData.systems.domains).length > 0) {
-                  detailedMessage += `\nRépartition par domaines:\n`;
-                  Object.entries(analysisData.systems.domains).forEach(([domain, count]) => {
-                    detailedMessage += `- ${domain || 'Non catégorisé'}: ${count}\n`;
-                  });
-                }
-              }
-              
-              // Log de succès
-              addLog(`Analyse approfondie terminée: ${totalFiles} fichiers analysés, ${totalItems} éléments trouvés`);
-              
-              // Afficher les résultats détaillés
-              alert(detailedMessage);
-              
-              // Mettre à jour les statistiques suite à l'analyse
-              loadTerminologyStats();
-            } else {
-              throw new Error(result.message || 'Erreur lors de l\'analyse');
-            }
-          } catch (error) {
-            console.error('Erreur lors de l\'analyse:', error);
-            alert(`Erreur lors de l'analyse: ${error.message}`);
-            addLog(`Erreur lors de l'analyse: ${error.message}`);
-          }
-        }
-      });
+      // La fonctionnalité d'analyse approfondie a été intégrée au bouton de rafraîchissement des statistiques
+      // Nous avons supprimé le code redondant ici
       
       // Bouton de vérification des doublons
       document.getElementById('btn-check-duplicates').addEventListener('click', async () => {
