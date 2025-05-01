@@ -213,7 +213,7 @@
         <li><a href="/ai-settings.html" class="active"><i class="fas fa-robot"></i> Paramètres IA</a></li>
         <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
         <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
-        <li><a href="#" id="logout-button"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
       </ul>
     </div>
   </header>
@@ -377,11 +377,18 @@
     // Charger les fournisseurs d'IA depuis l'API
     async function loadProviders() {
       try {
-        const response = await fetch('/api/ai-providers', {
-          headers: {
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          }
-        });
+        const headers = {
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+
+        const response = await fetch('/api/ai-providers', { headers });
         
         if (!response.ok) {
           throw new Error(`Erreur ${response.status}: ${response.statusText}`);
@@ -408,11 +415,18 @@
     // Charger la liste des fournisseurs pris en charge
     async function loadSupportedProviders() {
       try {
-        const response = await fetch('/api/ai-providers/supported', {
-          headers: {
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          }
-        });
+        const headers = {
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+
+        const response = await fetch('/api/ai-providers/supported', { headers });
         
         if (!response.ok) {
           throw new Error(`Erreur ${response.status}: ${response.statusText}`);
@@ -630,11 +644,18 @@
     // Éditer un fournisseur existant
     async function editProvider(providerId) {
       try {
-        const response = await fetch(`/api/ai-providers/${providerId}`, {
-          headers: {
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          }
-        });
+        const headers = {
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+
+        const response = await fetch(`/api/ai-providers/${providerId}`, { headers });
         
         if (!response.ok) {
           throw new Error(`Erreur ${response.status}: ${response.statusText}`);
@@ -777,13 +798,23 @@
           }
         }
         
+        // Préparer les en-têtes avec authentification combinée
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+        
         // Envoyer les données à l'API
         const response = await fetch(url, {
           method: method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          },
+          headers,
           body: JSON.stringify(providerData)
         });
         
@@ -826,12 +857,22 @@
           return;
         }
         
+        // Préparer les en-têtes avec authentification combinée
+        const headers = {
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+
         // Envoyer la requête de test
         const response = await fetch(`/api/ai-providers/${providerId}/test`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          }
+          headers
         });
         
         // Réactiver le bouton
@@ -883,12 +924,21 @@
     // Tester un fournisseur existant
     async function testProvider(providerId) {
       try {
+        const headers = {
+          'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+        };
+        
+        // Ajouter également la clé API par défaut pour l'authentification combinée
+        if (localStorage.getItem('devKey')) {
+          headers['X-API-KEY'] = localStorage.getItem('devKey');
+        } else {
+          headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+        }
+
         // Envoyer la requête de test
         const response = await fetch(`/api/ai-providers/${providerId}/test`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
-          }
+          headers
         });
         
         if (!response.ok) {
