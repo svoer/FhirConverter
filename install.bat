@@ -89,8 +89,13 @@ set use_local_nodejs=1
 where node >nul 2>nul
 if %errorlevel% equ 0 (
   REM Node.js est installé, vérifier la version
-  for /f "tokens=1,2,3 delims=." %%a in ('node -v') do set SYSTEM_NODE_VERSION=%%a
-  set SYSTEM_NODE_VERSION=%SYSTEM_NODE_VERSION:~1%
+  for /f "tokens=* usebackq" %%i in (`node -v`) do set NODE_FULL_VERSION=%%i
+  echo Version Node.js complete: %NODE_FULL_VERSION%
+  
+  REM Extraire juste la version majeure (v18.x.x -> 18)
+  set SYSTEM_NODE_VERSION=%NODE_FULL_VERSION:~1,2%
+  if "%SYSTEM_NODE_VERSION:~1,1%"=="." set SYSTEM_NODE_VERSION=%SYSTEM_NODE_VERSION:~0,1%
+  echo Version majeure extraite: %SYSTEM_NODE_VERSION%
   
   if %SYSTEM_NODE_VERSION% GEQ 18 (
     if %SYSTEM_NODE_VERSION% LEQ 20 (
