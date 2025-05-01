@@ -118,88 +118,40 @@ N'oublie pas:
    * Ajoute les écouteurs d'événements
    */
   addEventListeners() {
-    // Attendons un peu que le DOM soit complètement prêt
-    setTimeout(() => {
-      // Obtenir directement l'élément container
-      const container = document.getElementById('fhirhub-chatbot');
-      if (!container) {
-        console.error("Élément chatbot non trouvé dans le DOM");
-        return;
-      }
-      
-      // Sélectionner les éléments à l'intérieur du container pour éviter les conflits
-      const chatbotHeader = container.querySelector('.chatbot-header');
-      const toggleButton = container.querySelector('.chatbot-toggle');
-      const toggleIcon = container.querySelector('#chatbot-toggle-icon');
-      
-      console.log("Éléments trouvés:", {
-        container: !!container,
-        chatbotHeader: !!chatbotHeader,
-        toggleButton: !!toggleButton,
-        toggleIcon: !!toggleIcon
-      });
-      
-      // Fonction pour basculer l'état du chatbot
-      const toggleExpanded = () => {
-        console.log("Toggle chatbot:", this.expanded, "->", !this.expanded);
-        this.expanded = !this.expanded;
+    // Ajout d'un gestionnaire d'événement global pour tout le document
+    document.addEventListener('click', (e) => {
+      // Vérifier si le clic est sur l'en-tête ou le bouton du chatbot
+      if (e.target.closest('.chatbot-header') || e.target.closest('.chatbot-toggle')) {
+        e.preventDefault();
+        e.stopPropagation();
         
-        if (this.expanded) {
-          container.classList.add('expanded');
-          if (toggleIcon) {
-            toggleIcon.classList.remove('fa-chevron-up');
-            toggleIcon.classList.add('fa-chevron-down');
-          }
-          
-          // Focus sur l'input quand le chatbot est ouvert
-          const inputField = container.querySelector('#chatbot-input');
-          if (inputField) {
-            setTimeout(() => inputField.focus(), 300);
-          }
-        } else {
+        // Simple toggle du chatbot
+        const container = document.getElementById('fhirhub-chatbot');
+        if (!container) return;
+        
+        console.log("TOGGLE CLICKED");
+        
+        // Basculer l'état
+        if (container.classList.contains('expanded')) {
           container.classList.remove('expanded');
-          if (toggleIcon) {
-            toggleIcon.classList.remove('fa-chevron-down');
-            toggleIcon.classList.add('fa-chevron-up');
-          }
+        } else {
+          container.classList.add('expanded');
         }
-      };
-      
-      // Ajouter l'écouteur d'événements à tout l'en-tête
-      if (chatbotHeader) {
-        chatbotHeader.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleExpanded();
-        };
       }
       
-      // Ajouter également l'écouteur au bouton spécifiquement
-      if (toggleButton) {
-        toggleButton.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleExpanded();
-        };
+      // Vérifier si le clic est sur le bouton d'envoi
+      if (e.target.closest('#chatbot-send')) {
+        this.sendMessage();
       }
-      
-      // Envoi de message avec le bouton
-      const sendButton = container.querySelector('#chatbot-send');
-      if (sendButton) {
-        sendButton.onclick = () => this.sendMessage();
+    });
+    
+    // Envoi de message avec la touche Entrée
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && e.target.id === 'chatbot-input') {
+        e.preventDefault();
+        this.sendMessage();
       }
-      
-      // Envoi de message avec la touche Entrée
-      const inputField = container.querySelector('#chatbot-input');
-      if (inputField) {
-        inputField.onkeypress = (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            this.sendMessage();
-          }
-        };
-      }
-    }, 500); // Un délai de 500ms pour s'assurer que le DOM est prêt
+    });
   }
 
   /**
