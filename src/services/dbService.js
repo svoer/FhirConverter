@@ -73,7 +73,8 @@ async function createTables() {
     schema.SYSTEM_METRICS_SCHEMA,
     schema.NOTIFICATIONS_SCHEMA,
     schema.API_ACTIVITY_LOGS_SCHEMA,
-    schema.API_USAGE_LIMITS_SCHEMA
+    schema.API_USAGE_LIMITS_SCHEMA,
+    schema.AI_PROVIDERS_SCHEMA
   ];
   
   const tables = orderedSchemas.map(schema => 

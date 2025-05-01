@@ -165,6 +165,32 @@ const API_USAGE_LIMITS_SCHEMA = {
   `
 };
 
+/**
+ * Schéma de la table des API d'IA
+ * @type {Object}
+ */
+const AI_PROVIDERS_SCHEMA = {
+  tableName: 'ai_providers',
+  columns: `
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_name TEXT NOT NULL,
+    api_key TEXT NOT NULL,
+    api_url TEXT,
+    models TEXT, 
+    status TEXT NOT NULL DEFAULT 'active',
+    enabled BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME,
+    usage_count INTEGER DEFAULT 0,
+    monthly_quota INTEGER,
+    current_usage INTEGER DEFAULT 0,
+    settings TEXT,
+    test_result TEXT,
+    UNIQUE(provider_name)
+  `
+};
+
 // Liste de tous les schémas
 const ALL_SCHEMAS = [
   USERS_SCHEMA,
@@ -174,7 +200,8 @@ const ALL_SCHEMAS = [
   SYSTEM_METRICS_SCHEMA,
   NOTIFICATIONS_SCHEMA,
   API_ACTIVITY_LOGS_SCHEMA,
-  API_USAGE_LIMITS_SCHEMA
+  API_USAGE_LIMITS_SCHEMA,
+  AI_PROVIDERS_SCHEMA
 ];
 
 module.exports = {
@@ -186,5 +213,6 @@ module.exports = {
   NOTIFICATIONS_SCHEMA,
   API_ACTIVITY_LOGS_SCHEMA,
   API_USAGE_LIMITS_SCHEMA,
+  AI_PROVIDERS_SCHEMA,
   ALL_SCHEMAS
 };
