@@ -295,7 +295,12 @@ router.post('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  */
 router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(404).json({ error: 'ID de fournisseur d\'IA invalide' });
+    }
+    
     const providerData = req.body;
     
     const updatedProvider = await aiProviderService.updateProvider(id, providerData);

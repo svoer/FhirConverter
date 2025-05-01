@@ -54,6 +54,7 @@ async function startServer() {
     // Initialisation des services
     await dbService.initialize();
     await terminologyService.initialize();
+    await aiProviderService.initialize();
     
     // Démarrage du serveur
     app.listen(PORT, '0.0.0.0', () => {
