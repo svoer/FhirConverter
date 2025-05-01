@@ -297,42 +297,123 @@
         return;
       }
       
-      try {
-        // Cliquer sur le bouton Authorize original
-        authorizeButton.click();
+      // Intercepter les requêtes XHR pour ajouter les headers d'authentification
+      // Cette méthode est plus fiable que de manipuler l'interface utilisateur de Swagger
+      const originalOpen = XMLHttpRequest.prototype.open;
+      
+      // Remplacer la méthode open pour intercepter toutes les requêtes XHR
+      XMLHttpRequest.prototype.open = function() {
+        const originalSend = this.send;
+        const url = arguments[1]; // URL est le 2ème paramètre de open(method, url, ...)
         
-        // Attendre que le modal apparaisse
-        setTimeout(() => {
-          // Trouver les champs d'entrée pour les différents types d'auth
-          if (authType === 'apiKey') {
-            const apiKeyInput = document.querySelector('.swagger-ui .auth-container input[placeholder*="api_key"], .swagger-ui .auth-container input[placeholder*="apiKey"]');
-            if (apiKeyInput) {
-              apiKeyInput.value = authValue;
-              // Déclencher l'événement input pour que Swagger détecte la modification
-              const inputEvent = new Event('input', { bubbles: true });
-              apiKeyInput.dispatchEvent(inputEvent);
-            }
-          } else if (authType === 'Bearer') {
-            const bearerInput = document.querySelector('.swagger-ui .auth-container input[placeholder*="Bearer"]');
-            if (bearerInput) {
-              bearerInput.value = authValue;
-              // Déclencher l'événement input pour que Swagger détecte la modification
-              const inputEvent = new Event('input', { bubbles: true });
-              bearerInput.dispatchEvent(inputEvent);
+        // Remplacer la méthode send pour ajouter les headers avant l'envoi
+        this.send = function() {
+          // S'assurer qu'il s'agit d'une requête API (pour éviter d'affecter d'autres XHR)
+          if (url && url.indexOf('/api/') !== -1) {
+            if (authType === 'apiKey') {
+              // Ajouter l'en-tête X-API-KEY
+              this.setRequestHeader('X-API-KEY', authValue);
+            } else if (authType === 'Bearer') {
+              // Ajouter l'en-tête Authorization avec Bearer
+              this.setRequestHeader('Authorization', `Bearer ${authValue}`);
             }
           }
           
-          // Cliquer sur le bouton Authorize du modal
-          const authorizeBtn = document.querySelector('.swagger-ui .auth-btn-wrapper .btn-done');
-          if (authorizeBtn) {
-            authorizeBtn.click();
-            console.log('[Swagger] Authentification appliquée avec succès');
-          } else {
-            console.error('[Swagger] Bouton Authorize non trouvé dans le modal');
+          // Appeler la méthode send originale
+          return originalSend.apply(this, arguments);
+        };
+        
+        // Appeler la méthode open originale
+        return originalOpen.apply(this, arguments);
+      };
+      
+      // AJOUTER L'INTERCEPTEUR FETCH
+      // Intercepter également les appels fetch pour couvrir tous les cas
+      const originalFetch = window.fetch;
+      
+      window.fetch = function(input, init) {
+        // Vérifier si c'est une requête API
+        let isApiRequest = false;
+        
+        // Normaliser l'entrée pour vérifier l'URL
+        let url = '';
+        if (typeof input === 'string') {
+          url = input;
+        } else if (input instanceof Request) {
+          url = input.url;
+        }
+        
+        // Vérifier si c'est une requête API
+        isApiRequest = url.indexOf('/api/') !== -1;
+        
+        // Si ce n'est pas une requête API, ne pas modifier
+        if (!isApiRequest) {
+          return originalFetch.call(this, input, init);
+        }
+        
+        // Cloner les init pour éviter de modifier l'objet original
+        const modifiedInit = init ? { ...init } : {};
+        
+        // S'assurer que headers existe
+        if (!modifiedInit.headers) {
+          modifiedInit.headers = {};
+        }
+        
+        // Si c'est un objet Headers, convertir en objet simple
+        if (modifiedInit.headers instanceof Headers) {
+          const originalHeaders = modifiedInit.headers;
+          modifiedInit.headers = {};
+          for (const [key, value] of originalHeaders.entries()) {
+            modifiedInit.headers[key] = value;
           }
-        }, 300);
+        }
+        
+        // Ajouter l'en-tête d'authentification approprié
+        if (authType === 'apiKey') {
+          modifiedInit.headers['X-API-KEY'] = authValue;
+          console.log(`[Swagger] Ajout de l'en-tête X-API-KEY à la requête fetch vers ${url}`);
+        } else if (authType === 'Bearer') {
+          modifiedInit.headers['Authorization'] = `Bearer ${authValue}`;
+          console.log(`[Swagger] Ajout de l'en-tête Authorization à la requête fetch vers ${url}`);
+        }
+        
+        // Si input est un objet Request, créer une nouvelle Request avec les en-têtes modifiés
+        if (input instanceof Request) {
+          const newRequest = new Request(input, modifiedInit);
+          return originalFetch.call(this, newRequest);
+        }
+        
+        // Sinon, appeler fetch original avec l'URL et les en-têtes modifiés
+        return originalFetch.call(this, input, modifiedInit);
+      };
+      
+      // Simuler un clic sur le bouton Authorize pour mettre à jour l'interface utilisateur
+      try {
+        // Indiquer visuellement que la sécurité est activée
+        const ui = window.ui;
+        if (ui && typeof ui.authActions !== 'undefined' && typeof ui.authActions.authorize === 'function') {
+          if (authType === 'apiKey') {
+            ui.authActions.authorize({
+              ApiKeyAuth: {
+                name: 'X-API-KEY',
+                value: authValue,
+                schema: { type: 'apiKey', in: 'header', name: 'X-API-KEY' }
+              }
+            });
+          } else if (authType === 'Bearer') {
+            ui.authActions.authorize({
+              BearerAuth: {
+                name: 'Authorization',
+                value: `Bearer ${authValue}`,
+                schema: { type: 'http', scheme: 'bearer' }
+              }
+            });
+          }
+        }
+        
+        console.log('[Swagger] Authentification appliquée avec succès');
       } catch (err) {
-        console.error('[Swagger] Erreur lors de l\'authentification:', err);
+        console.error('[Swagger] Erreur lors de l\'authentification UI:', err);
       }
     }
     
