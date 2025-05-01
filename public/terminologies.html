@@ -933,56 +933,92 @@
               let message = `${totalDuplicates} fichiers en doublon détectés:\n\n`;
               
               // Vérifier les doublons par nom
-              if (result.data.duplicates && result.data.duplicates.byName && result.data.duplicates.byName.length > 0) {
+              if (result.data.duplicates && result.data.duplicates.byName && Array.isArray(result.data.duplicates.byName) && result.data.duplicates.byName.length > 0) {
                 message += `== Doublons par nom (${result.data.duplicates.byName.length} groupes) ==\n`;
                 result.data.duplicates.byName.forEach((group, i) => {
-                  message += `Groupe ${i+1}: ${group.count} fichiers avec le motif "${group.basePattern}"\n`;
-                  message += `Fichier le plus récent: ${group.newestFile}\n`;
-                  if (group.allFiles && group.allFiles.length > 0) {
-                    message += "Tous les fichiers:\n";
-                    group.allFiles.forEach(file => {
-                      message += `- ${file.name} (${formatDate(new Date(file.modified))})\n`;
-                    });
+                  message += `Groupe ${i+1}: `;
+                  if (group && typeof group === 'object') {
+                    message += `${group.count || '?'} fichiers avec le motif "${group.basePattern || 'inconnu'}"\n`;
+                    message += `Fichier le plus récent: ${group.newestFile || 'inconnu'}\n`;
+                    
+                    if (group.allFiles && Array.isArray(group.allFiles) && group.allFiles.length > 0) {
+                      message += "Tous les fichiers:\n";
+                      group.allFiles.forEach(file => {
+                        if (file && typeof file === 'object') {
+                          message += `- ${file.name || 'Sans nom'} (${formatDate(new Date(file.modified || Date.now()))})\n`;
+                        } else if (typeof file === 'string') {
+                          message += `- ${file}\n`;
+                        } else {
+                          message += `- Fichier inconnu\n`;
+                        }
+                      });
+                    }
+                  } else {
+                    message += `Informations non disponibles\n`;
                   }
                   message += `\n`;
                 });
               }
               
               // Vérifier les doublons par URL de CodeSystem
-              if (result.data.urlDuplicates && result.data.urlDuplicates.codeSystems && result.data.urlDuplicates.codeSystems.length > 0) {
+              if (result.data.urlDuplicates && result.data.urlDuplicates.codeSystems && Array.isArray(result.data.urlDuplicates.codeSystems) && result.data.urlDuplicates.codeSystems.length > 0) {
                 message += `== Doublons de CodeSystems (${result.data.urlDuplicates.codeSystems.length} URLs) ==\n`;
                 result.data.urlDuplicates.codeSystems.forEach((duplicate, i) => {
-                  message += `URL: ${duplicate.url} (${duplicate.count} occurrences)\n`;
-                  message += "Présent dans les fichiers:\n";
-                  duplicate.files.forEach(filename => {
-                    message += `- ${filename}\n`;
-                  });
+                  if (duplicate && typeof duplicate === 'object') {
+                    message += `URL: ${duplicate.url || 'URL inconnue'} (${duplicate.count || '?'} occurrences)\n`;
+                    message += "Présent dans les fichiers:\n";
+                    if (duplicate.files && Array.isArray(duplicate.files) && duplicate.files.length > 0) {
+                      duplicate.files.forEach(filename => {
+                        message += `- ${filename || 'Fichier inconnu'}\n`;
+                      });
+                    } else {
+                      message += `- Information non disponible\n`;
+                    }
+                  } else {
+                    message += `Information non disponible pour ce doublon\n`;
+                  }
                   message += `\n`;
                 });
               }
               
               // Vérifier les doublons par URL de ValueSet
-              if (result.data.urlDuplicates && result.data.urlDuplicates.valueSets && result.data.urlDuplicates.valueSets.length > 0) {
+              if (result.data.urlDuplicates && result.data.urlDuplicates.valueSets && Array.isArray(result.data.urlDuplicates.valueSets) && result.data.urlDuplicates.valueSets.length > 0) {
                 message += `== Doublons de ValueSets (${result.data.urlDuplicates.valueSets.length} URLs) ==\n`;
                 result.data.urlDuplicates.valueSets.forEach((duplicate, i) => {
-                  message += `URL: ${duplicate.url} (${duplicate.count} occurrences)\n`;
-                  message += "Présent dans les fichiers:\n";
-                  duplicate.files.forEach(filename => {
-                    message += `- ${filename}\n`;
-                  });
+                  if (duplicate && typeof duplicate === 'object') {
+                    message += `URL: ${duplicate.url || 'URL inconnue'} (${duplicate.count || '?'} occurrences)\n`;
+                    message += "Présent dans les fichiers:\n";
+                    if (duplicate.files && Array.isArray(duplicate.files) && duplicate.files.length > 0) {
+                      duplicate.files.forEach(filename => {
+                        message += `- ${filename || 'Fichier inconnu'}\n`;
+                      });
+                    } else {
+                      message += `- Information non disponible\n`;
+                    }
+                  } else {
+                    message += `Information non disponible pour ce doublon\n`;
+                  }
                   message += `\n`;
                 });
               }
               
               // Vérifier les doublons d'OIDs
-              if (result.data.urlDuplicates && result.data.urlDuplicates.oids && result.data.urlDuplicates.oids.length > 0) {
+              if (result.data.urlDuplicates && result.data.urlDuplicates.oids && Array.isArray(result.data.urlDuplicates.oids) && result.data.urlDuplicates.oids.length > 0) {
                 message += `== Doublons d'OIDs (${result.data.urlDuplicates.oids.length} OIDs) ==\n`;
                 result.data.urlDuplicates.oids.forEach((duplicate, i) => {
-                  message += `OID: ${duplicate.url} (${duplicate.count} occurrences)\n`;
-                  message += "Présent dans les fichiers:\n";
-                  duplicate.files.forEach(filename => {
-                    message += `- ${filename}\n`;
-                  });
+                  if (duplicate && typeof duplicate === 'object') {
+                    message += `OID: ${duplicate.url || 'OID inconnu'} (${duplicate.count || '?'} occurrences)\n`;
+                    message += "Présent dans les fichiers:\n";
+                    if (duplicate.files && Array.isArray(duplicate.files) && duplicate.files.length > 0) {
+                      duplicate.files.forEach(filename => {
+                        message += `- ${filename || 'Fichier inconnu'}\n`;
+                      });
+                    } else {
+                      message += `- Information non disponible\n`;
+                    }
+                  } else {
+                    message += `Information non disponible pour ce doublon\n`;
+                  }
                   message += `\n`;
                 });
               }
