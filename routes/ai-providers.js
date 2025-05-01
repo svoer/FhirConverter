@@ -71,6 +71,45 @@ router.get('/', adminRequired, async (req, res) => {
 
 /**
  * @swagger
+ * /api/ai-providers/supported:
+ *   get:
+ *     summary: Liste des fournisseurs d'IA pris en charge
+ *     tags: [AI Providers]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des fournisseurs d'IA pris en charge
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Accès refusé
+ */
+router.get('/supported', adminRequired, async (req, res) => {
+  try {
+    const supportedProviders = aiProviderService.getSupportedProviders();
+    res.json(supportedProviders);
+  } catch (error) {
+    console.error('[API] Erreur lors de la récupération des fournisseurs d\'IA pris en charge:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des fournisseurs d\'IA pris en charge' });
+  }
+});
+
+/**
+ * @swagger
  * /api/ai-providers/{id}:
  *   get:
  *     summary: Récupérer un fournisseur d'IA par son ID
@@ -113,7 +152,13 @@ router.get('/', adminRequired, async (req, res) => {
  */
 router.get('/:id', adminRequired, async (req, res) => {
   try {
-    const { id } = req.params;
+    // Vérifier si l'ID est un nombre pour éviter de confondre avec d'autres routes
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(404).json({ error: 'ID de fournisseur d\'IA invalide' });
+    }
+    
     const provider = await aiProviderService.getProviderById(id);
     
     if (!provider) {
@@ -130,45 +175,6 @@ router.get('/:id', adminRequired, async (req, res) => {
   } catch (error) {
     console.error(`[API] Erreur lors de la récupération du fournisseur d'IA avec l'ID ${req.params.id}:`, error);
     res.status(500).json({ error: 'Erreur lors de la récupération du fournisseur d\'IA' });
-  }
-});
-
-/**
- * @swagger
- * /api/ai-providers/supported:
- *   get:
- *     summary: Liste des fournisseurs d'IA pris en charge
- *     tags: [AI Providers]
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Liste des fournisseurs d'IA pris en charge
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   name:
- *                     type: string
- *                   description:
- *                     type: string
- *       401:
- *         description: Non autorisé
- *       403:
- *         description: Accès refusé
- */
-router.get('/supported', adminRequired, async (req, res) => {
-  try {
-    const supportedProviders = aiProviderService.getSupportedProviders();
-    res.json(supportedProviders);
-  } catch (error) {
-    console.error('[API] Erreur lors de la récupération des fournisseurs d\'IA pris en charge:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des fournisseurs d\'IA pris en charge' });
   }
 });
 
