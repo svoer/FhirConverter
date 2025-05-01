@@ -212,12 +212,11 @@
         <a href="#parser">Analyse HL7</a>
         <a href="#message-types">Types de Messages</a>
         <a href="#converter">Convertisseur</a>
-        <a href="#terminology">Nomenclatures</a>
+        <a href="#terminology">Nomenclatures et Terminologies</a>
         <a href="#api">APIs</a>
         <a href="#cache">Système de Cache</a>
         <a href="#database">Base de Données</a>
         <a href="#docker">Déploiement Docker</a>
-        <a href="#terminology-page">Gestion des Nomenclatures</a>
         <a href="#prerequites">Prérequis</a>
       </div>
       
@@ -556,10 +555,10 @@ function parseHL7Message(hl7Message) {
       </div>
       
       <div id="terminology" class="documentation-section">
-        <h2>Service de Terminologie Française</h2>
+        <h2>Gestion des Nomenclatures et Terminologies</h2>
         <p>FHIRHub intègre un service de terminologie spécialisé pour les systèmes de codification français, basé sur les référentiels de l'ANS (Agence du Numérique en Santé).</p>
         
-        <h3>Mappings terminologiques</h3>
+        <h3>Service de Terminologie Française</h3>
         <p>Le service maintient une table de correspondance entre les codes HL7 et les URLs de systèmes FHIR, avec une attention particulière aux terminologies françaises.</p>
         
         <table class="terminology-mapping">
@@ -644,15 +643,24 @@ function parseHL7Message(hl7Message) {
           </tbody>
         </table>
         
-        <h3>Terminologies préchargées</h3>
+        <h3>Fonctionnement hors-ligne et mise à jour</h3>
         <p>FHIRHub est conçu pour fonctionner entièrement hors-ligne avec des terminologies préchargées. Ces terminologies peuvent être mises à jour via les fonctionnalités d'administration lorsqu'une connexion Internet est disponible.</p>
         
         <div class="warning-box">
           <p><strong>Note importante :</strong> Par défaut, FHIRHub inclut les terminologies françaises les plus récentes publiées par l'ANS. Assurez-vous de maintenir ces terminologies à jour pour garantir la conformité avec les dernières exigences réglementaires.</p>
         </div>
 
-        <h3>Mise à jour des terminologies</h3>
-        <p>Les terminologies françaises peuvent désormais être mises à jour directement depuis l'interface web via la page <a href="/terminologies.html">Nomenclatures</a>. L'interface permet d'importer, de gérer et de prévisualiser les fichiers JSON contenant les terminologies et référentiels de l'Agence du Numérique en Santé (ANS).</p>
+        <h3>Interface de gestion des nomenclatures</h3>
+        <p>L'application dispose d'une <a href="/terminologies.html">interface de gestion des nomenclatures</a> qui permet de :</p>
+        <ul>
+          <li>Importer des fichiers JSON contenant des terminologies depuis l'API ANS</li>
+          <li>Prévisualiser et vérifier le contenu des fichiers de terminologie</li>
+          <li>Gérer les descriptions et mettre à jour les fichiers existants</li>
+          <li>Exporter l'ensemble des terminologies pour sauvegarde ou migration</li>
+          <li>Visualiser des statistiques sur les nomenclatures chargées</li>
+        </ul>
+        
+        <p>Cette interface est accessible uniquement aux administrateurs et permet une gestion centralisée des terminologies françaises utilisées lors de la conversion des messages HL7 vers FHIR.</p>
       </div>
       
       <div id="api" class="documentation-section">
