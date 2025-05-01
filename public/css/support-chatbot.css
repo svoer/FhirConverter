@@ -26,13 +26,14 @@
 .chatbot-header {
   background: linear-gradient(135deg, #e74c3c, #f39c12);
   color: white;
-  padding: 15px;
+  padding: 8px 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   user-select: none;
   border-radius: 10px 10px 0 0;
+  height: 40px;
 }
 
 .chatbot-header-title {

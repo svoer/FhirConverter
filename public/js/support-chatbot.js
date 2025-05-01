@@ -72,46 +72,46 @@ N'oublie pas:
    * Crée les éléments HTML du chatbot
    */
   createChatbotElements() {
-    // Créer le conteneur principal du chatbot
-    const chatbotContainer = document.createElement('div');
-    chatbotContainer.className = 'chatbot-container';
-    chatbotContainer.id = 'fhirhub-chatbot';
+    // Vérifier si le chatbot existe déjà
+    if (document.getElementById('fhirhub-chatbot')) {
+      return;
+    }
     
-    // Créer l'en-tête du chatbot
-    const chatbotHeader = document.createElement('div');
-    chatbotHeader.className = 'chatbot-header';
-    chatbotHeader.innerHTML = `
-      <div class="chatbot-header-title">
-        <i class="chatbot-header-icon fas fa-robot"></i>
-        <span>Assistant FHIRHub</span>
+    // Ajouter Font Awesome s'il n'est pas déjà chargé
+    if (!document.querySelector('link[href*="font-awesome"]')) {
+      const fontAwesome = document.createElement('link');
+      fontAwesome.rel = 'stylesheet';
+      fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+      document.head.appendChild(fontAwesome);
+    }
+    
+    // Créer le HTML du chatbot
+    const chatbotHTML = `
+      <div class="chatbot-container" id="fhirhub-chatbot">
+        <div class="chatbot-header">
+          <div class="chatbot-header-title">
+            <i class="chatbot-header-icon fas fa-robot"></i>
+            <span>Assistant FHIRHub</span>
+          </div>
+          <button class="chatbot-toggle" type="button">
+            <i class="fas fa-chevron-up" id="chatbot-toggle-icon"></i>
+          </button>
+        </div>
+        <div class="chatbot-body" id="chatbot-messages"></div>
+        <div class="chatbot-footer">
+          <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Posez votre question ici...">
+          <button class="chatbot-send" id="chatbot-send" type="button">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
       </div>
-      <button class="chatbot-toggle">
-        <i class="fas fa-chevron-up" id="chatbot-toggle-icon"></i>
-      </button>
     `;
     
-    // Créer le corps du chatbot (messages)
-    const chatbotBody = document.createElement('div');
-    chatbotBody.className = 'chatbot-body';
-    chatbotBody.id = 'chatbot-messages';
-    
-    // Créer le pied de page du chatbot (saisie)
-    const chatbotFooter = document.createElement('div');
-    chatbotFooter.className = 'chatbot-footer';
-    chatbotFooter.innerHTML = `
-      <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Posez votre question ici...">
-      <button class="chatbot-send" id="chatbot-send">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    `;
-    
-    // Assembler les éléments
-    chatbotContainer.appendChild(chatbotHeader);
-    chatbotContainer.appendChild(chatbotBody);
-    chatbotContainer.appendChild(chatbotFooter);
-    
-    // Ajouter au DOM
-    document.body.appendChild(chatbotContainer);
+    // Ajouter le HTML au DOM
+    const chatbotWrapper = document.createElement('div');
+    chatbotWrapper.innerHTML = chatbotHTML.trim();
+    const chatbotElement = chatbotWrapper.firstChild;
+    document.body.appendChild(chatbotElement);
   }
   
   /**
@@ -122,20 +122,39 @@ N'oublie pas:
     const headerToggle = document.querySelector('.chatbot-header');
     const toggleIcon = document.getElementById('chatbot-toggle-icon');
     
-    headerToggle.addEventListener('click', () => {
-      const container = document.getElementById('fhirhub-chatbot');
-      this.expanded = !this.expanded;
-      
-      if (this.expanded) {
-        container.classList.add('expanded');
-        toggleIcon.classList.remove('fa-chevron-up');
-        toggleIcon.classList.add('fa-chevron-down');
-      } else {
-        container.classList.remove('expanded');
-        toggleIcon.classList.remove('fa-chevron-down');
-        toggleIcon.classList.add('fa-chevron-up');
-      }
-    });
+    if (headerToggle) {
+      headerToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const container = document.getElementById('fhirhub-chatbot');
+        if (!container) return;
+        
+        this.expanded = !this.expanded;
+        
+        if (this.expanded) {
+          container.classList.add('expanded');
+          if (toggleIcon) {
+            toggleIcon.classList.remove('fa-chevron-up');
+            toggleIcon.classList.add('fa-chevron-down');
+          }
+        } else {
+          container.classList.remove('expanded');
+          if (toggleIcon) {
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+          }
+        }
+        
+        // Focus sur l'input quand le chatbot est ouvert
+        if (this.expanded) {
+          const inputField = document.getElementById('chatbot-input');
+          if (inputField) {
+            setTimeout(() => inputField.focus(), 300);
+          }
+        }
+      });
+    }
     
     // Envoi de message avec le bouton
     const sendButton = document.getElementById('chatbot-send');

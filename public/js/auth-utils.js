@@ -184,7 +184,8 @@ function injectChatbot() {
   }
   
   // Vérifier si le chatbot est déjà injecté
-  if (document.getElementById('fhirhub-chatbot')) {
+  if (document.getElementById('fhirhub-chatbot') || 
+      document.querySelector('script[src="/js/support-chatbot.js"]')) {
     return;
   }
   
@@ -194,11 +195,27 @@ function injectChatbot() {
   chatbotCss.href = '/css/support-chatbot.css';
   document.head.appendChild(chatbotCss);
   
+  // Injecter Font Awesome si nécessaire
+  if (!document.querySelector('link[href*="font-awesome"]')) {
+    const fontAwesome = document.createElement('link');
+    fontAwesome.rel = 'stylesheet';
+    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+    document.head.appendChild(fontAwesome);
+  }
+  
   // Injecter le JS du chatbot
   const chatbotJs = document.createElement('script');
   chatbotJs.src = '/js/support-chatbot.js';
   chatbotJs.defer = true;
-  document.body.appendChild(chatbotJs);
+  
+  // S'assurer que le script est chargé après que le document soit complètement prêt
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.appendChild(chatbotJs);
+    });
+  } else {
+    document.body.appendChild(chatbotJs);
+  }
 }
 
 // Exporter les fonctions pour usage global
