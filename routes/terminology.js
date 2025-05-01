@@ -1240,11 +1240,16 @@ router.post('/refresh', adminAuthMiddleware, async (req, res) => {
       }
     }
     
-    console.log(`[TERMINOLOGY] Rafraîchissement terminé. ${results.systemsCount} systèmes, ${results.oidsCount} OIDs, ${results.codeSystemsCount} CodeSystems, ${results.valueSetsCount} ValueSets.`);
+    const logMessage = `[TERMINOLOGY] Rafraîchissement terminé. ${results.systemsCount} systèmes, ${results.oidsCount} OIDs, ${results.codeSystemsCount} CodeSystems, ${results.valueSetsCount} ValueSets.`;
+    console.log(logMessage);
     
+    // Insertion du message dans la réponse pour l'affichage dans le journal des mises à jour
     res.json({
       success: true,
-      data: results
+      data: {
+        ...results,
+        message: logMessage.replace('[TERMINOLOGY] ', '')
+      }
     });
   } catch (error) {
     console.error('[API] Erreur lors du rafraîchissement des terminologies :', error);
@@ -1468,11 +1473,16 @@ router.get('/check-duplicates', adminAuthMiddleware, async (req, res) => {
       results.urlDuplicates.oids = results.urlDuplicates.oids.slice(0, 10);
     }
     
-    console.log(`[TERMINOLOGY] Vérification des doublons terminée. ${results.summary.totalDuplicates} doublons identifiés.`);
+    const logMessage = `[TERMINOLOGY] Vérification des doublons terminée. ${results.summary.totalDuplicates} doublons identifiés.`;
+    console.log(logMessage);
     
+    // Insertion du message dans la réponse pour l'affichage dans le journal des mises à jour
     res.json({
       success: true,
-      data: results
+      data: {
+        ...results,
+        message: logMessage.replace('[TERMINOLOGY] ', '')
+      }
     });
   } catch (error) {
     console.error('[API] Erreur lors de la vérification des doublons :', error);
