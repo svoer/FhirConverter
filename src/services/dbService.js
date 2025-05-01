@@ -167,7 +167,7 @@ async function createTables() {
     console.log('[DB] Création de l\'application par défaut et de la clé API de développement');
     try {
       await run(
-        'INSERT OR IGNORE INTO applications (name, description, owner_id) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
+        'INSERT OR IGNORE INTO applications (name, description, created_by) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
         ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
       );
       

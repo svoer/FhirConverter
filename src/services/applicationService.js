@@ -14,8 +14,8 @@ const apiKeyService = require('./apiKeyService');
 async function createApplication(appData) {
   try {
     // S'assurer que les champs obligatoires sont présents
-    if (!appData.name || !appData.owner_id) {
-      throw new Error('Le nom de l\'application et l\'identifiant du propriétaire sont obligatoires');
+    if (!appData.name || !appData.created_by) {
+      throw new Error('Le nom de l\'application et l\'identifiant du créateur sont obligatoires');
     }
     
     // Vérifier si une application avec le même nom existe déjà
@@ -31,12 +31,12 @@ async function createApplication(appData) {
     // Insérer l'application dans la base de données
     const result = await dbService.run(
       `INSERT INTO applications (
-        name, description, owner_id, status
+        name, description, created_by, status
       ) VALUES (?, ?, ?, ?)`,
       [
         appData.name,
         appData.description || '',
-        appData.owner_id,
+        appData.created_by,
         appData.status || 'active'
       ]
     );
