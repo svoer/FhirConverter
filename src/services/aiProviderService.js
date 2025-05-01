@@ -184,8 +184,8 @@ async function addProvider(providerData) {
         providerData.api_url || getDefaultBaseUrl(providerData.provider_name),
         providerData.models || getDefaultModels(providerData.provider_name),
         providerData.status || 'active',
-        providerData.enabled || 1,
-        providerData.settings || '{}'
+        providerData.enabled === undefined ? 1 : providerData.enabled,
+        typeof providerData.settings === 'object' ? JSON.stringify(providerData.settings || {}) : providerData.settings || '{}'
       ]
     );
     
@@ -249,12 +249,12 @@ async function updateProvider(id, providerData) {
     
     if (providerData.settings !== undefined) {
       updateFields.push('settings = ?');
-      updateValues.push(providerData.settings);
+      updateValues.push(typeof providerData.settings === 'object' ? JSON.stringify(providerData.settings) : providerData.settings);
     }
     
     if (providerData.test_result !== undefined) {
       updateFields.push('test_result = ?');
-      updateValues.push(providerData.test_result);
+      updateValues.push(typeof providerData.test_result === 'object' ? JSON.stringify(providerData.test_result) : providerData.test_result);
     }
     
     // Mettre à jour la date de modification
