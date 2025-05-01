@@ -173,6 +173,11 @@ async function addProvider(providerData) {
       throw new Error(`Un fournisseur d'IA avec le nom ${providerData.provider_name} existe déjà`);
     }
     
+    // Préparation des données
+    const settingsValue = typeof providerData.settings === 'object' 
+      ? JSON.stringify(providerData.settings || {}) 
+      : (providerData.settings || '{}');
+    
     // Insertion du fournisseur
     const result = await db.run(
       `INSERT INTO ai_providers (
@@ -185,7 +190,7 @@ async function addProvider(providerData) {
         providerData.models || getDefaultModels(providerData.provider_name),
         providerData.status || 'active',
         providerData.enabled === undefined ? 1 : providerData.enabled,
-        typeof providerData.settings === 'object' ? JSON.stringify(providerData.settings || {}) : providerData.settings || '{}'
+        settingsValue
       ]
     );
     
@@ -248,13 +253,19 @@ async function updateProvider(id, providerData) {
     }
     
     if (providerData.settings !== undefined) {
+      const settingsValue = typeof providerData.settings === 'object' 
+        ? JSON.stringify(providerData.settings) 
+        : providerData.settings;
       updateFields.push('settings = ?');
-      updateValues.push(typeof providerData.settings === 'object' ? JSON.stringify(providerData.settings) : providerData.settings);
+      updateValues.push(settingsValue);
     }
     
     if (providerData.test_result !== undefined) {
+      const testResultValue = typeof providerData.test_result === 'object' 
+        ? JSON.stringify(providerData.test_result) 
+        : providerData.test_result;
       updateFields.push('test_result = ?');
-      updateValues.push(typeof providerData.test_result === 'object' ? JSON.stringify(providerData.test_result) : providerData.test_result);
+      updateValues.push(testResultValue);
     }
     
     // Mettre à jour la date de modification
