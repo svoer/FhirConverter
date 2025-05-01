@@ -101,6 +101,10 @@
         <button id="btn-check-duplicates" class="btn btn-info">
           <i class="fas fa-search"></i> Vérifier les doublons
         </button>
+        
+        <button id="btn-analyze-terminology" class="btn btn-success">
+          <i class="fas fa-microscope"></i> Analyser le contenu
+        </button>
       </div>
 
       <!-- Liste des fichiers de terminologie -->
@@ -420,11 +424,14 @@
               // Si c'est un fichier d'OIDs, incrémenter le compteur d'OIDs
               if (stats.detectedTypes.includes('ANS-OIDs')) {
                 const currentCount = parseInt(terminologyOidsCountEl.textContent) || 0;
-                const newCount = currentCount + (stats.totalSystems || 0);
+                const newCount = currentCount + (stats.totalOids || 0);
                 terminologyOidsCountEl.textContent = newCount;
                 
                 // Mettre en évidence visuelle de la mise à jour
                 highlightElement(terminologyOidsCountEl);
+                
+                // Log pour aider au débogage
+                console.log(`[DEBUG] Mise à jour du compteur d'OIDs: ${currentCount} + ${stats.totalOids} = ${newCount}`);
               }
               
               // Mettre à jour la date de dernière mise à jour
@@ -432,7 +439,23 @@
               highlightElement(terminologyLastUpdatedEl);
               
               // Log détaillé avec les statistiques
-              addLog(`Fichier ${file.name} importé - ${stats.totalSystems || 0} systèmes, ${stats.totalElements || 0} éléments`);
+              let logMessage = `Fichier ${file.name} importé - `;
+              
+              // Ajouter des détails spécifiques en fonction du type
+              if (stats.detectedTypes.includes('ANS-Systems')) {
+                logMessage += `${stats.totalSystems || 0} systèmes`;
+              }
+              if (stats.detectedTypes.includes('ANS-OIDs')) {
+                logMessage += `${stats.totalOids || 0} OIDs`;
+              }
+              if (stats.totalElements) {
+                logMessage += `, ${stats.totalElements} éléments au total`;
+              }
+              
+              // Log pour le débogage
+              console.log(`[DEBUG] Statistiques d'import: `, stats);
+              
+              addLog(logMessage);
             } else {
               // Log simple sans statistiques
               addLog(`Fichier ${file.name} importé avec succès`);
@@ -813,20 +836,74 @@
           const result = await response.json();
           
           if (result.success) {
-            if (result.data.duplicates.length === 0) {
+            // Vérifier si nous avons trouvé des doublons dans la nouvelle structure
+            const summary = result.data.summary || {};
+            const totalDuplicates = summary.totalDuplicates || 0;
+            
+            if (totalDuplicates === 0) {
               addLog('Aucun doublon trouvé dans les fichiers de terminologie.');
               alert('Aucun doublon trouvé dans les fichiers de terminologie.');
             } else {
-              const duplicateGroups = result.data.duplicates;
-              let message = `${duplicateGroups.length} groupe(s) de fichiers en doublon détecté(s):\n\n`;
+              // Nouvelle structure d'API a un format différent
+              let message = `${totalDuplicates} fichiers en doublon détectés:\n\n`;
               
-              duplicateGroups.forEach((group, i) => {
-                message += `Groupe ${i+1}:\n`;
-                group.files.forEach(file => {
-                  message += `- ${file.name} (${formatDate(file.lastModified)})\n`;
+              // Vérifier les doublons par nom
+              if (result.data.duplicates && result.data.duplicates.byName && result.data.duplicates.byName.length > 0) {
+                message += `== Doublons par nom (${result.data.duplicates.byName.length} groupes) ==\n`;
+                result.data.duplicates.byName.forEach((group, i) => {
+                  message += `Groupe ${i+1}: ${group.count} fichiers avec le motif "${group.basePattern}"\n`;
+                  message += `Fichier le plus récent: ${group.newestFile}\n`;
+                  if (group.allFiles && group.allFiles.length > 0) {
+                    message += "Tous les fichiers:\n";
+                    group.allFiles.forEach(file => {
+                      message += `- ${file.name} (${formatDate(new Date(file.modified))})\n`;
+                    });
+                  }
+                  message += `\n`;
                 });
-                message += `\n`;
-              });
+              }
+              
+              // Vérifier les doublons par URL de CodeSystem
+              if (result.data.urlDuplicates && result.data.urlDuplicates.codeSystems && result.data.urlDuplicates.codeSystems.length > 0) {
+                message += `== Doublons de CodeSystems (${result.data.urlDuplicates.codeSystems.length} URLs) ==\n`;
+                result.data.urlDuplicates.codeSystems.forEach((duplicate, i) => {
+                  message += `URL: ${duplicate.url} (${duplicate.count} occurrences)\n`;
+                  message += "Présent dans les fichiers:\n";
+                  duplicate.files.forEach(filename => {
+                    message += `- ${filename}\n`;
+                  });
+                  message += `\n`;
+                });
+              }
+              
+              // Vérifier les doublons par URL de ValueSet
+              if (result.data.urlDuplicates && result.data.urlDuplicates.valueSets && result.data.urlDuplicates.valueSets.length > 0) {
+                message += `== Doublons de ValueSets (${result.data.urlDuplicates.valueSets.length} URLs) ==\n`;
+                result.data.urlDuplicates.valueSets.forEach((duplicate, i) => {
+                  message += `URL: ${duplicate.url} (${duplicate.count} occurrences)\n`;
+                  message += "Présent dans les fichiers:\n";
+                  duplicate.files.forEach(filename => {
+                    message += `- ${filename}\n`;
+                  });
+                  message += `\n`;
+                });
+              }
+              
+              // Vérifier les doublons d'OIDs
+              if (result.data.urlDuplicates && result.data.urlDuplicates.oids && result.data.urlDuplicates.oids.length > 0) {
+                message += `== Doublons d'OIDs (${result.data.urlDuplicates.oids.length} OIDs) ==\n`;
+                result.data.urlDuplicates.oids.forEach((duplicate, i) => {
+                  message += `OID: ${duplicate.url} (${duplicate.count} occurrences)\n`;
+                  message += "Présent dans les fichiers:\n";
+                  duplicate.files.forEach(filename => {
+                    message += `- ${filename}\n`;
+                  });
+                  message += `\n`;
+                });
+              }
+              
+              // Log détaillé
+              addLog(`${totalDuplicates} fichiers en doublon identifiés.`);
               
               message += `Souhaitez-vous supprimer les doublons les plus anciens?`;
               
