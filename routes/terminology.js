@@ -75,24 +75,81 @@ const TERMINOLOGY_DIR = path.join(__dirname, '../french_terminology');
  */
 router.get('/french', adminAuthMiddleware, async (req, res) => {
   try {
-    // Récupérer les données des terminologies
+    // Récupérer les données des terminologies de base
     const systems = getJsonFileContent('ans_terminology_systems.json');
     const oids = getJsonFileContent('ans_oids.json');
     const commonCodes = getJsonFileContent('ans_common_codes.json');
     
-    // Compter le nombre d'éléments
-    const systemsCount = systems ? Object.keys(systems).length : 0;
-    const oidsCount = oids?.identifier_systems ? Object.keys(oids.identifier_systems).length : 0;
+    // Compter le nombre d'éléments dans les fichiers de base
+    let systemsCount = systems ? Object.keys(systems).length : 0;
+    let oidsCount = oids?.identifier_systems ? Object.keys(oids.identifier_systems).length : 0;
+    
+    // Analyser tous les autres fichiers de terminologie pour obtenir un compte plus précis
+    const files = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json') && 
+              !['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'].includes(file));
+    
+    // Variables pour suivre les informations supplémentaires
+    let additionalSystems = 0;
+    let additionalOids = 0;
+    let lastModifiedDate = null;
+    
+    // Parcourir tous les fichiers supplémentaires
+    for (const filename of files) {
+      try {
+        const filePath = path.join(TERMINOLOGY_DIR, filename);
+        const stats = fs.statSync(filePath);
+        
+        // Mettre à jour la date de dernière modification si ce fichier est plus récent
+        if (!lastModifiedDate || new Date(stats.mtime) > new Date(lastModifiedDate)) {
+          lastModifiedDate = stats.mtime;
+        }
+        
+        // Analyser le contenu du fichier
+        const content = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(content);
+        const fileAnalysis = analyzeTerminologyContent(jsonData);
+        
+        // Ajouter au compteur de systèmes si applicable
+        additionalSystems += fileAnalysis.totalSystems || 0;
+        
+        // Détecter les OIDs si applicable
+        if (fileAnalysis.detectedTypes.includes('ANS-OIDs')) {
+          additionalOids += fileAnalysis.totalSystems || 0;
+        }
+        
+        // Détecter les ValueSets et CodeSystems dans les bundles
+        if (fileAnalysis.resourceType === 'Bundle') {
+          if (fileAnalysis.resourceTypes?.ValueSet) {
+            additionalSystems += fileAnalysis.resourceTypes.ValueSet;
+          }
+          if (fileAnalysis.resourceTypes?.CodeSystem) {
+            additionalSystems += fileAnalysis.resourceTypes.CodeSystem;
+          }
+        }
+      } catch (error) {
+        console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier ${filename}:`, error);
+        // Continuer avec le fichier suivant
+      }
+    }
+    
+    // Ajouter les compteurs supplémentaires
+    systemsCount += additionalSystems;
+    oidsCount += additionalOids;
+    
+    // Utiliser la date de dernière modification la plus récente ou la date actuelle
+    const lastUpdated = lastModifiedDate ? new Date(lastModifiedDate).toISOString() : new Date().toISOString();
     
     res.json({
       success: true,
       data: {
         version: '1.0.0', // Valeur par défaut hardcodée
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: lastUpdated,
         systems: systems || {},
         oids: oids?.identifier_systems || {},
         systemsCount: systemsCount,
-        oidsCount: oidsCount
+        oidsCount: oidsCount,
+        additionalFiles: files.length
       }
     });
   } catch (error) {
@@ -391,6 +448,39 @@ router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, r
     console.log(`[TERMINOLOGY] Fichier ${destFilename} importé avec succès`);
     console.log(`[TERMINOLOGY] Contenu analysé: ${JSON.stringify(stats)}`);
     
+    // Calculer le nombre de systèmes et d'éléments pour une meilleure visibilité dans l'UI
+    let systemsCount = 0;
+    let elementsCount = 0;
+    
+    // Déterminer les compteurs selon le type de fichier
+    if (stats.detectedTypes.includes('ANS-Systems')) {
+      systemsCount = stats.totalSystems || 0;
+    } else if (stats.detectedTypes.includes('ANS-OIDs')) {
+      // Pour les OIDs, nous comptons également comme des systèmes
+      systemsCount = stats.totalSystems || 0;
+    } else if (stats.resourceType === 'Bundle') {
+      // Pour les bundles, compter les différents types de ressources
+      if (stats.resourceTypes) {
+        if (stats.resourceTypes.CodeSystem) {
+          systemsCount += stats.resourceTypes.CodeSystem;
+        }
+        if (stats.resourceTypes.ValueSet) {
+          systemsCount += stats.resourceTypes.ValueSet;
+        }
+        if (stats.resourceTypes.ConceptMap) {
+          elementsCount += stats.resourceTypes.ConceptMap;
+        }
+      }
+      // Compter tous les éléments du bundle
+      elementsCount += stats.totalElements || 0;
+    } else if (stats.resourceType === 'CodeSystem' || stats.detectedTypes.includes('CodeSystem')) {
+      systemsCount = 1;
+      elementsCount = stats.totalElements || 0;
+    } else if (stats.resourceType === 'ValueSet' || stats.detectedTypes.includes('ValueSet')) {
+      systemsCount = 1;
+      elementsCount = stats.totalElements || 0;
+    }
+    
     res.json({
       success: true,
       message: 'Fichier importé avec succès',
@@ -399,7 +489,9 @@ router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, r
         destinationName: destFilename,
         size: req.file.size,
         description: jsonData.metadata.description,
-        stats: stats
+        stats: stats,
+        systemsCount: systemsCount,
+        elementsCount: elementsCount
       }
     });
   } catch (error) {
