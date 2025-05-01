@@ -5,7 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const aiProviderService = require('../src/services/aiProviderService');
-const jwtAuth = require('../middleware/jwtAuth');
+const authCombined = require('../middleware/authCombined');
+const { adminRequired } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -49,7 +50,7 @@ const jwtAuth = require('../middleware/jwtAuth');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.get('/', authCombined, adminRequired, async (req, res) => {
   try {
     const providers = await aiProviderService.getAllProviders();
     
@@ -98,7 +99,7 @@ router.get('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       403:
  *         description: Accès refusé
  */
-router.get('/supported', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.get('/supported', authCombined, adminRequired, async (req, res) => {
   try {
     const supportedProviders = aiProviderService.getSupportedProviders();
     res.json(supportedProviders);
@@ -150,7 +151,7 @@ router.get('/supported', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.get('/:id', authCombined, adminRequired, async (req, res) => {
   try {
     // Vérifier si l'ID est un nombre pour éviter de confondre avec d'autres routes
     const id = parseInt(req.params.id);
@@ -220,7 +221,7 @@ router.get('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.post('/', authCombined, adminRequired, async (req, res) => {
   try {
     const providerData = req.body;
     
@@ -292,7 +293,7 @@ router.post('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.put('/:id', authCombined, adminRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -353,7 +354,7 @@ router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.delete('/:id', authCombined, adminRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -415,7 +416,7 @@ router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/test', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.post('/:id/test', authCombined, adminRequired, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
