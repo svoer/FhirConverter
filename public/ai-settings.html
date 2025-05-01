@@ -565,6 +565,8 @@
       const providerNameSelect = document.getElementById('provider-name');
       const providerModeInput = document.getElementById('provider-mode');
       const testResult = document.getElementById('test-result');
+      const apiKeyInfo = document.getElementById('api-key-info');
+      const apiKeyInput = document.getElementById('api-key');
       
       // Fermer la modal de sélection
       closeModal('provider-selection-modal');
@@ -578,6 +580,16 @@
       if (testResult) {
         testResult.classList.add('hidden');
         testResult.innerHTML = '';
+      }
+      
+      // Cacher le message d'information sur la clé API pour un nouveau fournisseur
+      if (apiKeyInfo) {
+        apiKeyInfo.classList.add('hidden');
+      }
+      
+      // Pour un nouveau fournisseur, la clé API est obligatoire
+      if (apiKeyInput) {
+        apiKeyInput.setAttribute('required', 'required');
       }
       
       // Définir le mode
@@ -639,6 +651,8 @@
         const providerModeInput = document.getElementById('provider-mode');
         const providerNameSelect = document.getElementById('provider-name');
         const testResult = document.getElementById('test-result');
+        const apiKeyInfo = document.getElementById('api-key-info');
+        const apiKeyInput = document.getElementById('api-key');
         
         // Réinitialiser le formulaire si le formulaire existe
         if (form) {
@@ -688,6 +702,16 @@
         if (provider.test_result) {
           testResult.innerHTML = displayTestResult(provider.test_result);
           testResult.classList.remove('hidden');
+        }
+        
+        // Afficher le message d'information sur la clé API pour un fournisseur existant
+        if (apiKeyInfo) {
+          apiKeyInfo.classList.remove('hidden');
+        }
+        
+        // En mode édition, la clé API n'est pas obligatoire
+        if (apiKeyInput) {
+          apiKeyInput.removeAttribute('required');
         }
         
         // Afficher la modal
@@ -1141,6 +1165,24 @@
     /* Styles généraux */
     .hidden {
       display: none;
+    }
+    
+    /* Styles pour l'information sur la clé API */
+    .api-key-info {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      color: #666;
+      font-size: 0.9em;
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .api-key-info i {
+      margin-right: 8px;
+      margin-top: 3px;
+      color: #3498db;
     }
   </style>
 </body>
