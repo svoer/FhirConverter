@@ -405,7 +405,8 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  return `${redSettings.httpAdminRoot}?workflowId=${workflowId}`;
+  // Construire l'URL de l'éditeur Node-RED (montée sous /node-red dans app.js)
+  return `/node-red?workflowId=${workflowId}`;
 }
 
 /**

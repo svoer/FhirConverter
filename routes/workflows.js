@@ -6,7 +6,6 @@ const express = require('express');
 const router = express.Router();
 const workflowService = require('../src/services/workflowService');
 const jwtAuth = require('../middleware/jwtAuth');
-const { adminRequired } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
