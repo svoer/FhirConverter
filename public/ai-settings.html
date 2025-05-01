@@ -604,7 +604,7 @@
       try {
         const response = await fetch(`/api/ai-providers/${providerId}`, {
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         
@@ -736,7 +736,7 @@
           method: method,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           },
           body: JSON.stringify(providerData)
         });
@@ -784,7 +784,7 @@
         const response = await fetch(`/api/ai-providers/${providerId}/test`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         
@@ -837,7 +837,7 @@
         const response = await fetch(`/api/ai-providers/${providerId}/test`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         
@@ -873,7 +873,7 @@
         const response = await fetch(`/api/ai-providers/${providerId}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         
