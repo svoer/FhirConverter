@@ -4,6 +4,7 @@
  */
 
 const db = require('./dbService');
+let initialized = false;
 
 /**
  * Liste des fournisseurs d'IA pris en charge
@@ -69,11 +70,43 @@ const SUPPORTED_PROVIDERS = [
 ];
 
 /**
+ * Initialiser le service
+ * @returns {Promise<void>}
+ */
+async function initialize() {
+  try {
+    if (initialized) {
+      return;
+    }
+    
+    console.log('[AI] Initialisation du service AI Provider...');
+    
+    // Vérifier que la connexion à la base de données est établie
+    if (!db.isInitialized()) {
+      console.log('[AI] Initialisation de la base de données requise');
+      await db.initialize();
+    }
+
+    // Vérifier si la table existe, sinon elle sera créée lors de l'initialisation de la base de données
+    initialized = true;
+    console.log('[AI] Service AI Provider initialisé avec succès');
+  } catch (error) {
+    console.error('[AI] Erreur lors de l\'initialisation du service AI Provider:', error);
+    throw error;
+  }
+}
+
+/**
  * Récupérer tous les fournisseurs d'IA
  * @returns {Promise<Array>} Liste des fournisseurs
  */
 async function getAllProviders() {
   try {
+    // S'assurer que le service est initialisé
+    if (!initialized) {
+      await initialize();
+    }
+    
     const providers = await db.query('SELECT * FROM ai_providers ORDER BY created_at DESC');
     return providers;
   } catch (error) {

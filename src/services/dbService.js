@@ -11,12 +11,18 @@ const DB_PATH = path.join(__dirname, '../../data/fhirhub.db');
 
 // Connexion à la base de données
 let db = null;
+let initialized = false;
 
 /**
  * Initialiser la base de données
  * @returns {Promise<void>}
  */
 async function initialize() {
+  // Si déjà initialisé, retourner immédiatement
+  if (initialized) {
+    return Promise.resolve();
+  }
+
   return new Promise((resolve, reject) => {
     console.log('[DB] Initialisation de la base de données...');
     console.log(`[DB] Chemin de la base de données: ${DB_PATH}`);
@@ -43,6 +49,7 @@ async function initialize() {
       createTables()
         .then(() => {
           console.log('[DB] Structure de la base de données vérifiée');
+          initialized = true;
           resolve();
         })
         .catch(err => {
@@ -54,6 +61,14 @@ async function initialize() {
       reject(err);
     }
   });
+}
+
+/**
+ * Vérifier si la base de données est initialisée
+ * @returns {boolean} Statut d'initialisation
+ */
+function isInitialized() {
+  return initialized;
 }
 
 /**
@@ -252,6 +267,7 @@ function ensureConnection() {
 
 module.exports = {
   initialize,
+  isInitialized,
   close,
   run,
   get,
