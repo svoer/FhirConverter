@@ -284,13 +284,52 @@ async function testProviderConnection(id) {
       throw new Error(`Aucun fournisseur d'IA trouvé avec l'ID ${id}`);
     }
     
-    // TODO: Implémentation des tests spécifiques pour chaque fournisseur
-    const testResult = {
-      success: true,
-      message: `Connexion au fournisseur ${provider.provider_name} établie avec succès`,
-      models: [],
-      timestamp: new Date().toISOString()
-    };
+    // Rechercher le fournisseur supporté correspondant
+    const supportedProvider = SUPPORTED_PROVIDERS.find(p => p.id === provider.provider_name);
+    if (!supportedProvider) {
+      throw new Error(`Type de fournisseur non reconnu: ${provider.provider_name}`);
+    }
+    
+    // Utiliser l'URL personnalisée ou l'URL par défaut
+    const apiUrl = provider.api_url || supportedProvider.baseUrl;
+    
+    // Tester la connexion selon le type de fournisseur
+    let testResult;
+    
+    switch (provider.provider_name) {
+      case 'openai':
+        testResult = await testOpenAI(provider.api_key, apiUrl);
+        break;
+      case 'google':
+        testResult = await testGoogleAI(provider.api_key, apiUrl);
+        break;
+      case 'anthropic':
+        testResult = await testAnthropic(provider.api_key, apiUrl);
+        break;
+      case 'mistral':
+        testResult = await testMistral(provider.api_key, apiUrl);
+        break;
+      case 'deepseek':
+        testResult = await testDeepSeek(provider.api_key, apiUrl);
+        break;
+      case 'ollama':
+        testResult = await testOllama(apiUrl);
+        break;
+      case 'custom':
+        testResult = await testCustomAPI(provider.api_key, apiUrl);
+        break;
+      default:
+        // Pour les fournisseurs non spécifiés, test générique
+        testResult = {
+          success: true,
+          message: `Fournisseur ${provider.provider_name} configuré (test générique)`,
+          models: provider.models ? provider.models.split(',') : [],
+          timestamp: new Date().toISOString()
+        };
+    }
+    
+    // Ajouter le timestamp
+    testResult.timestamp = new Date().toISOString();
     
     // Mise à jour du résultat du test
     await updateProvider(id, { test_result: JSON.stringify(testResult) });
@@ -314,6 +353,242 @@ async function testProviderConnection(id) {
     }
     
     throw error;
+  }
+}
+
+// Fonctions de test pour chaque fournisseur
+async function testOpenAI(apiKey, baseUrl) {
+  try {
+    // Endpoint pour les modèles disponibles
+    const url = `${baseUrl}/models`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Erreur OpenAI: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.data.map(model => model.id).filter(id => id.startsWith('gpt-'));
+    
+    return {
+      success: true,
+      message: 'Connexion à OpenAI établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test OpenAI:', error);
+    throw new Error(`Connexion à OpenAI échouée: ${error.message}`);
+  }
+}
+
+async function testGoogleAI(apiKey, baseUrl) {
+  try {
+    // Endpoint pour les modèles disponibles (Gemini)
+    const url = `${baseUrl}/models?key=${apiKey}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Erreur Google AI: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.models.map(model => model.name.split('/').pop());
+    
+    return {
+      success: true,
+      message: 'Connexion à Google AI établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test Google AI:', error);
+    throw new Error(`Connexion à Google AI échouée: ${error.message}`);
+  }
+}
+
+async function testAnthropic(apiKey, baseUrl) {
+  try {
+    // Endpoint pour vérifier l'authentification
+    const url = `${baseUrl}/models`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Erreur Anthropic: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.models.map(model => model.id);
+    
+    return {
+      success: true,
+      message: 'Connexion à Anthropic établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test Anthropic:', error);
+    throw new Error(`Connexion à Anthropic échouée: ${error.message}`);
+  }
+}
+
+async function testMistral(apiKey, baseUrl) {
+  try {
+    // Endpoint pour les modèles disponibles
+    const url = `${baseUrl}/models`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Erreur Mistral AI: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.data.map(model => model.id);
+    
+    return {
+      success: true,
+      message: 'Connexion à Mistral AI établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test Mistral AI:', error);
+    throw new Error(`Connexion à Mistral AI échouée: ${error.message}`);
+  }
+}
+
+async function testDeepSeek(apiKey, baseUrl) {
+  try {
+    // DeepSeek utilise une API compatible OpenAI
+    const url = `${baseUrl}/models`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Erreur DeepSeek: ${error.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.data.map(model => model.id);
+    
+    return {
+      success: true,
+      message: 'Connexion à DeepSeek établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test DeepSeek:', error);
+    throw new Error(`Connexion à DeepSeek échouée: ${error.message}`);
+  }
+}
+
+async function testOllama(baseUrl) {
+  try {
+    // Endpoint pour les modèles disponibles dans Ollama
+    const url = `${baseUrl}/tags`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur Ollama: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const models = data.models ? data.models.map(model => model.name) : [];
+    
+    return {
+      success: true,
+      message: 'Connexion à Ollama établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test Ollama:', error);
+    throw new Error(`Connexion à Ollama échouée: ${error.message}`);
+  }
+}
+
+async function testCustomAPI(apiKey, baseUrl) {
+  try {
+    // Tenter de détecter le format de l'API
+    let url = `${baseUrl}/models`;
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erreur API personnalisée: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    let models = [];
+    
+    // Tenter de détecter le format de la réponse
+    if (data.data && Array.isArray(data.data)) {
+      // Format OpenAI
+      models = data.data.map(model => model.id);
+    } else if (data.models && Array.isArray(data.models)) {
+      // Format Google/Anthropic
+      models = data.models.map(model => {
+        return model.id || model.name || model;
+      });
+    }
+    
+    return {
+      success: true,
+      message: 'Connexion à l\'API personnalisée établie avec succès',
+      models: models
+    };
+  } catch (error) {
+    console.error('[AI] Erreur lors du test de l\'API personnalisée:', error);
+    throw new Error(`Connexion à l'API personnalisée échouée: ${error.message}`);
   }
 }
 
