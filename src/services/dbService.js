@@ -172,8 +172,8 @@ async function createTables() {
       );
       
       await run(
-        'INSERT OR IGNORE INTO api_keys (application_id, key, name) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?',
-        ['Application par défaut', 'dev-key', 'Clé de développement']
+        'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?',
+        ['Application par défaut', 'dev-key', 'dev-key', 'Clé de développement']
       );
     } catch (appErr) {
       console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);

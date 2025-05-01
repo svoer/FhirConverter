@@ -25,18 +25,16 @@ async function createApiKey(keyData) {
     // Insérer la clé API dans la base de données
     const result = await dbService.run(
       `INSERT INTO api_keys (
-        application_id, key, name, environment, 
-        active, expires_at, rate_limit, ip_restrictions
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        application_id, key, hashed_key, description, 
+        is_active, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         keyData.application_id,
         apiKey,
-        keyData.name,
-        keyData.environment || 'development',
+        apiKey, // Utilisé comme hashed_key temporairement
+        keyData.name, // Utilisé comme description
         keyData.active !== undefined ? keyData.active : 1,
-        keyData.expires_at || null,
-        keyData.rate_limit || 100,
-        keyData.ip_restrictions || null
+        keyData.expires_at || null
       ]
     );
     
@@ -384,7 +382,7 @@ async function verifyApiKey(key) {
     }
     
     // Vérifier si la clé est active
-    if (!keyInfo.active) {
+    if (!keyInfo.is_active) {
       return null;
     }
     
