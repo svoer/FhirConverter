@@ -427,16 +427,23 @@
       const noApis = document.getElementById('no-apis');
       const loadingSpinner = document.getElementById('loading-spinner');
       
-      // Cacher le spinner
-      loadingSpinner.classList.add('hidden');
+      // Cacher le spinner s'il existe
+      if (loadingSpinner) {
+        loadingSpinner.classList.add('hidden');
+      }
       
       // Vérifier s'il y a des fournisseurs à afficher
       if (providers.length === 0) {
-        noApis.classList.remove('hidden');
+        if (noApis) {
+          noApis.classList.remove('hidden');
+        }
         return;
       }
       
-      noApis.classList.add('hidden');
+      // Cacher le message "aucune API"
+      if (noApis) {
+        noApis.classList.add('hidden');
+      }
       
       // Générer le HTML pour chaque fournisseur
       const providersHtml = providers.map(provider => {
@@ -558,10 +565,16 @@
       // Fermer la modal de sélection
       closeModal('provider-selection-modal');
       
-      // Réinitialiser le formulaire
-      form.reset();
-      testResult.classList.add('hidden');
-      testResult.innerHTML = '';
+      // Réinitialiser le formulaire si le formulaire existe
+      if (form) {
+        form.reset();
+      }
+      
+      // Cacher et vider le résultat du test s'il existe
+      if (testResult) {
+        testResult.classList.add('hidden');
+        testResult.innerHTML = '';
+      }
       
       // Définir le mode
       providerModeInput.value = 'add';
@@ -623,10 +636,16 @@
         const providerNameSelect = document.getElementById('provider-name');
         const testResult = document.getElementById('test-result');
         
-        // Réinitialiser le formulaire
-        form.reset();
-        testResult.classList.add('hidden');
-        testResult.innerHTML = '';
+        // Réinitialiser le formulaire si le formulaire existe
+        if (form) {
+          form.reset();
+        }
+        
+        // Cacher et vider le résultat du test s'il existe
+        if (testResult) {
+          testResult.classList.add('hidden');
+          testResult.innerHTML = '';
+        }
         
         // Définir le mode et l'ID
         providerModeInput.value = 'edit';
@@ -799,9 +818,11 @@
         
         const result = await response.json();
         
-        // Afficher le résultat du test
-        testResult.innerHTML = displayTestResult(result);
-        testResult.classList.remove('hidden');
+        // Afficher le résultat du test si l'élément existe
+        if (testResult) {
+          testResult.innerHTML = displayTestResult(result);
+          testResult.classList.remove('hidden');
+        }
         
         // Afficher une notification
         if (result.success) {
@@ -814,17 +835,19 @@
         document.getElementById('test-connection-button').disabled = false;
         document.getElementById('test-connection-button').innerHTML = '<i class="fas fa-vial"></i> Tester la connexion';
         
-        // Afficher l'erreur
+        // Afficher l'erreur si l'élément existe
         const testResult = document.getElementById('test-result');
-        testResult.innerHTML = `
-          <div class="test-result test-error">
-            <strong>Échec du test</strong>: ${error.message}
-            <div style="font-size: 0.8rem; margin-top: 0.5rem;">
-              Testé le: ${new Date().toLocaleString()}
+        if (testResult) {
+          testResult.innerHTML = `
+            <div class="test-result test-error">
+              <strong>Échec du test</strong>: ${error.message}
+              <div style="font-size: 0.8rem; margin-top: 0.5rem;">
+                Testé le: ${new Date().toLocaleString()}
+              </div>
             </div>
-          </div>
-        `;
-        testResult.classList.remove('hidden');
+          `;
+          testResult.classList.remove('hidden');
+        }
         
         showNotification('error', `Erreur lors du test de connexion: ${error.message}`);
       }
@@ -896,7 +919,9 @@
     // Fermer une modal
     function closeModal(modalId) {
       const modal = document.getElementById(modalId);
-      modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+      }
     }
     
     // Montrer/cacher le mot de passe
@@ -915,21 +940,54 @@
     
     // Afficher une notification
     function showNotification(type, message) {
+      // Créer l'élément de notification
       const notification = document.createElement('div');
       notification.className = `notification ${type}`;
       notification.innerHTML = message;
       
+      // Ajouter la notification au DOM
       document.body.appendChild(notification);
       
+      // Référence pour garder une trace si la notification existe encore
+      let notificationExists = true;
+      
+      // Afficher la notification avec une animation
       setTimeout(() => {
-        notification.classList.add('show');
+        if (notification && notification.parentNode) {
+          notification.classList.add('show');
+        }
       }, 10);
       
+      // Cacher la notification après un délai
       setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-          document.body.removeChild(notification);
-        }, 300);
+        if (notification && notification.parentNode) {
+          try {
+            notification.classList.remove('show');
+            
+            // Supprimer la notification du DOM après l'animation
+            setTimeout(() => {
+              if (notification && notification.parentNode) {
+                try {
+                  document.body.removeChild(notification);
+                  notificationExists = false;
+                } catch (err) {
+                  console.log('Notification déjà supprimée');
+                }
+              }
+            }, 300);
+          } catch (err) {
+            console.log('Erreur lors de la suppression de classe:', err);
+            // Tenter de supprimer directement la notification
+            if (notification && notification.parentNode) {
+              try {
+                document.body.removeChild(notification);
+                notificationExists = false;
+              } catch (err) {
+                console.log('Notification déjà supprimée');
+              }
+            }
+          }
+        }
       }, 3000);
     }
     
