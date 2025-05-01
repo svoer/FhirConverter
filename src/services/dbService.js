@@ -248,17 +248,7 @@ async function get(sql, params = []) {
       ensureConnection();
       
       // Préparer les paramètres pour SQLite
-      const safeParams = params.map(param => {
-        if (param === null || param === undefined) {
-          return null;
-        }
-        
-        if (typeof param === 'object') {
-          return JSON.stringify(param);
-        }
-        
-        return param;
-      });
+      const safeParams = params.map(convertToSQLiteValue);
       
       // better-sqlite3 utilise "get" pour obtenir un seul résultat
       const row = db.prepare(sql).get(...safeParams);
@@ -283,17 +273,7 @@ async function query(sql, params = []) {
       ensureConnection();
       
       // Préparer les paramètres pour SQLite
-      const safeParams = params.map(param => {
-        if (param === null || param === undefined) {
-          return null;
-        }
-        
-        if (typeof param === 'object') {
-          return JSON.stringify(param);
-        }
-        
-        return param;
-      });
+      const safeParams = params.map(convertToSQLiteValue);
       
       // better-sqlite3 utilise "all" pour obtenir tous les résultats
       const rows = db.prepare(sql).all(...safeParams);
