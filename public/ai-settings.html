@@ -289,10 +289,14 @@
           
           <div class="form-group api-key-field">
             <label for="api-key">Clé API</label>
-            <input type="password" id="api-key" name="api-key" class="form-control api-key-input" required>
+            <input type="password" id="api-key" name="api-key" class="form-control api-key-input">
             <button type="button" class="toggle-password" onclick="togglePasswordVisibility('api-key')">
               <i class="fas fa-eye"></i>
             </button>
+            <div id="api-key-info" class="api-key-info hidden">
+              <i class="fas fa-info-circle"></i>
+              <span>Pour des raisons de sécurité, la clé API existante n'est pas affichée. Laissez ce champ vide pour conserver la clé actuelle ou saisissez une nouvelle clé pour la remplacer.</span>
+            </div>
           </div>
           
           <div class="ai-form-row">
