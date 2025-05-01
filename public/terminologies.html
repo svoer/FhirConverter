@@ -380,8 +380,43 @@
               throw new Error(error.message || 'Erreur lors de l\'importation');
             }
             
-            // Ajouter un log
-            addLog(`Fichier ${file.name} importé avec succès`);
+            // Récupérer les détails de l'import
+            const importResult = await response.json();
+            
+            if (importResult.data && importResult.data.stats) {
+              // Mettre à jour les compteurs selon le type de fichier importé
+              const stats = importResult.data.stats;
+              
+              // Si c'est un fichier de systèmes, incrémenter le compteur de systèmes
+              if (stats.detectedTypes.includes('ANS-Systems')) {
+                const currentCount = parseInt(terminologySystemsCountEl.textContent) || 0;
+                const newCount = currentCount + (stats.totalSystems || 0);
+                terminologySystemsCountEl.textContent = newCount;
+                
+                // Mettre en évidence visuelle de la mise à jour
+                highlightElement(terminologySystemsCountEl);
+              }
+              
+              // Si c'est un fichier d'OIDs, incrémenter le compteur d'OIDs
+              if (stats.detectedTypes.includes('ANS-OIDs')) {
+                const currentCount = parseInt(terminologyOidsCountEl.textContent) || 0;
+                const newCount = currentCount + (stats.totalSystems || 0);
+                terminologyOidsCountEl.textContent = newCount;
+                
+                // Mettre en évidence visuelle de la mise à jour
+                highlightElement(terminologyOidsCountEl);
+              }
+              
+              // Mettre à jour la date de dernière mise à jour
+              terminologyLastUpdatedEl.textContent = formatDate(new Date());
+              highlightElement(terminologyLastUpdatedEl);
+              
+              // Log détaillé avec les statistiques
+              addLog(`Fichier ${file.name} importé - ${stats.totalSystems || 0} systèmes, ${stats.totalElements || 0} éléments`);
+            } else {
+              // Log simple sans statistiques
+              addLog(`Fichier ${file.name} importé avec succès`);
+            }
           }
           
           // Fermer le modal d'upload
@@ -640,6 +675,17 @@
         return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + units[i];
       }
       
+      // Fonction pour mettre en évidence un élément qui vient d'être mis à jour
+      function highlightElement(element) {
+        // Ajouter une classe pour l'animation
+        element.classList.add('highlight-update');
+        
+        // Retirer la classe après l'animation
+        setTimeout(() => {
+          element.classList.remove('highlight-update');
+        }, 2000);
+      }
+      
       // Charger les données au démarrage
       loadTerminologyStats();
       loadTerminologyFiles();
@@ -648,5 +694,25 @@
       addLog('Page de gestion des terminologies chargée');
     });
   </script>
+  
+  <style>
+    /* Animation pour la mise en évidence des compteurs lors d'une mise à jour */
+    @keyframes highlight {
+      0% { background-color: transparent; }
+      30% { background-color: rgba(231, 76, 60, 0.3); }
+      100% { background-color: transparent; }
+    }
+    
+    .highlight-update {
+      animation: highlight 2s ease-in-out;
+    }
+    
+    /* Style spécifique pour les compteurs de statistiques */
+    .stat-info p {
+      transition: background-color 0.5s ease-in-out;
+      padding: 5px;
+      border-radius: 4px;
+    }
+  </style>
 </body>
 </html>
