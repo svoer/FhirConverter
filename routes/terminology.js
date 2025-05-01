@@ -276,6 +276,9 @@ router.get('/files/:filename/download', adminAuthMiddleware, async (req, res) =>
  *               type:
  *                 type: string
  *                 description: Type de terminologie (oids, common_codes, systems, valuesets, r4_systems, r5_systems, auto)
+ *               description:
+ *                 type: string
+ *                 description: Description personnalisée pour ce fichier de terminologie
  *     responses:
  *       200:
  *         description: Fichier importé avec succès
@@ -356,6 +359,27 @@ router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, r
       jsonData.version = '1.0.0';
     }
     
+    // Ajouter des métadonnées personnalisées
+    if (!jsonData.metadata) {
+      jsonData.metadata = {};
+    }
+    
+    // Ajouter ou mettre à jour la description
+    if (req.body.description) {
+      jsonData.metadata.description = req.body.description;
+    } else if (!jsonData.metadata.description) {
+      jsonData.metadata.description = `Importé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`;
+    }
+    
+    // Ajouter des informations d'import
+    jsonData.metadata.importDate = new Date().toISOString();
+    jsonData.metadata.importedBy = req.user ? req.user.username : 'admin';
+    jsonData.metadata.originalFilename = req.file.originalname;
+    
+    // Analyser le contenu pour des statistiques détaillées
+    const stats = analyzeTerminologyContent(jsonData);
+    jsonData.metadata.stats = stats;
+    
     // Écrire le fichier de destination
     const destPath = path.join(TERMINOLOGY_DIR, destFilename);
     fs.writeFileSync(destPath, JSON.stringify(jsonData, null, 2));
@@ -363,7 +387,9 @@ router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, r
     // Supprimer le fichier temporaire
     fs.unlinkSync(req.file.path);
     
+    // Log détaillé
     console.log(`[TERMINOLOGY] Fichier ${destFilename} importé avec succès`);
+    console.log(`[TERMINOLOGY] Contenu analysé: ${JSON.stringify(stats)}`);
     
     res.json({
       success: true,
@@ -371,7 +397,9 @@ router.post('/import', adminAuthMiddleware, upload.single('file'), async (req, r
       data: {
         originalName: req.file.originalname,
         destinationName: destFilename,
-        size: req.file.size
+        size: req.file.size,
+        description: jsonData.metadata.description,
+        stats: stats
       }
     });
   } catch (error) {
@@ -449,6 +477,165 @@ router.get('/export', adminAuthMiddleware, async (req, res) => {
 });
 
 /**
+ * @swagger
+ * /api/terminology/files/{filename}:
+ *   delete:
+ *     summary: Supprimer un fichier de terminologie
+ *     description: Supprime un fichier de terminologie spécifique
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     parameters:
+ *       - name: filename
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Fichier supprimé avec succès
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Fichier non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.delete('/files/:filename', adminAuthMiddleware, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    
+    // Vérifier que ce n'est pas un fichier système essentiel
+    const systemFiles = ['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'];
+    if (systemFiles.includes(filename)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de supprimer un fichier système. Vous pouvez le remplacer en important une nouvelle version.'
+      });
+    }
+    
+    const filePath = path.join(TERMINOLOGY_DIR, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fichier non trouvé'
+      });
+    }
+    
+    fs.unlinkSync(filePath);
+    
+    console.log(`[TERMINOLOGY] Fichier ${filename} supprimé avec succès`);
+    
+    res.json({
+      success: true,
+      message: 'Fichier supprimé avec succès'
+    });
+  } catch (error) {
+    console.error(`[API] Erreur lors de la suppression du fichier ${req.params.filename} :`, error);
+    res.status(500).json({
+      success: false,
+      message: `Erreur lors de la suppression du fichier`,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/terminology/files/{filename}/metadata:
+ *   put:
+ *     summary: Mettre à jour les métadonnées d'un fichier de terminologie
+ *     description: Met à jour la description et autres métadonnées d'un fichier
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     parameters:
+ *       - name: filename
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Métadonnées mises à jour avec succès
+ *       400:
+ *         description: Requête invalide
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Fichier non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.put('/files/:filename/metadata', adminAuthMiddleware, async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(TERMINOLOGY_DIR, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fichier non trouvé'
+      });
+    }
+    
+    if (!req.body || typeof req.body.description !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Description invalide'
+      });
+    }
+    
+    // Lire le fichier
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    let jsonData = JSON.parse(fileContent);
+    
+    // Ajouter/mettre à jour les métadonnées
+    if (!jsonData.metadata) {
+      jsonData.metadata = {};
+    }
+    
+    // Mettre à jour la description
+    jsonData.metadata.description = req.body.description;
+    jsonData.metadata.lastUpdated = new Date().toISOString();
+    jsonData.metadata.updatedBy = req.user ? req.user.username : 'admin';
+    
+    // Écrire le fichier mis à jour
+    fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2));
+    
+    console.log(`[TERMINOLOGY] Métadonnées du fichier ${filename} mises à jour avec succès`);
+    
+    res.json({
+      success: true,
+      message: 'Métadonnées mises à jour avec succès',
+      data: {
+        filename,
+        description: jsonData.metadata.description
+      }
+    });
+  } catch (error) {
+    console.error(`[API] Erreur lors de la mise à jour des métadonnées du fichier ${req.params.filename} :`, error);
+    res.status(500).json({
+      success: false,
+      message: `Erreur lors de la mise à jour des métadonnées`,
+      error: error.message
+    });
+  }
+});
+
+/**
  * Récupérer le contenu d'un fichier JSON
  * @param {string} filename - Nom du fichier
  * @returns {Object} Contenu du fichier JSON
@@ -467,6 +654,114 @@ function getJsonFileContent(filename) {
     console.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier ${filename} :`, error);
     return null;
   }
+}
+
+/**
+ * Analyser le contenu d'un fichier de terminologie pour générer des statistiques détaillées
+ * @param {Object} jsonData - Contenu JSON d'un fichier de terminologie
+ * @returns {Object} Statistiques sur le contenu du fichier
+ */
+function analyzeTerminologyContent(jsonData) {
+  const stats = {
+    resourceType: jsonData.resourceType || 'Unknown',
+    totalElements: 0,
+    totalSystems: 0,
+    detectedTypes: [],
+    keyElements: []
+  };
+  
+  // Analyser en fonction du type de ressource FHIR
+  if (jsonData.resourceType === 'CodeSystem') {
+    stats.detectedTypes.push('CodeSystem');
+    stats.url = jsonData.url;
+    stats.version = jsonData.version;
+    stats.totalElements = jsonData.concept ? jsonData.concept.length : 0;
+    stats.name = jsonData.name || jsonData.title;
+    
+    // Extraire quelques concepts clés pour montrer dans les logs
+    if (jsonData.concept && jsonData.concept.length > 0) {
+      stats.keyElements = jsonData.concept.slice(0, 5).map(c => ({
+        code: c.code,
+        display: c.display
+      }));
+    }
+  } else if (jsonData.resourceType === 'ValueSet') {
+    stats.detectedTypes.push('ValueSet');
+    stats.url = jsonData.url;
+    stats.version = jsonData.version;
+    stats.name = jsonData.name || jsonData.title;
+    
+    if (jsonData.compose && jsonData.compose.include) {
+      stats.totalSystems = jsonData.compose.include.length;
+      stats.systems = jsonData.compose.include.map(i => i.system);
+    }
+  } else if (jsonData.resourceType === 'Bundle') {
+    stats.detectedTypes.push('Bundle');
+    stats.totalElements = jsonData.entry ? jsonData.entry.length : 0;
+    
+    // Analyser les types de ressources dans le bundle
+    if (jsonData.entry && jsonData.entry.length > 0) {
+      const resourceTypes = {};
+      jsonData.entry.forEach(entry => {
+        if (entry.resource && entry.resource.resourceType) {
+          const type = entry.resource.resourceType;
+          resourceTypes[type] = (resourceTypes[type] || 0) + 1;
+        }
+      });
+      stats.resourceTypes = resourceTypes;
+    }
+  } else if (jsonData.resourceType === 'TerminologyCapabilities') {
+    stats.detectedTypes.push('TerminologyCapabilities');
+    stats.url = jsonData.url;
+    stats.version = jsonData.version;
+    stats.name = jsonData.name || jsonData.title;
+    
+    if (jsonData.codeSystem) {
+      stats.totalSystems = jsonData.codeSystem.length;
+      stats.systems = jsonData.codeSystem.map(cs => cs.uri);
+    }
+  } else if (jsonData.systems) {
+    // Format spécifique des systèmes de terminologie ANS
+    stats.detectedTypes.push('ANS-Systems');
+    stats.totalSystems = Object.keys(jsonData.systems).length;
+    stats.systems = Object.keys(jsonData.systems);
+    
+    // Récupérer quelques systèmes clés
+    stats.keyElements = Object.entries(jsonData.systems)
+      .slice(0, 5)
+      .map(([key, value]) => ({
+        key,
+        url: typeof value === 'object' ? value.url : value
+      }));
+  } else if (jsonData.identifier_systems) {
+    // Format spécifique des OIDs ANS
+    stats.detectedTypes.push('ANS-OIDs');
+    stats.totalSystems = Object.keys(jsonData.identifier_systems).length;
+    stats.systems = Object.keys(jsonData.identifier_systems);
+    
+    // Récupérer quelques OIDs clés
+    stats.keyElements = Object.entries(jsonData.identifier_systems)
+      .slice(0, 5)
+      .map(([key, value]) => ({
+        key,
+        oid: value
+      }));
+  } else if (jsonData.codeSystemMap) {
+    // Format spécifique des codes communs ANS
+    stats.detectedTypes.push('ANS-CommonCodes');
+    stats.totalSystems = Object.keys(jsonData.codeSystemMap).length;
+    stats.systems = Object.keys(jsonData.codeSystemMap);
+    
+    let totalCodes = 0;
+    Object.values(jsonData.codeSystemMap).forEach(system => {
+      if (typeof system === 'object') {
+        totalCodes += Object.keys(system).length;
+      }
+    });
+    stats.totalElements = totalCodes;
+  }
+  
+  return stats;
 }
 
 module.exports = router;
