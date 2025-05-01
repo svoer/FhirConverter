@@ -95,7 +95,7 @@
         </button>
         
         <button id="btn-refresh-terminology" class="btn btn-warning">
-          <i class="fas fa-sync-alt"></i> Rafraîchir les statistiques
+          <i class="fas fa-sync-alt"></i> Rafraîchir
         </button>
         
         <button id="btn-check-duplicates" class="btn btn-info">
@@ -871,9 +871,15 @@
                   detailedMessage += '\n=== DOUBLONS POTENTIELS ===\n';
                   analysisData.possibleDuplicates.forEach((group, index) => {
                     detailedMessage += `\nGroupe ${index + 1}:\n`;
-                    group.forEach(item => {
-                      detailedMessage += `  - ${item.file}: ${item.url}\n`;
-                    });
+                    // Vérifier que group est un tableau avant d'utiliser forEach
+                    if (Array.isArray(group)) {
+                      group.forEach(item => {
+                        detailedMessage += `  - ${item.file}: ${item.url}\n`;
+                      });
+                    } else if (group && typeof group === 'object') {
+                      // Si ce n'est pas un tableau mais un objet, utiliser une autre approche
+                      detailedMessage += `  - ${group.file || 'Fichier inconnu'}: ${group.url || 'URL inconnue'}\n`;
+                    }
                   });
                 }
                 
