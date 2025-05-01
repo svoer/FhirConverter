@@ -6,6 +6,28 @@
 const path = require('path');
 const Database = require('better-sqlite3');
 
+/**
+ * Convertir une valeur pour qu'elle soit compatible avec SQLite
+ * @param {any} value - Valeur à convertir
+ * @returns {string|number|null} Valeur compatible avec SQLite
+ * @private
+ */
+function convertToSQLiteValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+  
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  
+  return value;
+}
+
 // Chemin de la base de données
 const DB_PATH = path.join(__dirname, '../../data/fhirhub.db');
 
@@ -197,18 +219,8 @@ async function run(sql, params = []) {
     try {
       ensureConnection();
       
-      // Préparer les paramètres pour SQLite (convertir les objets en chaînes JSON)
-      const safeParams = params.map(param => {
-        if (param === null || param === undefined) {
-          return null;
-        }
-        
-        if (typeof param === 'object') {
-          return JSON.stringify(param);
-        }
-        
-        return param;
-      });
+      // Préparer les paramètres pour SQLite
+      const safeParams = params.map(convertToSQLiteValue);
       
       // better-sqlite3 utilise "run" pour les requêtes sans résultat
       const result = db.prepare(sql).run(...safeParams);
