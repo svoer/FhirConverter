@@ -118,66 +118,88 @@ N'oublie pas:
    * Ajoute les écouteurs d'événements
    */
   addEventListeners() {
-    // Obtenir les éléments du DOM
-    const chatbotHeader = document.querySelector('.chatbot-header');
-    const toggleButton = document.querySelector('.chatbot-toggle');
-    const toggleIcon = document.getElementById('chatbot-toggle-icon');
-    
-    // Fonction de toggle du chatbot
-    const toggleChatbot = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
+    // Attendons un peu que le DOM soit complètement prêt
+    setTimeout(() => {
+      // Obtenir directement l'élément container
       const container = document.getElementById('fhirhub-chatbot');
-      if (!container) return;
-      
-      this.expanded = !this.expanded;
-      
-      if (this.expanded) {
-        container.classList.add('expanded');
-        if (toggleIcon) {
-          toggleIcon.classList.remove('fa-chevron-up');
-          toggleIcon.classList.add('fa-chevron-down');
-        }
-      } else {
-        container.classList.remove('expanded');
-        if (toggleIcon) {
-          toggleIcon.classList.remove('fa-chevron-down');
-          toggleIcon.classList.add('fa-chevron-up');
-        }
+      if (!container) {
+        console.error("Élément chatbot non trouvé dans le DOM");
+        return;
       }
       
-      // Focus sur l'input quand le chatbot est ouvert
-      if (this.expanded) {
-        const inputField = document.getElementById('chatbot-input');
-        if (inputField) {
-          setTimeout(() => inputField.focus(), 300);
+      // Sélectionner les éléments à l'intérieur du container pour éviter les conflits
+      const chatbotHeader = container.querySelector('.chatbot-header');
+      const toggleButton = container.querySelector('.chatbot-toggle');
+      const toggleIcon = container.querySelector('#chatbot-toggle-icon');
+      
+      console.log("Éléments trouvés:", {
+        container: !!container,
+        chatbotHeader: !!chatbotHeader,
+        toggleButton: !!toggleButton,
+        toggleIcon: !!toggleIcon
+      });
+      
+      // Fonction pour basculer l'état du chatbot
+      const toggleExpanded = () => {
+        console.log("Toggle chatbot:", this.expanded, "->", !this.expanded);
+        this.expanded = !this.expanded;
+        
+        if (this.expanded) {
+          container.classList.add('expanded');
+          if (toggleIcon) {
+            toggleIcon.classList.remove('fa-chevron-up');
+            toggleIcon.classList.add('fa-chevron-down');
+          }
+          
+          // Focus sur l'input quand le chatbot est ouvert
+          const inputField = container.querySelector('#chatbot-input');
+          if (inputField) {
+            setTimeout(() => inputField.focus(), 300);
+          }
+        } else {
+          container.classList.remove('expanded');
+          if (toggleIcon) {
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+          }
         }
+      };
+      
+      // Ajouter l'écouteur d'événements à tout l'en-tête
+      if (chatbotHeader) {
+        chatbotHeader.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleExpanded();
+        };
       }
-    };
-    
-    // Ajouter l'écouteur d'événements au header et au bouton toggle
-    if (chatbotHeader) {
-      chatbotHeader.addEventListener('click', toggleChatbot);
-    }
-    
-    if (toggleButton) {
-      toggleButton.addEventListener('click', toggleChatbot);
-    }
-    
-    // Envoi de message avec le bouton
-    const sendButton = document.getElementById('chatbot-send');
-    sendButton.addEventListener('click', () => {
-      this.sendMessage();
-    });
-    
-    // Envoi de message avec la touche Entrée
-    const inputField = document.getElementById('chatbot-input');
-    inputField.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        this.sendMessage();
+      
+      // Ajouter également l'écouteur au bouton spécifiquement
+      if (toggleButton) {
+        toggleButton.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleExpanded();
+        };
       }
-    });
+      
+      // Envoi de message avec le bouton
+      const sendButton = container.querySelector('#chatbot-send');
+      if (sendButton) {
+        sendButton.onclick = () => this.sendMessage();
+      }
+      
+      // Envoi de message avec la touche Entrée
+      const inputField = container.querySelector('#chatbot-input');
+      if (inputField) {
+        inputField.onkeypress = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendMessage();
+          }
+        };
+      }
+    }, 500); // Un délai de 500ms pour s'assurer que le DOM est prêt
   }
 
   /**
@@ -218,8 +240,9 @@ N'oublie pas:
    */
   addMessage(role, content) {
     const messagesContainer = document.getElementById('chatbot-messages');
-    const messageElement = document.createElement('div');
+    if (!messagesContainer) return;
     
+    const messageElement = document.createElement('div');
     messageElement.className = `chatbot-message ${role}`;
     messageElement.textContent = content;
     
@@ -237,6 +260,7 @@ N'oublie pas:
    */
   addLoadingIndicator() {
     const messagesContainer = document.getElementById('chatbot-messages');
+    if (!messagesContainer) return;
     
     const loadingElement = document.createElement('div');
     loadingElement.className = 'chatbot-typing';
@@ -273,6 +297,8 @@ N'oublie pas:
     
     // Récupérer le message
     const inputField = document.getElementById('chatbot-input');
+    if (!inputField) return;
+    
     const message = inputField.value.trim();
     
     // Vérifier que le message n'est pas vide
