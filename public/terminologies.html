@@ -465,16 +465,36 @@
           const data = await response.json();
           if (!data.success) throw new Error(data.message || 'Erreur inconnue');
           
+          // Mettre à jour les compteurs avec animation pour rendre visible les changements
           terminologyVersionEl.textContent = data.data.version || 'N/A';
+          highlightElement(terminologyVersionEl);
+          
           terminologyLastUpdatedEl.textContent = formatDate(data.data.lastUpdated) || 'N/A';
-          terminologySystemsCountEl.textContent = data.data.systemsCount || 0;
-          terminologyOidsCountEl.textContent = data.data.oidsCount || 0;
+          highlightElement(terminologyLastUpdatedEl);
+          
+          // Pour les systèmes et OIDs, vérifier si la valeur a changé avant de mettre en évidence
+          const newSystemsCount = data.data.systemsCount || 0;
+          const currentSystemsCount = parseInt(terminologySystemsCountEl.textContent) || 0;
+          terminologySystemsCountEl.textContent = newSystemsCount;
+          if (newSystemsCount !== currentSystemsCount) {
+            highlightElement(terminologySystemsCountEl);
+          }
+          
+          const newOidsCount = data.data.oidsCount || 0;
+          const currentOidsCount = parseInt(terminologyOidsCountEl.textContent) || 0;
+          terminologyOidsCountEl.textContent = newOidsCount;
+          if (newOidsCount !== currentOidsCount) {
+            highlightElement(terminologyOidsCountEl);
+          }
           
           // Charger aussi le nombre de fichiers
           updateFilesCount();
           
           // Ajouter un log après chargement réussi
           addLog('Statistiques des terminologies chargées avec succès');
+          
+          // Retourner les données pour d'autres traitements si nécessaire
+          return data.data;
         } catch (err) {
           console.error('Erreur lors du chargement des statistiques :', err);
           terminologyVersionEl.textContent = 'Erreur';
@@ -485,6 +505,7 @@
           
           // Ajouter un log d'erreur
           addLog(`Erreur lors du chargement des statistiques: ${err.message}`);
+          return null;
         }
       }
       
