@@ -103,7 +103,7 @@ function setupSwagger(app) {
     explorer: true,
     customCss: `.swagger-ui .topbar { display: none }`,
     customCssUrl: '/css/swagger-fix.css',
-    customJs: '/js/swagger-helper.js',
+    customJs: ['/js/swagger-helper.js', '/js/swagger-direct-auth.js'],
     customSiteTitle: 'FHIRHub API Documentation',
     customfavIcon: '/favicon.ico',
     swaggerOptions: {
