@@ -363,7 +363,7 @@
   <script>
     // Vérifier si l'utilisateur est admin avant d'afficher la page
     document.addEventListener('DOMContentLoaded', function() {
-      checkUserRole(['admin'], '/dashboard.html');
+      FHIRHubAuth.checkUserRole(['admin'], '/dashboard.html');
       loadProviders();
     });
     
@@ -376,7 +376,7 @@
       try {
         const response = await fetch('/api/ai-providers', {
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         
@@ -407,7 +407,7 @@
       try {
         const response = await fetch('/api/ai-providers/supported', {
           headers: {
-            'Authorization': `Bearer ${getJwtToken()}`
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
           }
         });
         

@@ -117,6 +117,36 @@ function checkAdminRights() {
 }
 
 /**
+ * Vérifie si l'utilisateur possède l'un des rôles spécifiés et redirige si nécessaire
+ * @param {Array<string>} allowedRoles - Liste des rôles autorisés
+ * @param {string} redirectPath - Chemin de redirection si l'utilisateur n'a pas les droits
+ * @returns {boolean} true si l'utilisateur a au moins un des rôles autorisés, false sinon
+ */
+function checkUserRole(allowedRoles, redirectPath = '/login.html') {
+  // Vérifier l'authentification
+  if (!isAuthenticated()) {
+    window.location.href = '/login.html';
+    return false;
+  }
+  
+  // Récupérer l'utilisateur courant
+  const user = getCurrentUser();
+  if (!user || !user.role) {
+    window.location.href = '/login.html';
+    return false;
+  }
+  
+  // Vérifier si l'utilisateur a au moins un des rôles autorisés
+  if (!allowedRoles.includes(user.role)) {
+    alert('Vous n\'avez pas les droits d\'accès à cette page.');
+    window.location.href = redirectPath;
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Initialise les gestionnaires d'événements communs pour l'authentification
  */
 function initAuthListeners() {
@@ -150,5 +180,6 @@ window.FHIRHubAuth = {
   fetchWithAuth,
   checkAuthentication,
   checkAdminRights,
+  checkUserRole,
   initAuthListeners
 };
