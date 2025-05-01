@@ -167,6 +167,38 @@ function initAuthListeners() {
       usernameElement.textContent = user.username;
     }
   }
+  
+  // Injecter le chatbot si l'utilisateur est authentifié et si ce n'est pas la page de login
+  if (isAuthenticated() && !window.location.pathname.includes('login.html')) {
+    injectChatbot();
+  }
+}
+
+/**
+ * Injecte dynamiquement le chatbot dans la page courante
+ */
+function injectChatbot() {
+  // Vérifier si on est sur la page de login
+  if (window.location.pathname.includes('login.html')) {
+    return;
+  }
+  
+  // Vérifier si le chatbot est déjà injecté
+  if (document.getElementById('fhirhub-chatbot')) {
+    return;
+  }
+  
+  // Injecter le CSS du chatbot
+  const chatbotCss = document.createElement('link');
+  chatbotCss.rel = 'stylesheet';
+  chatbotCss.href = '/css/support-chatbot.css';
+  document.head.appendChild(chatbotCss);
+  
+  // Injecter le JS du chatbot
+  const chatbotJs = document.createElement('script');
+  chatbotJs.src = '/js/support-chatbot.js';
+  chatbotJs.defer = true;
+  document.body.appendChild(chatbotJs);
 }
 
 // Exporter les fonctions pour usage global
@@ -181,5 +213,6 @@ window.FHIRHubAuth = {
   checkAuthentication,
   checkAdminRights,
   checkUserRole,
-  initAuthListeners
+  initAuthListeners,
+  injectChatbot
 };
