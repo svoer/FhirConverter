@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       .swagger-ui .topbar {
-        background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+        background: linear-gradient(135deg, #e74c3c, #ff5722);
       }
       
       .swagger-ui .topbar .download-url-wrapper .select-label {
@@ -21,9 +21,16 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       .swagger-ui .btn.authorize {
-        background-color: #4caf50;
+        background: linear-gradient(to right, #e74c3c, #ff5722);
         color: white;
-        border-color: #43a047;
+        border-color: transparent;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+      }
+      
+      .swagger-ui .btn.authorize:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
       }
       
       .swagger-ui .btn.authorize svg {
@@ -31,11 +38,102 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       .info-text-with-api-key {
-        background-color: #e8f5e9;
-        border-left: 4px solid #4caf50;
-        padding: 10px 15px;
-        margin: 10px 0;
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 12px 15px;
+        margin: 15px 0;
         border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        font-size: 14px;
+      }
+      
+      /* Réduction du clignotement */
+      .swagger-ui .dialog-ux {
+        transition: opacity 0.4s ease;
+      }
+      
+      .swagger-ui .opblock.opblock-get .opblock-summary {
+        border-color: #61affe;
+      }
+      
+      .swagger-ui section.models {
+        margin-top: 20px;
+      }
+      
+      /* Amélioration du modal d'authentification */
+      .swagger-ui .auth-container {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        border: none;
+      }
+      
+      .swagger-ui .auth-container h4 {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+      
+      .swagger-ui .auth-container input {
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 8px 12px;
+        transition: all 0.3s ease;
+      }
+      
+      .swagger-ui .auth-container input:focus {
+        border-color: #ff5722;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(255, 87, 34, 0.1);
+      }
+      
+      .swagger-ui .auth-btn-wrapper {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 10px;
+      }
+      
+      .swagger-ui .auth-btn-wrapper .btn {
+        border-radius: 4px;
+        padding: 8px 16px;
+        transition: all 0.3s ease;
+      }
+      
+      .swagger-ui .auth-btn-wrapper .btn-done {
+        background: linear-gradient(to right, #e74c3c, #ff5722);
+        color: white;
+        border: none;
+      }
+      
+      .swagger-ui .auth-btn-wrapper .btn-done:hover {
+        background: linear-gradient(to right, #d63031, #e84118);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      
+      /* Transition sur les endpoints */
+      .swagger-ui .opblock {
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      }
+      
+      .swagger-ui .opblock:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+      }
+      
+      /* Section de navigation */
+      .swagger-ui .wrapper {
+        padding: 0 30px;
+      }
+      
+      /* Préventions des clignotements */
+      .swagger-ui .loading-container {
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
+      
+      .swagger-ui .loading-container.loaded {
+        opacity: 1;
       }
     `;
     document.head.appendChild(customStyles);
@@ -113,6 +211,45 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Exécuter immédiatement
     addButtonsDirectly();
+    
+    // Réduire le clignotement de l'autorisation en ajoutant un script pour intercepter certains comportements
+    const preventFlickerScript = document.createElement('script');
+    preventFlickerScript.textContent = `
+      (function() {
+        // Observer pour intercepter les fermetures/ouvertures d'autorisation
+        const targetNode = document.body;
+        const config = { childList: true, subtree: true };
+        
+        // Fonction appelée quand des modifications sont détectées
+        const callback = function(mutationsList, observer) {
+          for (const mutation of mutationsList) {
+            if (mutation.type === 'childList') {
+              const authContainers = document.querySelectorAll('.swagger-ui .dialog-ux .modal-ux-inner .auth-container');
+              if (authContainers.length > 0) {
+                // S'assurer que le conteneur est bien affiché sans flicker
+                authContainers.forEach(container => {
+                  container.style.opacity = '1';
+                  container.style.transition = 'none';
+                });
+                
+                // Ajouter du style aux boutons d'autorisation
+                const authBtns = document.querySelectorAll('.swagger-ui .dialog-ux .modal-ux-inner .auth-btn-wrapper .btn');
+                authBtns.forEach(btn => {
+                  btn.style.transition = 'all 0.3s ease';
+                });
+              }
+            }
+          }
+        };
+        
+        // Créer un MutationObserver avec la fonction de callback
+        const observer = new MutationObserver(callback);
+        
+        // Démarrer l'observation sur le document avec les options configurées
+        observer.observe(targetNode, config);
+      })();
+    `;
+    document.head.appendChild(preventFlickerScript);
     
     // Récupérer le token JWT du localStorage
     const token = localStorage.getItem('token');
