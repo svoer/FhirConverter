@@ -12,6 +12,7 @@
   "author": "FHIRHub Team",
   "license": "Proprietary",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
     "archiver": "^7.0.1",
     "bcrypt": "^5.1.1",
     "better-sqlite3": "^8.7.0",
@@ -28,6 +29,7 @@
     "marked": "^15.0.11",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.2",
+    "openai": "^4.96.2",
     "simple-hl7": "^3.3.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
