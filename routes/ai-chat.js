@@ -175,8 +175,17 @@ router.get('/providers/active', async (req, res) => {
  * Gestion des requêtes pour Mistral AI
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
-  const apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
+  // Construire l'URL complète en s'assurant que le chemin /chat/completions est présent
+  let apiUrl = provider.api_url || 'https://api.mistral.ai/v1';
+  if (!apiUrl.endsWith('/chat/completions')) {
+    // S'assurer qu'il n'y a pas de double slash
+    apiUrl = apiUrl.endsWith('/') ? `${apiUrl}chat/completions` : `${apiUrl}/chat/completions`;
+  }
+  
   const models = provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-latest';
+  
+  console.log(`[AI] Envoi de requête Mistral à: ${apiUrl}`);
+  console.log(`[AI] Modèle utilisé: ${models}`);
   
   try {
     const response = await axios.post(
@@ -207,8 +216,16 @@ async function handleMistralRequest(provider, messages, max_tokens) {
  * Gestion des requêtes pour OpenAI
  */
 async function handleOpenAIRequest(provider, messages, max_tokens) {
-  const apiUrl = provider.api_url || 'https://api.openai.com/v1/chat/completions';
+  // Construire l'URL complète en s'assurant que le chemin /chat/completions est présent
+  let apiUrl = provider.api_url || 'https://api.openai.com/v1';
+  if (!apiUrl.endsWith('/chat/completions')) {
+    apiUrl = apiUrl.endsWith('/') ? `${apiUrl}chat/completions` : `${apiUrl}/chat/completions`;
+  }
+  
   const models = provider.models ? provider.models.split(',')[0].trim() : 'gpt-4o';
+  
+  console.log(`[AI] Envoi de requête OpenAI à: ${apiUrl}`);
+  console.log(`[AI] Modèle utilisé: ${models}`);
   
   try {
     const response = await axios.post(
@@ -239,8 +256,16 @@ async function handleOpenAIRequest(provider, messages, max_tokens) {
  * Gestion des requêtes pour Anthropic
  */
 async function handleAnthropicRequest(provider, messages, max_tokens) {
-  const apiUrl = provider.api_url || 'https://api.anthropic.com/v1/messages';
+  // Construire l'URL complète en s'assurant que le chemin /messages est présent
+  let apiUrl = provider.api_url || 'https://api.anthropic.com/v1';
+  if (!apiUrl.endsWith('/messages')) {
+    apiUrl = apiUrl.endsWith('/') ? `${apiUrl}messages` : `${apiUrl}/messages`;
+  }
+  
   const models = provider.models ? provider.models.split(',')[0].trim() : 'claude-3-7-sonnet-20250219';
+  
+  console.log(`[AI] Envoi de requête Anthropic à: ${apiUrl}`);
+  console.log(`[AI] Modèle utilisé: ${models}`);
   
   try {
     // Convertir les messages au format Anthropic
@@ -315,8 +340,16 @@ async function handleGoogleRequest(provider, messages, max_tokens) {
  * Gestion des requêtes pour DeepSeek
  */
 async function handleDeepSeekRequest(provider, messages, max_tokens) {
-  const apiUrl = provider.api_url || 'https://api.deepseek.com/v1/chat/completions';
+  // Construire l'URL complète en s'assurant que le chemin /chat/completions est présent
+  let apiUrl = provider.api_url || 'https://api.deepseek.com/v1';
+  if (!apiUrl.endsWith('/chat/completions')) {
+    apiUrl = apiUrl.endsWith('/') ? `${apiUrl}chat/completions` : `${apiUrl}/chat/completions`;
+  }
+  
   const models = provider.models ? provider.models.split(',')[0].trim() : 'deepseek-chat';
+  
+  console.log(`[AI] Envoi de requête DeepSeek à: ${apiUrl}`);
+  console.log(`[AI] Modèle utilisé: ${models}`);
   
   try {
     const response = await axios.post(
