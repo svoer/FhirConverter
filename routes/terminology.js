@@ -84,18 +84,19 @@ router.get('/french', adminAuthMiddleware, async (req, res) => {
     let systemsCount = systems ? Object.keys(systems).length : 0;
     let oidsCount = oids?.identifier_systems ? Object.keys(oids.identifier_systems).length : 0;
     
-    // Analyser tous les autres fichiers de terminologie pour obtenir un compte plus précis
-    const files = fs.readdirSync(TERMINOLOGY_DIR)
-      .filter(file => file.endsWith('.json') && 
-              !['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'].includes(file));
+    // Analyse détaillée de tous les fichiers
+    const allFiles = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json'));
     
     // Variables pour suivre les informations supplémentaires
-    let additionalSystems = 0;
-    let additionalOids = 0;
+    let codeSystemsCount = 0;  // Nombre total de CodeSystems
+    let valueSetsCount = 0;    // Nombre total de ValueSets
+    let conceptMapCount = 0;   // Nombre total de ConceptMaps
     let lastModifiedDate = null;
+    let systemsSummary = {};   // Résumé des types de systèmes trouvés
     
-    // Parcourir tous les fichiers supplémentaires
-    for (const filename of files) {
+    // Parcourir tous les fichiers
+    for (const filename of allFiles) {
       try {
         const filePath = path.join(TERMINOLOGY_DIR, filename);
         const stats = fs.statSync(filePath);
@@ -105,26 +106,69 @@ router.get('/french', adminAuthMiddleware, async (req, res) => {
           lastModifiedDate = stats.mtime;
         }
         
-        // Analyser le contenu du fichier
-        const content = fs.readFileSync(filePath, 'utf8');
-        const jsonData = JSON.parse(content);
-        const fileAnalysis = analyzeTerminologyContent(jsonData);
-        
-        // Ajouter au compteur de systèmes si applicable
-        additionalSystems += fileAnalysis.totalSystems || 0;
-        
-        // Détecter les OIDs si applicable
-        if (fileAnalysis.detectedTypes.includes('ANS-OIDs')) {
-          additionalOids += fileAnalysis.totalSystems || 0;
-        }
-        
-        // Détecter les ValueSets et CodeSystems dans les bundles
-        if (fileAnalysis.resourceType === 'Bundle') {
-          if (fileAnalysis.resourceTypes?.ValueSet) {
-            additionalSystems += fileAnalysis.resourceTypes.ValueSet;
+        // Analyser le contenu du fichier avec un traitement spécial pour les fichiers volumineux
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          const jsonData = JSON.parse(content);
+          
+          // Détecter le type de fichier et compter les éléments
+          if (jsonData.resourceType === 'Bundle' && jsonData.entry) {
+            // Pour les bundles, compter directement les types de ressources
+            jsonData.entry.forEach(entry => {
+              if (entry.resource && entry.resource.resourceType) {
+                const resourceType = entry.resource.resourceType;
+                systemsSummary[resourceType] = (systemsSummary[resourceType] || 0) + 1;
+                
+                if (resourceType === 'CodeSystem') {
+                  codeSystemsCount++;
+                } else if (resourceType === 'ValueSet') {
+                  valueSetsCount++;
+                } else if (resourceType === 'ConceptMap') {
+                  conceptMapCount++;
+                }
+              }
+            });
+          } else if (jsonData.resourceType === 'CodeSystem') {
+            codeSystemsCount++;
+            systemsSummary['CodeSystem'] = (systemsSummary['CodeSystem'] || 0) + 1;
+          } else if (jsonData.resourceType === 'ValueSet') {
+            valueSetsCount++;
+            systemsSummary['ValueSet'] = (systemsSummary['ValueSet'] || 0) + 1;
+          } else if (jsonData.resourceType === 'ConceptMap') {
+            conceptMapCount++;
+            systemsSummary['ConceptMap'] = (systemsSummary['ConceptMap'] || 0) + 1;
+          } else if (jsonData.systems) {
+            // Fichier de systèmes ANS
+            systemsSummary['ANS-Systems'] = (systemsSummary['ANS-Systems'] || 0) + Object.keys(jsonData.systems).length;
+          } else if (jsonData.identifier_systems) {
+            // Fichier d'OIDs ANS
+            systemsSummary['ANS-OIDs'] = (systemsSummary['ANS-OIDs'] || 0) + Object.keys(jsonData.identifier_systems).length;
+            oidsCount = Object.keys(jsonData.identifier_systems).length;
           }
-          if (fileAnalysis.resourceTypes?.CodeSystem) {
-            additionalSystems += fileAnalysis.resourceTypes.CodeSystem;
+        } catch (parseError) {
+          console.error(`[TERMINOLOGY] Erreur d'analyse JSON pour ${filename}:`, parseError.message);
+          // Comptage basé sur grep si le fichier est trop gros
+          if (stats.size > 1000000) { // > 1MB
+            try {
+              // Utiliser des expressions régulières sur le contenu pour détecter les ressources
+              const content = fs.readFileSync(filePath, 'utf8');
+              const codeSystemMatches = content.match(/"resourceType"\s*:\s*"CodeSystem"/g);
+              const valueSetMatches = content.match(/"resourceType"\s*:\s*"ValueSet"/g);
+              
+              if (codeSystemMatches) {
+                const count = codeSystemMatches.length;
+                codeSystemsCount += count;
+                systemsSummary['CodeSystem'] = (systemsSummary['CodeSystem'] || 0) + count;
+              }
+              
+              if (valueSetMatches) {
+                const count = valueSetMatches.length;
+                valueSetsCount += count;
+                systemsSummary['ValueSet'] = (systemsSummary['ValueSet'] || 0) + count;
+              }
+            } catch (regexError) {
+              console.error(`[TERMINOLOGY] Erreur d'analyse regex pour ${filename}:`, regexError.message);
+            }
           }
         }
       } catch (error) {
@@ -133,9 +177,8 @@ router.get('/french', adminAuthMiddleware, async (req, res) => {
       }
     }
     
-    // Ajouter les compteurs supplémentaires
-    systemsCount += additionalSystems;
-    oidsCount += additionalOids;
+    // Total des systèmes : valeur de base + CodeSystems + ValueSets
+    systemsCount = systemsCount + codeSystemsCount + valueSetsCount;
     
     // Utiliser la date de dernière modification la plus récente ou la date actuelle
     const lastUpdated = lastModifiedDate ? new Date(lastModifiedDate).toISOString() : new Date().toISOString();
@@ -149,7 +192,11 @@ router.get('/french', adminAuthMiddleware, async (req, res) => {
         oids: oids?.identifier_systems || {},
         systemsCount: systemsCount,
         oidsCount: oidsCount,
-        additionalFiles: files.length
+        codeSystemsCount: codeSystemsCount,
+        valueSetsCount: valueSetsCount,
+        conceptMapCount: conceptMapCount,
+        totalFiles: allFiles.length,
+        systemsSummary: systemsSummary
       }
     });
   } catch (error) {
@@ -885,8 +932,20 @@ router.post('/analyze', adminAuthMiddleware, async (req, res) => {
       totalItems: 0,
       systemsFound: 0,
       oidsFound: 0,
+      codeSystemsCount: 0,
+      valueSetsCount: 0,
+      conceptMapCount: 0,
       fileTypes: {},
-      details: []
+      details: [],
+      possibleDuplicates: []
+    };
+    
+    // Structure pour suivre les URL des systèmes pour détection des doublons
+    const urlTracker = {
+      codeSystems: {},
+      valueSets: {},
+      conceptMaps: {},
+      oids: {}
     };
     
     // Analyser chaque fichier
@@ -899,12 +958,126 @@ router.post('/analyze', adminAuthMiddleware, async (req, res) => {
         const content = fs.readFileSync(filePath, 'utf8');
         const jsonData = JSON.parse(content);
         
-        // Utiliser la fonction d'analyse existante
-        const fileAnalysis = analyzeTerminologyContent(jsonData);
+        // Détection spéciale pour les fichiers volumineux
+        let fileAnalysis;
+        let resourceCounts = { CodeSystem: 0, ValueSet: 0, ConceptMap: 0 };
+        
+        // Traitement spécial pour les fichiers volumineux
+        if (stats.size > 200000) { // > 200KB
+          // Essayer d'abord un comptage rapide avec regex pour les bundles
+          if (content.includes('"resourceType":"Bundle"')) {
+            const codeSystemMatches = content.match(/"resourceType"\s*:\s*"CodeSystem"/g);
+            const valueSetMatches = content.match(/"resourceType"\s*:\s*"ValueSet"/g);
+            const conceptMapMatches = content.match(/"resourceType"\s*:\s*"ConceptMap"/g);
+            const oidMatches = content.match(/"oid"\s*:\s*"[^"]+"/g);
+            
+            resourceCounts.CodeSystem = codeSystemMatches ? codeSystemMatches.length : 0;
+            resourceCounts.ValueSet = valueSetMatches ? valueSetMatches.length : 0;
+            resourceCounts.ConceptMap = conceptMapMatches ? conceptMapMatches.length : 0;
+            
+            // Ajouter ces comptages au total
+            results.codeSystemsCount += resourceCounts.CodeSystem;
+            results.valueSetsCount += resourceCounts.ValueSet;
+            results.conceptMapCount += resourceCounts.ConceptMap;
+            results.oidsFound += oidMatches ? oidMatches.length : 0;
+            
+            // Utiliser quand même la fonction d'analyse complète
+            fileAnalysis = analyzeTerminologyContent(jsonData);
+            fileAnalysis.resourceTypes = fileAnalysis.resourceTypes || {};
+            fileAnalysis.resourceTypes.CodeSystem = resourceCounts.CodeSystem;
+            fileAnalysis.resourceTypes.ValueSet = resourceCounts.ValueSet;
+            fileAnalysis.resourceTypes.ConceptMap = resourceCounts.ConceptMap;
+          } else {
+            // Analyse standard pour les autres types de fichiers
+            fileAnalysis = analyzeTerminologyContent(jsonData);
+          }
+        } else {
+          // Analyse standard pour les petits fichiers
+          fileAnalysis = analyzeTerminologyContent(jsonData);
+        }
         
         // Ajouter à l'analyse globale
         results.totalItems += fileAnalysis.totalElements || 0;
-        results.systemsFound += fileAnalysis.totalSystems || 0;
+        
+        // Détection selon le type de ressource
+        if (jsonData.resourceType === 'CodeSystem') {
+          results.codeSystemsCount++;
+          results.systemsFound++;
+          
+          // Tracker pour les doublons
+          if (jsonData.url) {
+            if (urlTracker.codeSystems[jsonData.url]) {
+              urlTracker.codeSystems[jsonData.url].push(filename);
+            } else {
+              urlTracker.codeSystems[jsonData.url] = [filename];
+            }
+          }
+        } else if (jsonData.resourceType === 'ValueSet') {
+          results.valueSetsCount++;
+          results.systemsFound++;
+          
+          // Tracker pour les doublons
+          if (jsonData.url) {
+            if (urlTracker.valueSets[jsonData.url]) {
+              urlTracker.valueSets[jsonData.url].push(filename);
+            } else {
+              urlTracker.valueSets[jsonData.url] = [filename];
+            }
+          }
+        } else if (jsonData.resourceType === 'Bundle' && jsonData.entry) {
+          // Pour les bundles, compter par type de ressource
+          if (fileAnalysis.resourceTypes) {
+            results.codeSystemsCount += fileAnalysis.resourceTypes.CodeSystem || 0;
+            results.valueSetsCount += fileAnalysis.resourceTypes.ValueSet || 0;
+            results.conceptMapCount += fileAnalysis.resourceTypes.ConceptMap || 0;
+            results.systemsFound += (fileAnalysis.resourceTypes.CodeSystem || 0) + 
+                                    (fileAnalysis.resourceTypes.ValueSet || 0);
+                                    
+            // Analyse plus détaillée pour détecter les doublons dans les bundles
+            try {
+              jsonData.entry.forEach(entry => {
+                if (entry.resource && entry.resource.url) {
+                  const resource = entry.resource;
+                  if (resource.resourceType === 'CodeSystem') {
+                    if (urlTracker.codeSystems[resource.url]) {
+                      urlTracker.codeSystems[resource.url].push(`${filename}#${resource.id || resource.url}`);
+                    } else {
+                      urlTracker.codeSystems[resource.url] = [`${filename}#${resource.id || resource.url}`];
+                    }
+                  } else if (resource.resourceType === 'ValueSet') {
+                    if (urlTracker.valueSets[resource.url]) {
+                      urlTracker.valueSets[resource.url].push(`${filename}#${resource.id || resource.url}`);
+                    } else {
+                      urlTracker.valueSets[resource.url] = [`${filename}#${resource.id || resource.url}`];
+                    }
+                  }
+                }
+              });
+            } catch (bundleAnalysisError) {
+              console.error(`[TERMINOLOGY] Erreur lors de l'analyse détaillée du bundle ${filename}:`, bundleAnalysisError);
+            }
+          }
+        } else if (jsonData.identifier_systems) {
+          // Fichier spécifique d'OIDs
+          const oidsCount = Object.keys(jsonData.identifier_systems).length;
+          results.oidsFound += oidsCount;
+          
+          // Tracer les OIDs
+          Object.entries(jsonData.identifier_systems).forEach(([name, data]) => {
+            const oid = typeof data === 'object' ? data.oid : data;
+            if (oid) {
+              if (urlTracker.oids[oid]) {
+                urlTracker.oids[oid].push(`${filename}#${name}`);
+              } else {
+                urlTracker.oids[oid] = [`${filename}#${name}`];
+              }
+            }
+          });
+        } else if (jsonData.systems) {
+          // Fichier de systèmes ANS
+          const systemsCount = Object.keys(jsonData.systems).length;
+          results.systemsFound += systemsCount;
+        }
         
         // Compter les types de fichiers
         const fileType = fileAnalysis.detectedTypes[0] || 'Unknown';
@@ -917,13 +1090,9 @@ router.post('/analyze', adminAuthMiddleware, async (req, res) => {
           lastModified: stats.mtime.toISOString(),
           type: fileType,
           itemCount: fileAnalysis.totalElements || 0,
-          systemsCount: fileAnalysis.totalSystems || 0
+          systemsCount: fileAnalysis.totalSystems || 0,
+          resourceCounts: resourceCounts.CodeSystem > 0 || resourceCounts.ValueSet > 0 ? resourceCounts : undefined
         });
-        
-        // Si c'est un fichier d'OIDs
-        if (fileType === 'ANS-OIDs') {
-          results.oidsFound += fileAnalysis.totalSystems || 0;
-        }
       } catch (error) {
         console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier ${filename}:`, error);
         
@@ -937,7 +1106,42 @@ router.post('/analyze', adminAuthMiddleware, async (req, res) => {
       }
     }
     
-    console.log(`[TERMINOLOGY] Analyse de ${files.length} fichiers terminée. ${results.totalItems} éléments trouvés.`);
+    // Détecter les doublons à partir des trackers
+    const findDuplicates = (tracker, type) => {
+      return Object.entries(tracker)
+        .filter(([url, files]) => files.length > 1)
+        .map(([url, files]) => ({
+          type,
+          url,
+          files,
+          count: files.length
+        }));
+    };
+    
+    // Chercher les doublons dans chaque catégorie
+    const codeSystemDuplicates = findDuplicates(urlTracker.codeSystems, 'CodeSystem');
+    const valueSetDuplicates = findDuplicates(urlTracker.valueSets, 'ValueSet');
+    const oidDuplicates = findDuplicates(urlTracker.oids, 'OID');
+    
+    // Ajouter tous les doublons trouvés
+    results.possibleDuplicates = [
+      ...codeSystemDuplicates,
+      ...valueSetDuplicates,
+      ...oidDuplicates
+    ];
+    
+    // Trier les doublons par nombre d'occurrences décroissant
+    results.possibleDuplicates.sort((a, b) => b.count - a.count);
+    
+    // Limiter à 20 résultats pour éviter une réponse trop volumineuse
+    if (results.possibleDuplicates.length > 20) {
+      results.possibleDuplicates = results.possibleDuplicates.slice(0, 20);
+    }
+    
+    // Total des systèmes (CodeSystems + ValueSets)
+    results.systemsFound = Math.max(results.systemsFound, results.codeSystemsCount + results.valueSetsCount);
+    
+    console.log(`[TERMINOLOGY] Analyse de ${files.length} fichiers terminée. ${results.totalItems} éléments trouvés, ${results.systemsFound} systèmes et ${results.oidsFound} OIDs.`);
     
     res.json({
       success: true,
@@ -984,7 +1188,23 @@ router.get('/check-duplicates', adminAuthMiddleware, async (req, res) => {
         };
       });
     
-    // Regrouper les fichiers par taille similaire (taille à ±10%)
+    // Résultats de l'analyse
+    const results = {
+      totalFiles: files.length,
+      duplicates: {
+        bySize: [],
+        byName: [],
+        byContent: [] 
+      },
+      urlDuplicates: {
+        codeSystems: [],
+        valueSets: [],
+        oids: []
+      },
+      summary: {}
+    };
+    
+    // 1. Regrouper les fichiers par taille similaire (taille à ±10%)
     const sizeGroups = {};
     files.forEach(file => {
       const sizeKey = Math.floor(file.size / 1000) * 1000; // Arrondir à 1KB près
@@ -996,52 +1216,164 @@ router.get('/check-duplicates', adminAuthMiddleware, async (req, res) => {
     const potentialDuplicateGroups = Object.values(sizeGroups)
       .filter(group => group.length > 1);
     
-    // Analyser le contenu des fichiers potentiellement en doublon
-    const confirmedDuplicates = [];
-    
+    // Analyser les groupes
     for (const group of potentialDuplicateGroups) {
-      // Grouper par noms similaires (ex: similaires si seule la date diffère)
-      const nameGroups = {};
-      
-      group.forEach(file => {
-        // Créer une clé de base de nom sans dates/nombres
-        const baseNameKey = file.name
-          .replace(/\d+/g, 'X')         // Remplacer tous les chiffres par X
-          .replace(/[-_\.]/g, '')       // Ignorer les tirets, underscore et points
-          .toLowerCase();
-        
-        nameGroups[baseNameKey] = nameGroups[baseNameKey] || [];
-        nameGroups[baseNameKey].push(file);
-      });
-      
-      // Garder les groupes avec plusieurs fichiers
-      const duplicateNameGroups = Object.values(nameGroups)
-        .filter(nameGroup => nameGroup.length > 1);
-      
-      if (duplicateNameGroups.length > 0) {
-        // Pour chaque groupe de noms similaires, vérifier le contenu
-        for (const nameGroup of duplicateNameGroups) {
-          // Trier par date de dernière modification (du plus récent au plus ancien)
-          nameGroup.sort((a, b) => 
-            new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
-          );
-          
-          confirmedDuplicates.push({
-            type: 'name_similarity',
-            files: nameGroup
-          });
-        }
+      if (group.length > 1) {
+        results.duplicates.bySize.push({
+          size: `${group[0].size} bytes`,
+          count: group.length,
+          files: group.map(f => f.name)
+        });
       }
     }
     
-    console.log(`[TERMINOLOGY] Vérification des doublons terminée. ${confirmedDuplicates.length} groupes identifiés.`);
+    // 2. Grouper par noms similaires
+    const nameGroups = {};
+    
+    files.forEach(file => {
+      // Créer une clé de base de nom sans dates/nombres
+      const baseNameKey = file.name
+        .replace(/\d+/g, 'X')         // Remplacer tous les chiffres par X
+        .replace(/response_/g, '')    // Supprimer le préfixe response_
+        .replace(/ans_/g, '')         // Supprimer le préfixe ans_
+        .replace(/[-_\.]/g, '')       // Ignorer les tirets, underscore et points
+        .toLowerCase();
+      
+      nameGroups[baseNameKey] = nameGroups[baseNameKey] || [];
+      nameGroups[baseNameKey].push(file);
+    });
+    
+    // Garder les groupes avec plusieurs fichiers
+    const duplicateNameGroups = Object.entries(nameGroups)
+      .filter(([key, group]) => group.length > 1)
+      .sort((a, b) => b[1].length - a[1].length); // Trier par nombre de fichiers décroissant
+      
+    duplicateNameGroups.forEach(([baseNameKey, nameGroup]) => {
+      // Trier par date de dernière modification (du plus récent au plus ancien)
+      nameGroup.sort((a, b) => 
+        new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+      );
+      
+      results.duplicates.byName.push({
+        basePattern: baseNameKey,
+        count: nameGroup.length,
+        newestFile: nameGroup[0].name,
+        allFiles: nameGroup.map(f => ({ name: f.name, modified: f.lastModified }))
+      });
+    });
+    
+    // 3. Analyser le contenu des fichiers pour trouver des doublons par URL/OID
+    const urlTracker = {
+      codeSystems: {},
+      valueSets: {},
+      oids: {}
+    };
+    
+    // Explorer chaque fichier pour extraire les URL et OIDs
+    for (const file of files) {
+      try {
+        const filePath = path.join(TERMINOLOGY_DIR, file.name);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(content);
+        
+        // Détection par type de fichier
+        if (jsonData.resourceType === 'Bundle' && jsonData.entry) {
+          // Pour les bundles, parcourir chaque entrée
+          jsonData.entry.forEach(entry => {
+            if (entry.resource) {
+              const resource = entry.resource;
+              if (resource.url) {
+                if (resource.resourceType === 'CodeSystem') {
+                  urlTracker.codeSystems[resource.url] = urlTracker.codeSystems[resource.url] || [];
+                  urlTracker.codeSystems[resource.url].push(file.name);
+                } else if (resource.resourceType === 'ValueSet') {
+                  urlTracker.valueSets[resource.url] = urlTracker.valueSets[resource.url] || [];
+                  urlTracker.valueSets[resource.url].push(file.name);
+                }
+              }
+              
+              // Chercher les OIDs dans la ressource
+              if (resource.identifier) {
+                resource.identifier.forEach(id => {
+                  if (id.system === 'urn:ietf:rfc:3986' && id.value && id.value.startsWith('urn:oid:')) {
+                    const oid = id.value.replace('urn:oid:', '');
+                    urlTracker.oids[oid] = urlTracker.oids[oid] || [];
+                    urlTracker.oids[oid].push(file.name);
+                  }
+                });
+              }
+            }
+          });
+        } else if (jsonData.resourceType === 'CodeSystem' && jsonData.url) {
+          urlTracker.codeSystems[jsonData.url] = urlTracker.codeSystems[jsonData.url] || [];
+          urlTracker.codeSystems[jsonData.url].push(file.name);
+        } else if (jsonData.resourceType === 'ValueSet' && jsonData.url) {
+          urlTracker.valueSets[jsonData.url] = urlTracker.valueSets[jsonData.url] || [];
+          urlTracker.valueSets[jsonData.url].push(file.name);
+        } else if (jsonData.identifier_systems) {
+          // Fichier spécifique d'OIDs
+          Object.entries(jsonData.identifier_systems).forEach(([name, data]) => {
+            const oid = typeof data === 'object' ? data.oid : data;
+            if (oid) {
+              urlTracker.oids[oid] = urlTracker.oids[oid] || [];
+              urlTracker.oids[oid].push(file.name);
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier ${file.name} pour doublons:`, error.message);
+      }
+    }
+    
+    // Trouver les doublons dans les URL et OIDs
+    const findUrlDuplicates = (tracker, type) => {
+      return Object.entries(tracker)
+        .filter(([url, fileList]) => fileList.length > 1)
+        .map(([url, fileList]) => ({
+          url,
+          count: fileList.length,
+          files: fileList
+        }))
+        .sort((a, b) => b.count - a.count);
+    };
+    
+    results.urlDuplicates.codeSystems = findUrlDuplicates(urlTracker.codeSystems, 'CodeSystem');
+    results.urlDuplicates.valueSets = findUrlDuplicates(urlTracker.valueSets, 'ValueSet');
+    results.urlDuplicates.oids = findUrlDuplicates(urlTracker.oids, 'OID');
+    
+    // Préparer un résumé
+    results.summary = {
+      totalFiles: files.length,
+      duplicatesBySize: results.duplicates.bySize.length,
+      duplicatesByName: results.duplicates.byName.length,
+      duplicateCodeSystems: results.urlDuplicates.codeSystems.length,
+      duplicateValueSets: results.urlDuplicates.valueSets.length,
+      duplicateOids: results.urlDuplicates.oids.length,
+      totalDuplicates: results.duplicates.byName.reduce((sum, group) => sum + group.count - 1, 0)
+    };
+    
+    // Limiter le nombre de résultats pour éviter les réponses trop volumineuses
+    if (results.duplicates.bySize.length > 10) {
+      results.duplicates.bySize = results.duplicates.bySize.slice(0, 10);
+    }
+    if (results.duplicates.byName.length > 10) {
+      results.duplicates.byName = results.duplicates.byName.slice(0, 10);
+    }
+    if (results.urlDuplicates.codeSystems.length > 10) {
+      results.urlDuplicates.codeSystems = results.urlDuplicates.codeSystems.slice(0, 10);
+    }
+    if (results.urlDuplicates.valueSets.length > 10) {
+      results.urlDuplicates.valueSets = results.urlDuplicates.valueSets.slice(0, 10);
+    }
+    if (results.urlDuplicates.oids.length > 10) {
+      results.urlDuplicates.oids = results.urlDuplicates.oids.slice(0, 10);
+    }
+    
+    console.log(`[TERMINOLOGY] Vérification des doublons terminée. ${results.summary.totalDuplicates} doublons identifiés.`);
     
     res.json({
       success: true,
-      data: {
-        totalFiles: files.length,
-        duplicates: confirmedDuplicates
-      }
+      data: results
     });
   } catch (error) {
     console.error('[API] Erreur lors de la vérification des doublons :', error);
