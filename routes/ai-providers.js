@@ -50,7 +50,7 @@ const { adminRequired } = require('../middleware/authMiddleware');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', adminRequired, async (req, res) => {
+router.get('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const providers = await aiProviderService.getAllProviders();
     
@@ -151,7 +151,7 @@ router.get('/supported', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', adminRequired, async (req, res) => {
+router.get('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     // Vérifier si l'ID est un nombre pour éviter de confondre avec d'autres routes
     const id = parseInt(req.params.id);
@@ -221,7 +221,7 @@ router.get('/:id', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', adminRequired, async (req, res) => {
+router.post('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const providerData = req.body;
     
@@ -293,7 +293,7 @@ router.post('/', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', adminRequired, async (req, res) => {
+router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const { id } = req.params;
     const providerData = req.body;
@@ -349,7 +349,7 @@ router.put('/:id', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', adminRequired, async (req, res) => {
+router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await aiProviderService.deleteProvider(id);
@@ -406,7 +406,7 @@ router.delete('/:id', adminRequired, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/test', adminRequired, async (req, res) => {
+router.post('/:id/test', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const { id } = req.params;
     const testResult = await aiProviderService.testProviderConnection(id);
