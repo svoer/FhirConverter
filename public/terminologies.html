@@ -93,6 +93,14 @@
         <button id="btn-export-terminology" class="btn btn-secondary">
           <i class="fas fa-download"></i> Exporter les Nomenclatures
         </button>
+        
+        <button id="btn-refresh-terminology" class="btn btn-warning">
+          <i class="fas fa-sync-alt"></i> Analyser tous les fichiers
+        </button>
+        
+        <button id="btn-check-duplicates" class="btn btn-info">
+          <i class="fas fa-search"></i> Vérifier les doublons
+        </button>
       </div>
 
       <!-- Liste des fichiers de terminologie -->
@@ -109,8 +117,10 @@
               <thead>
                 <tr>
                   <th>Nom du fichier</th>
+                  <th>Type</th>
                   <th>Description</th>
                   <th>Dernière mise à jour</th>
+                  <th>Contenus</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -519,7 +529,7 @@
           terminologyFilesTableEl.innerHTML = '';
           
           if (data.data.length === 0) {
-            terminologyFilesTableEl.innerHTML = '<tr><td colspan="4" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
+            terminologyFilesTableEl.innerHTML = '<tr><td colspan="6" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
             return;
           }
           
@@ -527,13 +537,30 @@
             const row = document.createElement('tr');
             const isSystemFile = ['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'].includes(file.name);
             
+            // Déterminer le type du fichier
+            let fileType = getFileType(file.name);
+            let fileIcon = getFileTypeIcon(fileType);
+            
+            // Déterminer le nombre d'éléments contenus dans ce fichier (obtenu du API ou estimé)
+            let itemCount = file.itemCount || getEstimatedItemCount(file.name, file.size);
+            
             row.innerHTML = `
               <td>${file.name}</td>
+              <td>
+                <span class="file-type badge badge-${getFileTypeBadgeClass(fileType)}" title="${getFileTypeLabel(fileType)}">
+                  <i class="${fileIcon}"></i> ${fileType}
+                </span>
+              </td>
               <td>
                 <span class="file-description" data-file="${file.name}">${getFileDescription(file.name)}</span>
                 <button class="btn-action btn-icon edit-description" data-file="${file.name}" title="Modifier la description"><i class="fas fa-edit"></i></button>
               </td>
               <td>${formatDate(file.lastModified)}</td>
+              <td>
+                <span class="file-items-count">
+                  ${itemCount > 0 ? `<b>${itemCount}</b> élément${itemCount > 1 ? 's' : ''}` : 'Inconnu'}
+                </span>
+              </td>
               <td class="actions-cell">
                 <button class="btn-action preview-file" data-file="${file.name}" title="Voir le contenu"><i class="fas fa-eye"></i></button>
                 <button class="btn-action download-file" data-file="${file.name}" title="Télécharger le fichier"><i class="fas fa-download"></i></button>
@@ -716,6 +743,101 @@
         updateLogsEl.innerHTML = '<div class="log-empty">Aucun log de mise à jour disponible</div>';
       });
       
+      // Bouton d'analyse complète des terminologies
+      document.getElementById('btn-refresh-terminology').addEventListener('click', async () => {
+        if (confirm('Voulez-vous lancer une analyse complète de tous les fichiers de terminologie? Cette opération peut prendre plusieurs secondes.')) {
+          try {
+            addLog('Lancement de l\'analyse complète des fichiers de terminologie...');
+            
+            const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/analyze', {
+              method: 'POST'
+            });
+            
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.message || 'Erreur lors de l\'analyse');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              addLog(`Analyse terminée: ${result.data.filesAnalyzed} fichiers analysés, ${result.data.totalItems} éléments trouvés`);
+              
+              // Mettre à jour les statistiques et la liste des fichiers
+              loadTerminologyStats();
+              loadTerminologyFiles();
+            } else {
+              throw new Error(result.message || 'Erreur lors de l\'analyse');
+            }
+          } catch (error) {
+            console.error('Erreur lors de l\'analyse:', error);
+            alert(`Erreur lors de l'analyse: ${error.message}`);
+            addLog(`Erreur lors de l'analyse: ${error.message}`);
+          }
+        }
+      });
+      
+      // Bouton de vérification des doublons
+      document.getElementById('btn-check-duplicates').addEventListener('click', async () => {
+        try {
+          addLog('Vérification des fichiers en doublon...');
+          
+          const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/check-duplicates');
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Erreur lors de la vérification des doublons');
+          }
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            if (result.data.duplicates.length === 0) {
+              addLog('Aucun doublon trouvé dans les fichiers de terminologie.');
+              alert('Aucun doublon trouvé dans les fichiers de terminologie.');
+            } else {
+              const duplicateGroups = result.data.duplicates;
+              let message = `${duplicateGroups.length} groupe(s) de fichiers en doublon détecté(s):\n\n`;
+              
+              duplicateGroups.forEach((group, i) => {
+                message += `Groupe ${i+1}:\n`;
+                group.files.forEach(file => {
+                  message += `- ${file.name} (${formatDate(file.lastModified)})\n`;
+                });
+                message += `\n`;
+              });
+              
+              message += `Souhaitez-vous supprimer les doublons les plus anciens?`;
+              
+              if (confirm(message)) {
+                // Envoyer la demande de suppression
+                const deleteResponse = await FHIRHubAuth.fetchWithAuth('/api/terminology/remove-duplicates', {
+                  method: 'POST'
+                });
+                
+                if (!deleteResponse.ok) {
+                  const error = await deleteResponse.json();
+                  throw new Error(error.message || 'Erreur lors de la suppression des doublons');
+                }
+                
+                const deleteResult = await deleteResponse.json();
+                addLog(`${deleteResult.data.deleted} fichiers en doublon supprimés.`);
+                
+                // Mettre à jour les statistiques et la liste des fichiers
+                loadTerminologyStats();
+                loadTerminologyFiles();
+              }
+            }
+          } else {
+            throw new Error(result.message || 'Erreur lors de la vérification des doublons');
+          }
+        } catch (error) {
+          console.error('Erreur lors de la vérification des doublons:', error);
+          alert(`Erreur lors de la vérification des doublons: ${error.message}`);
+          addLog(`Erreur lors de la vérification des doublons: ${error.message}`);
+        }
+      });
+      
       // Ajouter un log
       function addLog(message) {
         const timestamp = new Date().toLocaleTimeString();
@@ -798,6 +920,119 @@
         const i = Math.floor(Math.log(bytes) / Math.log(1024));
         
         return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + units[i];
+      }
+      
+      // Déterminer le type d'un fichier en fonction de son nom
+      function getFileType(filename) {
+        if (filename.includes('oids')) {
+          return 'OID';
+        } else if (filename.includes('common_codes')) {
+          return 'CODE';
+        } else if (filename.includes('valuesets')) {
+          return 'VALUESET';
+        } else if (filename.includes('codesystems')) {
+          return 'CODESYSTEM';
+        } else if (filename.includes('terminology_systems')) {
+          return 'SYSTEM';
+        } else if (filename.includes('r4_french')) {
+          return 'R4';
+        } else if (filename.includes('r5_french')) {
+          return 'R5';
+        } else if (filename.includes('rapport') || filename.includes('report')) {
+          return 'RAPPORT';
+        } else {
+          return 'AUTRE';
+        }
+      }
+      
+      // Obtenir l'icône correspondant au type de fichier
+      function getFileTypeIcon(fileType) {
+        switch(fileType) {
+          case 'OID':
+            return 'fas fa-fingerprint';
+          case 'CODE':
+            return 'fas fa-code';
+          case 'VALUESET':
+            return 'fas fa-list-alt';
+          case 'CODESYSTEM':
+            return 'fas fa-sitemap';
+          case 'SYSTEM':
+            return 'fas fa-project-diagram';
+          case 'R4':
+          case 'R5':
+            return 'fas fa-fire';
+          case 'RAPPORT':
+            return 'fas fa-file-alt';
+          default:
+            return 'fas fa-file-code';
+        }
+      }
+      
+      // Obtenir la classe de badge pour le type de fichier
+      function getFileTypeBadgeClass(fileType) {
+        switch(fileType) {
+          case 'OID':
+            return 'info';
+          case 'CODE':
+            return 'success';
+          case 'VALUESET':
+            return 'primary';
+          case 'CODESYSTEM':
+            return 'warning';
+          case 'SYSTEM':
+            return 'secondary';
+          case 'R4':
+          case 'R5':
+            return 'danger';
+          case 'RAPPORT':
+            return 'dark';
+          default:
+            return 'light';
+        }
+      }
+      
+      // Obtenir le libellé complet du type de fichier
+      function getFileTypeLabel(fileType) {
+        switch(fileType) {
+          case 'OID':
+            return 'Identifiants OID français';
+          case 'CODE':
+            return 'Codes communs ANS';
+          case 'VALUESET':
+            return 'Jeux de valeurs (ValueSets)';
+          case 'CODESYSTEM':
+            return 'Systèmes de codes (CodeSystems)';
+          case 'SYSTEM':
+            return 'Systèmes de terminologie';
+          case 'R4':
+            return 'FHIR R4 Français';
+          case 'R5':
+            return 'FHIR R5 Français';
+          case 'RAPPORT':
+            return 'Rapport de synthèse';
+          default:
+            return 'Autre fichier';
+        }
+      }
+      
+      // Estimer le nombre d'éléments dans un fichier
+      function getEstimatedItemCount(filename, fileSize) {
+        // Si on connaît le contenu typique des fichiers standards
+        if (filename === 'ans_oids.json') {
+          return 150; // Nombre approximatif d'OIDs
+        } else if (filename === 'ans_common_codes.json') {
+          return 450; // Nombre approximatif de codes
+        } else if (filename === 'ans_terminology_systems.json') {
+          return 80; // Nombre approximatif de systèmes
+        }
+        
+        // Sinon, on peut faire une estimation grossière basée sur la taille
+        if (fileSize) {
+          // Généralement, un élément JSON de terminologie fait environ 200 octets en moyenne
+          return Math.round(fileSize / 200);
+        }
+        
+        return 0; // Si on ne peut pas estimer
       }
       
       // Fonction pour mettre en évidence un élément qui vient d'être mis à jour
@@ -939,6 +1174,73 @@
     
     .edit-description:hover {
       opacity: 1;
+    }
+    
+    /* Style pour les badges de type de fichier */
+    .badge {
+      display: inline-block;
+      padding: 0.25em 0.6em;
+      font-size: 75%;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+    }
+    
+    .badge i {
+      margin-right: 5px;
+    }
+    
+    .badge-primary {
+      color: #fff;
+      background-color: #007bff;
+    }
+    
+    .badge-secondary {
+      color: #fff;
+      background-color: #6c757d;
+    }
+    
+    .badge-success {
+      color: #fff;
+      background-color: #28a745;
+    }
+    
+    .badge-danger {
+      color: #fff;
+      background-color: #dc3545;
+    }
+    
+    .badge-warning {
+      color: #1f2d3d;
+      background-color: #ffc107;
+    }
+    
+    .badge-info {
+      color: #fff;
+      background-color: #17a2b8;
+    }
+    
+    .badge-light {
+      color: #1f2d3d;
+      background-color: #f8f9fa;
+    }
+    
+    .badge-dark {
+      color: #fff;
+      background-color: #343a40;
+    }
+    
+    .file-items-count {
+      color: #666;
+      font-size: 0.9em;
+    }
+    
+    .file-items-count b {
+      color: #333;
     }
   </style>
   
