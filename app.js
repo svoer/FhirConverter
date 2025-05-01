@@ -717,6 +717,12 @@ app.get('/api/stats', (req, res) => {
 // Initialiser la base de données
 initDb();
 
+// Initialisation du service de workflow
+const workflowService = require('./src/services/workflowService');
+workflowService.initialize().catch(err => {
+  console.error('[WORKFLOW ERROR] Erreur lors de l\'initialisation du service de workflow:', err);
+});
+
 // Partager la connexion à la base de données avec les routes
 app.locals.db = db;
 
@@ -730,6 +736,7 @@ const cacheRoutes = require('./routes/cache');
 const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
 const aiChatRoutes = require('./routes/ai-chat');
+const workflowsRoutes = require('./routes/workflows');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
@@ -741,6 +748,17 @@ app.use('/api/cache', cacheRoutes);
 app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
+app.use('/api/workflows', workflowsRoutes);
+
+// Intégrer l'éditeur Node-RED
+const redApp = workflowService.getRedApp();
+if (redApp) {
+  // Utiliser l'application Node-RED comme middleware
+  app.use('/node-red', redApp);
+  console.log('[WORKFLOW] Éditeur Node-RED intégré à l\'application');
+} else {
+  console.warn('[WORKFLOW] Éditeur Node-RED non disponible');
+}
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
 const server = app.listen(PORT, () => {

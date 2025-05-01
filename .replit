@@ -31,3 +31,7 @@ run = ["sh", "-c", "cd backend && npm install express cors uuid hapi-fhir && cd 
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 36601
+externalPort = 3000

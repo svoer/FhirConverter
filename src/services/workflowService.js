@@ -87,6 +87,14 @@ async function initialize() {
     // Initialiser Node-RED
     RED.init(redServer, redSettings);
     
+    // Enregistrer nos nœuds personnalisés
+    const nodesDir = path.join(process.cwd(), 'src', 'node-red');
+    RED.nodes.registerType('fhirhub-hl7-input', require(path.join(nodesDir, 'nodes', 'hl7-input.js')));
+    RED.nodes.registerType('fhirhub-fhir-converter', require(path.join(nodesDir, 'nodes', 'fhir-converter.js')));
+    RED.nodes.registerType('fhirhub-segment-extractor', require(path.join(nodesDir, 'nodes', 'segment-extractor.js')));
+    
+    console.log('[WORKFLOW] Nœuds personnalisés FHIRHub enregistrés');
+    
     // Ajouter les routes de l'éditeur Node-RED à notre application Express
     redApp.use(redSettings.httpAdminRoot, RED.httpAdmin);
     
