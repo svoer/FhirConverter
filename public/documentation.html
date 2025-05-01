@@ -210,14 +210,14 @@
       <div class="section-nav">
         <a href="#introduction" class="active">Introduction</a>
         <a href="#parser">Analyse HL7</a>
-        <a href="#converter">Convertisseur</a>
-        <a href="#terminology">Terminologies</a>
         <a href="#message-types">Types de Messages</a>
+        <a href="#converter">Convertisseur</a>
+        <a href="#terminology">Nomenclatures</a>
         <a href="#api">APIs</a>
         <a href="#cache">Système de Cache</a>
         <a href="#database">Base de Données</a>
         <a href="#docker">Déploiement Docker</a>
-        <a href="#terminology-scripts">Scripts Terminologie</a>
+        <a href="#terminology-page">Gestion des Nomenclatures</a>
         <a href="#prerequites">Prérequis</a>
       </div>
       
@@ -1075,42 +1075,69 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
         <p>Pour une documentation complète sur le déploiement Docker, consultez <a href="/docs/docker_deployment">le guide détaillé de déploiement</a>.</p>
       </div>
       
-      <div id="terminology-scripts" class="documentation-section">
-        <h2>Scripts de Gestion des Terminologies Françaises</h2>
-        <p>FHIRHub intègre des scripts Python pour maintenir à jour les terminologies françaises nécessaires à la conversion des messages HL7 vers FHIR.</p>
+      <div id="terminology-page" class="documentation-section">
+        <h2>Gestion des Nomenclatures Médicales</h2>
+        <p>FHIRHub propose une interface complète pour gérer les nomenclatures médicales françaises nécessaires à la conversion précise des messages HL7 vers FHIR, accessible via le menu "Nomenclatures".</p>
         
-        <h3>Scripts disponibles</h3>
+        <h3>Fonctionnement de la page des nomenclatures</h3>
         
         <div class="workflow-step">
           <div class="step-number">1</div>
           <div class="step-content">
-            <div class="step-title">get_french_terminology.py</div>
-            <div class="step-description">Script principal qui récupère les terminologies depuis le Serveur Multi-Terminologies (SMT) de l'ANS.</div>
+            <div class="step-title">Tableau de bord des terminologies</div>
+            <div class="step-description">La page affiche les statistiques clés : version des terminologies françaises, date de dernière mise à jour, nombre de systèmes de codes et d'OIDs disponibles pour la conversion.</div>
           </div>
         </div>
         
         <div class="workflow-step">
           <div class="step-number">2</div>
           <div class="step-content">
-            <div class="step-title">extract_french_systems.py</div>
-            <div class="step-description">Script d'extraction qui traite les données brutes pour générer les mappings utilisés par le convertisseur.</div>
+            <div class="step-title">Importation de fichiers</div>
+            <div class="step-description">L'interface permet d'importer des fichiers JSON contenant des ValueSets, CodeSystems ou OIDs par simple glisser-déposer ou sélection de fichier. Le système analyse automatiquement le contenu et l'intègre aux mappings existants.</div>
           </div>
         </div>
         
-        <h3>Terminologies supportées</h3>
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Gestion des fichiers</div>
+            <div class="step-description">Visualisation, édition de description et suppression des fichiers importés (à l'exception des fichiers système protégés). Les fichiers de nomenclature importés sont immédiatement disponibles pour la conversion.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">Utilisation dans le convertisseur</div>
+            <div class="step-description">Lors de la conversion HL7 vers FHIR, le système consulte automatiquement tous les fichiers de nomenclature pour enrichir les ressources FHIR avec les codes et systèmes français appropriés.</div>
+          </div>
+        </div>
+        
+        <h3>Types de fichiers supportés</h3>
         <div class="tech-spec">
-          <div class="tech-spec-title">Systèmes de terminologie français</div>
+          <div class="tech-spec-title">Formats de fichiers de nomenclature</div>
           <ul>
-            <li><strong>SNOMED CT</strong> - Nomenclature médicale</li>
-            <li><strong>LOINC</strong> - Analyses et observations</li>
-            <li><strong>CIM-10/CIM-11</strong> - Classifications des maladies</li>
-            <li><strong>CCAM</strong> - Classification des actes médicaux</li>
-            <li><strong>INS</strong> - Identifiants nationaux de santé</li>
-            <li><strong>CPS</strong> - Cartes de professionnels de santé</li>
+            <li><strong>ValueSets FHIR</strong> - Ensembles de valeurs validées pour différents concepts médicaux</li>
+            <li><strong>CodeSystems FHIR</strong> - Systèmes de codification avec les codes et leurs définitions</li>
+            <li><strong>Bundles FHIR</strong> - Collections de ressources FHIR de terminologie</li>
+            <li><strong>Fichiers OIDs</strong> - Mappings des identifiants d'objets utilisés dans le système de santé français</li>
           </ul>
         </div>
         
-        <p>Pour une documentation complète sur les scripts de terminologie, consultez <a href="/docs/french_terminology_scripts">le guide détaillé des scripts de terminologie</a>.</p>
+        <h3>Processus d'utilisation des fichiers</h3>
+        <p>Lorsqu'un fichier de nomenclature est importé :</p>
+        <ol>
+          <li>Le système analyse son contenu pour déterminer s'il contient des ValueSets, CodeSystems ou OIDs</li>
+          <li>Les éléments sont extraits et intégrés dans la base de connaissances du convertisseur</li>
+          <li>Pendant la conversion, pour chaque code HL7 rencontré, le système recherche dans tous les fichiers de nomenclature importés pour trouver les correspondances FHIR</li>
+          <li>Si une correspondance est trouvée, la ressource FHIR est enrichie avec non seulement le code, mais aussi ses métadonnées (système, version, libellé)</li>
+        </ol>
+        
+        <div class="warning-box">
+          <p><strong>Important :</strong> Les fichiers système (ans_oids.json, ans_common_codes.json, ans_terminology_systems.json) sont protégés et ne peuvent pas être supprimés car ils contiennent les mappings fondamentaux pour la conversion.</p>
+        </div>
+        
+        <p>Pour en savoir plus sur l'intégration avec les terminologies françaises, consultez la <a href="/docs/french_terminology_scripts">documentation détaillée des terminologies françaises</a>.</p>
       </div>
       
       <div id="prerequites" class="documentation-section">
