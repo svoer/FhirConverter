@@ -665,67 +665,93 @@ function parseHL7Message(hl7Message) {
       
       <div id="api" class="documentation-section">
         <h2>APIs disponibles</h2>
-        <p>FHIRHub expose plusieurs API RESTful pour permettre l'intégration et l'automatisation. Voici un aperçu des principaux endpoints :</p>
+        <p>FHIRHub expose plusieurs API RESTful pour permettre l'intégration et l'automatisation. Cette documentation complète liste toutes les APIs disponibles dans le système, groupées par catégorie.</p>
+        
+        <p>Une documentation interactive de l'API est disponible à l'adresse <a href="/api-docs" target="_blank">/api-docs</a> (Swagger UI). Pour tester les API, utilisez le bouton vert ⚡ Autoriser avec clé de test: dev-key.</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API d'Authentification</div>
+          <ul>
+            <li><strong>POST /api/login</strong> - Authentification des utilisateurs</li>
+            <li><strong>POST /api/logout</strong> - Déconnexion des utilisateurs</li>
+            <li><strong>GET /api/user</strong> - Récupération des informations de l'utilisateur connecté</li>
+          </ul>
+        </div>
         
         <div class="tech-spec">
           <div class="tech-spec-title">API de Conversion</div>
           <ul>
-            <li><strong>POST /api/convert</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format JSON)</li>
-            <li><strong>POST /api/convert/raw</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format texte brut)</li>
-            <li><strong>POST /api/convert/mllp</strong> - Convertit un message HL7 v2.5 en FHIR R4 (format MLLP)</li>
-            <li><strong>POST /api/convert/validate</strong> - Valide la syntaxe d'un message HL7</li>
+            <li><strong>POST /api/convert</strong> - Convertit un message HL7 v2.5 en FHIR R4</li>
+            <li><strong>POST /api/convert/validate</strong> - Valide la syntaxe d'un message HL7 v2.5</li>
           </ul>
         </div>
         
         <div class="tech-spec">
           <div class="tech-spec-title">API de Terminologie</div>
           <ul>
-            <li><strong>GET /api/terminology/french</strong> - Récupère les infos sur les terminologies françaises</li>
+            <li><strong>GET /api/terminology/french</strong> - Obtient les informations sur les terminologies françaises</li>
+            <li><strong>GET /api/terminology/files</strong> - Liste les fichiers de terminologie disponibles</li>
+            <li><strong>POST /api/terminology/refresh</strong> - Rafraîchit les statistiques des terminologies</li>
+            <li><strong>POST /api/terminology/analyze</strong> - Analyse le contenu des fichiers de terminologie</li>
+            <li><strong>GET /api/terminology/check-duplicates</strong> - Vérifie les doublons dans les fichiers de terminologie</li>
+            <li><strong>POST /api/terminology/remove-duplicates</strong> - Supprime les fichiers de terminologie en doublon</li>
+            <li><strong>POST /api/terminology/import</strong> - Importe un nouveau fichier de terminologie</li>
+            <li><strong>GET /api/terminology/files/:filename</strong> - Récupère un fichier de terminologie spécifique</li>
+            <li><strong>DELETE /api/terminology/files/:filename</strong> - Supprime un fichier de terminologie</li>
+            <li><strong>POST /api/terminology/export</strong> - Exporte tous les fichiers de terminologie en ZIP</li>
           </ul>
         </div>
         
         <div class="tech-spec">
-          <div class="tech-spec-title">API de Cache</div>
+          <div class="tech-spec-title">API d'Administration</div>
           <ul>
-            <li><strong>GET /api/cache/stats</strong> - Récupère les statistiques du système de cache</li>
-            <li><strong>POST /api/cache/clear</strong> - Vide le cache de conversion (admin uniquement)</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API Système</div>
-          <ul>
-            <li><strong>GET /api/stats</strong> - Récupère les statistiques du système</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Gestion</div>
-          <ul>
-            <li><strong>GET /api/applications</strong> - Liste les applications enregistrées</li>
+            <li><strong>GET /api/applications</strong> - Liste toutes les applications enregistrées</li>
             <li><strong>POST /api/applications</strong> - Crée une nouvelle application</li>
             <li><strong>GET /api/applications/:id</strong> - Récupère les détails d'une application</li>
             <li><strong>PUT /api/applications/:id</strong> - Met à jour une application</li>
             <li><strong>DELETE /api/applications/:id</strong> - Supprime une application</li>
-            <li><strong>GET /api/api-keys</strong> - Liste les clés API</li>
-            <li><strong>POST /api/api-keys</strong> - Crée une nouvelle clé API</li>
-            <li><strong>PUT /api/api-keys/:id</strong> - Met à jour une clé API</li>
-            <li><strong>DELETE /api/api-keys/:id</strong> - Révoque une clé API</li>
-            <li><strong>GET /api/users</strong> - Liste les utilisateurs (admin uniquement)</li>
-            <li><strong>POST /api/users</strong> - Crée un nouvel utilisateur (admin uniquement)</li>
-            <li><strong>PUT /api/users/:id</strong> - Met à jour un utilisateur (admin uniquement)</li>
-            <li><strong>DELETE /api/users/:id</strong> - Supprime un utilisateur (admin uniquement)</li>
           </ul>
         </div>
         
         <div class="tech-spec">
-          <div class="tech-spec-title">API d'Authentification</div>
+          <div class="tech-spec-title">API de Gestion des Clés API</div>
           <ul>
-            <li><strong>POST /api/login</strong> - Authentifie un utilisateur et retourne un JWT</li>
-            <li><strong>POST /api/logout</strong> - Déconnecte l'utilisateur actuel</li>
-            <li><strong>GET /api/user</strong> - Récupère les informations de l'utilisateur connecté</li>
+            <li><strong>GET /api/api-keys</strong> - Liste toutes les clés API</li>
+            <li><strong>POST /api/api-keys</strong> - Crée une nouvelle clé API</li>
+            <li><strong>GET /api/api-keys/:id</strong> - Récupère les détails d'une clé API</li>
+            <li><strong>PUT /api/api-keys/:id</strong> - Met à jour une clé API (active/inactive)</li>
+            <li><strong>DELETE /api/api-keys/:id</strong> - Supprime une clé API</li>
           </ul>
         </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API de Gestion des Utilisateurs</div>
+          <ul>
+            <li><strong>GET /api/users</strong> - Liste tous les utilisateurs</li>
+            <li><strong>POST /api/users</strong> - Crée un nouvel utilisateur</li>
+            <li><strong>GET /api/users/:id</strong> - Récupère les détails d'un utilisateur</li>
+            <li><strong>PUT /api/users/:id</strong> - Met à jour un utilisateur</li>
+            <li><strong>DELETE /api/users/:id</strong> - Supprime un utilisateur</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API de Statistiques et Monitoring</div>
+          <ul>
+            <li><strong>GET /api/stats</strong> - Récupère les statistiques du système (conversions, temps de traitement, etc.)</li>
+            <li><strong>GET /api/cache/status</strong> - Récupère les informations sur l'état du cache de conversion</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API de Documentation</div>
+          <ul>
+            <li><strong>GET /api-docs</strong> - Documentation Swagger des APIs disponibles</li>
+            <li><strong>GET /api-docs.json</strong> - Spécification OpenAPI au format JSON</li>
+          </ul>
+        </div>
+        
+
         
         <h3>Authentification</h3>
         <p>Les API nécessitent une authentification, qui peut se faire de deux manières :</p>
