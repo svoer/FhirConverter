@@ -25,14 +25,61 @@ if [ -z "$CURRENT_USER" ]; then
 fi
 echo "Utilisateur courant: $CURRENT_USER"
 
-# Vérifier que Node.js est installé
+# Vérifier la présence et l'installation de Node.js
+if [ -f "./setup-nodejs.sh" ]; then
+  echo "Utilisation du script d'installation Node.js spécifique à FHIRHub..."
+  
+  # Rendre le script exécutable si nécessaire
+  chmod +x ./setup-nodejs.sh
+  
+  # Utiliser notre script d'installation de Node.js
+  if [ "$EUID" -eq 0 ]; then
+    # Si root, installer au niveau système
+    ./setup-nodejs.sh
+  else
+    # Si non-root, on pourrait demander sudo
+    echo "Pour une installation système de Node.js, sudo peut être nécessaire."
+    sudo ./setup-nodejs.sh
+  fi
+  
+  # Vérifier si une installation locale a été faite
+  if [ -f "./.nodejsrc" ]; then
+    echo "Configuration Node.js locale détectée, chargement..."
+    source ./.nodejsrc
+  fi
+else
+  # La méthode standard si le script spécifique n'est pas disponible
+  if ! command -v node &> /dev/null; then
+    echo "ERREUR: Node.js n'est pas installé et le script d'installation n'est pas disponible."
+    echo "Veuillez installer Node.js v20 ou supérieur manuellement avant de continuer."
+    echo "Visitez https://nodejs.org/en/download/ pour les instructions."
+    exit 1
+  fi
+fi
+
+# Vérifier que Node.js est bien détecté maintenant
 if ! command -v node &> /dev/null; then
-  echo "ERREUR: Node.js n'est pas installé. Veuillez installer Node.js v18+"
+  echo "ERREUR: Node.js n'est toujours pas détecté dans le PATH après la tentative d'installation."
+  echo "Veuillez vérifier l'installation de Node.js et réessayer."
   exit 1
 fi
 
+# Vérifier la version de Node.js
+NODE_VERSION=$(node -v | cut -c 2- | cut -d '.' -f 1)
 NODE_PATH=$(which node)
-echo "Chemin Node.js: $NODE_PATH"
+echo "Node.js détecté: $(node -v) à $NODE_PATH"
+
+if [ "$NODE_VERSION" -lt 14 ]; then
+  echo "AVERTISSEMENT: La version de Node.js ($NODE_VERSION) est inférieure à la version recommandée (20+)."
+  echo "L'application pourrait rencontrer des problèmes de compatibilité."
+  
+  read -p "Voulez-vous continuer avec cette version? (o/n): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Oo]$ ]]; then
+    echo "Installation annulée. Veuillez installer Node.js 20 ou supérieur."
+    exit 1
+  fi
+fi
 
 # Vérifier si un service systemd existe déjà
 if [ -f "/etc/systemd/system/fhirhub.service" ]; then

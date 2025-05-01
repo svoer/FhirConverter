@@ -1,119 +1,158 @@
 @echo off
-setlocal enableextensions
+setlocal enabledelayedexpansion
 
-echo ==========================================================
-echo    Installation de FHIRHub comme service Windows
-echo ==========================================================
+:: Script d'installation du service FHIRHub pour Windows
+:: Ce script utilise NSSM (Non-Sucking Service Manager) pour créer un service Windows
 
-REM Vérifier si on est en mode administrateur
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ERREUR : Ce script doit être exécuté en tant qu'administrateur.
-    echo Veuillez redémarrer le script avec des droits d'administrateur.
+echo =========================================================
+echo      Installation de FHIRHub comme service Windows
+echo =========================================================
+
+:: Vérifier si on est admin
+NET SESSION >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ERREUR: Ce script doit être exécuté en tant qu'administrateur
+    echo Clic droit sur ce fichier et 'Exécuter en tant qu'administrateur'
     pause
     exit /b 1
 )
 
-REM Vérifier si NSSM est présent
-set NSSM_PATH=nssm.exe
-where /q %NSSM_PATH%
-if %errorlevel% neq 0 (
-    if exist ".\tools\nssm.exe" (
-        set NSSM_PATH=.\tools\nssm.exe
+:: Chemin de l'application
+set "APP_DIR=%~dp0"
+echo Répertoire de l'application: %APP_DIR%
+
+:: Vérifier que Node.js est installé
+where node >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo Node.js n'est pas détecté dans le PATH
+    
+    :: Vérifier si le script d'installation de Node.js existe
+    if exist "%APP_DIR%setup-nodejs.bat" (
+        echo Utilisation du script d'installation de Node.js...
+        call "%APP_DIR%setup-nodejs.bat"
     ) else (
-        echo NSSM n'est pas installé ou n'est pas dans le PATH.
-        echo.
-        echo Deux options :
-        echo 1. Téléchargez NSSM depuis https://nssm.cc/download
-        echo 2. Installez-le manuellement puis réexécutez ce script
-        echo 3. Ou appuyez sur une touche pour télécharger et installer automatiquement NSSM
+        echo ERREUR: Node.js n'est pas installé et le script d'installation n'est pas disponible.
+        echo Veuillez installer Node.js v20 ou supérieur manuellement avant de continuer.
+        echo Visitez https://nodejs.org/en/download/ pour les instructions.
         pause
-        
-        echo Téléchargement de NSSM...
-        mkdir tools 2>nul
-        powershell -Command "(New-Object Net.WebClient).DownloadFile('https://nssm.cc/release/nssm-2.24.zip', 'tools\nssm.zip')"
-        powershell -Command "Expand-Archive -Path 'tools\nssm.zip' -DestinationPath 'tools' -Force"
-        copy "tools\nssm-2.24\win64\nssm.exe" "tools\nssm.exe" >nul
-        set NSSM_PATH=.\tools\nssm.exe
+        exit /b 1
+    )
+    
+    :: Vérifier à nouveau Node.js
+    where node >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERREUR: Node.js n'est toujours pas détecté dans le PATH après la tentative d'installation.
+        pause
+        exit /b 1
     )
 )
 
-REM Obtenir le chemin complet de Node.js
-for /f "tokens=*" %%g in ('where node') do (set NODE_PATH=%%g)
+for /f "tokens=*" %%i in ('node -v') do set NODE_VERSION=%%i
+echo Node.js !NODE_VERSION! détecté
 
-if "%NODE_PATH%"=="" (
-    echo Node.js n'est pas installé ou n'est pas dans le PATH.
-    echo Veuillez installer Node.js avant d'installer le service.
-    pause
-    exit /b 1
+:: Vérifier si le chemin NSSM est dans le PATH ou s'il existe dans le dossier courant
+set NSSM_PATH=
+where nssm >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    for /f "tokens=*" %%i in ('where nssm') do set "NSSM_PATH=%%i"
+) else if exist "%APP_DIR%\nssm.exe" (
+    set "NSSM_PATH=%APP_DIR%\nssm.exe"
+) else (
+    echo NSSM (Non-Sucking Service Manager) n'est pas trouvé.
+    echo Voulez-vous télécharger NSSM automatiquement? (O/N)
+    set /p DOWNLOAD_NSSM=
+    
+    if /i "!DOWNLOAD_NSSM!"=="O" (
+        :: Télécharger NSSM
+        echo Téléchargement de NSSM...
+        powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nssm.cc/release/nssm-2.24.zip' -OutFile '%TEMP%\nssm.zip'}"
+        
+        :: Extraire NSSM
+        echo Extraction de NSSM...
+        powershell -Command "& {Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory('%TEMP%\nssm.zip', '%TEMP%\nssm')}"
+        
+        :: Copier l'exécutable NSSM dans le dossier de l'application
+        if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+            copy "%TEMP%\nssm\nssm-2.24\win64\nssm.exe" "%APP_DIR%" >nul
+        ) else (
+            copy "%TEMP%\nssm\nssm-2.24\win32\nssm.exe" "%APP_DIR%" >nul
+        )
+        
+        set "NSSM_PATH=%APP_DIR%\nssm.exe"
+        echo NSSM installé avec succès.
+    ) else (
+        echo ERREUR: NSSM est requis pour installer FHIRHub comme service Windows.
+        echo Veuillez télécharger NSSM depuis https://nssm.cc/ et l'ajouter au PATH.
+        pause
+        exit /b 1
+    )
 )
 
-REM Obtenir le chemin absolu du dossier courant
-set "SCRIPT_DIR=%~dp0"
-set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+echo Utilisation de NSSM: !NSSM_PATH!
 
-echo.
-echo Configuration du service FHIRHub...
-echo.
-echo Chemin Node.js: %NODE_PATH%
-echo Répertoire de travail: %SCRIPT_DIR%
-echo Fichier principal: app.js
-echo.
-
-REM Vérifier si le service existe déjà
-%NSSM_PATH% status FHIRHub > nul 2>&1
-if %errorlevel% equ 0 (
-    echo Le service FHIRHub existe déjà. Voulez-vous le réinstaller? (O/N)
-    choice /c ON /n
-    if %errorlevel% equ 1 (
+:: Vérifier si le service existe déjà
+%NSSM_PATH% status FHIRHub >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo Un service FHIRHub existe déjà.
+    echo Voulez-vous le remplacer? (O/N)
+    set /p REPLACE_SERVICE=
+    
+    if /i "!REPLACE_SERVICE!"=="O" (
         echo Arrêt et suppression du service existant...
         %NSSM_PATH% stop FHIRHub confirm
         %NSSM_PATH% remove FHIRHub confirm
     ) else (
         echo Installation annulée.
+        pause
         exit /b 0
     )
 )
 
-echo Installation du service FHIRHub...
-%NSSM_PATH% install FHIRHub "%NODE_PATH%" "app.js"
-%NSSM_PATH% set FHIRHub AppDirectory "%SCRIPT_DIR%"
+:: Obtenir le chemin vers node.exe
+for /f "tokens=*" %%i in ('where node') do set "NODE_PATH=%%i"
+
+:: Créer le service
+echo Création du service FHIRHub...
+%NSSM_PATH% install FHIRHub "%NODE_PATH%" "%APP_DIR%app.js"
 %NSSM_PATH% set FHIRHub Description "FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
-%NSSM_PATH% set FHIRHub DisplayName "FHIRHub"
+%NSSM_PATH% set FHIRHub AppDirectory "%APP_DIR%"
+%NSSM_PATH% set FHIRHub AppStdout "%APP_DIR%logs\service-output.log"
+%NSSM_PATH% set FHIRHub AppStderr "%APP_DIR%logs\service-error.log"
+%NSSM_PATH% set FHIRHub AppEnvironmentExtra "NODE_ENV=production PORT=5000"
 %NSSM_PATH% set FHIRHub Start SERVICE_AUTO_START
-%NSSM_PATH% set FHIRHub ObjectName LocalSystem
-%NSSM_PATH% set FHIRHub AppEnvironmentExtra "NODE_ENV=production" "PORT=5000"
-%NSSM_PATH% set FHIRHub AppStdout "%SCRIPT_DIR%\logs\service-stdout.log"
-%NSSM_PATH% set FHIRHub AppStderr "%SCRIPT_DIR%\logs\service-stderr.log"
-%NSSM_PATH% set FHIRHub AppRotateFiles 1
-%NSSM_PATH% set FHIRHub AppRotateOnline 1
-%NSSM_PATH% set FHIRHub AppRotateSeconds 86400
-%NSSM_PATH% set FHIRHub AppRotateBytes 10485760
 
-if not exist "%SCRIPT_DIR%\logs" mkdir "%SCRIPT_DIR%\logs"
+:: Créer le dossier de logs si nécessaire
+if not exist "%APP_DIR%logs" mkdir "%APP_DIR%logs"
 
-echo.
-echo Service FHIRHub installé avec succès!
-echo.
+:: Démarrer le service
 echo Voulez-vous démarrer le service maintenant? (O/N)
-choice /c ON /n
-if %errorlevel% equ 1 (
+set /p START_SERVICE=
+
+if /i "!START_SERVICE!"=="O" (
     echo Démarrage du service FHIRHub...
     %NSSM_PATH% start FHIRHub
-    echo.
-    echo Service FHIRHub démarré!
-    echo Vérifiez l'état du service dans le Gestionnaire de services Windows
-    echo ou exécutez: %NSSM_PATH% status FHIRHub
+    
+    :: Vérifier si le service a démarré
+    timeout /t 2 /nobreak >nul
+    %NSSM_PATH% status FHIRHub >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        echo Service FHIRHub démarré avec succès!
+    ) else (
+        echo Le service n'a pas pu démarrer correctement.
+        echo Vérifiez les logs dans %APP_DIR%logs
+    )
 ) else (
-    echo.
     echo Le service est installé mais n'a pas été démarré.
-    echo Vous pouvez le démarrer manuellement via le Gestionnaire de services Windows
-    echo ou exécuter: %NSSM_PATH% start FHIRHub
+    echo Vous pouvez le démarrer manuellement via le Gestionnaire de services Windows.
 )
 
 echo.
 echo ==========================================================
 echo L'application sera accessible à l'adresse: http://localhost:5000
+echo Commandes utiles:
+echo   Vérifier l'état:   sc query FHIRHub
+echo   Gérer le service:  services.msc (puis recherchez "FHIRHub")
+echo   Logs du service:   %APP_DIR%logs\service-output.log
 echo ==========================================================
 
 pause
