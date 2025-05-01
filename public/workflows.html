@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflows - FHIRHub</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/support-chatbot.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <style>
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .workflow-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .workflow-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+        
+        .workflow-header {
+            padding: 15px;
+            background: linear-gradient(135deg, #e63946, #f4a261);
+            color: white;
+            position: relative;
+        }
+        
+        .workflow-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .status-active {
+            background-color: #4caf50;
+            box-shadow: 0 0 5px #4caf50;
+        }
+        
+        .status-inactive {
+            background-color: #9e9e9e;
+        }
+        
+        .workflow-body {
+            padding: 15px;
+        }
+        
+        .workflow-footer {
+            display: flex;
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .workflow-footer button {
+            margin-right: 10px;
+        }
+        
+        .workflow-actions {
+            margin-left: auto;
+        }
+        
+        .add-workflow {
+            background: linear-gradient(135deg, #457b9d, #1d3557);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .add-workflow:hover {
+            background: linear-gradient(135deg, #1d3557, #457b9d);
+            transform: translateY(-2px);
+        }
+        
+        .add-workflow i {
+            margin-right: 10px;
+        }
+        
+        .workflow-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+        }
+        
+        .workflow-modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 100px auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 700px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .modal-footer button {
+            margin-left: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .form-group .checkbox-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-group .checkbox-container input {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .editor-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        #json-editor {
+            width: 100%;
+            height: 100%;
+            font-size: 14px;
+        }
+        
+        .tab-container {
+            margin-top: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .tab-buttons li {
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+        }
+        
+        .tab-buttons li.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        
+        .tab-pane {
+            display: none;
+        }
+        
+        .tab-pane.active {
+            display: block;
+        }
+        
+        .workflow-embed-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        
+        #node-red-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin: 50px 0;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #e63946;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- En-tête -->
+        <header>
+            <div class="logo">
+                <a href="dashboard.html"><img src="img/flame-icon-white.svg" alt="FHIRHub Logo" class="flame-icon"></a>
+                <h1>FHIRHub</h1>
+            </div>
+            <nav>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="convert.html">Conversion</a>
+                <a href="applications.html">Applications</a>
+                <a href="api-keys.html">Clés API</a>
+                <a href="workflows.html" class="active">Workflows</a>
+                <a href="terminologies.html">Terminologies</a>
+                <a href="users.html">Utilisateurs</a>
+                <a href="ai-settings.html">IA</a>
+                <a href="documentation.html">Documentation</a>
+                <a href="#" id="logout-btn">Déconnexion</a>
+            </nav>
+        </header>
+
+        <!-- Contenu principal -->
+        <main>
+            <h2>Workflows</h2>
+            <p class="description">Créez et gérez des workflows de transformation pour personnaliser le traitement des messages HL7 et FHIR pour chaque application.</p>
+            
+            <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
+            
+            <div class="filter-container">
+                <label for="application-filter">Filtrer par application:</label>
+                <select id="application-filter" class="filter-select">
+                    <option value="all">Toutes les applications</option>
+                    <!-- Options ajoutées dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="loading-spinner" id="loading-spinner">
+                <div class="spinner"></div>
+                <p>Chargement des workflows...</p>
+            </div>
+            
+            <div class="workflow-grid" id="workflow-grid">
+                <!-- Contenu généré dynamiquement -->
+            </div>
+        </main>
+        
+        <!-- Modal de workflow -->
+        <div id="workflow-modal" class="workflow-modal">
+            <div class="workflow-modal-content">
+                <span class="close-modal" id="close-modal">&times;</span>
+                <div class="modal-header">
+                    <h3 id="modal-title">Nouveau Workflow</h3>
+                </div>
+                <div class="modal-body">
+                    <form id="workflow-form">
+                        <input type="hidden" id="workflow-id">
+                        <div class="form-group">
+                            <label for="workflow-application">Application:</label>
+                            <select id="workflow-application" required>
+                                <!-- Options ajoutées dynamiquement -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="workflow-name">Nom:</label>
+                            <input type="text" id="workflow-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="workflow-description">Description:</label>
+                            <textarea id="workflow-description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="workflow-active" checked>
+                                <label for="workflow-active">Actif</label>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-container">
+                            <ul class="tab-buttons">
+                                <li class="active" data-tab="basic-info">Informations</li>
+                                <li data-tab="json-tab">JSON</li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane active" id="basic-info">
+                                    <p>Remplissez les informations de base du workflow. Une fois créé, vous pourrez accéder à l'éditeur de workflow pour en définir le contenu.</p>
+                                </div>
+                                <div class="tab-pane" id="json-tab">
+                                    <p>Configuration JSON du workflow (pour utilisateurs avancés):</p>
+                                    <div class="editor-container">
+                                        <div id="json-editor"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-workflow" class="cancel-btn">Annuler</button>
+                    <button id="save-workflow" class="submit-btn">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de l'éditeur Node-RED -->
+        <div id="editor-modal" class="workflow-modal">
+            <div class="workflow-modal-content" style="width: 95%; max-width: 1200px; height: 80vh; max-height: 800px;">
+                <span class="close-modal" id="close-editor-modal">&times;</span>
+                <div class="modal-header">
+                    <h3 id="editor-title">Éditeur de Workflow</h3>
+                </div>
+                <div class="modal-body" style="height: calc(100% - 120px);">
+                    <div class="workflow-embed-container">
+                        <iframe id="node-red-iframe" src="about:blank"></iframe>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="close-editor" class="cancel-btn">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chatbot de support -->
+        <div class="chatbot-container">
+            <div class="chatbot-header">
+                <span class="chatbot-title">Support FHIRHub</span>
+                <span class="chatbot-toggle"></span>
+            </div>
+            <div class="chatbot-body">
+                <div class="chatbot-messages" id="chatbot-messages">
+                    <div class="message system">
+                        Bienvenue dans le support FHIRHub. Comment puis-je vous aider aujourd'hui ?
+                    </div>
+                </div>
+                <div class="chatbot-input-container">
+                    <input type="text" id="chatbot-input" placeholder="Tapez votre message..." />
+                    <button id="chatbot-send">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 FHIRHub - Tous droits réservés</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="js/common.js"></script>
+    <script src="js/auth-utils.js"></script>
+    <script src="js/support-chatbot.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialisation de l'éditeur JSON
+            const jsonEditor = ace.edit("json-editor");
+            jsonEditor.setTheme("ace/theme/monokai");
+            jsonEditor.session.setMode("ace/mode/json");
+            jsonEditor.setValue(JSON.stringify([], null, 2));
+            
+            // Récupération des références des éléments
+            const addWorkflowBtn = document.getElementById('add-workflow-btn');
+            const workflowModal = document.getElementById('workflow-modal');
+            const closeModal = document.getElementById('close-modal');
+            const cancelWorkflow = document.getElementById('cancel-workflow');
+            const saveWorkflow = document.getElementById('save-workflow');
+            const workflowForm = document.getElementById('workflow-form');
+            const modalTitle = document.getElementById('modal-title');
+            const workflowGrid = document.getElementById('workflow-grid');
+            const applicationFilter = document.getElementById('application-filter');
+            const workflowApplication = document.getElementById('workflow-application');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            
+            // Références pour l'éditeur
+            const editorModal = document.getElementById('editor-modal');
+            const closeEditorModal = document.getElementById('close-editor-modal');
+            const closeEditor = document.getElementById('close-editor');
+            const nodeRedIframe = document.getElementById('node-red-iframe');
+            const editorTitle = document.getElementById('editor-title');
+            
+            // Gestion des onglets
+            const tabButtons = document.querySelectorAll('.tab-buttons li');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Supprimer la classe active de tous les boutons et panneaux
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                    
+                    // Ajouter la classe active au bouton cliqué
+                    this.classList.add('active');
+                    
+                    // Activer le panneau correspondant
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Ouvrir la modal pour ajouter un workflow
+            addWorkflowBtn.addEventListener('click', function() {
+                modalTitle.textContent = 'Nouveau Workflow';
+                document.getElementById('workflow-id').value = '';
+                document.getElementById('workflow-name').value = '';
+                document.getElementById('workflow-description').value = '';
+                document.getElementById('workflow-active').checked = true;
+                jsonEditor.setValue(JSON.stringify([], null, 2));
+                workflowModal.style.display = 'block';
+            });
+            
+            // Fermer la modal
+            closeModal.addEventListener('click', function() {
+                workflowModal.style.display = 'none';
+            });
+            
+            cancelWorkflow.addEventListener('click', function() {
+                workflowModal.style.display = 'none';
+            });
+            
+            // Fermer la modal de l'éditeur
+            closeEditorModal.addEventListener('click', function() {
+                editorModal.style.display = 'none';
+                nodeRedIframe.src = 'about:blank';
+            });
+            
+            closeEditor.addEventListener('click', function() {
+                editorModal.style.display = 'none';
+                nodeRedIframe.src = 'about:blank';
+            });
+            
+            // Fermer la modal en cliquant en dehors
+            window.addEventListener('click', function(event) {
+                if (event.target === workflowModal) {
+                    workflowModal.style.display = 'none';
+                }
+                if (event.target === editorModal) {
+                    editorModal.style.display = 'none';
+                    nodeRedIframe.src = 'about:blank';
+                }
+            });
+            
+            // Chargement des applications
+            async function loadApplications() {
+                try {
+                    const response = await fetch('/api/applications', {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors du chargement des applications');
+                    }
+                    
+                    const applications = await response.json();
+                    
+                    // Remplir le filtre d'applications
+                    applicationFilter.innerHTML = '<option value="all">Toutes les applications</option>';
+                    applications.forEach(app => {
+                        const option = document.createElement('option');
+                        option.value = app.id;
+                        option.textContent = app.name;
+                        applicationFilter.appendChild(option);
+                    });
+                    
+                    // Remplir le sélecteur d'application du formulaire
+                    workflowApplication.innerHTML = '';
+                    applications.forEach(app => {
+                        const option = document.createElement('option');
+                        option.value = app.id;
+                        option.textContent = app.name;
+                        workflowApplication.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Chargement des workflows
+            async function loadWorkflows(applicationId = 'all') {
+                try {
+                    workflowGrid.innerHTML = '';
+                    loadingSpinner.style.display = 'block';
+                    
+                    let url = '/api/workflows';
+                    if (applicationId !== 'all') {
+                        url = `/api/workflows/application/${applicationId}`;
+                    }
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors du chargement des workflows');
+                    }
+                    
+                    const workflows = await response.json();
+                    
+                    loadingSpinner.style.display = 'none';
+                    
+                    if (workflows.length === 0) {
+                        workflowGrid.innerHTML = '<p>Aucun workflow trouvé.</p>';
+                        return;
+                    }
+                    
+                    workflows.forEach(workflow => {
+                        const card = document.createElement('div');
+                        card.className = 'workflow-card';
+                        
+                        card.innerHTML = `
+                            <div class="workflow-header">
+                                <h3>${workflow.name}</h3>
+                                <span class="workflow-status ${workflow.is_active ? 'status-active' : 'status-inactive'}"></span>
+                            </div>
+                            <div class="workflow-body">
+                                <p><strong>Application:</strong> ${workflow.application_name}</p>
+                                <p>${workflow.description || 'Aucune description'}</p>
+                                <p><small>Dernière mise à jour: ${new Date(workflow.updated_at).toLocaleString()}</small></p>
+                            </div>
+                            <div class="workflow-footer">
+                                <button class="edit-btn" data-id="${workflow.id}">Modifier</button>
+                                <button class="editor-btn" data-id="${workflow.id}">Éditeur</button>
+                                <div class="workflow-actions">
+                                    <button class="delete-btn" data-id="${workflow.id}">Supprimer</button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        workflowGrid.appendChild(card);
+                    });
+                    
+                    // Ajouter les écouteurs d'événements pour les boutons
+                    document.querySelectorAll('.edit-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            editWorkflow(id);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            if (confirm('Êtes-vous sûr de vouloir supprimer ce workflow ?')) {
+                                deleteWorkflow(id);
+                            }
+                        });
+                    });
+                    
+                    document.querySelectorAll('.editor-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            openWorkflowEditor(id);
+                        });
+                    });
+                } catch (error) {
+                    loadingSpinner.style.display = 'none';
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Éditer un workflow
+            async function editWorkflow(id) {
+                try {
+                    const response = await fetch(`/api/workflows/${id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la récupération du workflow');
+                    }
+                    
+                    const workflow = await response.json();
+                    
+                    modalTitle.textContent = 'Modifier le Workflow';
+                    document.getElementById('workflow-id').value = workflow.id;
+                    document.getElementById('workflow-name').value = workflow.name;
+                    document.getElementById('workflow-description').value = workflow.description || '';
+                    document.getElementById('workflow-active').checked = workflow.is_active;
+                    document.getElementById('workflow-application').value = workflow.application_id;
+                    
+                    try {
+                        const flowJson = typeof workflow.flow_json === 'string' 
+                            ? JSON.parse(workflow.flow_json) 
+                            : workflow.flow_json;
+                        jsonEditor.setValue(JSON.stringify(flowJson, null, 2));
+                    } catch (e) {
+                        jsonEditor.setValue(workflow.flow_json || '[]');
+                    }
+                    
+                    workflowModal.style.display = 'block';
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Supprimer un workflow
+            async function deleteWorkflow(id) {
+                try {
+                    const response = await fetch(`/api/workflows/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la suppression du workflow');
+                    }
+                    
+                    showNotification('Workflow supprimé avec succès', 'success');
+                    loadWorkflows(applicationFilter.value);
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Ouvrir l'éditeur de workflow
+            async function openWorkflowEditor(id) {
+                try {
+                    const response = await fetch(`/api/workflows/${id}/editor`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la récupération de l\'URL de l\'éditeur');
+                    }
+                    
+                    const data = await response.json();
+                    const workflow = await fetch(`/api/workflows/${id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    }).then(res => res.json());
+                    
+                    editorTitle.textContent = `Éditeur: ${workflow.name}`;
+                    nodeRedIframe.src = data.editor_url;
+                    editorModal.style.display = 'block';
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Sauvegarder un workflow
+            saveWorkflow.addEventListener('click', async function() {
+                // Vérifier si le formulaire est valide
+                if (!workflowForm.checkValidity()) {
+                    workflowForm.reportValidity();
+                    return;
+                }
+                
+                try {
+                    const id = document.getElementById('workflow-id').value;
+                    const method = id ? 'PUT' : 'POST';
+                    const url = id ? `/api/workflows/${id}` : '/api/workflows';
+                    
+                    let flowJson;
+                    try {
+                        flowJson = JSON.parse(jsonEditor.getValue());
+                    } catch (e) {
+                        showNotification('JSON invalide', 'error');
+                        return;
+                    }
+                    
+                    const workflowData = {
+                        application_id: parseInt(document.getElementById('workflow-application').value),
+                        name: document.getElementById('workflow-name').value,
+                        description: document.getElementById('workflow-description').value,
+                        is_active: document.getElementById('workflow-active').checked ? 1 : 0,
+                        flow_json: JSON.stringify(flowJson)
+                    };
+                    
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`
+                        },
+                        body: JSON.stringify(workflowData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la sauvegarde du workflow');
+                    }
+                    
+                    workflowModal.style.display = 'none';
+                    showNotification('Workflow sauvegardé avec succès', 'success');
+                    loadWorkflows(applicationFilter.value);
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            });
+            
+            // Filtrer les workflows par application
+            applicationFilter.addEventListener('change', function() {
+                loadWorkflows(this.value);
+            });
+            
+            // Fonction d'affichage des notifications
+            function showNotification(message, type = 'info') {
+                // Création de l'élément de notification
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <span>${message}</span>
+                    <button class="close-notification">&times;</button>
+                `;
+                
+                // Ajout au corps du document
+                document.body.appendChild(notification);
+                
+                // Affichage avec animation
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 10);
+                
+                // Suppression automatique après 5 secondes
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }, 5000);
+                
+                // Gestion du bouton de fermeture
+                notification.querySelector('.close-notification').addEventListener('click', function() {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                });
+            }
+            
+            // Initialisation de la page
+            loadApplications();
+            loadWorkflows();
+        });
+    </script>
+</body>
+</html>
