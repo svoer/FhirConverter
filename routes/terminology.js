@@ -764,4 +764,311 @@ function analyzeTerminologyContent(jsonData) {
   return stats;
 }
 
+/**
+ * @swagger
+ * /api/terminology/analyze:
+ *   post:
+ *     summary: Analyser tous les fichiers de terminologie
+ *     description: Analyse le contenu de tous les fichiers de terminologie pour fournir des statistiques détaillées
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     responses:
+ *       200:
+ *         description: Analyse terminée avec succès
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/analyze', adminAuthMiddleware, async (req, res) => {
+  try {
+    const files = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json'));
+    
+    // Résultats d'analyse
+    const results = {
+      filesAnalyzed: files.length,
+      totalItems: 0,
+      systemsFound: 0,
+      oidsFound: 0,
+      fileTypes: {},
+      details: []
+    };
+    
+    // Analyser chaque fichier
+    for (const filename of files) {
+      const filePath = path.join(TERMINOLOGY_DIR, filename);
+      const stats = fs.statSync(filePath);
+      
+      try {
+        // Lire et analyser le contenu
+        const content = fs.readFileSync(filePath, 'utf8');
+        const jsonData = JSON.parse(content);
+        
+        // Utiliser la fonction d'analyse existante
+        const fileAnalysis = analyzeTerminologyContent(jsonData);
+        
+        // Ajouter à l'analyse globale
+        results.totalItems += fileAnalysis.totalElements || 0;
+        results.systemsFound += fileAnalysis.totalSystems || 0;
+        
+        // Compter les types de fichiers
+        const fileType = fileAnalysis.detectedTypes[0] || 'Unknown';
+        results.fileTypes[fileType] = (results.fileTypes[fileType] || 0) + 1;
+        
+        // Ajouter aux détails
+        results.details.push({
+          filename,
+          size: stats.size,
+          lastModified: stats.mtime.toISOString(),
+          type: fileType,
+          itemCount: fileAnalysis.totalElements || 0,
+          systemsCount: fileAnalysis.totalSystems || 0
+        });
+        
+        // Si c'est un fichier d'OIDs
+        if (fileType === 'ANS-OIDs') {
+          results.oidsFound += fileAnalysis.totalSystems || 0;
+        }
+      } catch (error) {
+        console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier ${filename}:`, error);
+        
+        // Ajouter quand même aux détails mais avec une erreur
+        results.details.push({
+          filename,
+          size: stats.size,
+          lastModified: stats.mtime.toISOString(),
+          error: error.message
+        });
+      }
+    }
+    
+    console.log(`[TERMINOLOGY] Analyse de ${files.length} fichiers terminée. ${results.totalItems} éléments trouvés.`);
+    
+    res.json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de l\'analyse des fichiers de terminologie :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'analyse des fichiers de terminologie',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/terminology/check-duplicates:
+ *   get:
+ *     summary: Vérifier les fichiers de terminologie en doublon
+ *     description: Identifie les fichiers de terminologie qui contiennent des données similaires
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     responses:
+ *       200:
+ *         description: Vérification terminée avec succès
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/check-duplicates', adminAuthMiddleware, async (req, res) => {
+  try {
+    const files = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        const stats = fs.statSync(path.join(TERMINOLOGY_DIR, file));
+        return {
+          name: file,
+          size: stats.size,
+          lastModified: stats.mtime.toISOString()
+        };
+      });
+    
+    // Regrouper les fichiers par taille similaire (taille à ±10%)
+    const sizeGroups = {};
+    files.forEach(file => {
+      const sizeKey = Math.floor(file.size / 1000) * 1000; // Arrondir à 1KB près
+      sizeGroups[sizeKey] = sizeGroups[sizeKey] || [];
+      sizeGroups[sizeKey].push(file);
+    });
+    
+    // Garder uniquement les groupes avec plus d'un fichier
+    const potentialDuplicateGroups = Object.values(sizeGroups)
+      .filter(group => group.length > 1);
+    
+    // Analyser le contenu des fichiers potentiellement en doublon
+    const confirmedDuplicates = [];
+    
+    for (const group of potentialDuplicateGroups) {
+      // Grouper par noms similaires (ex: similaires si seule la date diffère)
+      const nameGroups = {};
+      
+      group.forEach(file => {
+        // Créer une clé de base de nom sans dates/nombres
+        const baseNameKey = file.name
+          .replace(/\d+/g, 'X')         // Remplacer tous les chiffres par X
+          .replace(/[-_\.]/g, '')       // Ignorer les tirets, underscore et points
+          .toLowerCase();
+        
+        nameGroups[baseNameKey] = nameGroups[baseNameKey] || [];
+        nameGroups[baseNameKey].push(file);
+      });
+      
+      // Garder les groupes avec plusieurs fichiers
+      const duplicateNameGroups = Object.values(nameGroups)
+        .filter(nameGroup => nameGroup.length > 1);
+      
+      if (duplicateNameGroups.length > 0) {
+        // Pour chaque groupe de noms similaires, vérifier le contenu
+        for (const nameGroup of duplicateNameGroups) {
+          // Trier par date de dernière modification (du plus récent au plus ancien)
+          nameGroup.sort((a, b) => 
+            new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+          );
+          
+          confirmedDuplicates.push({
+            type: 'name_similarity',
+            files: nameGroup
+          });
+        }
+      }
+    }
+    
+    console.log(`[TERMINOLOGY] Vérification des doublons terminée. ${confirmedDuplicates.length} groupes identifiés.`);
+    
+    res.json({
+      success: true,
+      data: {
+        totalFiles: files.length,
+        duplicates: confirmedDuplicates
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la vérification des doublons :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la vérification des doublons',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/terminology/remove-duplicates:
+ *   post:
+ *     summary: Supprimer les fichiers de terminologie en doublon
+ *     description: Supprime automatiquement les fichiers de terminologie en doublon en gardant les plus récents
+ *     tags:
+ *       - Terminologie
+ *     security:
+ *       - AdminAuth: []
+ *     responses:
+ *       200:
+ *         description: Suppression terminée avec succès
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/remove-duplicates', adminAuthMiddleware, async (req, res) => {
+  try {
+    // Réutiliser la logique de détection des doublons
+    const files = fs.readdirSync(TERMINOLOGY_DIR)
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        const stats = fs.statSync(path.join(TERMINOLOGY_DIR, file));
+        return {
+          name: file,
+          size: stats.size,
+          lastModified: stats.mtime.toISOString()
+        };
+      });
+    
+    // Regrouper les fichiers par taille similaire (taille à ±10%)
+    const sizeGroups = {};
+    files.forEach(file => {
+      const sizeKey = Math.floor(file.size / 1000) * 1000; // Arrondir à 1KB près
+      sizeGroups[sizeKey] = sizeGroups[sizeKey] || [];
+      sizeGroups[sizeKey].push(file);
+    });
+    
+    // Garder uniquement les groupes avec plus d'un fichier
+    const potentialDuplicateGroups = Object.values(sizeGroups)
+      .filter(group => group.length > 1);
+    
+    // Fichiers à supprimer
+    const filesToDelete = [];
+    
+    for (const group of potentialDuplicateGroups) {
+      // Grouper par noms similaires
+      const nameGroups = {};
+      
+      group.forEach(file => {
+        // Créer une clé de base de nom sans dates/nombres
+        const baseNameKey = file.name
+          .replace(/\d+/g, 'X')
+          .replace(/[-_\.]/g, '')
+          .toLowerCase();
+        
+        nameGroups[baseNameKey] = nameGroups[baseNameKey] || [];
+        nameGroups[baseNameKey].push(file);
+      });
+      
+      // Garder les groupes avec plusieurs fichiers
+      const duplicateNameGroups = Object.values(nameGroups)
+        .filter(nameGroup => nameGroup.length > 1);
+      
+      for (const nameGroup of duplicateNameGroups) {
+        // Trier par date de dernière modification (du plus récent au plus ancien)
+        nameGroup.sort((a, b) => 
+          new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+        );
+        
+        // Conserver le fichier le plus récent, supprimer les autres
+        const [newest, ...others] = nameGroup;
+        filesToDelete.push(...others);
+      }
+    }
+    
+    // Vérifier et ne pas supprimer les fichiers système essentiels
+    const systemFiles = ['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'];
+    const safeFilesToDelete = filesToDelete.filter(file => !systemFiles.includes(file.name));
+    
+    // Effectuer la suppression
+    let deletedCount = 0;
+    for (const file of safeFilesToDelete) {
+      const filePath = path.join(TERMINOLOGY_DIR, file.name);
+      fs.unlinkSync(filePath);
+      deletedCount++;
+      console.log(`[TERMINOLOGY] Fichier en doublon supprimé: ${file.name}`);
+    }
+    
+    console.log(`[TERMINOLOGY] ${deletedCount} fichiers en doublon supprimés sur ${safeFilesToDelete.length} identifiés.`);
+    
+    res.json({
+      success: true,
+      data: {
+        duplicatesFound: safeFilesToDelete.length,
+        deleted: deletedCount
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la suppression des doublons :', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression des doublons',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
