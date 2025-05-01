@@ -685,12 +685,61 @@ function isInitialized() {
   return initialized;
 }
 
+/**
+ * Récupérer tous les fournisseurs d'IA actifs
+ * @returns {Promise<Array>} Liste des fournisseurs actifs
+ */
+async function getActiveProviders() {
+  try {
+    // S'assurer que le service est initialisé
+    if (!initialized) {
+      await initialize();
+    }
+    
+    const providers = await db.query('SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY created_at DESC');
+    return providers;
+  } catch (error) {
+    console.error('[AI] Erreur lors de la récupération des fournisseurs d\'IA actifs:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mettre à jour les statistiques d'utilisation d'un fournisseur
+ * @param {number} id - ID du fournisseur
+ * @returns {Promise<boolean>} Succès de la mise à jour
+ */
+async function updateProviderUsage(id) {
+  try {
+    // S'assurer que le service est initialisé
+    if (!initialized) {
+      await initialize();
+    }
+    
+    const result = await db.run(`
+      UPDATE ai_providers 
+      SET usage_count = usage_count + 1, 
+          current_usage = current_usage + 1,
+          last_used_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [id]);
+    
+    return result.changes > 0;
+  } catch (error) {
+    console.error(`[AI] Erreur lors de la mise à jour des statistiques d'utilisation pour le fournisseur ${id}:`, error);
+    // Ne pas faire échouer l'opération principale en cas d'erreur de mise à jour des statistiques
+    return false;
+  }
+}
+
 module.exports = {
   initialize,
   isInitialized,
   getAllProviders,
   getProviderById,
   getProviderByName,
+  getActiveProviders,
+  updateProviderUsage,
   addProvider,
   updateProvider,
   deleteProvider,

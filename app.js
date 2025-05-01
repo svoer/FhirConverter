@@ -729,6 +729,7 @@ const devApiRoutes = require('./routes/dev-api');
 const cacheRoutes = require('./routes/cache');
 const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
+const aiChatRoutes = require('./routes/ai-chat');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
@@ -739,6 +740,7 @@ app.use('/api/dev', devApiRoutes);
 app.use('/api/cache', cacheRoutes);
 app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
+app.use('/api/ai', aiChatRoutes);
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
 const server = app.listen(PORT, () => {
