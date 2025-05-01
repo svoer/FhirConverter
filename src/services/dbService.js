@@ -4,7 +4,7 @@
  */
 
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 
 // Chemin de la base de données
 const DB_PATH = path.join(__dirname, '../../data/fhirhub.db');
@@ -31,16 +31,13 @@ async function initialize() {
     }
     
     // Ouvrir la connexion à la base de données
-    db = new sqlite3.Database(DB_PATH, (err) => {
-      if (err) {
-        console.error('[DB] Erreur lors de la connexion à la base de données:', err);
-        return reject(err);
-      }
+    try {
+      db = new Database(DB_PATH, { verbose: console.log });
       
       console.log('[DB] Connexion à la base de données établie');
       
       // Activer les clés étrangères
-      db.run('PRAGMA foreign_keys = ON');
+      db.pragma('foreign_keys = ON');
       
       // Créer les tables si elles n'existent pas
       createTables()
@@ -52,7 +49,10 @@ async function initialize() {
           console.error('[DB] Erreur lors de la création des tables:', err);
           reject(err);
         });
-    });
+    } catch (err) {
+      console.error('[DB] Erreur lors de la connexion à la base de données:', err);
+      reject(err);
+    }
   });
 }
 
@@ -152,18 +152,18 @@ async function createTables() {
  * @returns {Promise<void>}
  */
 async function close() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (db) {
-      db.close(err => {
-        if (err) {
-          console.error('[DB] Erreur lors de la fermeture de la connexion:', err);
-          return reject(err);
-        }
-        
+      try {
+        db.close();
         console.log('[DB] Connexion à la base de données fermée');
         db = null;
         resolve();
-      });
+      } catch (err) {
+        console.error('[DB] Erreur lors de la fermeture de la connexion:', err);
+        db = null;
+        resolve();
+      }
     } else {
       console.log('[DB] Pas de connexion à fermer');
       resolve();
@@ -179,16 +179,20 @@ async function close() {
  */
 async function run(sql, params = []) {
   return new Promise((resolve, reject) => {
-    ensureConnection();
-    
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
-        return reject(err);
-      }
+    try {
+      ensureConnection();
       
-      resolve({ lastID: this.lastID, changes: this.changes });
-    });
+      // better-sqlite3 utilise "run" pour les requêtes sans résultat
+      const result = db.prepare(sql).run(...params);
+      
+      resolve({ 
+        lastID: result.lastInsertRowid, 
+        changes: result.changes 
+      });
+    } catch (err) {
+      console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
+      reject(err);
+    }
   });
 }
 
@@ -200,16 +204,17 @@ async function run(sql, params = []) {
  */
 async function get(sql, params = []) {
   return new Promise((resolve, reject) => {
-    ensureConnection();
-    
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
-        return reject(err);
-      }
+    try {
+      ensureConnection();
+      
+      // better-sqlite3 utilise "get" pour obtenir un seul résultat
+      const row = db.prepare(sql).get(...params);
       
       resolve(row || null);
-    });
+    } catch (err) {
+      console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
+      reject(err);
+    }
   });
 }
 
@@ -221,16 +226,17 @@ async function get(sql, params = []) {
  */
 async function query(sql, params = []) {
   return new Promise((resolve, reject) => {
-    ensureConnection();
-    
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
-        return reject(err);
-      }
+    try {
+      ensureConnection();
+      
+      // better-sqlite3 utilise "all" pour obtenir tous les résultats
+      const rows = db.prepare(sql).all(...params);
       
       resolve(rows || []);
-    });
+    } catch (err) {
+      console.error('[DB] Erreur lors de l\'exécution de la requête:', err);
+      reject(err);
+    }
   });
 }
 

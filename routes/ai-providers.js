@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const aiProviderService = require('../src/services/aiProviderService');
-const { checkRole } = require('../middleware/authMiddleware');
+const { adminRequired } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -49,7 +49,7 @@ const { checkRole } = require('../middleware/authMiddleware');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', checkRole(['admin']), async (req, res) => {
+router.get('/', adminRequired, async (req, res) => {
   try {
     const providers = await aiProviderService.getAllProviders();
     
@@ -111,7 +111,7 @@ router.get('/', checkRole(['admin']), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', checkRole(['admin']), async (req, res) => {
+router.get('/:id', adminRequired, async (req, res) => {
   try {
     const { id } = req.params;
     const provider = await aiProviderService.getProviderById(id);
@@ -162,7 +162,7 @@ router.get('/:id', checkRole(['admin']), async (req, res) => {
  *       403:
  *         description: Accès refusé
  */
-router.get('/supported', checkRole(['admin']), async (req, res) => {
+router.get('/supported', adminRequired, async (req, res) => {
   try {
     const supportedProviders = aiProviderService.getSupportedProviders();
     res.json(supportedProviders);
@@ -214,7 +214,7 @@ router.get('/supported', checkRole(['admin']), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', checkRole(['admin']), async (req, res) => {
+router.post('/', adminRequired, async (req, res) => {
   try {
     const providerData = req.body;
     
@@ -286,7 +286,7 @@ router.post('/', checkRole(['admin']), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', checkRole(['admin']), async (req, res) => {
+router.put('/:id', adminRequired, async (req, res) => {
   try {
     const { id } = req.params;
     const providerData = req.body;
@@ -342,7 +342,7 @@ router.put('/:id', checkRole(['admin']), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', checkRole(['admin']), async (req, res) => {
+router.delete('/:id', adminRequired, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await aiProviderService.deleteProvider(id);
@@ -399,7 +399,7 @@ router.delete('/:id', checkRole(['admin']), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/test', checkRole(['admin']), async (req, res) => {
+router.post('/:id/test', adminRequired, async (req, res) => {
   try {
     const { id } = req.params;
     const testResult = await aiProviderService.testProviderConnection(id);
