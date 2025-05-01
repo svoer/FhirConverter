@@ -125,10 +125,29 @@ function initDb() {
     
     const existingTables = tables.map(t => t.name);
     
-    // Vérifier si les tables nécessaires sont présentes et les créer uniquement si elles n'existent pas
-    if (existingTables.length === 4) {
-      console.log('[DB] Tables existantes vérifiées - utilisation de la base de données persistante');
-      // Toutes les tables existent déjà, ne rien faire pour préserver les données
+    // Supprimer les tables existantes pour éviter les problèmes de schéma
+    if (existingTables.length > 0) {
+      // Désactiver les contraintes de clé étrangère temporairement
+      db.exec('PRAGMA foreign_keys = OFF;');
+      
+      // Supprimer les tables dans l'ordre inverse des dépendances
+      if (existingTables.includes('api_keys')) {
+        db.exec('DROP TABLE api_keys');
+      }
+      if (existingTables.includes('applications')) {
+        db.exec('DROP TABLE applications');
+      }
+      if (existingTables.includes('users')) {
+        db.exec('DROP TABLE users');
+      }
+      if (existingTables.includes('conversion_logs')) {
+        db.exec('DROP TABLE conversion_logs');
+      }
+      
+      // Réactiver les contraintes de clé étrangère
+      db.exec('PRAGMA foreign_keys = ON;');
+      
+      console.log('[DB] Tables existantes supprimées pour recréation');
     }
     
     // Créer toutes les tables nécessaires
@@ -180,74 +199,43 @@ function initDb() {
       FOREIGN KEY(application_id) REFERENCES applications(id)
     )`);
     
-    // Vérifier si l'utilisateur admin existe déjà
-    const adminUser = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+    // Créer l'utilisateur admin avec le mot de passe par défaut
+    db.prepare(`
+      INSERT INTO users (username, password, role, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).run('admin', hashPassword('adminfhirhub'), 'admin');
     
-    let adminId;
+    console.log('[DB] Utilisateur admin créé avec le mot de passe par défaut');
     
-    if (!adminUser) {
-      // Créer l'utilisateur admin avec le mot de passe par défaut
-      db.prepare(`
-        INSERT INTO users (username, password, role, created_at)
-        VALUES (?, ?, ?, datetime('now'))
-      `).run('admin', hashPassword('adminfhirhub'), 'admin');
-      
-      console.log('[DB] Utilisateur admin créé avec le mot de passe par défaut');
-      
-      // Récupérer l'ID de l'admin
-      adminId = db.prepare('SELECT id FROM users WHERE username = ?').get('admin').id;
-    } else {
-      adminId = adminUser.id;
-      console.log('[DB] Utilisateur admin existant trouvé avec ID:', adminId);
-    }
+    // Récupérer l'ID de l'admin
+    const adminId = db.prepare('SELECT id FROM users WHERE username = ?').get('admin').id;
     
-    // Vérifier si l'application par défaut existe déjà
-    const defaultApp = db.prepare('SELECT id FROM applications WHERE name = ?').get('Default');
+    // Créer l'application par défaut
+    const appId = db.prepare(`
+      INSERT INTO applications (
+        name, description, settings, created_at, updated_at, created_by
+      ) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
+    `).run(
+      'Default',
+      'Application par défaut pour le développement',
+      JSON.stringify({
+        max_conversions_per_day: 1000,
+        max_message_size: 100000
+      }),
+      adminId
+    ).lastInsertRowid;
     
-    let appId;
-    
-    if (!defaultApp) {
-      // Créer l'application par défaut
-      appId = db.prepare(`
-        INSERT INTO applications (
-          name, description, settings, created_at, updated_at, created_by
-        ) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
-      `).run(
-        'Default',
-        'Application par défaut pour le développement',
-        JSON.stringify({
-          max_conversions_per_day: 1000,
-          max_message_size: 100000
-        }),
-        adminId
-      ).lastInsertRowid;
-      
-      console.log('[DB] Application par défaut créée avec ID:', appId);
-    } else {
-      appId = defaultApp.id;
-      console.log('[DB] Application par défaut existante trouvée avec ID:', appId);
-    }
-    
-    // Vérifier si la clé API de développement existe déjà
-    const devKey = db.prepare('SELECT id FROM api_keys WHERE key = ?').get('dev-key');
-    
-    if (!devKey) {
-      // Créer une clé API de développement
-      db.prepare(`
-        INSERT INTO api_keys (
-          application_id, key, hashed_key, description, created_at
-        ) VALUES (?, ?, ?, ?, datetime('now'))
-      `).run(
-        appId,
-        'dev-key',
-        hashValue('dev-key'),
-        'Clé de développement'
-      );
-      
-      console.log('[DB] Clé API de développement créée pour l\'application');
-    } else {
-      console.log('[DB] Clé API de développement existante trouvée avec ID:', devKey.id);
-    }
+    // Créer une clé API de développement
+    db.prepare(`
+      INSERT INTO api_keys (
+        application_id, key, hashed_key, description, created_at
+      ) VALUES (?, ?, ?, ?, datetime('now'))
+    `).run(
+      appId,
+      'dev-key',
+      hashValue('dev-key'),
+      'Clé de développement'
+    );
     
     console.log('[DB] Application par défaut et clé API de développement créées');
     console.log('Base de données initialisée avec succès.');
