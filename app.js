@@ -753,9 +753,18 @@ app.use('/api/workflows', workflowsRoutes);
 // Intégrer l'éditeur Node-RED
 const redApp = workflowService.getRedApp();
 if (redApp) {
-  // Utiliser l'application Node-RED comme middleware
-  app.use('/node-red', redApp);
-  console.log('[WORKFLOW] Éditeur Node-RED intégré à l\'application');
+  // Route spéciale pour l'éditeur Node-RED
+  app.use('/node-red', (req, res, next) => {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.isAuthenticated() && req.user.role === 'admin') {
+      // Passer au middleware Node-RED
+      return redApp(req, res, next);
+    } else {
+      // Rediriger vers la page de connexion si non autorisé
+      res.redirect('/login.html');
+    }
+  });
+  console.log('[WORKFLOW] Éditeur Node-RED intégré à l\'application avec protection d\'authentification');
 } else {
   console.warn('[WORKFLOW] Éditeur Node-RED non disponible');
 }
