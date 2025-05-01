@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const tmpRouter = require('./src/routes/tmpRouter');
 const dbService = require('./src/services/dbService');
 const terminologyService = require('./src/services/terminologyService');
+const aiProviderService = require('./src/services/aiProviderService');
 
 // Configuration de l'environnement
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';

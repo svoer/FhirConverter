@@ -122,6 +122,11 @@ async function getAllProviders() {
  */
 async function getProviderById(id) {
   try {
+    // S'assurer que le service est initialisé
+    if (!initialized) {
+      await initialize();
+    }
+    
     const provider = await db.get('SELECT * FROM ai_providers WHERE id = ?', [id]);
     return provider;
   } catch (error) {
@@ -137,6 +142,11 @@ async function getProviderById(id) {
  */
 async function getProviderByName(providerName) {
   try {
+    // S'assurer que le service est initialisé
+    if (!initialized) {
+      await initialize();
+    }
+    
     const provider = await db.get('SELECT * FROM ai_providers WHERE provider_name = ?', [providerName]);
     return provider;
   } catch (error) {
@@ -650,10 +660,23 @@ function getDefaultModels(providerName) {
  * @returns {Array<Object>} Liste des fournisseurs pris en charge
  */
 function getSupportedProviders() {
+  if (!initialized) {
+    console.log('[AI] Recommandation: Initialiser le service avant d\'appeler getSupportedProviders');
+  }
   return SUPPORTED_PROVIDERS;
 }
 
+/**
+ * Vérifier si le service est initialisé
+ * @returns {boolean} Statut d'initialisation
+ */
+function isInitialized() {
+  return initialized;
+}
+
 module.exports = {
+  initialize,
+  isInitialized,
   getAllProviders,
   getProviderById,
   getProviderByName,
