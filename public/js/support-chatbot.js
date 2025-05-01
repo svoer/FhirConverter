@@ -3,18 +3,27 @@
  * Ce module gère le chatbot de support utilisateur intégré à l'application
  */
 
-class FHIRHubChatbot {
-  constructor() {
-    this.initialized = false;
-    this.isWaitingForResponse = false;
-    this.aiProvider = null;
-    this.messageHistory = [];
-    this.expanded = false;
-    this.currentContext = window.location.pathname;
-    
-    // Instructions système pour le chatbot
-    this.systemInstructions = `Tu es un assistant intégré dans l'application FHIRHub, qui est une plateforme de conversion HL7 vers FHIR pour le système de santé français.
-      
+// Écouteur globale pour s'assurer que tout se charge avant l'initialisation
+document.addEventListener('DOMContentLoaded', () => {
+  // Vérifier si l'utilisateur est authentifié
+  if (!localStorage.getItem('token')) {
+    console.log('Utilisateur non authentifié, le chatbot ne sera pas chargé.');
+    return;
+  }
+  
+  // Créer le chatbot s'il n'existe pas déjà
+  initChatbot();
+});
+
+// Variables globales
+let messageHistory = [];
+let aiProvider = null;
+let isWaitingForResponse = false;
+let currentContext = window.location.pathname;
+
+// Instructions système pour le chatbot
+const systemInstructions = `Tu es un assistant intégré dans l'application FHIRHub, qui est une plateforme de conversion HL7 vers FHIR pour le système de santé français.
+  
 Tes réponses doivent être concises, professionnelles et adaptées au contexte de l'application.
 Tu dois aider les utilisateurs avec leurs questions sur:
 - L'utilisation de FHIRHub
@@ -29,320 +38,329 @@ N'oublie pas:
 - Sois cordial et professionnel dans tes réponses
 - Limite tes réponses à 2-3 phrases ou points concis
 - Quand tu ne sais pas, suggère de consulter la documentation ou de contacter le support technique`;
-    
-    // Initialiser le chatbot après le chargement complet de la page
-    document.addEventListener('DOMContentLoaded', () => this.init());
-  }
-  
-  /**
-   * Initialise le chatbot
-   */
-  async init() {
-    // Vérifier si l'utilisateur est authentifié
-    if (!this.isUserAuthenticated()) {
-      console.log('Utilisateur non authentifié, le chatbot ne sera pas chargé.');
-      return;
-    }
-    
-    // Créer les éléments du chatbot
-    this.createChatbotElements();
-    
-    // Charger le fournisseur d'IA configuré
-    await this.loadAIProvider();
-    
-    // Ajouter les écouteurs d'événements
-    this.addEventListeners();
-    
-    // Ajouter un message de bienvenue
-    this.addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
-    
-    this.initialized = true;
-    console.log('Chatbot FHIRHub initialisé avec succès.');
-  }
-  
-  /**
-   * Vérifie si l'utilisateur est authentifié
-   * @returns {boolean} True si l'utilisateur est authentifié
-   */
-  isUserAuthenticated() {
-    return localStorage.getItem('token') !== null;
-  }
-  
-  /**
-   * Crée les éléments HTML du chatbot
-   */
-  createChatbotElements() {
-    // Vérifier si le chatbot existe déjà
-    if (document.getElementById('fhirhub-chatbot')) {
-      return;
-    }
-    
-    // Ajouter Font Awesome s'il n'est pas déjà chargé
-    if (!document.querySelector('link[href*="font-awesome"]')) {
-      const fontAwesome = document.createElement('link');
-      fontAwesome.rel = 'stylesheet';
-      fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
-      document.head.appendChild(fontAwesome);
-    }
-    
-    // Créer le HTML du chatbot
-    const chatbotHTML = `
-      <div class="chatbot-container" id="fhirhub-chatbot">
-        <div class="chatbot-header">
-          <div class="chatbot-header-title">
-            <i class="chatbot-header-icon fas fa-robot"></i>
-            <span>Assistant FHIRHub</span>
-          </div>
-          <button class="chatbot-toggle" type="button">
-            <i class="fas fa-chevron-up" id="chatbot-toggle-icon"></i>
-          </button>
-        </div>
-        <div class="chatbot-body" id="chatbot-messages"></div>
-        <div class="chatbot-footer">
-          <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Posez votre question ici...">
-          <button class="chatbot-send" id="chatbot-send" type="button">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-    `;
-    
-    // Ajouter le HTML au DOM
-    const chatbotWrapper = document.createElement('div');
-    chatbotWrapper.innerHTML = chatbotHTML.trim();
-    const chatbotElement = chatbotWrapper.firstChild;
-    document.body.appendChild(chatbotElement);
-  }
-  
-  /**
-   * Ajoute les écouteurs d'événements
-   */
-  addEventListeners() {
-    // Ajout d'un gestionnaire d'événement global pour tout le document
-    document.addEventListener('click', (e) => {
-      // Vérifier si le clic est sur l'en-tête ou le bouton du chatbot
-      if (e.target.closest('.chatbot-header') || e.target.closest('.chatbot-toggle')) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Simple toggle du chatbot
-        const container = document.getElementById('fhirhub-chatbot');
-        if (!container) return;
-        
-        console.log("TOGGLE CLICKED");
-        
-        // Basculer l'état
-        if (container.classList.contains('expanded')) {
-          container.classList.remove('expanded');
-        } else {
-          container.classList.add('expanded');
-        }
-      }
-      
-      // Vérifier si le clic est sur le bouton d'envoi
-      if (e.target.closest('#chatbot-send')) {
-        this.sendMessage();
-      }
-    });
-    
-    // Envoi de message avec la touche Entrée
-    document.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && e.target.id === 'chatbot-input') {
-        e.preventDefault();
-        this.sendMessage();
-      }
-    });
-  }
 
-  /**
-   * Charge le fournisseur d'IA configuré
-   */
-  async loadAIProvider() {
-    try {
-      // Récupérer la liste des fournisseurs d'IA configurés et actifs
-      const response = await fetch('/api/ai/providers/active', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+/**
+ * Initialise le chatbot
+ */
+async function initChatbot() {
+  // Créer les éléments du chatbot
+  createChatbotElements();
+  
+  // Ajouter les écouteurs d'événements
+  addEventListeners();
+  
+  // Ajouter un message de bienvenue
+  addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
+  
+  // Charger le fournisseur d'IA configuré
+  await loadAIProvider();
+  
+  console.log('Chatbot FHIRHub initialisé avec succès.');
+}
+
+/**
+ * Crée les éléments HTML du chatbot
+ */
+function createChatbotElements() {
+  // Vérifier si le chatbot existe déjà
+  if (document.getElementById('fhirhub-chatbot')) {
+    return;
+  }
+  
+  // Ajouter Font Awesome s'il n'est pas déjà chargé
+  if (!document.querySelector('link[href*="font-awesome"]')) {
+    const fontAwesome = document.createElement('link');
+    fontAwesome.rel = 'stylesheet';
+    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+    document.head.appendChild(fontAwesome);
+  }
+  
+  // Créer le HTML du chatbot
+  const chatbotHTML = `
+    <div class="chatbot-container" id="fhirhub-chatbot">
+      <div class="chatbot-header">
+        <div class="chatbot-header-title">
+          <i class="chatbot-header-icon fas fa-robot"></i>
+          <span>Assistant FHIRHub</span>
+        </div>
+        <button class="chatbot-toggle" type="button">
+          <i class="fas fa-chevron-up" id="chatbot-toggle-icon"></i>
+        </button>
+      </div>
+      <div class="chatbot-body" id="chatbot-messages"></div>
+      <div class="chatbot-footer">
+        <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Posez votre question ici...">
+        <button class="chatbot-send" id="chatbot-send" type="button">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  `;
+  
+  // Ajouter le HTML au DOM
+  const chatbotWrapper = document.createElement('div');
+  chatbotWrapper.innerHTML = chatbotHTML.trim();
+  const chatbotElement = chatbotWrapper.firstChild;
+  document.body.appendChild(chatbotElement);
+}
+
+/**
+ * Ajoute les écouteurs d'événements
+ */
+function addEventListeners() {
+  // Gestion de l'ouverture/fermeture du chatbot
+  document.addEventListener('click', event => {
+    const header = event.target.closest('.chatbot-header');
+    const toggle = event.target.closest('.chatbot-toggle');
+    
+    if (header || toggle) {
+      event.preventDefault();
       
-      if (!response.ok) {
-        console.error('Erreur lors du chargement des fournisseurs d\'IA:', response.statusText);
+      const chatbot = document.getElementById('fhirhub-chatbot');
+      if (!chatbot) {
+        console.error("ERREUR: Chatbot non trouvé dans le DOM!");
         return;
       }
       
-      const providers = await response.json();
+      console.log('CHATBOT CLIC DÉTECTÉ!');
+      console.log('- Élément cliqué:', event.target);
+      console.log('- Target classList:', event.target.classList);
+      console.log('- Header trouvé:', !!header);
+      console.log('- Toggle trouvé:', !!toggle);
       
-      // Utiliser le premier fournisseur actif disponible
-      if (providers && providers.length > 0) {
-        this.aiProvider = providers[0];
-        console.log('Fournisseur d\'IA chargé:', this.aiProvider.provider_name);
+      // État avant le basculement
+      const wasExpanded = chatbot.classList.contains('expanded');
+      console.log('- État avant clic:', wasExpanded ? 'Ouvert' : 'Fermé');
+      
+      // Forcer directement le basculement
+      if (wasExpanded) {
+        chatbot.classList.remove('expanded');
+        console.log('- Action: Fermeture du chatbot');
       } else {
-        console.warn('Aucun fournisseur d\'IA actif n\'est disponible.');
+        chatbot.classList.add('expanded');
+        console.log('- Action: Ouverture du chatbot');
       }
-    } catch (error) {
-      console.error('Erreur lors du chargement des fournisseurs d\'IA:', error);
-    }
-  }
-  
-  /**
-   * Ajoute un message au chatbot
-   * @param {string} role - Le rôle ('user' ou 'assistant')
-   * @param {string} content - Le contenu du message
-   */
-  addMessage(role, content) {
-    const messagesContainer = document.getElementById('chatbot-messages');
-    if (!messagesContainer) return;
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `chatbot-message ${role}`;
-    messageElement.textContent = content;
-    
-    messagesContainer.appendChild(messageElement);
-    
-    // Faire défiler vers le bas
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    // Ajouter à l'historique
-    this.messageHistory.push({ role, content });
-  }
-  
-  /**
-   * Ajoute un indicateur de chargement pendant la réponse de l'IA
-   */
-  addLoadingIndicator() {
-    const messagesContainer = document.getElementById('chatbot-messages');
-    if (!messagesContainer) return;
-    
-    const loadingElement = document.createElement('div');
-    loadingElement.className = 'chatbot-typing';
-    loadingElement.id = 'chatbot-typing';
-    
-    for (let i = 0; i < 3; i++) {
-      const dot = document.createElement('div');
-      dot.className = 'chatbot-typing-dot';
-      loadingElement.appendChild(dot);
-    }
-    
-    messagesContainer.appendChild(loadingElement);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }
-  
-  /**
-   * Supprime l'indicateur de chargement
-   */
-  removeLoadingIndicator() {
-    const indicator = document.getElementById('chatbot-typing');
-    if (indicator) {
-      indicator.remove();
-    }
-  }
-  
-  /**
-   * Envoie un message au chatbot
-   */
-  async sendMessage() {
-    // Vérifier si on est déjà en attente d'une réponse
-    if (this.isWaitingForResponse) {
-      return;
-    }
-    
-    // Récupérer le message
-    const inputField = document.getElementById('chatbot-input');
-    if (!inputField) return;
-    
-    const message = inputField.value.trim();
-    
-    // Vérifier que le message n'est pas vide
-    if (!message) {
-      return;
-    }
-    
-    // Vérifier que nous avons un fournisseur d'IA
-    if (!this.aiProvider) {
-      this.addMessage('assistant', "Je suis désolé, mais je ne peux pas vous répondre pour le moment car aucun fournisseur d'IA n'est configuré. Veuillez contacter l'administrateur.");
-      inputField.value = '';
-      return;
-    }
-    
-    // Ajouter le message de l'utilisateur
-    this.addMessage('user', message);
-    
-    // Effacer le champ de saisie
-    inputField.value = '';
-    
-    // Afficher l'indicateur de chargement
-    this.addLoadingIndicator();
-    
-    // Marquer comme en attente de réponse
-    this.isWaitingForResponse = true;
-    
-    try {
-      // Obtenir la réponse de l'IA
-      const response = await this.getAIResponse(message);
       
-      // Supprimer l'indicateur de chargement
-      this.removeLoadingIndicator();
+      // État après le basculement
+      console.log('- État après clic:', chatbot.classList.contains('expanded') ? 'Ouvert' : 'Fermé');
       
-      // Ajouter la réponse
-      this.addMessage('assistant', response);
-    } catch (error) {
-      console.error('Erreur lors de la communication avec l\'IA:', error);
-      
-      // Supprimer l'indicateur de chargement
-      this.removeLoadingIndicator();
-      
-      // Ajouter un message d'erreur
-      this.addMessage('assistant', "Je suis désolé, mais je n'ai pas pu traiter votre demande. Veuillez réessayer ultérieurement.");
+      // Mettre à jour l'icône
+      const icon = document.getElementById('chatbot-toggle-icon');
+      if (icon) {
+        if (chatbot.classList.contains('expanded')) {
+          icon.classList.remove('fa-chevron-up');
+          icon.classList.add('fa-chevron-down');
+          
+          // Focus sur l'input quand ouvert
+          const input = document.getElementById('chatbot-input');
+          if (input) setTimeout(() => input.focus(), 300);
+        } else {
+          icon.classList.remove('fa-chevron-down');
+          icon.classList.add('fa-chevron-up');
+        }
+      }
     }
     
-    this.isWaitingForResponse = false;
-  }
+    // Envoi du message via le bouton
+    if (event.target.closest('#chatbot-send')) {
+      sendMessage();
+    }
+  });
+  
+  // Envoi du message via la touche Entrée
+  document.addEventListener('keypress', event => {
+    if (event.key === 'Enter' && event.target.id === 'chatbot-input') {
+      event.preventDefault();
+      sendMessage();
+    }
+  });
+}
 
-  /**
-   * Obtient une réponse de l'IA
-   */
-  async getAIResponse(userMessage) {
-    try {
-      // Construire le contexte pour la requête IA
-      const contextualizedMessage = `[Contexte: L'utilisateur est sur la page ${this.currentContext} de FHIRHub]\n\nQuestion de l'utilisateur: ${userMessage}`;
-      
-      // Historique des messages pour la conversation (limité aux 10 derniers échanges)
-      const recentHistory = this.messageHistory.slice(-10);
-      
-      // Construire la requête pour l'API d'IA
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          provider: this.aiProvider.provider_name,
-          messages: [
-            { role: 'system', content: this.systemInstructions },
-            ...recentHistory.map(msg => ({ role: msg.role, content: msg.content })),
-            { role: 'user', content: contextualizedMessage }
-          ],
-          max_tokens: 1000
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+/**
+ * Charge le fournisseur d'IA configuré
+ */
+async function loadAIProvider() {
+  try {
+    // Récupérer la liste des fournisseurs d'IA configurés et actifs
+    const response = await fetch('/api/ai/providers/active', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
-      
-      const result = await response.json();
-      
-      // Ajouter à l'historique du chatbot
-      return result.content || "Je suis désolé, je n'ai pas pu générer une réponse appropriée.";
-    } catch (error) {
-      console.error('Erreur lors de la communication avec l\'IA:', error);
-      throw error;
+    });
+    
+    if (!response.ok) {
+      console.error('Erreur lors du chargement des fournisseurs d\'IA:', response.statusText);
+      return;
     }
+    
+    const providers = await response.json();
+    
+    // Utiliser le premier fournisseur actif disponible
+    if (providers && providers.length > 0) {
+      aiProvider = providers[0];
+      console.log('Fournisseur d\'IA chargé:', aiProvider.provider_name);
+    } else {
+      console.warn('Aucun fournisseur d\'IA actif n\'est disponible.');
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des fournisseurs d\'IA:', error);
   }
 }
 
-// Initialiser le chatbot
-const chatbot = new FHIRHubChatbot();
+/**
+ * Ajoute un message au chatbot
+ * @param {string} role - Le rôle ('user' ou 'assistant')
+ * @param {string} content - Le contenu du message
+ */
+function addMessage(role, content) {
+  const messagesContainer = document.getElementById('chatbot-messages');
+  if (!messagesContainer) return;
+  
+  const messageElement = document.createElement('div');
+  messageElement.className = `chatbot-message ${role}`;
+  messageElement.textContent = content;
+  
+  messagesContainer.appendChild(messageElement);
+  
+  // Faire défiler vers le bas
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  // Ajouter à l'historique
+  messageHistory.push({ role, content });
+}
+
+/**
+ * Ajoute un indicateur de chargement pendant la réponse de l'IA
+ */
+function addLoadingIndicator() {
+  const messagesContainer = document.getElementById('chatbot-messages');
+  if (!messagesContainer) return;
+  
+  const loadingElement = document.createElement('div');
+  loadingElement.className = 'chatbot-typing';
+  loadingElement.id = 'chatbot-typing';
+  
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'chatbot-typing-dot';
+    loadingElement.appendChild(dot);
+  }
+  
+  messagesContainer.appendChild(loadingElement);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Supprime l'indicateur de chargement
+ */
+function removeLoadingIndicator() {
+  const indicator = document.getElementById('chatbot-typing');
+  if (indicator) {
+    indicator.remove();
+  }
+}
+
+/**
+ * Envoie un message au chatbot
+ */
+async function sendMessage() {
+  // Vérifier si on est déjà en attente d'une réponse
+  if (isWaitingForResponse) {
+    return;
+  }
+  
+  // Récupérer le message
+  const inputField = document.getElementById('chatbot-input');
+  if (!inputField) return;
+  
+  const message = inputField.value.trim();
+  
+  // Vérifier que le message n'est pas vide
+  if (!message) {
+    return;
+  }
+  
+  // Vérifier que nous avons un fournisseur d'IA
+  if (!aiProvider) {
+    addMessage('assistant', "Je suis désolé, mais je ne peux pas vous répondre pour le moment car aucun fournisseur d'IA n'est configuré. Veuillez contacter l'administrateur.");
+    inputField.value = '';
+    return;
+  }
+  
+  // Ajouter le message de l'utilisateur
+  addMessage('user', message);
+  
+  // Effacer le champ de saisie
+  inputField.value = '';
+  
+  // Afficher l'indicateur de chargement
+  addLoadingIndicator();
+  
+  // Marquer comme en attente de réponse
+  isWaitingForResponse = true;
+  
+  try {
+    // Obtenir la réponse de l'IA
+    const response = await getAIResponse(message);
+    
+    // Supprimer l'indicateur de chargement
+    removeLoadingIndicator();
+    
+    // Ajouter la réponse
+    addMessage('assistant', response);
+  } catch (error) {
+    console.error('Erreur lors de la communication avec l\'IA:', error);
+    
+    // Supprimer l'indicateur de chargement
+    removeLoadingIndicator();
+    
+    // Ajouter un message d'erreur
+    addMessage('assistant', "Je suis désolé, mais je n'ai pas pu traiter votre demande. Veuillez réessayer ultérieurement.");
+  }
+  
+  isWaitingForResponse = false;
+}
+
+/**
+ * Obtient une réponse de l'IA
+ */
+async function getAIResponse(userMessage) {
+  try {
+    // Construire le contexte pour la requête IA
+    const contextualizedMessage = `[Contexte: L'utilisateur est sur la page ${currentContext} de FHIRHub]\n\nQuestion de l'utilisateur: ${userMessage}`;
+    
+    // Historique des messages pour la conversation (limité aux 10 derniers échanges)
+    const recentHistory = messageHistory.slice(-10);
+    
+    // Construire la requête pour l'API d'IA
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        provider: aiProvider.provider_name,
+        messages: [
+          { role: 'system', content: systemInstructions },
+          ...recentHistory.map(msg => ({ role: msg.role, content: msg.content })),
+          { role: 'user', content: contextualizedMessage }
+        ],
+        max_tokens: 1000
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    // Ajouter à l'historique du chatbot
+    return result.content || "Je suis désolé, je n'ai pas pu générer une réponse appropriée.";
+  } catch (error) {
+    console.error('Erreur lors de la communication avec l\'IA:', error);
+    throw error;
+  }
+}

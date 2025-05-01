@@ -16,11 +16,11 @@
   z-index: 1000;
   overflow: hidden;
   transition: all 0.3s ease;
-  transform: translateY(calc(100% - 30px));
+  max-height: 30px; /* Montrer seulement la barre de titre initialement */
 }
 
 .chatbot-container.expanded {
-  transform: translateY(0);
+  max-height: 400px; /* Hauteur complète quand ouvert */
 }
 
 .chatbot-header {
