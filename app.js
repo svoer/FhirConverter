@@ -125,29 +125,15 @@ function initDb() {
     
     const existingTables = tables.map(t => t.name);
     
-    // Supprimer les tables existantes pour éviter les problèmes de schéma
-    if (existingTables.length > 0) {
-      // Désactiver les contraintes de clé étrangère temporairement
-      db.exec('PRAGMA foreign_keys = OFF;');
-      
-      // Supprimer les tables dans l'ordre inverse des dépendances
-      if (existingTables.includes('api_keys')) {
-        db.exec('DROP TABLE api_keys');
-      }
-      if (existingTables.includes('applications')) {
-        db.exec('DROP TABLE applications');
-      }
-      if (existingTables.includes('users')) {
-        db.exec('DROP TABLE users');
-      }
-      if (existingTables.includes('conversion_logs')) {
-        db.exec('DROP TABLE conversion_logs');
-      }
-      
-      // Réactiver les contraintes de clé étrangère
-      db.exec('PRAGMA foreign_keys = ON;');
-      
-      console.log('[DB] Tables existantes supprimées pour recréation');
+    // Vérifier si toutes les tables requises existent déjà
+    const allTablesExist = ['conversion_logs', 'users', 'applications', 'api_keys'].every(
+      table => existingTables.includes(table)
+    );
+    
+    // Si toutes les tables existent déjà, ne pas les réinitialiser
+    if (allTablesExist) {
+      console.log('[DB] Toutes les tables existent déjà, utilisation de la base de données existante.');
+      return; // Sortir de la fonction pour éviter de réinitialiser la base de données
     }
     
     // Créer toutes les tables nécessaires
