@@ -356,7 +356,12 @@ router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  */
 router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(404).json({ error: 'ID de fournisseur d\'IA invalide' });
+    }
+    
     const result = await aiProviderService.deleteProvider(id);
     
     if (!result) {
@@ -413,7 +418,12 @@ router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
  */
 router.post('/:id/test', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(404).json({ error: 'ID de fournisseur d\'IA invalide' });
+    }
+    
     const testResult = await aiProviderService.testProviderConnection(id);
     
     res.json(testResult);
