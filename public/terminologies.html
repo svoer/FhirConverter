@@ -482,13 +482,22 @@
           
           data.data.forEach(file => {
             const row = document.createElement('tr');
+            const isSystemFile = ['ans_oids.json', 'ans_common_codes.json', 'ans_terminology_systems.json'].includes(file.name);
+            
             row.innerHTML = `
               <td>${file.name}</td>
-              <td>${getFileDescription(file.name)}</td>
+              <td>
+                <span class="file-description" data-file="${file.name}">${getFileDescription(file.name)}</span>
+                <button class="btn-action btn-icon edit-description" data-file="${file.name}" title="Modifier la description"><i class="fas fa-edit"></i></button>
+              </td>
               <td>${formatDate(file.lastModified)}</td>
               <td class="actions-cell">
-                <button class="btn-action preview-file" data-file="${file.name}"><i class="fas fa-eye"></i></button>
-                <button class="btn-action download-file" data-file="${file.name}"><i class="fas fa-download"></i></button>
+                <button class="btn-action preview-file" data-file="${file.name}" title="Voir le contenu"><i class="fas fa-eye"></i></button>
+                <button class="btn-action download-file" data-file="${file.name}" title="Télécharger le fichier"><i class="fas fa-download"></i></button>
+                ${isSystemFile ? 
+                  `<button class="btn-action delete-file disabled" title="Fichier système non supprimable"><i class="fas fa-trash-alt"></i></button>` : 
+                  `<button class="btn-action delete-file" data-file="${file.name}" title="Supprimer le fichier"><i class="fas fa-trash-alt"></i></button>`
+                }
               </td>
             `;
             terminologyFilesTableEl.appendChild(row);
@@ -500,6 +509,20 @@
             
             row.querySelector('.download-file').addEventListener('click', () => {
               downloadTerminologyFile(file.name);
+            });
+            
+            // Ajouter les gestionnaires pour les nouvelles actions
+            if (!isSystemFile) {
+              row.querySelector('.delete-file').addEventListener('click', () => {
+                if (confirm(`Êtes-vous sûr de vouloir supprimer le fichier ${file.name}? Cette action est irréversible.`)) {
+                  deleteTerminologyFile(file.name);
+                }
+              });
+            }
+            
+            // Gestionnaire pour l'édition de description
+            row.querySelector('.edit-description').addEventListener('click', () => {
+              editFileDescription(file.name);
             });
           });
           
@@ -588,6 +611,58 @@
         }
       });
       
+      // Supprimer un fichier de terminologie
+      async function deleteTerminologyFile(filename) {
+        try {
+          const response = await FHIRHubAuth.fetchWithAuth(`/api/terminology/files/${encodeURIComponent(filename)}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Erreur lors de la suppression');
+          }
+          
+          // Log de succès
+          addLog(`Fichier ${filename} supprimé avec succès`);
+          
+          // Mettre à jour l'affichage
+          loadTerminologyStats();
+          loadTerminologyFiles();
+        } catch (error) {
+          console.error('Erreur lors de la suppression:', error);
+          alert(`Erreur lors de la suppression : ${error.message}`);
+          addLog(`Erreur lors de la suppression du fichier ${filename}: ${error.message}`);
+        }
+      }
+      
+      // Éditer la description d'un fichier
+      function editFileDescription(filename) {
+        // Récupérer la description actuelle
+        const descriptionElement = document.querySelector(`.file-description[data-file="${filename}"]`);
+        const currentDescription = descriptionElement.textContent;
+        
+        // Demander la nouvelle description
+        const newDescription = prompt('Modifier la description du fichier:', currentDescription);
+        
+        // Si l'utilisateur a annulé ou n'a pas modifié la description
+        if (!newDescription || newDescription === currentDescription) {
+          return;
+        }
+        
+        // Mettre à jour l'affichage local immédiatement
+        descriptionElement.textContent = newDescription;
+        highlightElement(descriptionElement);
+        
+        // Enregistrer dans les descriptions personnalisées (localStorage)
+        const customDescriptions = JSON.parse(localStorage.getItem('terminology_custom_descriptions') || '{}');
+        customDescriptions[filename] = newDescription;
+        localStorage.setItem('terminology_custom_descriptions', JSON.stringify(customDescriptions));
+        
+        // Log de modification
+        addLog(`Description du fichier ${filename} modifiée`);
+      }
+      
       // Rafraîchissement des fichiers
       btnRefreshFiles.addEventListener('click', () => {
         loadTerminologyFiles();
@@ -640,6 +715,13 @@
       
       // Obtenir la description d'un fichier en fonction de son nom
       function getFileDescription(filename) {
+        // Vérifier d'abord s'il existe une description personnalisée
+        const customDescriptions = JSON.parse(localStorage.getItem('terminology_custom_descriptions') || '{}');
+        if (customDescriptions[filename]) {
+          return customDescriptions[filename];
+        }
+        
+        // Sinon utiliser les descriptions par défaut
         if (filename.includes('oids')) {
           return 'OIDs français pour identifiants';
         } else if (filename.includes('common_codes')) {
@@ -712,6 +794,78 @@
       transition: background-color 0.5s ease-in-out;
       padding: 5px;
       border-radius: 4px;
+    }
+    
+    /* Styles pour les actions de fichiers */
+    .actions-cell {
+      display: flex;
+      gap: 5px;
+      justify-content: flex-end;
+    }
+    
+    .btn-action {
+      background-color: #f0f0f0;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 8px;
+      cursor: pointer;
+      color: #333;
+      transition: all 0.2s;
+    }
+    
+    .btn-action:hover {
+      background-color: #e74c3c;
+      color: white;
+    }
+    
+    .btn-action.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-action.disabled:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    
+    /* Styles pour l'édition de la description */
+    .btn-icon {
+      background: none;
+      border: none;
+      padding: 2px 5px;
+      margin-left: 5px;
+      color: #888;
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+    
+    .btn-icon:hover {
+      color: #e74c3c;
+    }
+    
+    .file-description {
+      display: inline-block;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    
+    td {
+      vertical-align: middle;
+    }
+    
+    /* Icône de suppression en rouge */
+    .delete-file i {
+      color: #e74c3c;
+    }
+    
+    /* Bouton d'édition plus petit */
+    .edit-description {
+      font-size: 0.8em;
+      opacity: 0.7;
+    }
+    
+    .edit-description:hover {
+      opacity: 1;
     }
   </style>
 </body>
