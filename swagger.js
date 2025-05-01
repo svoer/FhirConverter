@@ -3,6 +3,7 @@
  */
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const express = require('express');
 
 // Définition des options Swagger
 const swaggerOptions = {
@@ -94,54 +95,17 @@ function setupSwagger(app) {
   // Appliquer le middleware d'authentification pour Swagger
   app.use('/api-docs', swaggerAuthMiddleware);
   
-  // Interface Swagger
+  // Servir le fichier CSS personnalisé pour les correctifs Swagger
+  app.use('/css/swagger-fix.css', express.static('public/css/swagger-fix.css'));
+  
+  // Interface Swagger avec CSS minimaliste (notre fichier externe fait le reste)
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
-    customCss: `
-      .swagger-ui .topbar { display: none }
-      /* Styles pour réduire le clignotement et améliorer l'UX Swagger */
-      .swagger-ui .dialog-ux .modal-ux {
-        animation: none !important;
-        transition: opacity 0.4s ease !important;
-      }
-      .swagger-ui .dialog-ux .modal-ux-inner {
-        transition: transform 0.4s ease !important;
-      }
-      .swagger-ui .auth-wrapper .authorize {
-        margin-right: 10px;
-        background: linear-gradient(to right, #e74c3c, #ff5722);
-        border: none;
-        color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      }
-      .swagger-ui .auth-wrapper .authorize svg {
-        fill: white;
-      }
-      .swagger-ui .opblock-summary {
-        transition: all 0.2s ease;
-      }
-      .swagger-ui .btn.authorize {
-        border: none;
-        color: white;
-      }
-      .swagger-ui .auth-container {
-        opacity: 1 !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .swagger-ui .auth-btn-wrapper {
-        display: flex;
-        justify-content: flex-end;
-      }
-      .swagger-ui .scopes {
-        max-height: 400px;
-        overflow-y: auto;
-      }
-    `,
+    customCss: `.swagger-ui .topbar { display: none }`,
+    customCssUrl: '/css/swagger-fix.css',
+    customJs: '/js/swagger-helper.js',
     customSiteTitle: 'FHIRHub API Documentation',
     customfavIcon: '/favicon.ico',
-    customJs: '/js/swagger-helper.js',
     swaggerOptions: {
       persistAuthorization: true
     }

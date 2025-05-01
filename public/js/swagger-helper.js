@@ -212,41 +212,119 @@ document.addEventListener('DOMContentLoaded', function() {
     // Exécuter immédiatement
     addButtonsDirectly();
     
-    // Réduire le clignotement de l'autorisation en ajoutant un script pour intercepter certains comportements
+    // Ajoutons d'abord des styles spécifiques pour complètement désactiver les animations de Swagger
+    const noFlickerStyles = document.createElement('style');
+    noFlickerStyles.textContent = `
+      /* Désactiver toutes les animations et transitions de Swagger UI qui causent le clignotement */
+      .swagger-ui * {
+        animation-duration: 0s !important;
+        transition-duration: 0s !important;
+      }
+      
+      /* Masquer complètement le fond modal pendant l'animation */
+      .swagger-ui .dialog-ux .backdrop-container {
+        transition: none !important;
+        animation: none !important;
+      }
+      
+      /* Priorité maximale pour le conteneur modal */
+      .swagger-ui .dialog-ux .modal-ux {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+      }
+      
+      /* Le contenu du modal ne doit pas avoir d'animation */
+      .swagger-ui .dialog-ux .modal-ux-inner {
+        transform: none !important;
+        transition: none !important;
+        animation: none !important;
+      }
+      
+      /* Corrections spécifiques pour les composants auth */
+      .swagger-ui .auth-container {
+        opacity: 1 !important;
+        animation: none !important;
+        transition: none !important;
+      }
+      
+      /* Appliquer des styles propres après le chargement complet */
+      .swagger-ui .opblock-body pre.microlight {
+        transition: none !important;
+      }
+      
+      /* Fenêtre modale doit rester stable */
+      .swagger-ui .dialog-ux .modal-ux-content {
+        animation: none !important;
+        transition: none !important;
+      }
+    `;
+    document.head.appendChild(noFlickerStyles);
+    
+    // Réduire le clignotement de l'autorisation par une approche plus agressive
     const preventFlickerScript = document.createElement('script');
     preventFlickerScript.textContent = `
       (function() {
-        // Observer pour intercepter les fermetures/ouvertures d'autorisation
-        const targetNode = document.body;
-        const config = { childList: true, subtree: true };
-        
-        // Fonction appelée quand des modifications sont détectées
-        const callback = function(mutationsList, observer) {
-          for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-              const authContainers = document.querySelectorAll('.swagger-ui .dialog-ux .modal-ux-inner .auth-container');
-              if (authContainers.length > 0) {
-                // S'assurer que le conteneur est bien affiché sans flicker
-                authContainers.forEach(container => {
-                  container.style.opacity = '1';
-                  container.style.transition = 'none';
-                });
-                
-                // Ajouter du style aux boutons d'autorisation
-                const authBtns = document.querySelectorAll('.swagger-ui .dialog-ux .modal-ux-inner .auth-btn-wrapper .btn');
-                authBtns.forEach(btn => {
-                  btn.style.transition = 'all 0.3s ease';
+        // Remplacer complètement les animations Swagger
+        const overrideSwaggerAnims = setInterval(() => {
+          // Cibler les éléments qui causent des clignotements
+          const backdrop = document.querySelector('.swagger-ui .dialog-ux .backdrop-container');
+          const modal = document.querySelector('.swagger-ui .dialog-ux .modal-ux');
+          const modalInner = document.querySelector('.swagger-ui .dialog-ux .modal-ux-inner');
+          const authContainer = document.querySelector('.swagger-ui .auth-container');
+          
+          // Appliquer des styles directs à ces éléments
+          if (backdrop) {
+            backdrop.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
+          }
+          
+          if (modal) {
+            modal.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
+          }
+          
+          if (modalInner) {
+            modalInner.style.cssText = "animation: none !important; transition: none !important; transform: none !important;";
+          }
+          
+          if (authContainer) {
+            authContainer.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
+          }
+          
+          // Observer toute modification du DOM pour agir immédiatement
+          const targetNode = document.body;
+          const config = { childList: true, subtree: true, attributes: true };
+          
+          const callback = function(mutationsList, observer) {
+            for (const mutation of mutationsList) {
+              // Cibler spécifiquement les modifications des dialogs
+              if (document.querySelector('.swagger-ui .dialog-ux')) {
+                // Désactiver toute animation
+                const dialogElements = document.querySelectorAll('.swagger-ui .dialog-ux *');
+                dialogElements.forEach(el => {
+                  el.style.animation = 'none';
+                  el.style.transition = 'none';
+                  
+                  // Forcer l'opacité pour les conteneurs
+                  if (el.classList.contains('modal-ux') || 
+                      el.classList.contains('backdrop-container') ||
+                      el.classList.contains('auth-container') ||
+                      el.classList.contains('modal-ux-inner')) {
+                    el.style.opacity = '1';
+                    el.style.transform = 'none';
+                  }
                 });
               }
             }
-          }
-        };
-        
-        // Créer un MutationObserver avec la fonction de callback
-        const observer = new MutationObserver(callback);
-        
-        // Démarrer l'observation sur le document avec les options configurées
-        observer.observe(targetNode, config);
+          };
+          
+          const observer = new MutationObserver(callback);
+          observer.observe(targetNode, config);
+          
+          // Nettoyer après 5 secondes (quand tout est chargé)
+          setTimeout(() => {
+            clearInterval(overrideSwaggerAnims);
+          }, 5000);
+        }, 100);
       })();
     `;
     document.head.appendChild(preventFlickerScript);
