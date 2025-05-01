@@ -111,6 +111,20 @@ if %ERRORLEVEL% EQU 0 (
 :: Obtenir le chemin vers node.exe
 for /f "tokens=*" %%i in ('where node') do set "NODE_PATH=%%i"
 
+:: S'assurer que les modules HL7 essentiels sont installés
+echo Installation des modules HL7 essentiels...
+where npm >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    npm install hl7 simple-hl7 hl7-parser hl7-standard --save
+    if %ERRORLEVEL% NEQ 0 (
+        echo AVERTISSEMENT: Erreur lors de l'installation des modules HL7.
+        echo Le service pourrait ne pas démarrer correctement.
+    )
+) else (
+    echo AVERTISSEMENT: npm n'est pas trouvé, impossible d'installer les modules HL7.
+    echo Certaines fonctionnalités pourraient ne pas fonctionner correctement.
+)
+
 :: Créer le service
 echo Création du service FHIRHub...
 %NSSM_PATH% install FHIRHub "%NODE_PATH%" "%APP_DIR%app.js"

@@ -96,6 +96,67 @@ if [ -f "/etc/systemd/system/fhirhub.service" ]; then
   systemctl disable fhirhub.service
 fi
 
+# Vérifier et installer les dépendances NodeJS
+echo "Vérification des dépendances Node.js..."
+
+# Exécuter en tant que l'utilisateur approprié
+if [ "$CURRENT_USER" != "root" ]; then
+  # Si l'installation est faite en root mais le service s'exécutera en tant qu'autre utilisateur
+  echo "Installation des dépendances pour l'utilisateur $CURRENT_USER..."
+  
+  # Vérifier si node_modules existe
+  if [ ! -d "$APP_DIR/node_modules" ] || [ -z "$(ls -A "$APP_DIR/node_modules" 2>/dev/null)" ]; then
+    echo "Dépendances Node.js non installées ou incomplètes."
+    
+    # S'assurer que l'utilisateur peut écrire dans le répertoire
+    chown -R $CURRENT_USER:$CURRENT_USER "$APP_DIR"
+    
+    # Installer les dépendances en tant que l'utilisateur cible
+    if [ -f "$APP_DIR/package.json" ]; then
+      echo "Installation des dépendances avec npm..."
+      su - $CURRENT_USER -c "cd $APP_DIR && npm install --production"
+      
+      # S'assurer que les modules HL7 spécifiques sont installés (critiques pour le convertisseur)
+      echo "Installation des modules HL7 essentiels..."
+      su - $CURRENT_USER -c "cd $APP_DIR && npm install hl7 simple-hl7 hl7-parser hl7-standard"
+      
+      if [ $? -ne 0 ]; then
+        echo "AVERTISSEMENT: Problème lors de l'installation des dépendances."
+        echo "Le service pourrait ne pas démarrer correctement."
+      fi
+    else
+      echo "ERREUR: Le fichier package.json est manquant."
+      echo "Vérifiez que vous êtes dans le bon répertoire."
+    fi
+  else
+    echo "Dépendances Node.js déjà installées."
+  fi
+else
+  # Si l'installation et l'exécution sont en tant que root
+  if [ ! -d "$APP_DIR/node_modules" ] || [ -z "$(ls -A "$APP_DIR/node_modules" 2>/dev/null)" ]; then
+    echo "Dépendances Node.js non installées ou incomplètes."
+    
+    if [ -f "$APP_DIR/package.json" ]; then
+      echo "Installation des dépendances avec npm..."
+      cd "$APP_DIR" && npm install --production
+      
+      # S'assurer que les modules HL7 spécifiques sont installés (critiques pour le convertisseur)
+      echo "Installation des modules HL7 essentiels..."
+      cd "$APP_DIR" && npm install hl7 simple-hl7 hl7-parser hl7-standard
+      
+      if [ $? -ne 0 ]; then
+        echo "AVERTISSEMENT: Problème lors de l'installation des dépendances."
+        echo "Le service pourrait ne pas démarrer correctement."
+      fi
+    else
+      echo "ERREUR: Le fichier package.json est manquant."
+      echo "Vérifiez que vous êtes dans le bon répertoire."
+    fi
+  else
+    echo "Dépendances Node.js déjà installées."
+  fi
+fi
+
 # Créer le fichier de service systemd
 echo "Création du fichier de service systemd..."
 cat > /etc/systemd/system/fhirhub.service << EOF
