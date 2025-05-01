@@ -197,8 +197,21 @@ async function run(sql, params = []) {
     try {
       ensureConnection();
       
+      // Préparer les paramètres pour SQLite (convertir les objets en chaînes JSON)
+      const safeParams = params.map(param => {
+        if (param === null || param === undefined) {
+          return null;
+        }
+        
+        if (typeof param === 'object') {
+          return JSON.stringify(param);
+        }
+        
+        return param;
+      });
+      
       // better-sqlite3 utilise "run" pour les requêtes sans résultat
-      const result = db.prepare(sql).run(...params);
+      const result = db.prepare(sql).run(...safeParams);
       
       resolve({ 
         lastID: result.lastInsertRowid, 
@@ -222,8 +235,21 @@ async function get(sql, params = []) {
     try {
       ensureConnection();
       
+      // Préparer les paramètres pour SQLite
+      const safeParams = params.map(param => {
+        if (param === null || param === undefined) {
+          return null;
+        }
+        
+        if (typeof param === 'object') {
+          return JSON.stringify(param);
+        }
+        
+        return param;
+      });
+      
       // better-sqlite3 utilise "get" pour obtenir un seul résultat
-      const row = db.prepare(sql).get(...params);
+      const row = db.prepare(sql).get(...safeParams);
       
       resolve(row || null);
     } catch (err) {
@@ -244,8 +270,21 @@ async function query(sql, params = []) {
     try {
       ensureConnection();
       
+      // Préparer les paramètres pour SQLite
+      const safeParams = params.map(param => {
+        if (param === null || param === undefined) {
+          return null;
+        }
+        
+        if (typeof param === 'object') {
+          return JSON.stringify(param);
+        }
+        
+        return param;
+      });
+      
       // better-sqlite3 utilise "all" pour obtenir tous les résultats
-      const rows = db.prepare(sql).all(...params);
+      const rows = db.prepare(sql).all(...safeParams);
       
       resolve(rows || []);
     } catch (err) {
