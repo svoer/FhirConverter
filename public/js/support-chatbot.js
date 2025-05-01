@@ -118,42 +118,51 @@ N'oublie pas:
    * Ajoute les écouteurs d'événements
    */
   addEventListeners() {
-    // Toggler pour ouvrir/fermer le chatbot
-    const headerToggle = document.querySelector('.chatbot-header');
+    // Obtenir les éléments du DOM
+    const chatbotHeader = document.querySelector('.chatbot-header');
+    const toggleButton = document.querySelector('.chatbot-toggle');
     const toggleIcon = document.getElementById('chatbot-toggle-icon');
     
-    if (headerToggle) {
-      headerToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const container = document.getElementById('fhirhub-chatbot');
-        if (!container) return;
-        
-        this.expanded = !this.expanded;
-        
-        if (this.expanded) {
-          container.classList.add('expanded');
-          if (toggleIcon) {
-            toggleIcon.classList.remove('fa-chevron-up');
-            toggleIcon.classList.add('fa-chevron-down');
-          }
-        } else {
-          container.classList.remove('expanded');
-          if (toggleIcon) {
-            toggleIcon.classList.remove('fa-chevron-down');
-            toggleIcon.classList.add('fa-chevron-up');
-          }
+    // Fonction de toggle du chatbot
+    const toggleChatbot = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const container = document.getElementById('fhirhub-chatbot');
+      if (!container) return;
+      
+      this.expanded = !this.expanded;
+      
+      if (this.expanded) {
+        container.classList.add('expanded');
+        if (toggleIcon) {
+          toggleIcon.classList.remove('fa-chevron-up');
+          toggleIcon.classList.add('fa-chevron-down');
         }
-        
-        // Focus sur l'input quand le chatbot est ouvert
-        if (this.expanded) {
-          const inputField = document.getElementById('chatbot-input');
-          if (inputField) {
-            setTimeout(() => inputField.focus(), 300);
-          }
+      } else {
+        container.classList.remove('expanded');
+        if (toggleIcon) {
+          toggleIcon.classList.remove('fa-chevron-down');
+          toggleIcon.classList.add('fa-chevron-up');
         }
-      });
+      }
+      
+      // Focus sur l'input quand le chatbot est ouvert
+      if (this.expanded) {
+        const inputField = document.getElementById('chatbot-input');
+        if (inputField) {
+          setTimeout(() => inputField.focus(), 300);
+        }
+      }
+    };
+    
+    // Ajouter l'écouteur d'événements au header et au bouton toggle
+    if (chatbotHeader) {
+      chatbotHeader.addEventListener('click', toggleChatbot);
+    }
+    
+    if (toggleButton) {
+      toggleButton.addEventListener('click', toggleChatbot);
     }
     
     // Envoi de message avec le bouton
