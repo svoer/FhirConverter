@@ -24,8 +24,6 @@ const axios = require('axios');
  *     summary: Envoie une requête au modèle d'IA
  *     description: Permet d'envoyer une conversation au modèle d'IA configuré et de recevoir une réponse
  *     tags: [AI Chat]
- *     security:
- *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -67,15 +65,14 @@ const axios = require('axios');
  *                   description: Contenu de la réponse générée
  *       400:
  *         description: Paramètres invalides
- *       401:
- *         description: Non authentifié
  *       404:
  *         description: Fournisseur d'IA non trouvé
  *       500:
  *         description: Erreur serveur
  */
-router.post('/chat', jwtAuth, async (req, res) => {
+router.post('/chat', async (req, res) => {
   try {
+    console.log('[AI] Nouvelle requête de chat reçue');
     const { provider, messages, max_tokens = 1000 } = req.body;
     
     if (!provider || !messages || !Array.isArray(messages)) {
@@ -86,12 +83,16 @@ router.post('/chat', jwtAuth, async (req, res) => {
     const aiProvider = await aiProviderService.getProviderByName(provider);
     
     if (!aiProvider) {
+      console.log(`[AI] Fournisseur d'IA "${provider}" non trouvé`);
       return res.status(404).json({ error: `Fournisseur d'IA "${provider}" non trouvé.` });
     }
     
     if (!aiProvider.enabled) {
+      console.log(`[AI] Fournisseur d'IA "${provider}" désactivé`);
       return res.status(400).json({ error: `Le fournisseur d'IA "${provider}" est désactivé.` });
     }
+    
+    console.log(`[AI] Traitement de la requête avec le fournisseur: ${provider}`);
     
     // Traiter la requête selon le fournisseur d'IA
     let response;
@@ -122,16 +123,18 @@ router.post('/chat', jwtAuth, async (req, res) => {
         break;
         
       default:
+        console.log(`[AI] Type de fournisseur "${provider}" non pris en charge`);
         return res.status(400).json({ error: `Type de fournisseur "${provider}" non pris en charge.` });
     }
     
     // Mettre à jour les statistiques d'utilisation
     await aiProviderService.updateProviderUsage(aiProvider.id);
     
+    console.log('[AI] Réponse générée avec succès');
     return res.status(200).json(response);
     
   } catch (error) {
-    console.error('Erreur lors de la requête au modèle d\'IA:', error);
+    console.error('[AI] Erreur lors de la requête au modèle d\'IA:', error);
     return res.status(500).json({ error: `Erreur lors de la communication avec l'IA: ${error.message}` });
   }
 });
@@ -143,18 +146,15 @@ router.post('/chat', jwtAuth, async (req, res) => {
  *     summary: Récupère la liste des fournisseurs d'IA actifs
  *     description: Renvoie la liste des fournisseurs d'IA actifs sans leurs clés API
  *     tags: [AI Chat]
- *     security:
- *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Liste des fournisseurs d'IA actifs
- *       401:
- *         description: Non authentifié
  *       500:
  *         description: Erreur serveur
  */
-router.get('/providers/active', jwtAuth, async (req, res) => {
+router.get('/providers/active', async (req, res) => {
   try {
+    console.log('[AI] Récupération des fournisseurs d\'IA actifs pour le chatbot');
     const activeProviders = await aiProviderService.getActiveProviders();
     
     // Ne pas renvoyer les clés API dans la réponse pour des raisons de sécurité
@@ -163,9 +163,10 @@ router.get('/providers/active', jwtAuth, async (req, res) => {
       return rest;
     });
     
+    console.log(`[AI] ${sanitizedProviders.length} fournisseurs d'IA actifs trouvés`);
     return res.status(200).json(sanitizedProviders);
   } catch (error) {
-    console.error('Erreur lors de la récupération des fournisseurs d\'IA actifs:', error);
+    console.error('[AI] Erreur lors de la récupération des fournisseurs d\'IA actifs:', error);
     return res.status(500).json({ error: `Erreur lors de la récupération des fournisseurs d'IA: ${error.message}` });
   }
 });
