@@ -875,6 +875,20 @@
                         workflow = workflowResult.data;
                     }
                     
+                    // Activer l'onglet JSON pour l'édition
+                    document.querySelectorAll('.tab-buttons li').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    
+                    // Sélectionner et activer l'onglet JSON
+                    const jsonTabBtn = document.querySelector('.tab-buttons li[data-tab="json-tab"]');
+                    if (jsonTabBtn) {
+                        jsonTabBtn.classList.add('active');
+                        const jsonTabPane = document.getElementById('json-tab');
+                        if (jsonTabPane) {
+                            jsonTabPane.classList.add('active');
+                        }
+                    }
+                    
                     // Au lieu d'ouvrir dans un nouvel onglet, on va utiliser notre propre éditeur JSON
                     // Remplir la zone de texte avec le JSON du workflow
                     jsonEditor.setValue(JSON.stringify(workflow.flow_json ? JSON.parse(workflow.flow_json) : [], null, 2));
@@ -889,6 +903,11 @@
                     
                     // Afficher la modal
                     workflowModal.style.display = 'block';
+                    
+                    // Actualiser l'éditeur CodeMirror pour qu'il se redimensionne correctement
+                    setTimeout(() => {
+                        jsonEditor.refresh();
+                    }, 100);
                     
                     // Informer l'utilisateur
                     showNotification('Éditeur de workflow ouvert. Les modifications seront sauvegardées en cliquant sur Enregistrer.', 'info');
