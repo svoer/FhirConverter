@@ -207,6 +207,26 @@
   </div>
 
   <script>
+    // Fonction pour ouvrir le modal d'importation accessible depuis l'extérieur
+    function openImportModal() {
+      const modal = document.getElementById('file-upload-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        // Réinitialiser la sélection de fichiers si disponible
+        const selectedFilesListEl = document.getElementById('selected-files-list');
+        if (selectedFilesListEl) {
+          selectedFilesListEl.innerHTML = '<div class="file-list-empty" id="upload-empty-message">Aucun fichier sélectionné</div>';
+        }
+        // Réinitialiser le tableau des fichiers sélectionnés si disponible
+        if (window.selectedFiles) {
+          window.selectedFiles.clear();
+        }
+      }
+    }
+    
+    // Exposer la fonction globalement pour qu'elle soit accessible depuis la page parent
+    window.openImportModal = openImportModal;
+    
     document.addEventListener('DOMContentLoaded', () => {
       // Vérifier les droits d'administrateur
       if (!FHIRHubAuth.checkAdminRights()) {
