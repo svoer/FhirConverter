@@ -336,9 +336,10 @@
       const avgProcessingTime = data.conversionStats?.avgTime || 0;
       const avgResources = data.conversionStats?.avgResources || 0;
       
-      // Calcul du temps économisé (estimé à 10 minutes par conversion manuelle)
-      const manualTimePerConversionMinutes = 10;
-      const timeSavedHours = (conversions * manualTimePerConversionMinutes / 60).toFixed(1);
+      // Calcul du temps économisé (estimé à 45 secondes par conversion manuelle)
+      // 45 secondes représente la moyenne entre 30 et 60 secondes
+      const manualTimePerConversionSeconds = 45;
+      const timeSavedHours = (conversions * manualTimePerConversionSeconds / 3600).toFixed(1);
       
       // Calcul du taux de succès (basé sur les statistiques réelles)
       // Pour cette démo, nous utilisons un pourcentage élevé mais réaliste
