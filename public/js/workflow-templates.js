@@ -9,7 +9,7 @@ const workflowTemplates = [
     id: 'template-basic',
     name: 'Conversion simple HL7 vers FHIR',
     description: 'Template de base pour convertir un message HL7 en FHIR avec validation minimale.',
-    thumbnail: '/img/templates/basic-conversion.png',
+    thumbnail: '/img/templates/basic-conversion.svg',
     nodes: [
       {
         id: 'node-1',
@@ -54,7 +54,7 @@ const workflowTemplates = [
     id: 'template-advanced',
     name: 'Conversion avancée avec validation',
     description: 'Template avec validation complète des messages HL7 et FHIR, incluant la gestion des erreurs.',
-    thumbnail: '/img/templates/advanced-conversion.png',
+    thumbnail: '/img/templates/advanced-conversion.svg',
     nodes: [
       {
         id: 'node-1',
@@ -161,7 +161,7 @@ const workflowTemplates = [
     id: 'template-french',
     name: 'Conversion adaptée aux terminologies françaises',
     description: 'Template optimisé pour les établissements français avec adaptation des codes et terminologies.',
-    thumbnail: '/img/templates/french-conversion.png',
+    thumbnail: '/img/templates/french-conversion.svg',
     nodes: [
       {
         id: 'node-1',
@@ -234,7 +234,7 @@ const workflowTemplates = [
     id: 'template-batch',
     name: 'Traitement par lots',
     description: 'Template pour traiter des fichiers HL7 par lot avec historique de traitement.',
-    thumbnail: '/img/templates/batch-processing.png',
+    thumbnail: '/img/templates/batch-processing.svg',
     nodes: [
       {
         id: 'node-1',
@@ -314,7 +314,7 @@ const workflowTemplates = [
     id: 'template-ai',
     name: 'HL7 vers FHIR avec assistance IA',
     description: 'Template utilisant l\'IA pour améliorer la qualité des données et compléter les informations manquantes.',
-    thumbnail: '/img/templates/ai-assisted.png',
+    thumbnail: '/img/templates/ai-assisted.svg',
     nodes: [
       {
         id: 'node-1',
