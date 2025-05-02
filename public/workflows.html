@@ -27,44 +27,72 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
     <style>
         .workflow-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             margin-bottom: 30px;
         }
         
+        /* Style carte simple */
         .workflow-card {
             background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            border: 1px solid #e0e0e0;
             overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: box-shadow 0.3s ease;
+            margin-bottom: 5px;
         }
         
         .workflow-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         
-        .workflow-header {
-            padding: 15px;
-            background: linear-gradient(135deg, #e63946, #f4a261);
+        /* Style carte avec dégradé (comme dans votre exemple) */
+        .workflow-detail-card {
+            background-color: #fff;
+            border-radius: 0;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .workflow-detail-card .workflow-header {
+            background: linear-gradient(90deg, #e63946, #f4a261);
+            padding: 20px;
             color: white;
             position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .workflow-detail-card .workflow-body {
+            padding: 15px;
+            border-left: 1px solid #e0e0e0;
+            border-right: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        /* Style header standard */
+        .workflow-header {
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .workflow-status {
-            position: absolute;
-            top: 15px;
-            right: 15px;
             width: 12px;
             height: 12px;
             border-radius: 50%;
+            margin-right: 10px;
+            display: inline-block;
         }
         
         .status-active {
             background-color: #4caf50;
-            box-shadow: 0 0 5px #4caf50;
         }
         
         .status-inactive {
@@ -389,42 +417,31 @@
         <div class="container">
         <!-- Contenu principal -->
         <main>
-            <div class="workflow-container">
-                <div class="workflow-tabs">
-                    <div class="workflow-tab active">Workflows</div>
-                    <div class="workflow-tab">Credentials</div>
-                    <div class="workflow-tab">Exécutions</div>
+            <h2>Workflows</h2>
+            <p class="description">Créez et gérez des workflows de transformation pour personnaliser le traitement des messages HL7 et FHIR pour chaque application.</p>
+            
+            <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
+            
+            <div class="filter-container">
+                <div class="workflow-search">
+                    <input type="text" placeholder="Rechercher..." id="workflow-search">
+                    <i class="fas fa-search search-icon"></i>
                 </div>
-                
-                <div class="workflow-filter-bar">
-                    <div class="workflow-search">
-                        <input type="text" placeholder="Recherche" id="workflow-search">
-                        <i class="fas fa-search search-icon"></i>
-                    </div>
-                    
-                    <div class="workflow-sort">
-                        <select id="application-filter">
-                            <option value="last_updated">Trier par dernière mise à jour</option>
-                            <option value="name">Trier par nom</option>
-                            <option value="app">Trier par application</option>
-                        </select>
-                    </div>
-                    
-                    <div class="workflow-actions">
-                        <button id="add-workflow-btn" class="add-workflow">
-                            <i class="fas fa-plus"></i>Nouveau Workflow
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="loading-spinner" id="loading-spinner">
-                    <div class="spinner"></div>
-                    <p>Chargement des workflows...</p>
-                </div>
-                
-                <div class="workflow-list" id="workflow-grid">
-                    <!-- Le contenu sera généré dynamiquement par JavaScript -->
-                </div>
+                <label for="application-filter">Filtrer par application:</label>
+                <select id="application-filter" class="filter-select">
+                    <option value="all">Toutes les applications</option>
+                    <!-- Options ajoutées dynamiquement -->
+                </select>
+            </div>
+            
+            <div class="loading-spinner" id="loading-spinner">
+                <div class="spinner"></div>
+                <p>Chargement des workflows...</p>
+            </div>
+            
+            <div class="workflow-grid" id="workflow-grid">
+                <!-- Contenu généré dynamiquement -->
+            </div>
             </div>
         </main>
         

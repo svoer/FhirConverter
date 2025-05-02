@@ -99,79 +99,130 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * Crée une carte de workflow dans le nouveau design
+     * Modifie une carte de workflow existante pour ajouter l'interrupteur de statut
+     * @param {HTMLElement} card - L'élément DOM de la carte de workflow
+     * @param {Object} workflow - Données du workflow
+     */
+    function enhanceWorkflowCard(card, workflow) {
+        // Trouver le header de la carte
+        const header = card.querySelector('.workflow-header');
+        if (!header) return;
+
+        // Créer l'interrupteur
+        const toggle = document.createElement('label');
+        toggle.className = 'workflow-toggle';
+        toggle.innerHTML = `
+            <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+        `;
+
+        // Ajouter l'interrupteur au header
+        header.appendChild(toggle);
+
+        // Ajouter l'événement de changement à l'interrupteur
+        const toggleInput = toggle.querySelector('input');
+        if (toggleInput) {
+            toggleInput.addEventListener('change', function(e) {
+                e.stopPropagation(); // Éviter de propager l'événement à la carte
+                const workflowId = this.getAttribute('data-id');
+                updateWorkflowStatus(workflowId, this.checked);
+            });
+        }
+    }
+
+    /**
+     * Crée une carte de workflow dans le style montré dans l'image
      * @param {Object} workflow - Données du workflow
      * @returns {HTMLElement} - Élément DOM de la carte de workflow
      */
     function createWorkflowCard(workflow) {
-        const item = document.createElement('div');
-        item.className = 'workflow-item';
+        // Créer d'abord une carte de style traditionnel 
+        const card = document.createElement('div');
+        card.className = 'workflow-card'; 
         
-        // Formatage des dates pour l'affichage
-        const lastUpdated = new Date(workflow.updated_at);
+        // Formatage de la date pour l'affichage
         const now = new Date();
-        const diffDays = Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24));
+        const updated = new Date(workflow.updated_at);
+        const diffMs = now - updated;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         
         let timeText;
         if (diffDays === 0) {
-            timeText = 'aujourd\'hui';
+            timeText = "aujourd'hui";
         } else if (diffDays === 1) {
-            timeText = 'il y a 1 jour';
+            timeText = "hier";
         } else {
-            timeText = `il y a ${diffDays} jours`;
+            timeText = `${diffDays} jours`;
         }
         
-        // Construction du HTML pour la carte de workflow
-        item.innerHTML = `
-            <div class="workflow-item-header">
-                <h3 class="workflow-title">${workflow.name}</h3>
-                <div class="workflow-controls">
-                    <label class="workflow-toggle">
-                        <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <button class="workflow-menu-button" data-id="${workflow.id}">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
+        // Structure HTML basique
+        card.innerHTML = `
+            <div class="workflow-detail-card">
+                <div class="workflow-header">
+                    <h3>${workflow.name}</h3>
                 </div>
-            </div>
-            <div class="workflow-meta">
-                <span class="workflow-meta-item time-indicator">Dernière mise à jour ${timeText}</span>
-                <span class="workflow-meta-item">Créé le ${new Date(workflow.created_at).toLocaleDateString()}</span>
-            </div>
-            <p class="workflow-description">${workflow.description || 'Aucune description'}</p>
-            <div class="workflow-footer">
-                <div class="workflow-owner">
-                    <div class="workflow-owner-avatar">
-                        <i class="fas fa-user"></i>
+                <div class="workflow-body">
+                    <p>Dernière mise à jour ${timeText}</p>
+                    <p>${workflow.description || 'Aucune description'}</p>
+                    <p>Application: ${workflow.application_name}</p>
+                    <p>Dernière mise à jour: ${new Date(workflow.updated_at).toLocaleString()}</p>
+                </div>
+                <div class="workflow-footer">
+                    <button class="edit-btn" data-id="${workflow.id}">Modifier</button>
+                    <button class="editor-btn" data-id="${workflow.id}">Éditeur</button>
+                    <div class="workflow-actions">
+                        <button class="duplicate-btn" data-id="${workflow.id}">Dupliquer</button>
+                        <button class="delete-btn" data-id="${workflow.id}">Supprimer</button>
                     </div>
-                    <span>Personnel / ${workflow.application_name}</span>
                 </div>
             </div>
         `;
         
-        // Ajouter les gestionnaires d'événements
-        const menuButton = item.querySelector('.workflow-menu-button');
-        menuButton.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const workflowId = this.getAttribute('data-id');
-            showWorkflowMenu(workflowId, this);
+        // Trouver le header pour ajouter l'interrupteur
+        const header = card.querySelector('.workflow-header');
+        if (header) {
+            // Créer l'interrupteur
+            const toggle = document.createElement('label');
+            toggle.className = 'workflow-toggle';
+            toggle.innerHTML = `
+                <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+            `;
+            
+            // Ajouter l'interrupteur au header
+            header.appendChild(toggle);
+            
+            // Ajouter l'événement de changement à l'interrupteur
+            const toggleInput = toggle.querySelector('input');
+            if (toggleInput) {
+                toggleInput.addEventListener('change', function(e) {
+                    e.stopPropagation(); // Éviter de propager l'événement à la carte
+                    const workflowId = this.getAttribute('data-id');
+                    updateWorkflowStatus(workflowId, this.checked);
+                });
+            }
+        }
+        
+        // Ajouter les gestionnaires d'événements pour les boutons
+        card.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const action = this.className.split('-')[0]; // edit, editor, duplicate, delete
+                const workflowId = this.getAttribute('data-id');
+                
+                if (action === 'editor') {
+                    openVisualEditor(workflowId);
+                } else if (action === 'edit') {
+                    editWorkflow(workflowId);
+                } else if (action === 'duplicate') {
+                    duplicateWorkflow(workflowId);
+                } else if (action === 'delete') {
+                    deleteWorkflow(workflowId);
+                }
+            });
         });
         
-        // Gestion de la bascule actif/inactif
-        const toggle = item.querySelector('.status-toggle');
-        toggle.addEventListener('change', function() {
-            const workflowId = this.getAttribute('data-id');
-            updateWorkflowStatus(workflowId, this.checked);
-        });
-        
-        // Ouvrir l'éditeur au clic sur la carte entière
-        item.addEventListener('click', function() {
-            const workflowId = item.querySelector('.workflow-menu-button').getAttribute('data-id');
-            openVisualEditor(workflowId);
-        });
-        
-        return item;
+        return card;
     }
     
     /**
