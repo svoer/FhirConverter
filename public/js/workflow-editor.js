@@ -1004,83 +1004,156 @@ class WorkflowEditor {
    * @param {Object} edge - Arête à mettre à jour
    */
   updateEdgePath(edge) {
-    const sourceNode = this.getNodeById(edge.source);
-    const targetNode = this.getNodeById(edge.target);
-    
-    if (!sourceNode || !targetNode) {
-      console.warn(`[Workflow] Nœuds non trouvés pour l'arête: ${edge.id}`);
-      return;
-    }
-    
-    const sourceElement = document.getElementById(edge.source);
-    const targetElement = document.getElementById(edge.target);
-    
-    if (!sourceElement || !targetElement) {
-      console.warn(`[Workflow] Éléments DOM non trouvés pour l'arête: ${edge.id}`);
-      return;
-    }
-    
-    // Sélection plus robuste des éléments de port
-    const sourcePortSelector = `.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`;
-    const targetPortSelector = `.node-input[data-port-index="${edge.targetInput}"] .port-handle`;
-    
-    const sourcePort = sourceElement.querySelector(sourcePortSelector);
-    const targetPort = targetElement.querySelector(targetPortSelector);
-    
-    if (!sourcePort || !targetPort) {
-      console.warn(`[Workflow] Ports non trouvés pour l'arête: ${edge.id}`, {
-        sourceSelector: sourcePortSelector,
-        targetSelector: targetPortSelector
-      });
-      return;
-    }
-    
-    // Mettre à jour la classe "connected" pour les ports
-    sourcePort.classList.add('connected');
-    targetPort.classList.add('connected');
-    
-    // Obtenir les rect des éléments
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const sourcePortRect = sourcePort.getBoundingClientRect();
-    const targetPortRect = targetPort.getBoundingClientRect();
-    
-    // Calculer les positions absolues des ports dans le canvas
-    const start = {
-      x: (sourcePortRect.left + sourcePortRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
-      y: (sourcePortRect.top + sourcePortRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
-    };
-    
-    const end = {
-      x: (targetPortRect.left + targetPortRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
-      y: (targetPortRect.top + targetPortRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
-    };
-    
-    // Amélioration des courbes avec un control distance plus adaptatif
-    const dx = Math.abs(end.x - start.x);
-    const dy = Math.abs(end.y - start.y);
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    // Plus la distance est grande, plus la courbe sera prononcée
-    const controlDistance = Math.min(dx * 0.5, distance * 0.4);
-    
-    // Créer un chemin Bézier avec des points de contrôle qui assurent une courbure élégante
-    const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
-    
-    // Mettre à jour le chemin
-    const edgeElement = document.getElementById(edge.id);
-    if (edgeElement) {
-      const path = edgeElement.querySelector('path');
-      if (path) {
-        path.setAttribute('d', d);
-        // S'assurer que le chemin a des attributs de style pour être bien visible
-        path.setAttribute('stroke', '#666');
-        path.setAttribute('stroke-width', '2.5');
-        path.setAttribute('fill', 'none');
-        // S'assurer que le path a un pointer-events pour être cliquable
-        path.style.pointerEvents = 'auto';
+    try {
+      // Fallback si l'arête n'a pas toutes les propriétés requises
+      if (!edge || !edge.source || !edge.target || typeof edge.sourceOutput === "undefined" || typeof edge.targetInput === "undefined") {
+        console.warn("[Workflow] Arête mal formée:", edge);
+        return;
       }
-    } else {
-      console.warn(`[Workflow] Élément d'arête non trouvé: ${edge.id}`);
+      
+      const sourceNode = this.getNodeById(edge.source);
+      const targetNode = this.getNodeById(edge.target);
+      
+      if (!sourceNode || !targetNode) {
+        console.warn("[Workflow] Nœuds non trouvés pour l'arête:", edge);
+        return;
+      }
+      
+      const sourceElement = document.getElementById(sourceNode.id);
+      const targetElement = document.getElementById(targetNode.id);
+      
+      if (!sourceElement || !targetElement) {
+        console.warn("[Workflow] Éléments DOM non trouvés pour l'arête:", edge);
+        return;
+      }
+      
+      // Sélection plus robuste des éléments de port
+      const sourcePortSelector = `.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`;
+      const targetPortSelector = `.node-input[data-port-index="${edge.targetInput}"] .port-handle`;
+      
+      const sourcePort = sourceElement.querySelector(sourcePortSelector);
+      const targetPort = targetElement.querySelector(targetPortSelector);
+      
+      if (!sourcePort || !targetPort) {
+        console.warn("[Workflow] Ports non trouvés pour l'arête:", {
+          edge: edge,
+          sourceNode: sourceNode.id,
+          targetNode: targetNode.id,
+          sourceSelector: sourcePortSelector,
+          targetSelector: targetPortSelector
+        });
+        return;
+      }
+      
+      // Mettre à jour la classe "connected" pour les ports
+      sourcePort.classList.add("connected");
+      targetPort.classList.add("connected");
+      
+      // Calculer les positions relatives des ports dans le canvas
+      // En utilisant directement les positions des nœuds stockées dans les données plutôt que les bounding rects
+      
+      const sourcePortPosition = this.getPortPosition(sourceNode, true, edge.sourceOutput);
+      const targetPortPosition = this.getPortPosition(targetNode, false, edge.targetInput);
+      
+      if (!sourcePortPosition || !targetPortPosition) {
+        console.warn("[Workflow] Impossible de calculer les positions des ports");
+        return;
+      }
+      
+      // Amélioration des courbes avec un control distance plus adaptatif
+      const dx = Math.abs(targetPortPosition.x - sourcePortPosition.x);
+      const dy = Math.abs(targetPortPosition.y - sourcePortPosition.y);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Plus la distance est grande, plus la courbe sera prononcée
+      const controlDistance = Math.min(dx * 0.5, distance * 0.4);
+      
+      // Créer un chemin Bézier avec des points de contrôle qui assurent une courbure élégante
+      const d = `M ${sourcePortPosition.x} ${sourcePortPosition.y} C ${sourcePortPosition.x + controlDistance} ${sourcePortPosition.y}, ${targetPortPosition.x - controlDistance} ${targetPortPosition.y}, ${targetPortPosition.x} ${targetPortPosition.y}`;
+      
+      // Mettre à jour le chemin
+      const edgeElement = document.getElementById(edge.id);
+      if (edgeElement) {
+        const path = edgeElement.querySelector("path");
+        if (path) {
+          path.setAttribute("d", d);
+          // S'assurer que le chemin a des attributs de style pour être bien visible
+          path.setAttribute("stroke", "#666");
+          path.setAttribute("stroke-width", "2.5");
+          path.setAttribute("fill", "none");
+          // S'assurer que le path a un pointer-events pour être cliquable
+          path.style.pointerEvents = "auto";
+        }
+      } else {
+        // Si l'élément de l'arête n'existe pas, le créer
+        this.createEdgeElement(edge);
+      }
+    } catch (err) {
+      console.error("[Workflow] Erreur lors de la mise à jour de l'arête:", err, edge);
+    }
+  }
+  
+  /**
+   * Calcule la position d'un port
+   * @param {Object} node - Le nœud
+   * @param {boolean} isOutput - Indique si c'est un port de sortie
+   * @param {number} portIndex - Index du port
+   * @returns {Object} Position du port { x, y }
+   */
+  getPortPosition(node, isOutput, portIndex) {
+    try {
+      if (!node || !node.position) {
+        console.warn("[Workflow] Nœud sans position:", node);
+        return null;
+      }
+      
+      const nodeElem = document.getElementById(node.id);
+      if (!nodeElem) {
+        console.warn(`[Workflow] Élément DOM non trouvé pour le nœud: ${node.id}`);
+        return null;
+      }
+      
+      // Taille par défaut si non spécifiée
+      const width = node.width || 200;
+      const height = node.height || 100;
+      
+      const portSelector = isOutput 
+        ? `.node-output[data-port-index="${portIndex}"] .port-handle` 
+        : `.node-input[data-port-index="${portIndex}"] .port-handle`;
+        
+      const portElem = nodeElem.querySelector(portSelector);
+      
+      if (!portElem) {
+        console.warn(`[Workflow] Port non trouvé: ${portSelector} sur nœud ${node.id}`);
+        
+        // Position de fallback calculée à partir de la position du nœud
+        if (isOutput) {
+          // Pour les ports de sortie, on les place à droite
+          return {
+            x: node.position.x + width,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        } else {
+          // Pour les ports d'entrée, on les place à gauche
+          return {
+            x: node.position.x,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        }
+      }
+      
+      // Obtenir les dimensions du port
+      const portRect = portElem.getBoundingClientRect();
+      const canvasRect = this.canvas.getBoundingClientRect();
+      
+      // Calculer la position absolue du port
+      return {
+        x: (portRect.left + portRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
+        y: (portRect.top + portRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
+      };
+    } catch (err) {
+      console.error("[Workflow] Erreur lors du calcul de la position du port:", err);
+      return null;
     }
   }
   
@@ -1366,36 +1439,14 @@ class WorkflowEditor {
     labelRow.appendChild(labelInput);
     infoGroup.appendChild(labelRow);
     
-    // Dimensions du noeud (affichage informatif)
-    const dimRow = document.createElement('div');
-    dimRow.className = 'property-row';
-    
-    const dimLabel = document.createElement('label');
-    dimLabel.className = 'property-label';
-    dimLabel.textContent = 'Dimensions';
-    
-    const dimText = document.createElement('div');
-    dimText.className = 'property-value';
-    dimText.style.padding = '8px 10px';
-    dimText.style.background = '#f9f9f9';
-    dimText.style.border = '1px solid #ddd';
-    dimText.style.borderRadius = '4px';
-    dimText.style.fontSize = '13px';
-    dimText.style.color = '#666';
-    dimText.textContent = `${node.width} × ${node.height} px`;
-    
-    dimRow.appendChild(dimLabel);
-    dimRow.appendChild(dimText);
-    infoGroup.appendChild(dimRow);
-    
-    // Note pour expliquer le redimensionnement
+    // Note informative sur le redimensionnement
     const noteRow = document.createElement('div');
     noteRow.className = 'property-row';
     noteRow.style.fontSize = '12px';
     noteRow.style.fontStyle = 'italic';
     noteRow.style.color = '#888';
     noteRow.style.margin = '5px 0';
-    noteRow.textContent = 'Utilisez le coin inférieur droit du nœud pour redimensionner.';
+    noteRow.textContent = 'Utilisez la souris pour redimensionner le nœud en tirant depuis son coin inférieur droit.';
     infoGroup.appendChild(noteRow);
     
     this.propertiesContent.appendChild(infoGroup);
