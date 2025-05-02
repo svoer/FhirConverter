@@ -1004,9 +1004,15 @@
         const usersList = document.getElementById('usersList');
         usersList.innerHTML = '<tr><td colspan="5" class="loading-row">Chargement des utilisateurs...</td></tr>';
         
-        const users = await fetchWithAuth('/api/users');
+        const response = await fetchWithAuth('/api/users');
         
-        if (!users || users.length === 0) {
+        // Vérifier la structure de la réponse
+        console.log('Users response:', response);
+        
+        // Extraire les données depuis la réponse
+        const users = response.data || response;
+        
+        if (!users || !Array.isArray(users) || users.length === 0) {
           usersList.innerHTML = '<tr><td colspan="5" class="empty-row">Aucun utilisateur trouvé</td></tr>';
           return;
         }
@@ -1129,9 +1135,15 @@
         const applicationsList = document.getElementById('applicationsList');
         applicationsList.innerHTML = '<tr><td colspan="5" class="loading-row">Chargement des applications...</td></tr>';
         
-        const applications = await fetchWithAuth('/api/applications');
+        const response = await fetchWithAuth('/api/applications');
         
-        if (!applications || applications.length === 0) {
+        // Vérifier la structure de la réponse
+        console.log('Applications response:', response);
+        
+        // Extraire les données depuis la réponse
+        const applications = response.data || response;
+        
+        if (!applications || !Array.isArray(applications) || applications.length === 0) {
           applicationsList.innerHTML = '<tr><td colspan="5" class="empty-row">Aucune application trouvée</td></tr>';
           return;
         }
@@ -1182,9 +1194,15 @@
         const keysList = document.getElementById('apiKeysList');
         keysList.innerHTML = '<tr><td colspan="6" class="loading-row">Chargement des clés API...</td></tr>';
         
-        const keys = await fetchWithAuth('/api/api-keys');
+        const response = await fetchWithAuth('/api/api-keys');
         
-        if (!keys || keys.length === 0) {
+        // Vérifier la structure de la réponse
+        console.log('API Keys response:', response);
+        
+        // Extraire les données depuis la réponse
+        const keys = response.data || response;
+        
+        if (!keys || !Array.isArray(keys) || keys.length === 0) {
           keysList.innerHTML = '<tr><td colspan="6" class="empty-row">Aucune clé API trouvée</td></tr>';
           return;
         }
@@ -1280,9 +1298,15 @@
         const filesTable = document.getElementById('terminology-files-table');
         filesTable.innerHTML = '<tr><td colspan="6" class="loading-row">Chargement des fichiers...</td></tr>';
         
-        const files = await fetchWithAuth('/api/terminology/files');
+        const response = await fetchWithAuth('/api/terminology/files');
         
-        if (!files || files.length === 0) {
+        // Vérifier la structure de la réponse
+        console.log('Terminology files response:', response);
+        
+        // Extraire les données depuis la réponse
+        const files = response.data || response;
+        
+        if (!files || !Array.isArray(files) || files.length === 0) {
           filesTable.innerHTML = '<tr><td colspan="6" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
           return;
         }
@@ -1314,7 +1338,13 @@
     
     async function loadTerminologyStats() {
       try {
-        const stats = await fetchWithAuth('/api/terminology/stats');
+        const response = await fetchWithAuth('/api/terminology/stats');
+        
+        // Vérifier la structure de la réponse
+        console.log('Terminology stats response:', response);
+        
+        // Extraire les données depuis la réponse
+        const stats = response.data || response || {};
         
         document.getElementById('terminology-version').textContent = stats.version || 'N/A';
         document.getElementById('terminology-last-updated').textContent = stats.last_updated ? formatDate(stats.last_updated) : 'Jamais';
@@ -1322,7 +1352,14 @@
         document.getElementById('terminology-systems-count').textContent = stats.systems_count || '0';
         document.getElementById('terminology-oids-count').textContent = stats.oids_count || '0';
       } catch (error) {
-        showError('Erreur lors du chargement des statistiques de terminologie: ' + error.message);
+        console.error('Erreur lors du chargement des statistiques de terminologie:', error);
+        
+        // En cas d'erreur 404 ou autre, définir les valeurs par défaut
+        document.getElementById('terminology-version').textContent = 'N/A';
+        document.getElementById('terminology-last-updated').textContent = 'Jamais';
+        document.getElementById('terminology-files-count').textContent = '0';
+        document.getElementById('terminology-systems-count').textContent = '0';
+        document.getElementById('terminology-oids-count').textContent = '0';
       }
     }
     
@@ -1355,11 +1392,17 @@
         loadingSpinner.style.display = 'block';
         noApis.classList.add('hidden');
         
-        const providers = await fetchWithAuth('/api/ai-providers');
+        const response = await fetchWithAuth('/api/ai-providers');
+        
+        // Vérifier la structure de la réponse
+        console.log('AI Providers response:', response);
+        
+        // Extraire les données depuis la réponse
+        const providers = response.data || response;
         
         loadingSpinner.style.display = 'none';
         
-        if (!providers || providers.length === 0) {
+        if (!providers || !Array.isArray(providers) || providers.length === 0) {
           noApis.classList.remove('hidden');
           return;
         }
@@ -1435,9 +1478,15 @@
         const providerList = document.getElementById('provider-list');
         providerList.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Chargement des fournisseurs...</div>';
         
-        const providers = await fetchWithAuth('/api/ai-providers/supported');
+        const response = await fetchWithAuth('/api/ai-providers/supported');
         
-        if (!providers || providers.length === 0) {
+        // Vérifier la structure de la réponse
+        console.log('AI Providers List response:', response);
+        
+        // Extraire les données depuis la réponse
+        const providers = response.data || response;
+        
+        if (!providers || !Array.isArray(providers) || providers.length === 0) {
           providerList.innerHTML = '<div class="alert alert-info">Aucun fournisseur d\'IA disponible</div>';
           return;
         }
