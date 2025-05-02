@@ -2184,7 +2184,7 @@ class WorkflowEditor {
         });
       }
       
-      // Créer les arêtes après un court délai pour permettre au DOM de se mettre à jour
+      // Créer les arêtes après un délai suffisant pour permettre au DOM de se mettre à jour
       if (flowData.edges && Array.isArray(flowData.edges)) {
         // Trouver le prochain ID à utiliser
         const edgeIds = flowData.edges.map(edge => {
@@ -2196,26 +2196,60 @@ class WorkflowEditor {
         // Stockons les arêtes à créer
         const edgesToCreate = [...flowData.edges];
         
-        // Utilisation d'un délai pour s'assurer que les nœuds sont bien rendus
-        setTimeout(() => {
-          // Vérifier que chaque arête a ses nœuds correspondants avant de la créer
-          edgesToCreate.forEach(edge => {
-            const sourceNode = this.getNodeById(edge.source);
-            const targetNode = this.getNodeById(edge.target);
-            
-            if (sourceNode && targetNode) {
-              // Les nœuds existent, on peut créer l'arête
-              this.createEdge(
-                edge.source,
-                edge.target,
-                edge.sourceOutput,
-                edge.targetInput
-              );
-            } else {
-              console.warn(`Impossible de créer l'arête: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
-            }
+        // Log d'information pour le débogage
+        console.log(`[Workflow] Création de ${edgesToCreate.length} arêtes après initialisation des nœuds...`);
+        
+        // Fonction pour vérifier si tous les éléments DOM des nœuds sont prêts
+        const areNodesReady = () => {
+          const allNodesExist = this.nodes.every(node => {
+            const nodeElement = document.getElementById(node.id);
+            return !!nodeElement;
           });
-        }, 300); // Délai de 300ms pour laisser le temps au DOM de se mettre à jour
+          
+          if (allNodesExist) {
+            console.log('[Workflow] Tous les nœuds sont prêts, création des arêtes...');
+            return true;
+          }
+          return false;
+        };
+        
+        // Fonction récursive qui tente de créer les arêtes jusqu'à ce que les nœuds soient prêts
+        const tryCreateEdges = (attempts = 0) => {
+          if (attempts >= 10) {
+            console.warn('[Workflow] Nombre maximal de tentatives pour créer les arêtes atteint');
+            return;
+          }
+          
+          if (areNodesReady()) {
+            // Tous les nœuds sont prêts, on peut créer les arêtes
+            edgesToCreate.forEach(edge => {
+              const sourceNode = this.getNodeById(edge.source);
+              const targetNode = this.getNodeById(edge.target);
+              
+              // Vérifions que les éléments DOM existent aussi
+              const sourceElement = document.getElementById(edge.source);
+              const targetElement = document.getElementById(edge.target);
+              
+              if (sourceNode && targetNode && sourceElement && targetElement) {
+                // Les nœuds existent et sont rendus dans le DOM, on peut créer l'arête
+                this.createEdge(
+                  edge.source,
+                  edge.target,
+                  edge.sourceOutput,
+                  edge.targetInput
+                );
+              } else {
+                console.warn(`[Workflow] Impossible de créer l'arête: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
+              }
+            });
+          } else {
+            // Attendre un peu plus longtemps et réessayer
+            setTimeout(() => tryCreateEdges(attempts + 1), 200);
+          }
+        };
+        
+        // Premier appel à la fonction récursive après un délai initial
+        setTimeout(() => tryCreateEdges(), 500); // Délai initial de 500ms pour laisser le temps au DOM de se mettre à jour
       }
       
       this.showNotification(`Workflow "${this.workflowName}" chargé avec succès`, 'success');
