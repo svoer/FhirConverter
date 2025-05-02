@@ -242,9 +242,13 @@
           alert('L\'environnement a été réinitialisé avec succès. L\'application va redémarrer.');
           
           // Rediriger vers la page d'accueil après réinitialisation
+          // Délai plus long pour laisser le temps au serveur de traiter la réinitialisation
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          
           setTimeout(() => {
             window.location.href = '/login.html';
-          }, 1000);
+          }, 3000);
         })
         .catch(error => {
           console.error('Erreur:', error);
