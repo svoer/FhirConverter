@@ -1008,6 +1008,7 @@ class WorkflowEditor {
     const targetNode = this.getNodeById(edge.target);
     
     if (!sourceNode || !targetNode) {
+      console.warn(`[Workflow] Nœuds non trouvés pour l'arête: ${edge.id}`);
       return;
     }
     
@@ -1015,36 +1016,52 @@ class WorkflowEditor {
     const targetElement = document.getElementById(edge.target);
     
     if (!sourceElement || !targetElement) {
+      console.warn(`[Workflow] Éléments DOM non trouvés pour l'arête: ${edge.id}`);
       return;
     }
     
-    const sourcePort = sourceElement.querySelector(`.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`);
-    const targetPort = targetElement.querySelector(`.node-input[data-port-index="${edge.targetInput}"] .port-handle`);
+    // Sélection plus robuste des éléments de port
+    const sourcePortSelector = `.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`;
+    const targetPortSelector = `.node-input[data-port-index="${edge.targetInput}"] .port-handle`;
+    
+    const sourcePort = sourceElement.querySelector(sourcePortSelector);
+    const targetPort = targetElement.querySelector(targetPortSelector);
     
     if (!sourcePort || !targetPort) {
+      console.warn(`[Workflow] Ports non trouvés pour l'arête: ${edge.id}`, {
+        sourceSelector: sourcePortSelector,
+        targetSelector: targetPortSelector
+      });
       return;
     }
     
-    // Obtenir la position des ports par rapport à leur nœud parent
+    // Mettre à jour la classe "connected" pour les ports
+    sourcePort.classList.add('connected');
+    targetPort.classList.add('connected');
+    
+    // Obtenir les rect des éléments
+    const canvasRect = this.canvas.getBoundingClientRect();
     const sourcePortRect = sourcePort.getBoundingClientRect();
     const targetPortRect = targetPort.getBoundingClientRect();
-    const sourceNodeRect = sourceElement.getBoundingClientRect();
-    const targetNodeRect = targetElement.getBoundingClientRect();
     
-    // Calculer le centre des ports par rapport au canvas
+    // Calculer les positions absolues des ports dans le canvas
     const start = {
-      x: sourceNode.position.x + (sourcePortRect.left - sourceNodeRect.left) + sourcePortRect.width / 2,
-      y: sourceNode.position.y + (sourcePortRect.top - sourceNodeRect.top) + sourcePortRect.height / 2
+      x: (sourcePortRect.left + sourcePortRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
+      y: (sourcePortRect.top + sourcePortRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
     };
     
     const end = {
-      x: targetNode.position.x + (targetPortRect.left - targetNodeRect.left) + targetPortRect.width / 2,
-      y: targetNode.position.y + (targetPortRect.top - targetNodeRect.top) + targetPortRect.height / 2
+      x: (targetPortRect.left + targetPortRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
+      y: (targetPortRect.top + targetPortRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
     };
     
-    // Calculer les points de contrôle pour une courbe de Bézier
+    // Amélioration des courbes avec un control distance plus adaptatif
     const dx = Math.abs(end.x - start.x);
-    const controlDistance = Math.min(dx * 0.5, 100);
+    const dy = Math.abs(end.y - start.y);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Plus la distance est grande, plus la courbe sera prononcée
+    const controlDistance = Math.min(dx * 0.5, distance * 0.4);
     
     // Créer un chemin Bézier avec des points de contrôle qui assurent une courbure élégante
     const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
@@ -1057,11 +1074,13 @@ class WorkflowEditor {
         path.setAttribute('d', d);
         // S'assurer que le chemin a des attributs de style pour être bien visible
         path.setAttribute('stroke', '#666');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-width', '2.5');
         path.setAttribute('fill', 'none');
         // S'assurer que le path a un pointer-events pour être cliquable
         path.style.pointerEvents = 'auto';
       }
+    } else {
+      console.warn(`[Workflow] Élément d'arête non trouvé: ${edge.id}`);
     }
   }
   
