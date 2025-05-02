@@ -63,26 +63,33 @@ function logout() {
 }
 
 /**
- * Effectue une requête API avec authentification JWT
+ * Effectue une requête API avec authentification JWT ou clé API
  * @param {string} url - L'URL de la requête
  * @param {Object} options - Options de la requête fetch
+ * @param {boolean} useApiKey - Utiliser la clé API par défaut au lieu du JWT
  * @returns {Promise<Response>} La réponse de la requête
  */
-async function fetchWithAuth(url, options = {}) {
-  const token = getAuthToken();
-  
-  if (!token) {
-    throw new Error('Utilisateur non authentifié');
-  }
-  
+async function fetchWithAuth(url, options = {}, useApiKey = false) {
   // Copier les options pour ne pas modifier l'objet original
   const authOptions = { ...options };
   
   // Initialiser les headers s'ils n'existent pas
   authOptions.headers = authOptions.headers || {};
   
-  // Ajouter le header d'autorisation
-  authOptions.headers.Authorization = `Bearer ${token}`;
+  if (useApiKey) {
+    // Utiliser la clé API par défaut pour l'authentification
+    authOptions.headers['X-API-KEY'] = 'dev-key';
+  } else {
+    // Utiliser le JWT pour l'authentification
+    const token = getAuthToken();
+    
+    if (!token) {
+      throw new Error('Utilisateur non authentifié');
+    }
+    
+    // Ajouter le header d'autorisation JWT
+    authOptions.headers.Authorization = `Bearer ${token}`;
+  }
   
   // Effectuer la requête
   return fetch(url, authOptions);

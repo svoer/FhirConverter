@@ -156,24 +156,37 @@
     }
     
     function fetchUsers() {
-      fetch('/api/users', {
-        method: 'GET',
-        headers: {
-          'X-API-KEY': 'dev-key'
-        }
-      })
+      // Utilisation de la fonction d'authentification avec la clé API
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth('/api/users', { method: 'GET' }, true)
+          .then(response => response.json())
+          .then(handleUsersResponse)
+          .catch(handleError);
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        fetch('/api/users', {
+          method: 'GET',
+          headers: {
+            'X-API-KEY': 'dev-key'
+          }
+        })
       .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          renderUsers(data.data);
-        } else {
-          showError('Erreur lors du chargement des utilisateurs.');
-        }
-      })
-      .catch(error => {
-        console.error('Erreur:', error);
-        showError('Une erreur est survenue lors de la récupération des utilisateurs.');
-      });
+      .then(handleUsersResponse)
+      .catch(handleError);
+      }
+    }
+    
+    function handleUsersResponse(data) {
+      if (data.success) {
+        renderUsers(data.data);
+      } else {
+        showError('Erreur lors du chargement des utilisateurs.');
+      }
+    }
+    
+    function handleError(error) {
+      console.error('Erreur:', error);
+      showError('Une erreur est survenue lors de la récupération des utilisateurs.');
     }
     
     function renderUsers(users) {
@@ -279,64 +292,93 @@
       const url = userId ? `/api/users/${userId}` : '/api/users';
       const method = userId ? 'PUT' : 'POST';
       
-      // Envoyer la requête
-      fetch(url, {
+      // Options de la requête
+      const options = {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': 'dev-key'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(userData)
-      })
+      };
+      
+      // Envoyer la requête avec authentification
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth(url, options, true)
+          .then(response => response.json())
+          .then(handleSaveResponse)
+          .catch(handleSaveError);
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        options.headers['X-API-KEY'] = 'dev-key';
+        fetch(url, options)
       .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Fermer la modale
-          closeUserModal();
-          
-          // Rafraîchir la liste des utilisateurs
-          fetchUsers();
-          
-          // Afficher un message de succès
-          alert(userId ? 'Utilisateur mis à jour avec succès.' : 'Utilisateur créé avec succès.');
-        } else {
-          alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
-        }
-      })
-      .catch(error => {
-        console.error('Erreur:', error);
-        alert('Une erreur est survenue lors de l\'enregistrement de l\'utilisateur.');
-      });
+      .then(data => handleSaveResponse(data, userId))
+      .catch(handleSaveError);
+      }
+    }
+    
+    function handleSaveResponse(data, userId) {
+      if (data.success) {
+        // Fermer la modale
+        closeUserModal();
+        
+        // Rafraîchir la liste des utilisateurs
+        fetchUsers();
+        
+        // Afficher un message de succès
+        alert(userId ? 'Utilisateur mis à jour avec succès.' : 'Utilisateur créé avec succès.');
+      } else {
+        alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+      }
+    }
+    
+    function handleSaveError(error) {
+      console.error('Erreur:', error);
+      alert('Une erreur est survenue lors de l\'enregistrement de l\'utilisateur.');
     }
     
     function deleteUser() {
       if (!userToDelete) return;
       
-      fetch(`/api/users/${userToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'X-API-KEY': 'dev-key'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Fermer la modale
-          closeDeleteModal();
-          
-          // Rafraîchir la liste des utilisateurs
-          fetchUsers();
-          
-          // Afficher un message de succès
-          alert('Utilisateur supprimé avec succès.');
-        } else {
-          alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
-        }
-      })
-      .catch(error => {
-        console.error('Erreur:', error);
-        alert('Une erreur est survenue lors de la suppression de l\'utilisateur.');
-      });
+      // Options de la requête
+      const options = {
+        method: 'DELETE'
+      };
+      
+      // Envoyer la requête avec authentification
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth(`/api/users/${userToDelete}`, options, true)
+          .then(response => response.json())
+          .then(handleDeleteResponse)
+          .catch(handleDeleteError);
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        options.headers = { 'X-API-KEY': 'dev-key' };
+        fetch(`/api/users/${userToDelete}`, options)
+          .then(response => response.json())
+          .then(handleDeleteResponse)
+          .catch(handleDeleteError);
+      }
+    }
+    
+    function handleDeleteResponse(data) {
+      if (data.success) {
+        // Fermer la modale
+        closeDeleteModal();
+        
+        // Rafraîchir la liste des utilisateurs
+        fetchUsers();
+        
+        // Afficher un message de succès
+        alert('Utilisateur supprimé avec succès.');
+      } else {
+        alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+      }
+    }
+    
+    function handleDeleteError(error) {
+      console.error('Erreur:', error);
+      alert('Une erreur est survenue lors de la suppression de l\'utilisateur.');
     }
     
     function showError(message) {

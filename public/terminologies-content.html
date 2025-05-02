@@ -311,12 +311,29 @@
     }
     
     function loadTerminologyFiles() {
-      fetch('/api/terminology/files', {
-        method: 'GET',
-        headers: {
-          'X-API-KEY': 'dev-key'
-        }
-      })
+      // Utilisation de la fonction d'authentification avec la clé API
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth('/api/terminology/files', { method: 'GET' }, true)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              renderTerminologyFiles(data.data);
+            } else {
+              showTerminologyError('installed', 'Erreur lors du chargement des terminologies.');
+            }
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            showTerminologyError('installed', 'Une erreur est survenue lors de la récupération des terminologies.');
+          });
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        fetch('/api/terminology/files', {
+          method: 'GET',
+          headers: {
+            'X-API-KEY': 'dev-key'
+          }
+        })
       .then(response => response.json())
       .then(data => {
         if (data.success) {
@@ -332,12 +349,29 @@
     }
     
     function loadFrenchTerminology() {
-      fetch('/api/terminology/french', {
-        method: 'GET',
-        headers: {
-          'X-API-KEY': 'dev-key'
-        }
-      })
+      // Utilisation de la fonction d'authentification avec la clé API
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth('/api/terminology/french', { method: 'GET' }, true)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              renderFrenchTerminology(data.data);
+            } else {
+              showTerminologyError('french', 'Erreur lors du chargement des terminologies françaises.');
+            }
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            showTerminologyError('french', 'Une erreur est survenue lors de la récupération des terminologies françaises.');
+          });
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        fetch('/api/terminology/french', {
+          method: 'GET',
+          headers: {
+            'X-API-KEY': 'dev-key'
+          }
+        })
       .then(response => response.json())
       .then(data => {
         if (data.success) {
