@@ -24,7 +24,7 @@
 }
 
 .chatbot-header {
-  background: linear-gradient(135deg, #e63946, #f4a261);
+  background: linear-gradient(135deg, #d62828, #fa7921);
   color: white;
   padding: 5px 10px;
   display: flex;
@@ -82,7 +82,7 @@
   padding-top: 10px;
 }
 
-#chatbot-input {
+#chatbotInput {
   flex: 1;
   padding: 10px;
   border: 1px solid #ddd;
@@ -91,12 +91,12 @@
   font-size: 14px;
 }
 
-#chatbot-input:focus {
+#chatbotInput:focus {
   border-color: #666;
 }
 
-#chatbot-send {
-  background: linear-gradient(135deg, #e63946, #f4a261);
+#chatbotSend {
+  background: linear-gradient(135deg, #d62828, #fa7921);
   color: white;
   border: none;
   border-radius: 50%;
@@ -109,7 +109,7 @@
   transition: opacity 0.3s;
 }
 
-#chatbot-send:hover {
+#chatbotSend:hover {
   opacity: 0.9;
 }
 
@@ -168,7 +168,7 @@
 }
 
 .chatbot-send {
-  background: linear-gradient(135deg, #e63946, #f4a261);
+  background: linear-gradient(135deg, #d62828, #fa7921);
   color: white;
   border: none;
   border-radius: 20px;
@@ -266,7 +266,7 @@
   right: 20px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #e63946, #f4a261);
+  background: linear-gradient(135deg, #d62828, #fa7921);
   border-radius: 50%;
   display: none;
   justify-content: center;
@@ -297,7 +297,7 @@
   bottom: 80px;  /* Repositionné pour éviter la superposition */
   right: 20px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #e63946, #f4a261);
+  background: linear-gradient(135deg, #d62828, #fa7921);
   color: white;
   border: none;
   border-radius: 30px;
