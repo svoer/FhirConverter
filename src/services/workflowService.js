@@ -118,18 +118,14 @@ async function initialize() {
     // Ajouter les routes d'API Node-RED à notre application Express
     redApp.use(redSettings.httpNodeRoot, RED.httpNode);
     
-    // Démarrer Node-RED en utilisant le port 5001 explicitement
-    // Cela nous permettra d'accéder directement à Node-RED sans proxy
+    // Démarrer Node-RED sans serveur séparé, utiliser le même port que l'application principale
     await new Promise((resolve) => {
-      const nodeRedPort = 5001; // Port fixe pour Node-RED
-      redServer.listen(nodeRedPort, () => {
-        RED.start().then(() => {
-          // Stocker le port dans une variable globale
-          global.nodeRedPort = nodeRedPort;
-          console.log(`[WORKFLOW] Node-RED démarré sur le port fixe ${nodeRedPort}`);
-          console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED directement via http://localhost:${nodeRedPort}`);
-          resolve();
-        });
+      RED.start().then(() => {
+        // Stocker une référence à l'éditeur Node-RED pour y accéder plus tard
+        global.nodeRedInitialized = true;
+        console.log(`[WORKFLOW] Node-RED démarré et intégré à l'application principale`);
+        console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED via /node-red-editor/`);
+        resolve();
       });
     });
     
@@ -409,14 +405,12 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  // Maintenant nous utilisons une URL directe vers le port Node-RED
-  const nodeRedPort = global.nodeRedPort || 5001; // Port fixe pour Node-RED
+  // Dans Replit, nous devons utiliser le port 5000 et une route spécifique
+  // qui sera configurée dans app.js pour accéder à Node-RED
+  const editorUrl = `/node-red-editor/?workflowId=${workflowId}`;
+  console.log(`[WORKFLOW] URL de l'éditeur Node-RED: ${editorUrl}`);
   
-  // URL directe vers l'instance Node-RED
-  const directUrl = `http://localhost:${nodeRedPort}/?workflowId=${workflowId}`;
-  console.log(`[WORKFLOW] URL de l'éditeur Node-RED: ${directUrl}`);
-  
-  return directUrl;
+  return editorUrl;
 }
 
 /**
