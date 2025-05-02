@@ -71,7 +71,7 @@
 
     .iframe-container {
       width: 100%;
-      height: calc(100vh - 180px);
+      height: calc(100vh - 250px); /* Ajustement de la hauteur pour éviter les doubles scrollbars */
       overflow: hidden;
       border: none;
       position: relative;
@@ -84,6 +84,7 @@
       height: 100%;
       border: none;
       margin-top: -115px; /* Masque l'en-tête des pages */
+      overflow: hidden; /* Empêche le défilement interne de l'iframe */
     }
 
     .loading-overlay {
