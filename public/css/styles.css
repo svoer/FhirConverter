@@ -142,6 +142,7 @@ body {
   transform: translateY(-10px);
   transition: all 0.3s;
   z-index: 1000;
+  display: none;
 }
 
 .nav-menu .dropdown:hover .dropdown-menu,
@@ -149,6 +150,7 @@ body {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  display: block;
 }
 
 .nav-menu .dropdown-menu li {

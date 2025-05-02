@@ -1243,31 +1243,45 @@
   <!-- Script pour la gestion du menu déroulant -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Gestion du clic sur les menus déroulants
-      const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+      // Gestion du clic et du survol sur les menus déroulants
+      const dropdowns = document.querySelectorAll('.dropdown');
       
-      dropdownToggles.forEach(toggle => {
+      // Fonction pour fermer tous les menus déroulants
+      function closeAllDropdowns() {
+        dropdowns.forEach(dropdown => {
+          dropdown.classList.remove('active');
+        });
+      }
+      
+      // Événement pour fermer les menus déroulants lors d'un clic en dehors
+      document.addEventListener('click', function(event) {
+        const target = event.target;
+        // Si le clic n'est pas dans un menu déroulant, fermer tous les menus
+        if (!target.closest('.dropdown')) {
+          closeAllDropdowns();
+        }
+      });
+      
+      // Pour chaque menu déroulant
+      dropdowns.forEach(dropdown => {
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        
+        // Gestion du clic sur le bouton du menu déroulant
         toggle.addEventListener('click', function(e) {
           e.preventDefault();
-          const parent = this.parentElement;
+          e.stopPropagation(); // Empêche la propagation de l'événement
           
-          // Fermer tous les autres menus déroulants
-          document.querySelectorAll('.dropdown').forEach(dropdown => {
-            if (dropdown !== parent) {
-              dropdown.classList.remove('active');
-            }
-          });
-          
-          // Basculer la classe 'active' sur le menu cliqué
-          parent.classList.toggle('active');
-          
-          // Fermer le menu au clic en dehors
-          document.addEventListener('click', function closeDropdown(event) {
-            if (!parent.contains(event.target)) {
-              parent.classList.remove('active');
-              document.removeEventListener('click', closeDropdown);
-            }
-          });
+          // Si le menu est déjà actif, le fermer
+          if (dropdown.classList.contains('active')) {
+            dropdown.classList.remove('active');
+          } else {
+            // Sinon, fermer tous les autres et ouvrir celui-ci
+            closeAllDropdowns();
+            dropdown.classList.add('active');
+            
+            // Log pour déboguer
+            console.log('Menu déroulant ouvert');
+          }
         });
       });
     });
