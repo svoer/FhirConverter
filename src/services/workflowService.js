@@ -123,6 +123,8 @@ async function initialize() {
       redServer.listen(0, () => {
         RED.start().then(() => {
           const port = redServer.address().port;
+          // Stocker le port pour créer un proxy HTTP plus tard
+          global.nodeRedPort = port;
           console.log(`[WORKFLOW] Node-RED démarré en mode headless sur le port ${port}`);
           resolve();
         });
@@ -405,8 +407,18 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  // Construire l'URL de l'éditeur Node-RED (montée sous /node-red dans app.js)
-  return `/node-red?workflowId=${workflowId}`;
+  // Obtenir l'URL complète incluant l'adresse IP du serveur, en utilisant le port direct de Node-RED
+  // Cela permet d'accéder directement à Node-RED sans passer par le proxy qui ne fonctionne pas correctement
+  const nodeRedPort = global.nodeRedPort;
+  
+  if (!nodeRedPort) {
+    throw new Error('Le port Node-RED n\'est pas disponible');
+  }
+  
+  console.log(`[WORKFLOW] URL de l'éditeur: http://localhost:${nodeRedPort}/?workflowId=${workflowId}`);
+  
+  // Note: ceci est une URL directe au serveur Node-RED interne, pas une route relative
+  return `http://localhost:${nodeRedPort}/?workflowId=${workflowId}`;
 }
 
 /**
