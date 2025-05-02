@@ -105,10 +105,8 @@
     color: #333;
     font-family: 'Roboto', sans-serif;
     border: none;
-    /* Fond avec grille */
-    background-image: 
-        linear-gradient(to right, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(200, 200, 200, 0.1) 1px, transparent 1px);
+    /* Fond avec grille de points */
+    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
     background-size: 20px 20px;
 }
 
@@ -118,9 +116,9 @@
     height: 100%;
     position: relative;
     background-color: #f8f8f8;
+    /* Grille avec des signes + */
     background-image: 
-        linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M9 0 v20 M0 9 h20' stroke='rgba(0,0,0,0.05)' stroke-width='1'/%3E%3C/svg%3E");
     background-size: 20px 20px;
     transition: transform 0.2s;
     transform-origin: 0 0;
@@ -140,6 +138,10 @@
     max-height: calc(100% - 20px);
     overflow-y: auto;
     border: 1px solid #e0e0e0;
+    resize: both;
+    overflow: auto;
+    min-width: 180px;
+    min-height: 100px;
 }
 
 .node-palette h3 {
@@ -149,6 +151,7 @@
     text-align: center;
     border-bottom: 2px solid #f27121;
     padding-bottom: 8px;
+    cursor: move; /* Indique que l'en-tête est utilisé pour déplacer */
 }
 
 .node-palette-category {
@@ -418,6 +421,10 @@
     overflow-y: auto;
     display: none;
     border: 1px solid #e0e0e0;
+    resize: both;
+    overflow: auto;
+    min-width: 200px;
+    min-height: 150px;
 }
 
 .node-properties.open {
@@ -433,6 +440,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    cursor: move; /* Indique que l'en-tête est utilisé pour déplacer */
 }
 
 .properties-header h3 {

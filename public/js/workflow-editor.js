@@ -250,6 +250,9 @@ class WorkflowEditor {
     propertiesHeader.appendChild(propertiesTitle);
     propertiesHeader.appendChild(closeBtn);
     
+    // Rendre le panneau déplaçable
+    this.makeElementDraggable(this.propertiesPanel, propertiesHeader);
+    
     this.propertiesContent = document.createElement('div');
     this.propertiesContent.className = 'properties-content';
     
@@ -1423,6 +1426,46 @@ class WorkflowEditor {
     
     // Afficher le panneau
     this.propertiesPanel.classList.add('open');
+  }
+  
+  /**
+   * Rend un élément déplaçable
+   * @param {HTMLElement} element - L'élément à rendre déplaçable
+   * @param {HTMLElement} handle - L'élément servant de poignée pour le déplacement
+   */
+  makeElementDraggable(element, handle) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    handle.onmousedown = dragMouseDown;
+    
+    function dragMouseDown(e) {
+      e = e || window.event;
+      e.preventDefault();
+      // Position initiale du curseur
+      pos3 = e.clientX;
+      pos4 = e.clientY;
+      document.onmouseup = closeDragElement;
+      document.onmousemove = elementDrag;
+    }
+    
+    function elementDrag(e) {
+      e = e || window.event;
+      e.preventDefault();
+      // Calculer la nouvelle position
+      pos1 = pos3 - e.clientX;
+      pos2 = pos4 - e.clientY;
+      pos3 = e.clientX;
+      pos4 = e.clientY;
+      // Définir la nouvelle position de l'élément
+      element.style.top = (element.offsetTop - pos2) + "px";
+      element.style.left = (element.offsetLeft - pos1) + "px";
+    }
+    
+    function closeDragElement() {
+      // Arrêter de déplacer quand le bouton de la souris est relâché
+      document.onmouseup = null;
+      document.onmousemove = null;
+    }
   }
   
   /**
