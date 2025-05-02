@@ -118,14 +118,16 @@ async function initialize() {
     // Ajouter les routes d'API Node-RED à notre application Express
     redApp.use(redSettings.httpNodeRoot, RED.httpNode);
     
-    // Démarrer Node-RED en mode headless (il sera accessible via notre application)
+    // Démarrer Node-RED en utilisant le port 5001 explicitement
+    // Cela nous permettra d'accéder directement à Node-RED sans proxy
     await new Promise((resolve) => {
-      redServer.listen(0, () => {
+      const nodeRedPort = 5001; // Port fixe pour Node-RED
+      redServer.listen(nodeRedPort, () => {
         RED.start().then(() => {
-          const port = redServer.address().port;
-          // Stocker le port pour créer un proxy HTTP plus tard
-          global.nodeRedPort = port;
-          console.log(`[WORKFLOW] Node-RED démarré en mode headless sur le port ${port}`);
+          // Stocker le port dans une variable globale
+          global.nodeRedPort = nodeRedPort;
+          console.log(`[WORKFLOW] Node-RED démarré sur le port fixe ${nodeRedPort}`);
+          console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED directement via http://localhost:${nodeRedPort}`);
           resolve();
         });
       });
@@ -407,12 +409,14 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  // Maintenant que nous avons un proxy HTTP configuré dans app.js,
-  // nous pouvons utiliser l'URL relative qui sera gérée par le proxy
-  console.log(`[WORKFLOW] URL de l'éditeur: /node-red?workflowId=${workflowId}`);
+  // Maintenant nous utilisons une URL directe vers le port Node-RED
+  const nodeRedPort = global.nodeRedPort || 5001; // Port fixe pour Node-RED
   
-  // Noter que le port est stocké dans global.nodeRedPort et utilisé par le proxy dans app.js
-  return `/node-red?workflowId=${workflowId}`;
+  // URL directe vers l'instance Node-RED
+  const directUrl = `http://localhost:${nodeRedPort}/?workflowId=${workflowId}`;
+  console.log(`[WORKFLOW] URL de l'éditeur Node-RED: ${directUrl}`);
+  
+  return directUrl;
 }
 
 /**
