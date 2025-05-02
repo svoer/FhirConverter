@@ -1,116 +1,120 @@
 /**
- * Script d'intégration de l'éditeur de workflow visuel avec l'interface FHIRHub
+ * Integration de l'éditeur de workflow avec l'UI de FHIRHub
+ * 
+ * Ce script gère l'intégration entre l'interface utilisateur FHIRHub
+ * et l'éditeur visuel de workflow.
  */
 
-// Variable globale pour l'éditeur de workflow
-let workflowEditor = null;
-
-// Initialiser l'éditeur quand la page est chargée
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initialisation de l\'intégration workflow...');
+    // Initialiser l'éditeur dans la modal si le conteneur existe
+    let editor = null;
     
-    // Références aux éléments DOM
-    const editorContainer = document.getElementById('workflow-editor-container');
-    const workflowCards = document.getElementById('workflow-grid');
+    // Référence de la modal d'éditeur
     const editorModal = document.getElementById('editor-modal');
+    const editorContainer = document.getElementById('workflow-editor-container');
     
-    // Gestion du clic sur le bouton "Éditeur" des cartes de workflow
+    // Bouton pour sauvegarder les modifications de l'éditeur
+    const saveEditorBtn = document.createElement('button');
+    saveEditorBtn.className = 'save-btn';
+    saveEditorBtn.textContent = 'Sauvegarder';
+    saveEditorBtn.style.marginRight = '10px';
+    
+    // Ajouter le bouton de sauvegarde à la modal
+    const modalFooter = document.querySelector('#editor-modal .modal-footer');
+    if (modalFooter) {
+        // Insérer avant le bouton Fermer
+        modalFooter.insertBefore(saveEditorBtn, modalFooter.firstChild);
+    }
+    
+    /**
+     * Initialise l'éditeur visuel
+     */
+    function initializeWorkflowEditor() {
+        if (editorContainer && !editor) {
+            editor = new WorkflowEditor('workflow-editor-container', {
+                readOnly: false,
+                allowPanning: true,
+                allowZooming: true,
+                snapToGrid: true,
+            });
+            
+            // Écouter les événements de l'éditeur
+            editor.on('workflowChanged', function(data) {
+                console.log('Workflow modifié:', data);
+            });
+            
+            editor.on('workflowSaved', function(data) {
+                console.log('Workflow sauvegardé:', data);
+                showNotification('Workflow sauvegardé avec succès', 'success');
+            });
+            
+            // Événement du bouton de sauvegarde
+            saveEditorBtn.addEventListener('click', function() {
+                if (editor) {
+                    editor.saveWorkflow();
+                }
+            });
+            
+            console.log('Éditeur visuel initialisé');
+        }
+    }
+    
+    /**
+     * Ouvre l'éditeur visuel pour un workflow spécifique
+     * @param {string} workflowId - ID du workflow à éditer
+     */
+    function openVisualEditor(workflowId) {
+        console.log('Ouverture de l\'éditeur visuel pour le workflow:', workflowId);
+        
+        // S'assurer que l'éditeur est initialisé
+        if (!editor) {
+            initializeWorkflowEditor();
+        }
+        
+        // Afficher la modal
+        editorModal.style.display = 'block';
+        
+        // Charger le workflow dans l'éditeur
+        if (editor) {
+            editor.loadWorkflow(workflowId);
+        } else {
+            console.error('Éditeur non initialisé');
+            showNotification('Erreur: Impossible d\'initialiser l\'éditeur', 'error');
+        }
+    }
+    
+    /**
+     * Attache les événements aux cartes de workflow
+     */
     function attachWorkflowCardEvents() {
+        // Trouver tous les boutons d'édition visuelle
         document.querySelectorAll('.editor-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                openVisualEditor(id);
+                const workflowId = this.getAttribute('data-id');
+                if (workflowId) {
+                    openVisualEditor(workflowId);
+                }
             });
         });
     }
     
-    // Charger l'éditeur visuel pour un workflow spécifique
-    function openVisualEditor(workflowId) {
-        console.log(`Ouverture de l'éditeur visuel pour le workflow ${workflowId}`);
-        
-        // Récupérer les données du workflow
-        getWorkflow(workflowId).then(workflow => {
-            // Mise à jour du titre
-            document.getElementById('editor-title').textContent = `Éditeur visuel: ${workflow.name}`;
-            
-            // Afficher la modal
-            editorModal.style.display = 'block';
-            
-            // Initialiser l'éditeur visuel s'il n'existe pas déjà
-            if (!workflowEditor) {
-                console.log('Création d\'une nouvelle instance de l\'éditeur visuel');
-                
-                workflowEditor = new WorkflowEditor('workflow-editor-container', {
-                    workflowId: workflowId,
-                    autosave: true
-                });
-                
-                // Événements de l'éditeur
-                workflowEditor.on('workflowSaved', function(data) {
-                    console.log('Workflow sauvegardé avec succès', data);
-                    
-                    // Mettre à jour la liste des workflows après sauvegarde
-                    setTimeout(() => {
-                        loadWorkflows(document.getElementById('application-filter').value);
-                    }, 500);
-                });
-            } else {
-                console.log('Chargement du workflow dans l\'éditeur existant');
-                
-                // Charger le nouveau workflow dans l'éditeur existant
-                workflowEditor.options.workflowId = workflowId;
-                workflowEditor.loadWorkflow(workflowId);
-            }
-        }).catch(error => {
-            console.error('Erreur lors de l\'ouverture de l\'éditeur visuel', error);
-            showNotification('Erreur: ' + error.message, 'error');
-        });
-    }
+    // Initialiser au chargement de la page
+    attachWorkflowCardEvents();
     
-    // Surcharger la fonction pour ouvrir l'éditeur
-    if (typeof window.openWorkflowEditor === 'function') {
-        // Sauvegarder la fonction originale
-        const originalOpenWorkflowEditor = window.openWorkflowEditor;
-        
-        // Remplacer par notre fonction
-        window.openWorkflowEditor = function(id) {
-            // Utiliser notre éditeur visuel au lieu de l'iframe Node-RED
-            openVisualEditor(id);
+    // Réattacher les événements après un changement de la liste des workflows
+    // (par exemple après un filtre ou un rechargement)
+    if (window.loadWorkflows) {
+        const originalLoadWorkflows = window.loadWorkflows;
+        window.loadWorkflows = function(...args) {
+            originalLoadWorkflows.apply(this, args).then(() => {
+                attachWorkflowCardEvents();
+            });
         };
     }
     
-    // Attacher les événements aux cartes de workflow existantes
-    attachWorkflowCardEvents();
-    
-    // Observer le conteneur de cartes pour attacher les événements aux nouvelles cartes
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                attachWorkflowCardEvents();
-            }
-        });
-    });
-    
-    // Démarrer l'observation
-    if (workflowCards) {
-        observer.observe(workflowCards, { childList: true });
-    }
-    
-    // Gérer la fermeture de la modal
-    document.getElementById('close-editor-modal').addEventListener('click', function() {
-        editorModal.style.display = 'none';
-    });
-    
-    document.getElementById('close-editor').addEventListener('click', function() {
-        editorModal.style.display = 'none';
-    });
-    
-    // Fermer la modal en cliquant en dehors
-    window.addEventListener('click', function(event) {
-        if (event.target === editorModal) {
-            editorModal.style.display = 'none';
-        }
-    });
-    
-    console.log('Intégration workflow initialisée');
+    // Exposer les fonctions pour pouvoir les appeler depuis d'autres scripts
+    window.workflowIntegration = {
+        openVisualEditor,
+        attachWorkflowCardEvents
+    };
 });

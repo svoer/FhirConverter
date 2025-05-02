@@ -515,6 +515,9 @@
     <!-- Scripts -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <script src="js/auth-utils.js"></script>
+    <!-- Scripts pour l'éditeur visuel de workflow -->
+    <script src="js/workflow-editor.js"></script>
+    <script src="js/workflow-integration.js"></script>
     <script>
         // Fonction d'aide pour obtenir le token d'authentification
         function getToken() {
@@ -869,7 +872,7 @@
                     }
                     
                     const workflowResult = await workflowResponse.json();
-                    console.log('Workflow récupéré pour l\'éditeur avancé:', workflowResult);
+                    console.log('Workflow récupéré pour l\'éditeur visuel:', workflowResult);
                     
                     let workflow = workflowResult;
                     if (workflowResult.success && workflowResult.data) {
@@ -877,18 +880,13 @@
                     }
                     
                     // Mettre à jour le titre de l'éditeur
-                    editorTitle.textContent = `Éditeur avancé: ${workflow.name}`;
+                    editorTitle.textContent = `Éditeur visuel: ${workflow.name}`;
                     
-                    // Configurer l'iframe pour Node-RED (à adapter selon votre installation Node-RED)
-                    // Dans un environnement réel, cela serait l'URL vers l'éditeur Node-RED avec l'ID du workflow
-                    // La route correcte est celle configurée dans app.js avec middleware d'authentification
-                    nodeRedIframe.src = `/node-red/editor/?flowId=${workflow.id}&auth=${getToken()}`;
-                    
-                    // Afficher la modal de l'éditeur avancé
+                    // Afficher la modal de l'éditeur visuel
                     editorModal.style.display = 'block';
                     
                     // Informer l'utilisateur
-                    showNotification('Éditeur avancé de workflow ouvert.', 'info');
+                    showNotification('Éditeur visuel de workflow ouvert.', 'info');
                     
                 } catch (error) {
                     console.error('Erreur:', error);

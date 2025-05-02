@@ -1,1342 +1,1668 @@
 /**
- * Éditeur de workflow visuel pour FHIRHub
- * Basé sur ReactFlow pour une expérience similaire à n8n et ComfyUI
- * @author FHIRHub Team
+ * WorkflowEditor - Éditeur visuel de workflows pour FHIRHub
+ * Version 1.0.0
+ * 
+ * Éditeur visuel de type n8n/ComfyUI pour la création et l'édition de workflows
+ * dans l'application FHIRHub.
+ * 
+ * @author FHIRHub
+ * @requires JavaScript ES6+
  */
 
-// Configuration globale pour l'éditeur
-const workflowConfig = {
-  nodeTypes: {
-    'hl7-input': {
-      name: 'Entrée HL7',
-      description: 'Récupère un message HL7 comme source de données',
-      icon: 'sign-in-alt',
-      color: '#E63946',
-      inputs: 0,
-      outputs: 1,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Entrée HL7' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Récupère un message HL7' }
-      ]
-    },
-    'fhir-converter': {
-      name: 'Convertisseur FHIR',
-      description: 'Convertit un message HL7 en resources FHIR',
-      icon: 'exchange-alt',
-      color: '#457B9D',
-      inputs: 1,
-      outputs: 1,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Convertisseur FHIR' },
-        { name: 'messageType', label: 'Type de message', type: 'select', 
-          options: ['ADT', 'ORU', 'SIU', 'MDM', 'ORM'], default: 'ADT' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Conversion HL7 vers FHIR' }
-      ]
-    },
-    'segment-extractor': {
-      name: 'Extracteur de segment',
-      description: 'Extrait un segment spécifique d\'un message HL7',
-      icon: 'filter',
-      color: '#A8DADC',
-      inputs: 1,
-      outputs: 1,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Extracteur de segment' },
-        { name: 'segment', label: 'Segment', type: 'select', 
-          options: ['PID', 'PV1', 'OBR', 'OBX', 'MSH', 'EVN'], default: 'PID' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Extraire un segment spécifique' }
-      ]
-    },
-    'fhir-output': {
-      name: 'Sortie FHIR',
-      description: 'Envoie les données FHIR vers une destination',
-      icon: 'sign-out-alt',
-      color: '#1D3557',
-      inputs: 1,
-      outputs: 0,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Sortie FHIR' },
-        { name: 'format', label: 'Format de sortie', type: 'select', 
-          options: ['JSON', 'XML', 'NDJSON'], default: 'JSON' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Sortie de données FHIR' }
-      ]
-    },
-    'function': {
-      name: 'Fonction JavaScript',
-      description: 'Exécute du code JavaScript personnalisé',
-      icon: 'code',
-      color: '#3f51b5',
-      inputs: 1,
-      outputs: 1,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Fonction JavaScript' },
-        { name: 'code', label: 'Code', type: 'code', default: '// Utilisez "msg" pour accéder aux données entrantes\n// Retournez un objet qui sera transmis au nœud suivant\n\nreturn msg;' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Traitement personnalisé' }
-      ]
-    },
-    'condition': {
-      name: 'Condition',
-      description: 'Route les données selon une condition',
-      icon: 'code-branch',
-      color: '#9c27b0',
-      inputs: 1,
-      outputs: 2,
-      properties: [
-        { name: 'name', label: 'Nom', type: 'text', default: 'Condition' },
-        { name: 'condition', label: 'Condition', type: 'code', default: '// Retourne true ou false\nreturn true;' },
-        { name: 'description', label: 'Description', type: 'text', default: 'Routage conditionnel' }
-      ]
-    }
-  },
-  
-  // Catégories de nœuds pour la palette
-  categories: [
-    {
-      name: 'FHIRHub',
-      icon: 'fire',
-      types: ['hl7-input', 'fhir-converter', 'segment-extractor', 'fhir-output']
-    },
-    {
-      name: 'Logique',
-      icon: 'cogs',
-      types: ['function', 'condition']
-    }
-  ]
-};
-
-// Classe principale de l'éditeur de workflow
 class WorkflowEditor {
+  /**
+   * Crée une instance de l'éditeur de workflow
+   * @param {string} containerId - ID du conteneur HTML
+   * @param {Object} options - Options de configuration
+   */
   constructor(containerId, options = {}) {
-    this.container = document.getElementById(containerId);
-    if (!this.container) {
-      console.error(`Container with ID "${containerId}" not found`);
-      return;
-    }
-    
-    this.options = Object.assign({
+    // Configuration par défaut
+    this.options = {
       readOnly: false,
-      autosave: true,
-      workflowId: null
-    }, options);
+      allowPanning: true,
+      allowZooming: true,
+      snapToGrid: true,
+      gridSize: 20,
+      initialScale: 1,
+      minScale: 0.2,
+      maxScale: 2,
+      ...options
+    };
     
+    // État de l'éditeur
+    this.container = document.getElementById(containerId);
+    this.scale = this.options.initialScale;
+    this.offset = { x: 0, y: 0 };
+    this.isDragging = false;
+    this.dragStart = { x: 0, y: 0 };
     this.nodes = [];
     this.edges = [];
-    this.selectedNode = null;
-    this.selectedEdge = null;
+    this.selectedNodeId = null;
+    this.selectedEdgeId = null;
     this.nextNodeId = 1;
-    this.isDragging = false;
-    this.isPanning = false;
-    this.isEdgeCreating = false;
-    this.scale = 1;
-    this.translate = { x: 0, y: 0 };
-    this.mousePosition = { x: 0, y: 0 };
-    this.startEdgeInfo = null;
-    this.eventListeners = {};
+    this.nextEdgeId = 1;
+    this.tempEdge = null;
+    this.isCreatingEdge = false;
+    this.sourceNodeId = null;
+    this.sourcePortIndex = null;
+    this.workflowId = null;
+    this.workflowName = '';
+    this.workflowDescription = '';
     
+    // Propriétés pour les événements
+    this.eventListeners = {
+      'nodeAdded': [],
+      'nodeRemoved': [],
+      'edgeAdded': [],
+      'edgeRemoved': [],
+      'nodeSelected': [],
+      'edgeSelected': [],
+      'nodePositionChanged': [],
+      'workflowChanged': [],
+      'workflowSaved': []
+    };
+    
+    // Initialisation
     this.init();
   }
   
-  // Initialisation de l'éditeur
+  /**
+   * Initialise l'éditeur
+   */
   init() {
-    this.container.classList.add('workflow-editor-container');
-    this.container.innerHTML = '';
+    // Vérifier si le conteneur existe
+    if (!this.container) {
+      console.error('Conteneur d\'éditeur non trouvé');
+      return;
+    }
     
-    // Créer les éléments principaux
+    // Créer les éléments de l'UI
     this.createCanvas();
     this.createNodePalette();
     this.createControls();
     
-    // Attacher les événements
+    // Ajouter les événements
     this.attachEvents();
     
-    // Charger le workflow si un ID est fourni
-    if (this.options.workflowId) {
-      this.loadWorkflow(this.options.workflowId);
-    }
-    
-    // Première mise à jour du rendu
+    // Mettre à jour l'affichage
     this.update();
     
-    console.log('Éditeur de workflow initialisé avec succès');
+    console.log('Éditeur de workflow initialisé');
   }
   
-  // Créer le canvas où les nœuds seront affichés
+  /**
+   * Crée le canevas principal
+   */
   createCanvas() {
     this.canvas = document.createElement('div');
     this.canvas.className = 'workflow-canvas';
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = '100%';
-    this.canvas.style.position = 'relative';
-    this.canvas.style.overflow = 'hidden';
-    this.canvas.style.userSelect = 'none';
-    
-    this.canvasContent = document.createElement('div');
-    this.canvasContent.className = 'workflow-canvas-content';
-    this.canvasContent.style.position = 'absolute';
-    this.canvasContent.style.transformOrigin = '0 0';
-    
-    this.edgesLayer = document.createElement('svg');
-    this.edgesLayer.className = 'workflow-edges-layer';
-    this.edgesLayer.style.position = 'absolute';
-    this.edgesLayer.style.width = '100%';
-    this.edgesLayer.style.height = '100%';
-    this.edgesLayer.style.pointerEvents = 'none';
-    this.edgesLayer.style.overflow = 'visible';
-    
-    this.canvasContent.appendChild(this.edgesLayer);
-    this.canvas.appendChild(this.canvasContent);
     this.container.appendChild(this.canvas);
+    
+    // Ajouter une div pour les liaisons
+    this.edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.edgesLayer.className = 'edge';
+    this.canvas.appendChild(this.edgesLayer);
+    
+    // Ajouter la couche des noeuds
+    this.nodesLayer = document.createElement('div');
+    this.nodesLayer.className = 'nodes-layer';
+    this.canvas.appendChild(this.nodesLayer);
+    
+    // Overlay de chargement
+    this.loadingOverlay = document.createElement('div');
+    this.loadingOverlay.className = 'loading-overlay';
+    this.loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+    this.container.appendChild(this.loadingOverlay);
   }
   
-  // Créer la palette de nœuds
+  /**
+   * Crée la palette de noeuds
+   */
   createNodePalette() {
-    this.palette = document.createElement('div');
-    this.palette.className = 'node-palette';
+    this.nodePalette = document.createElement('div');
+    this.nodePalette.className = 'node-palette';
+    this.container.appendChild(this.nodePalette);
     
-    const header = document.createElement('div');
-    header.className = 'node-palette-header';
+    // Titre de la palette
+    const paletteTitle = document.createElement('h3');
+    paletteTitle.textContent = 'Nœuds disponibles';
+    this.nodePalette.appendChild(paletteTitle);
     
-    const title = document.createElement('h3');
-    title.textContent = 'Palette de nœuds';
+    // Catégories de noeuds
+    const categories = [
+      {
+        name: 'Entrées',
+        nodes: [
+          { type: 'hl7-input', label: 'Entrée HL7', icon: '📥' },
+          { type: 'json-input', label: 'Entrée JSON', icon: '📄' },
+          { type: 'file-input', label: 'Entrée fichier', icon: '📁' }
+        ]
+      },
+      {
+        name: 'Traitement',
+        nodes: [
+          { type: 'segment-extractor', label: 'Extraire segment', icon: '🔍' },
+          { type: 'field-mapper', label: 'Mapper champs', icon: '🔀' },
+          { type: 'condition', label: 'Condition', icon: '⚙️' },
+          { type: 'transform', label: 'Transformer', icon: '🔄' }
+        ]
+      },
+      {
+        name: 'Conversion',
+        nodes: [
+          { type: 'fhir-converter', label: 'Convertir FHIR', icon: '🔥' },
+          { type: 'template', label: 'Template JSON', icon: '📝' },
+          { type: 'custom-script', label: 'Script JS', icon: '📜' }
+        ]
+      },
+      {
+        name: 'Sorties',
+        nodes: [
+          { type: 'fhir-output', label: 'Sortie FHIR', icon: '📤' },
+          { type: 'api-call', label: 'Appel API', icon: '🌐' },
+          { type: 'file-output', label: 'Sortie fichier', icon: '💾' }
+        ]
+      }
+    ];
     
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'node-palette-close';
-    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-    closeBtn.addEventListener('click', () => {
-      this.palette.style.display = 'none';
-    });
-    
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-    this.palette.appendChild(header);
-    
-    // Créer les catégories et les nœuds
-    workflowConfig.categories.forEach(category => {
-      const categoryEl = document.createElement('div');
-      categoryEl.className = 'node-category';
+    // Créer les catégories
+    categories.forEach(category => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = 'node-palette-category';
       
-      const categoryHeader = document.createElement('div');
-      categoryHeader.className = 'category-header';
-      categoryHeader.innerHTML = `
-        <span><i class="fas fa-${category.icon}"></i> ${category.name}</span>
-        <i class="fas fa-chevron-down"></i>
-      `;
+      const categoryTitle = document.createElement('h4');
+      categoryTitle.textContent = category.name;
+      categoryDiv.appendChild(categoryTitle);
       
-      const categoryContent = document.createElement('div');
-      categoryContent.className = 'category-content';
-      
-      // Ajouter les nœuds de cette catégorie
-      category.types.forEach(nodeType => {
-        const nodeConfig = workflowConfig.nodeTypes[nodeType];
-        if (!nodeConfig) return;
-        
+      // Créer les éléments de noeuds
+      category.nodes.forEach(node => {
         const nodeItem = document.createElement('div');
-        nodeItem.className = 'node-item';
-        nodeItem.setAttribute('data-type', nodeType);
-        nodeItem.innerHTML = `
-          <div class="node-item-icon" style="background-color: ${nodeConfig.color}">
-            <i class="fas fa-${nodeConfig.icon}" style="color: white"></i>
-          </div>
-          <span>${nodeConfig.name}</span>
-        `;
+        nodeItem.className = 'node-palette-item';
+        nodeItem.setAttribute('data-node-type', node.type);
         
-        // Rendre le nœud draggable
-        nodeItem.draggable = true;
-        nodeItem.addEventListener('dragstart', (e) => this.handleNodeDragStart(e, nodeType));
+        const nodeIcon = document.createElement('div');
+        nodeIcon.className = 'node-palette-item-icon';
+        nodeIcon.textContent = node.icon;
         
-        categoryContent.appendChild(nodeItem);
+        const nodeLabel = document.createElement('div');
+        nodeLabel.className = 'node-palette-item-label';
+        nodeLabel.textContent = node.label;
+        
+        nodeItem.appendChild(nodeIcon);
+        nodeItem.appendChild(nodeLabel);
+        categoryDiv.appendChild(nodeItem);
+        
+        // Ajouter l'événement de drag & drop
+        this.handleNodeDragStart(nodeItem, node.type);
       });
       
-      // Toggle pour ouvrir/fermer la catégorie
-      categoryHeader.addEventListener('click', () => {
-        categoryContent.classList.toggle('open');
-        const icon = categoryHeader.querySelector('i.fas.fa-chevron-down');
-        if (categoryContent.classList.contains('open')) {
-          icon.className = 'fas fa-chevron-up';
-        } else {
-          icon.className = 'fas fa-chevron-down';
-        }
-      });
-      
-      categoryEl.appendChild(categoryHeader);
-      categoryEl.appendChild(categoryContent);
-      this.palette.appendChild(categoryEl);
+      this.nodePalette.appendChild(categoryDiv);
     });
-    
-    // Ouvrir la première catégorie par défaut
-    this.palette.querySelector('.category-content').classList.add('open');
-    this.palette.querySelector('.category-header i.fas.fa-chevron-down').className = 'fas fa-chevron-up';
-    
-    this.container.appendChild(this.palette);
   }
   
-  // Créer les contrôles de l'éditeur (zoom, sauvegarde, etc.)
+  /**
+   * Crée les contrôles de l'éditeur
+   */
   createControls() {
-    const controls = document.createElement('div');
-    controls.className = 'workflow-controls';
+    this.controls = document.createElement('div');
+    this.controls.className = 'editor-controls';
+    this.container.appendChild(this.controls);
     
-    // Bouton pour afficher/masquer la palette
-    const paletteBtn = document.createElement('button');
-    paletteBtn.className = 'control-button';
-    paletteBtn.innerHTML = '<i class="fas fa-th-large"></i>';
-    paletteBtn.title = 'Afficher/masquer la palette';
-    paletteBtn.addEventListener('click', () => {
-      this.palette.style.display = this.palette.style.display === 'none' ? 'block' : 'none';
-    });
-    
-    // Bouton de zoom +
+    // Boutons de zoom
     const zoomInBtn = document.createElement('button');
-    zoomInBtn.className = 'control-button';
-    zoomInBtn.innerHTML = '<i class="fas fa-search-plus"></i>';
+    zoomInBtn.innerHTML = '+';
     zoomInBtn.title = 'Zoom avant';
     zoomInBtn.addEventListener('click', () => this.zoomIn());
     
-    // Bouton de zoom -
     const zoomOutBtn = document.createElement('button');
-    zoomOutBtn.className = 'control-button';
-    zoomOutBtn.innerHTML = '<i class="fas fa-search-minus"></i>';
+    zoomOutBtn.innerHTML = '-';
     zoomOutBtn.title = 'Zoom arrière';
     zoomOutBtn.addEventListener('click', () => this.zoomOut());
     
-    // Bouton de réinitialisation de la vue
-    const resetViewBtn = document.createElement('button');
-    resetViewBtn.className = 'control-button';
-    resetViewBtn.innerHTML = '<i class="fas fa-home"></i>';
-    resetViewBtn.title = 'Réinitialiser la vue';
-    resetViewBtn.addEventListener('click', () => this.resetView());
+    const resetBtn = document.createElement('button');
+    resetBtn.innerHTML = '↻';
+    resetBtn.title = 'Réinitialiser la vue';
+    resetBtn.addEventListener('click', () => this.resetView());
     
-    // Bouton de sauvegarde
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'control-button';
-    saveBtn.innerHTML = '<i class="fas fa-save"></i>';
-    saveBtn.title = 'Sauvegarder le workflow';
-    saveBtn.addEventListener('click', () => this.saveWorkflow());
+    this.controls.appendChild(zoomInBtn);
+    this.controls.appendChild(zoomOutBtn);
+    this.controls.appendChild(resetBtn);
     
-    controls.appendChild(paletteBtn);
-    controls.appendChild(zoomInBtn);
-    controls.appendChild(zoomOutBtn);
-    controls.appendChild(resetViewBtn);
-    controls.appendChild(saveBtn);
+    // Panneau de propriétés des noeuds
+    this.propertiesPanel = document.createElement('div');
+    this.propertiesPanel.className = 'node-properties';
     
-    this.container.appendChild(controls);
+    const propertiesHeader = document.createElement('div');
+    propertiesHeader.className = 'properties-header';
+    
+    const propertiesTitle = document.createElement('h3');
+    propertiesTitle.id = 'properties-title';
+    propertiesTitle.textContent = 'Propriétés';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-properties';
+    closeBtn.innerHTML = '×';
+    closeBtn.addEventListener('click', () => {
+      this.propertiesPanel.classList.remove('open');
+    });
+    
+    propertiesHeader.appendChild(propertiesTitle);
+    propertiesHeader.appendChild(closeBtn);
+    
+    this.propertiesContent = document.createElement('div');
+    this.propertiesContent.className = 'properties-content';
+    
+    this.propertiesPanel.appendChild(propertiesHeader);
+    this.propertiesPanel.appendChild(this.propertiesContent);
+    
+    this.container.appendChild(this.propertiesPanel);
   }
   
-  // Attacher les événements d'interaction à l'éditeur
+  /**
+   * Attache les événements à l'éditeur
+   */
   attachEvents() {
-    // Événements du canvas pour la navigation
-    this.canvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 1.1 : 0.9;
-      this.zoom(delta, { x: e.clientX, y: e.clientY });
-    });
-    
-    this.canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) { // bouton gauche
-        if (!e.target.closest('.workflow-node') && !e.target.closest('.node-handle')) {
-          this.isPanning = true;
-          this.lastPanPoint = { x: e.clientX, y: e.clientY };
-          this.canvas.style.cursor = 'grabbing';
+    // Événements de la souris pour le panning
+    if (this.options.allowPanning) {
+      this.container.addEventListener('mousedown', (e) => {
+        // Si on clique sur le canvas (pas sur un noeud)
+        if (e.target === this.canvas || e.target === this.nodesLayer || e.target === this.edgesLayer) {
+          this.isDragging = true;
+          this.dragStart = {
+            x: e.clientX - this.offset.x,
+            y: e.clientY - this.offset.y
+          };
+          this.container.style.cursor = 'grabbing';
         }
-      }
-    });
-    
-    this.canvas.addEventListener('mousemove', (e) => {
-      this.mousePosition = { x: e.clientX, y: e.clientY };
+      });
       
-      if (this.isPanning) {
-        const dx = e.clientX - this.lastPanPoint.x;
-        const dy = e.clientY - this.lastPanPoint.y;
-        
-        this.translate.x += dx / this.scale;
-        this.translate.y += dy / this.scale;
-        
-        this.lastPanPoint = { x: e.clientX, y: e.clientY };
-        this.updateTransform();
-      }
+      document.addEventListener('mousemove', (e) => {
+        if (this.isDragging) {
+          this.offset.x = e.clientX - this.dragStart.x;
+          this.offset.y = e.clientY - this.dragStart.y;
+          this.updateTransform();
+        } else if (this.isCreatingEdge) {
+          this.updateTempEdge(e);
+        }
+      });
       
-      if (this.isEdgeCreating) {
-        this.updateTempEdge();
-      }
-    });
-    
-    this.canvas.addEventListener('mouseup', (e) => {
-      if (e.button === 0) { // bouton gauche
-        if (this.isPanning) {
-          this.isPanning = false;
-          this.canvas.style.cursor = '';
+      document.addEventListener('mouseup', () => {
+        if (this.isDragging) {
+          this.isDragging = false;
+          this.container.style.cursor = 'default';
         }
         
-        if (this.isEdgeCreating) {
-          const targetHandle = e.target.closest('.node-handle');
-          if (targetHandle && targetHandle.classList.contains('input')) {
-            const targetNode = targetHandle.closest('.workflow-node');
-            if (targetNode) {
-              const targetNodeId = targetNode.getAttribute('data-id');
-              this.createEdge(this.startEdgeInfo.nodeId, targetNodeId);
-            }
-          }
-          
-          this.isEdgeCreating = false;
+        if (this.isCreatingEdge) {
           this.removeTempEdge();
+          this.isCreatingEdge = false;
+          this.sourceNodeId = null;
+          this.sourcePortIndex = null;
         }
-      }
-    });
+      });
+    }
     
-    // Gérer le drop des nœuds depuis la palette
-    this.canvas.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
-    
-    this.canvas.addEventListener('drop', (e) => {
-      e.preventDefault();
-      
-      const nodeType = e.dataTransfer.getData('node-type');
-      if (nodeType) {
-        const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / this.scale - this.translate.x;
-        const y = (e.clientY - rect.top) / this.scale - this.translate.y;
+    // Événement de la molette pour le zoom
+    if (this.options.allowZooming) {
+      this.container.addEventListener('wheel', (e) => {
+        e.preventDefault();
         
-        this.addNode(nodeType, { x, y });
-      }
-    });
-    
-    // Événements sur document pour capturer les clics même si la souris sort du canvas
-    document.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
-        this.isPanning = false;
-        this.canvas.style.cursor = '';
+        // Calculer le point central du zoom
+        const rect = this.container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
         
-        if (this.isEdgeCreating) {
-          this.isEdgeCreating = false;
-          this.removeTempEdge();
-        }
-      }
-    });
+        // Déterminer la direction du zoom
+        const delta = e.deltaY < 0 ? 1.1 : 0.9;
+        
+        // Appliquer le zoom
+        this.zoom(delta, { x: mouseX, y: mouseY });
+      });
+    }
     
-    // Événement pour la touche Delete
+    // Événement pour supprimer un noeud sélectionné avec Delete
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (this.selectedNode) {
-          this.deleteNode(this.selectedNode);
-        } else if (this.selectedEdge) {
-          this.deleteEdge(this.selectedEdge);
+      if (e.key === 'Delete' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        if (this.selectedNodeId) {
+          this.deleteNode(this.selectedNodeId);
+        } else if (this.selectedEdgeId) {
+          this.deleteEdge(this.selectedEdgeId);
         }
       }
     });
   }
   
-  // Gérer le drag start d'un nœud depuis la palette
-  handleNodeDragStart(e, nodeType) {
-    e.dataTransfer.setData('node-type', nodeType);
-    e.dataTransfer.effectAllowed = 'copy';
-    
-    // Créer une image fantôme personnalisée pour le drag & drop
-    const nodeConfig = workflowConfig.nodeTypes[nodeType];
-    const ghost = document.createElement('div');
-    ghost.className = 'workflow-node';
-    ghost.style.width = '150px';
-    ghost.style.height = '60px';
-    ghost.style.backgroundColor = nodeConfig.color;
-    ghost.style.borderRadius = '5px';
-    ghost.style.color = 'white';
-    ghost.style.padding = '10px';
-    ghost.style.display = 'flex';
-    ghost.style.alignItems = 'center';
-    ghost.style.justifyContent = 'center';
-    ghost.style.opacity = '0.7';
-    ghost.textContent = nodeConfig.name;
-    
-    document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 75, 30);
-    
-    // Nettoyer après un instant
-    setTimeout(() => {
-      document.body.removeChild(ghost);
-    }, 0);
+  /**
+   * Gère le début du glisser-déposer d'un noeud depuis la palette
+   * @param {HTMLElement} element - Élément HTML du noeud dans la palette
+   * @param {string} nodeType - Type de noeud
+   */
+  handleNodeDragStart(element, nodeType) {
+    element.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      
+      // Créer un élément fantôme pour le drag & drop
+      const ghost = element.cloneNode(true);
+      ghost.style.position = 'absolute';
+      ghost.style.zIndex = '1000';
+      ghost.style.opacity = '0.7';
+      ghost.style.pointerEvents = 'none';
+      document.body.appendChild(ghost);
+      
+      // Position initiale
+      const offsetX = e.clientX - element.getBoundingClientRect().left;
+      const offsetY = e.clientY - element.getBoundingClientRect().top;
+      
+      // Déplacer le fantôme avec la souris
+      const moveGhost = (moveEvent) => {
+        ghost.style.left = (moveEvent.clientX - offsetX) + 'px';
+        ghost.style.top = (moveEvent.clientY - offsetY) + 'px';
+      };
+      
+      // Gérer le dépôt du noeud
+      const dropGhost = (dropEvent) => {
+        document.removeEventListener('mousemove', moveGhost);
+        document.removeEventListener('mouseup', dropGhost);
+        
+        // Calculer la position dans le canvas
+        const rect = this.canvas.getBoundingClientRect();
+        if (
+          dropEvent.clientX > rect.left && dropEvent.clientX < rect.right &&
+          dropEvent.clientY > rect.top && dropEvent.clientY < rect.bottom
+        ) {
+          // Convertir les coordonnées écran en coordonnées canvas
+          const canvasX = (dropEvent.clientX - rect.left - this.offset.x) / this.scale;
+          const canvasY = (dropEvent.clientY - rect.top - this.offset.y) / this.scale;
+          
+          // Ajouter le noeud
+          this.addNode(nodeType, { x: canvasX, y: canvasY });
+        }
+        
+        // Supprimer le fantôme
+        ghost.remove();
+      };
+      
+      // Ajouter les événements
+      document.addEventListener('mousemove', moveGhost);
+      document.addEventListener('mouseup', dropGhost);
+      
+      // Positionner le fantôme initialement
+      moveGhost(e);
+    });
   }
   
-  // Créer un nœud dans l'éditeur
+  /**
+   * Ajoute un noeud au workflow
+   * @param {string} type - Type de noeud
+   * @param {Object} position - Position du noeud { x, y }
+   * @returns {Object} Le noeud créé
+   */
   addNode(type, position = { x: 100, y: 100 }) {
-    const nodeConfig = workflowConfig.nodeTypes[type];
-    if (!nodeConfig) return null;
+    // Convertir position à la grille si nécessaire
+    if (this.options.snapToGrid) {
+      position.x = Math.round(position.x / this.options.gridSize) * this.options.gridSize;
+      position.y = Math.round(position.y / this.options.gridSize) * this.options.gridSize;
+    }
     
+    // Créer l'objet du noeud
     const nodeId = `node_${this.nextNodeId++}`;
+    const nodeConfig = this.getNodeConfig(type);
     
     const node = {
       id: nodeId,
       type: type,
+      label: nodeConfig.label || type,
       position: position,
-      data: {
-        name: nodeConfig.properties.find(p => p.name === 'name')?.default || nodeConfig.name,
-        ...Object.fromEntries(
-          nodeConfig.properties
-            .filter(p => p.name !== 'name')
-            .map(p => [p.name, p.default])
-        )
-      }
+      width: 180,
+      height: 100,
+      inputs: nodeConfig.inputs || [],
+      outputs: nodeConfig.outputs || [],
+      data: {}
     };
     
+    // Ajouter le noeud à la liste
     this.nodes.push(node);
+    
+    // Créer l'élément DOM
     this.createNodeElement(node);
-    this.update();
     
-    // Événement personnalisé
+    // Émettre l'événement
     this.emit('nodeAdded', node);
+    this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     
-    // Auto-sauvegarde si configuré
-    if (this.options.autosave) {
-      this.saveWorkflow();
-    }
+    // Sélectionner le nouveau noeud
+    this.selectNode(nodeId);
     
     return node;
   }
   
-  // Créer un élément DOM pour représenter un nœud
+  /**
+   * Obtient la configuration pour un type de noeud
+   * @param {string} type - Type de noeud
+   * @returns {Object} Configuration du noeud
+   */
+  getNodeConfig(type) {
+    // Configurations par défaut pour les différents types de noeuds
+    const configs = {
+      'hl7-input': {
+        label: 'Entrée HL7',
+        inputs: [],
+        outputs: [{ name: 'message', label: 'Message' }]
+      },
+      'json-input': {
+        label: 'Entrée JSON',
+        inputs: [],
+        outputs: [{ name: 'json', label: 'JSON' }]
+      },
+      'file-input': {
+        label: 'Entrée fichier',
+        inputs: [],
+        outputs: [{ name: 'content', label: 'Contenu' }]
+      },
+      'segment-extractor': {
+        label: 'Extraire segment',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'segment', label: 'Segment' }]
+      },
+      'field-mapper': {
+        label: 'Mapper champs',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }]
+      },
+      'condition': {
+        label: 'Condition',
+        inputs: [{ name: 'value', label: 'Valeur' }],
+        outputs: [
+          { name: 'true', label: 'Vrai' },
+          { name: 'false', label: 'Faux' }
+        ]
+      },
+      'transform': {
+        label: 'Transformer',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }]
+      },
+      'fhir-converter': {
+        label: 'Convertir FHIR',
+        inputs: [{ name: 'hl7', label: 'HL7' }],
+        outputs: [{ name: 'fhir', label: 'FHIR' }]
+      },
+      'template': {
+        label: 'Template JSON',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'result', label: 'Résultat' }]
+      },
+      'custom-script': {
+        label: 'Script JS',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }]
+      },
+      'fhir-output': {
+        label: 'Sortie FHIR',
+        inputs: [{ name: 'fhir', label: 'FHIR' }],
+        outputs: []
+      },
+      'api-call': {
+        label: 'Appel API',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'response', label: 'Réponse' }]
+      },
+      'file-output': {
+        label: 'Sortie fichier',
+        inputs: [{ name: 'content', label: 'Contenu' }],
+        outputs: []
+      }
+    };
+    
+    return configs[type] || { label: type, inputs: [], outputs: [] };
+  }
+  
+  /**
+   * Crée l'élément DOM pour un noeud
+   * @param {Object} node - Noeud à créer
+   */
   createNodeElement(node) {
-    const nodeConfig = workflowConfig.nodeTypes[node.type];
+    const nodeElement = document.createElement('div');
+    nodeElement.id = node.id;
+    nodeElement.className = 'node';
+    nodeElement.style.left = `${node.position.x}px`;
+    nodeElement.style.top = `${node.position.y}px`;
+    nodeElement.style.width = `${node.width}px`;
     
-    // Créer l'élément nœud
-    const nodeEl = document.createElement('div');
-    nodeEl.className = `workflow-node node-${node.type}`;
-    nodeEl.setAttribute('data-id', node.id);
-    nodeEl.style.position = 'absolute';
-    nodeEl.style.left = `${node.position.x}px`;
-    nodeEl.style.top = `${node.position.y}px`;
-    
-    // En-tête du nœud avec l'icône et le nom
+    // En-tête du noeud
     const nodeHeader = document.createElement('div');
     nodeHeader.className = 'node-header';
-    nodeHeader.innerHTML = `
-      <div class="node-header-icon">
-        <i class="fas fa-${nodeConfig.icon}"></i>
-      </div>
-      <span class="node-title">${node.data.name}</span>
-    `;
     
-    // Contenu du nœud
-    const nodeContent = document.createElement('div');
-    nodeContent.className = 'node-content';
-    nodeContent.textContent = node.data.description || `Nœud ${node.type}`;
+    const nodeTitle = document.createElement('div');
+    nodeTitle.className = 'node-title';
+    nodeTitle.textContent = node.label;
     
-    // Ajouter les poignées d'entrée/sortie selon la configuration
-    if (nodeConfig.inputs > 0) {
-      const inputHandle = document.createElement('div');
-      inputHandle.className = 'node-handle input';
-      inputHandle.style.position = 'absolute';
-      inputHandle.style.left = '-6px';
-      inputHandle.style.top = '25px';
-      nodeEl.appendChild(inputHandle);
+    const nodeType = document.createElement('div');
+    nodeType.className = 'node-type';
+    nodeType.textContent = node.type;
+    
+    nodeHeader.appendChild(nodeTitle);
+    nodeHeader.appendChild(nodeType);
+    nodeElement.appendChild(nodeHeader);
+    
+    // Corps du noeud
+    const nodeBody = document.createElement('div');
+    nodeBody.className = 'node-body';
+    
+    // Entrées
+    if (node.inputs.length > 0) {
+      const inputsContainer = document.createElement('div');
+      inputsContainer.className = 'node-inputs';
       
-      // Événement pour recevoir une connexion
-      inputHandle.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
+      node.inputs.forEach((input, index) => {
+        const portElement = document.createElement('div');
+        portElement.className = 'node-port node-input';
+        portElement.setAttribute('data-port-index', index);
+        portElement.setAttribute('data-port-type', 'input');
+        
+        const portHandle = document.createElement('div');
+        portHandle.className = 'port-handle';
+        
+        const portLabel = document.createElement('div');
+        portLabel.className = 'port-label';
+        portLabel.textContent = input.label;
+        
+        portElement.appendChild(portHandle);
+        portElement.appendChild(portLabel);
+        inputsContainer.appendChild(portElement);
+        
+        // Ajouter l'événement pour la connexion d'arêtes
+        portHandle.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          // TODO: Gérer la création d'arêtes en entrée
+        });
       });
+      
+      nodeBody.appendChild(inputsContainer);
     }
     
-    if (nodeConfig.outputs > 0) {
-      for (let i = 0; i < nodeConfig.outputs; i++) {
-        const outputHandle = document.createElement('div');
-        outputHandle.className = 'node-handle output';
-        outputHandle.setAttribute('data-output-idx', i);
-        outputHandle.style.position = 'absolute';
-        outputHandle.style.right = '-6px';
+    // Sorties
+    if (node.outputs.length > 0) {
+      const outputsContainer = document.createElement('div');
+      outputsContainer.className = 'node-outputs';
+      
+      node.outputs.forEach((output, index) => {
+        const portElement = document.createElement('div');
+        portElement.className = 'node-port node-output';
+        portElement.setAttribute('data-port-index', index);
+        portElement.setAttribute('data-port-type', 'output');
         
-        // Positionner verticalement selon le nombre de sorties
-        if (nodeConfig.outputs === 1) {
-          outputHandle.style.top = '25px';
-        } else {
-          const spacing = 30;
-          const totalHeight = (nodeConfig.outputs - 1) * spacing;
-          outputHandle.style.top = `${25 - totalHeight/2 + i * spacing}px`;
-        }
+        const portLabel = document.createElement('div');
+        portLabel.className = 'port-label';
+        portLabel.textContent = output.label;
         
-        nodeEl.appendChild(outputHandle);
+        const portHandle = document.createElement('div');
+        portHandle.className = 'port-handle';
         
-        // Événement pour démarrer une connexion
-        outputHandle.addEventListener('mousedown', (e) => {
+        portElement.appendChild(portLabel);
+        portElement.appendChild(portHandle);
+        outputsContainer.appendChild(portElement);
+        
+        // Ajouter l'événement pour la création d'arêtes
+        portHandle.addEventListener('mousedown', (e) => {
           e.stopPropagation();
           
-          this.isEdgeCreating = true;
-          this.startEdgeInfo = {
-            nodeId: node.id,
-            outputIdx: parseInt(outputHandle.getAttribute('data-output-idx')),
-            x: node.position.x + nodeEl.offsetWidth,
-            y: node.position.y + outputHandle.offsetTop + 6
-          };
+          this.sourceNodeId = node.id;
+          this.sourcePortIndex = index;
+          this.isCreatingEdge = true;
           
           this.createTempEdge();
+          
+          const rect = portHandle.getBoundingClientRect();
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const startX = rect.left + rect.width / 2 - canvasRect.left;
+          const startY = rect.top + rect.height / 2 - canvasRect.top;
+          
+          this.updateTempEdge({ clientX: e.clientX, clientY: e.clientY });
+          
+          // Ajouter l'événement pour suivre la fin de l'arête
+          const mousemove = (moveEvent) => {
+            this.updateTempEdge(moveEvent);
+          };
+          
+          const mouseup = (upEvent) => {
+            document.removeEventListener('mousemove', mousemove);
+            document.removeEventListener('mouseup', mouseup);
+            
+            // Vérifier si nous avons relâché sur un port d'entrée
+            const target = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+            if (target && target.classList.contains('port-handle')) {
+              const targetPort = target.parentElement;
+              
+              if (targetPort && targetPort.getAttribute('data-port-type') === 'input') {
+                const targetNode = targetPort.closest('.node');
+                if (targetNode && targetNode.id !== node.id) {
+                  const targetPortIndex = parseInt(targetPort.getAttribute('data-port-index'));
+                  
+                  // Créer l'arête
+                  this.createEdge(
+                    this.sourceNodeId,
+                    targetNode.id,
+                    this.sourcePortIndex,
+                    targetPortIndex
+                  );
+                }
+              }
+            }
+            
+            this.removeTempEdge();
+            this.isCreatingEdge = false;
+            this.sourceNodeId = null;
+            this.sourcePortIndex = null;
+          };
+          
+          document.addEventListener('mousemove', mousemove);
+          document.addEventListener('mouseup', mouseup);
         });
-      }
+      });
+      
+      nodeBody.appendChild(outputsContainer);
     }
     
-    // Ajouter les événements pour manipuler le nœud
-    nodeEl.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.node-handle')) return;
-      
-      e.stopPropagation();
-      
-      // Mettre le nœud au premier plan
-      nodeEl.style.zIndex = '10';
-      
-      // Sélectionner le nœud
-      this.selectNode(node.id);
-      
-      // Démarrer le déplacement du nœud
-      this.isDragging = true;
-      this.dragOffset = {
-        x: e.clientX - node.position.x * this.scale,
-        y: e.clientY - node.position.y * this.scale
-      };
-      
-      const onMouseMove = (e) => {
-        if (!this.isDragging) return;
+    nodeElement.appendChild(nodeBody);
+    
+    // Événements du noeud
+    nodeElement.addEventListener('mousedown', (e) => {
+      if (e.target === nodeHeader || e.target === nodeTitle || e.target === nodeType) {
+        // Dragging du noeud
+        e.stopPropagation();
         
-        const newX = (e.clientX - this.dragOffset.x) / this.scale;
-        const newY = (e.clientY - this.dragOffset.y) / this.scale;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startLeft = node.position.x;
+        const startTop = node.position.y;
         
-        // Mettre à jour la position
-        node.position.x = newX;
-        node.position.y = newY;
+        const mousemove = (moveEvent) => {
+          const dx = (moveEvent.clientX - startX) / this.scale;
+          const dy = (moveEvent.clientY - startY) / this.scale;
+          
+          let newX = startLeft + dx;
+          let newY = startTop + dy;
+          
+          // Snap to grid
+          if (this.options.snapToGrid) {
+            newX = Math.round(newX / this.options.gridSize) * this.options.gridSize;
+            newY = Math.round(newY / this.options.gridSize) * this.options.gridSize;
+          }
+          
+          // Mettre à jour la position du noeud
+          node.position.x = newX;
+          node.position.y = newY;
+          nodeElement.style.left = `${newX}px`;
+          nodeElement.style.top = `${newY}px`;
+          
+          // Mettre à jour les arêtes
+          this.updateEdges();
+          
+          // Émettre l'événement
+          this.emit('nodePositionChanged', node);
+        };
         
-        // Mettre à jour l'affichage
-        nodeEl.style.left = `${newX}px`;
-        nodeEl.style.top = `${newY}px`;
+        const mouseup = () => {
+          document.removeEventListener('mousemove', mousemove);
+          document.removeEventListener('mouseup', mouseup);
+          this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+        };
         
-        // Mettre à jour les connexions
-        this.updateEdges();
-      };
-      
-      const onMouseUp = () => {
-        this.isDragging = false;
-        
-        // Réinitialiser le z-index
-        setTimeout(() => {
-          nodeEl.style.zIndex = '';
-        }, 100);
-        
-        // Auto-sauvegarde si configuré
-        if (this.options.autosave) {
-          this.saveWorkflow();
-        }
-        
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-      };
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', mousemove);
+        document.addEventListener('mouseup', mouseup);
+      }
     });
     
-    // Double-clic pour éditer les propriétés
-    nodeEl.addEventListener('dblclick', () => {
+    // Sélection du noeud
+    nodeElement.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectNode(node.id);
       this.openNodeProperties(node.id);
     });
     
-    // Assembler le nœud
-    nodeEl.appendChild(nodeHeader);
-    nodeEl.appendChild(nodeContent);
-    
-    // Ajouter au canvas
-    this.canvasContent.appendChild(nodeEl);
+    this.nodesLayer.appendChild(nodeElement);
   }
   
-  // Sélectionner un nœud
+  /**
+   * Sélectionne un noeud
+   * @param {string} nodeId - ID du noeud à sélectionner
+   */
   selectNode(nodeId) {
-    // Désélectionner le nœud actuellement sélectionné
-    if (this.selectedNode) {
-      const oldNodeEl = this.canvasContent.querySelector(`.workflow-node[data-id="${this.selectedNode}"]`);
-      if (oldNodeEl) {
-        oldNodeEl.classList.remove('selected');
+    // Désélectionner le noeud précédemment sélectionné
+    if (this.selectedNodeId) {
+      const prevNode = document.getElementById(this.selectedNodeId);
+      if (prevNode) {
+        prevNode.classList.remove('selected');
       }
     }
     
-    // Désélectionner la connexion actuellement sélectionnée
-    if (this.selectedEdge) {
-      const oldEdgeEl = this.edgesLayer.querySelector(`.workflow-edge[data-id="${this.selectedEdge}"]`);
-      if (oldEdgeEl) {
-        oldEdgeEl.classList.remove('selected');
+    // Désélectionner l'arête précédemment sélectionnée
+    if (this.selectedEdgeId) {
+      const prevEdge = document.getElementById(this.selectedEdgeId);
+      if (prevEdge) {
+        prevEdge.classList.remove('selected');
       }
-      this.selectedEdge = null;
+      this.selectedEdgeId = null;
     }
     
-    // Sélectionner le nouveau nœud
-    this.selectedNode = nodeId;
-    const nodeEl = this.canvasContent.querySelector(`.workflow-node[data-id="${nodeId}"]`);
-    if (nodeEl) {
-      nodeEl.classList.add('selected');
+    // Sélectionner le nouveau noeud
+    this.selectedNodeId = nodeId;
+    const node = document.getElementById(nodeId);
+    if (node) {
+      node.classList.add('selected');
+      this.emit('nodeSelected', this.getNodeById(nodeId));
     }
-    
-    // Événement personnalisé
-    this.emit('nodeSelected', this.getNodeById(nodeId));
   }
   
-  // Supprimer un nœud
+  /**
+   * Supprime un noeud
+   * @param {string} nodeId - ID du noeud à supprimer
+   */
   deleteNode(nodeId) {
-    // Supprimer les connexions liées à ce nœud
-    this.edges = this.edges.filter(edge => {
-      if (edge.source === nodeId || edge.target === nodeId) {
-        // Supprimer l'élément de la connexion du DOM
-        const edgeEl = this.edgesLayer.querySelector(`.workflow-edge[data-id="${edge.id}"]`);
-        if (edgeEl) {
-          edgeEl.remove();
-        }
-        return false;
-      }
-      return true;
+    // Supprimer les arêtes connectées à ce noeud
+    const connectedEdges = this.edges.filter(
+      edge => edge.source === nodeId || edge.target === nodeId
+    );
+    
+    connectedEdges.forEach(edge => {
+      this.deleteEdge(edge.id);
     });
     
-    // Supprimer le nœud de la liste
-    this.nodes = this.nodes.filter(node => node.id !== nodeId);
-    
-    // Supprimer l'élément du nœud du DOM
-    const nodeEl = this.canvasContent.querySelector(`.workflow-node[data-id="${nodeId}"]`);
-    if (nodeEl) {
-      nodeEl.remove();
-    }
-    
-    // Réinitialiser la sélection si nécessaire
-    if (this.selectedNode === nodeId) {
-      this.selectedNode = null;
-    }
-    
-    // Événement personnalisé
-    this.emit('nodeDeleted', nodeId);
-    
-    // Auto-sauvegarde si configuré
-    if (this.options.autosave) {
-      this.saveWorkflow();
+    // Supprimer le noeud de la liste
+    const nodeIndex = this.nodes.findIndex(node => node.id === nodeId);
+    if (nodeIndex !== -1) {
+      const node = this.nodes[nodeIndex];
+      this.nodes.splice(nodeIndex, 1);
+      
+      // Supprimer l'élément DOM
+      const nodeElement = document.getElementById(nodeId);
+      if (nodeElement) {
+        nodeElement.remove();
+      }
+      
+      // Désélectionner le noeud si c'était celui sélectionné
+      if (this.selectedNodeId === nodeId) {
+        this.selectedNodeId = null;
+        this.propertiesPanel.classList.remove('open');
+      }
+      
+      // Émettre l'événement
+      this.emit('nodeRemoved', node);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     }
   }
   
-  // Créer une connexion entre deux nœuds
-  createEdge(sourceId, targetId, sourceOutput = 0) {
-    // Vérifier si les nœuds existent
-    const sourceNode = this.getNodeById(sourceId);
-    const targetNode = this.getNodeById(targetId);
-    
-    if (!sourceNode || !targetNode) {
-      console.error('Les nœuds source ou cible n\'existent pas');
-      return null;
-    }
-    
-    // Vérifier qu'il n'y a pas déjà une connexion identique
-    const existingEdge = this.edges.find(edge => 
-      edge.source === sourceId && 
-      edge.target === targetId && 
-      edge.sourceOutput === sourceOutput
+  /**
+   * Crée une arête entre deux noeuds
+   * @param {string} sourceId - ID du noeud source
+   * @param {string} targetId - ID du noeud cible
+   * @param {number} sourceOutput - Index de la sortie du noeud source
+   * @param {number} targetInput - Index de l'entrée du noeud cible
+   * @returns {Object} L'arête créée
+   */
+  createEdge(sourceId, targetId, sourceOutput = 0, targetInput = 0) {
+    // Vérifier si une arête similaire existe déjà
+    const existingEdge = this.edges.find(
+      edge => edge.source === sourceId && 
+              edge.target === targetId && 
+              edge.sourceOutput === sourceOutput &&
+              edge.targetInput === targetInput
     );
     
     if (existingEdge) {
-      console.warn('Une connexion identique existe déjà');
       return existingEdge;
     }
     
-    // Créer la nouvelle connexion
-    const edgeId = `edge_${Date.now()}`;
+    // Créer l'objet de l'arête
+    const edgeId = `edge_${this.nextEdgeId++}`;
     const edge = {
       id: edgeId,
       source: sourceId,
       target: targetId,
-      sourceOutput: sourceOutput
+      sourceOutput: sourceOutput,
+      targetInput: targetInput
     };
     
+    // Ajouter l'arête à la liste
     this.edges.push(edge);
+    
+    // Créer l'élément DOM
     this.createEdgeElement(edge);
     
-    // Événement personnalisé
-    this.emit('edgeAdded', edge);
+    // Mettre à jour les ports pour ajouter la classe connected
+    const sourceNode = document.getElementById(sourceId);
+    const targetNode = document.getElementById(targetId);
     
-    // Auto-sauvegarde si configuré
-    if (this.options.autosave) {
-      this.saveWorkflow();
+    if (sourceNode && targetNode) {
+      const sourcePort = sourceNode.querySelector(`.node-output[data-port-index="${sourceOutput}"] .port-handle`);
+      const targetPort = targetNode.querySelector(`.node-input[data-port-index="${targetInput}"] .port-handle`);
+      
+      if (sourcePort && targetPort) {
+        sourcePort.classList.add('connected');
+        targetPort.classList.add('connected');
+      }
     }
+    
+    // Émettre l'événement
+    this.emit('edgeAdded', edge);
+    this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     
     return edge;
   }
   
-  // Créer un élément SVG pour représenter une connexion
+  /**
+   * Crée l'élément DOM pour une arête
+   * @param {Object} edge - Arête à créer
+   */
   createEdgeElement(edge) {
-    const sourceNode = this.getNodeById(edge.source);
-    const targetNode = this.getNodeById(edge.target);
-    
-    if (!sourceNode || !targetNode) return;
-    
-    const sourceEl = this.canvasContent.querySelector(`.workflow-node[data-id="${edge.source}"]`);
-    const targetEl = this.canvasContent.querySelector(`.workflow-node[data-id="${edge.target}"]`);
-    
-    if (!sourceEl || !targetEl) return;
-    
-    // Trouver les coordonnées des points de connexion
-    const sourceOutput = sourceEl.querySelector(`.node-handle.output[data-output-idx="${edge.sourceOutput}"]`);
-    const targetInput = targetEl.querySelector('.node-handle.input');
-    
-    if (!sourceOutput || !targetInput) return;
-    
-    const sourceRect = sourceOutput.getBoundingClientRect();
-    const targetRect = targetInput.getBoundingClientRect();
-    const canvasRect = this.canvas.getBoundingClientRect();
-    
-    const sourcePoint = {
-      x: (sourceRect.left - canvasRect.left) / this.scale + 6,
-      y: (sourceRect.top - canvasRect.top) / this.scale + 6
-    };
-    
-    const targetPoint = {
-      x: (targetRect.left - canvasRect.left) / this.scale + 6,
-      y: (targetRect.top - canvasRect.top) / this.scale + 6
-    };
-    
-    // Créer l'élément de connexion (chemin SVG)
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.classList.add('workflow-edge');
-    g.setAttribute('data-id', edge.id);
+    const edgeElement = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    edgeElement.id = edge.id;
+    edgeElement.className = 'edge';
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.classList.add('workflow-edge-path');
+    edgeElement.appendChild(path);
     
-    // Calculer le chemin en courbe de Bézier
-    const dx = Math.abs(targetPoint.x - sourcePoint.x);
-    const pathString = `M ${sourcePoint.x} ${sourcePoint.y} C ${sourcePoint.x + dx/2} ${sourcePoint.y}, ${targetPoint.x - dx/2} ${targetPoint.y}, ${targetPoint.x} ${targetPoint.y}`;
-    
-    path.setAttribute('d', pathString);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#bbb');
-    path.setAttribute('stroke-width', '2');
-    
-    g.appendChild(path);
-    this.edgesLayer.appendChild(g);
-    
-    // Ajouter un événement de clic pour sélectionner la connexion
-    g.addEventListener('click', (e) => {
+    // Ajouter l'événement pour la sélection
+    edgeElement.addEventListener('click', (e) => {
       e.stopPropagation();
       this.selectEdge(edge.id);
     });
+    
+    this.edgesLayer.appendChild(edgeElement);
+    
+    // Positionner l'arête
+    this.updateEdgePath(edge);
   }
   
-  // Sélectionner une connexion
+  /**
+   * Met à jour le chemin d'une arête
+   * @param {Object} edge - Arête à mettre à jour
+   */
+  updateEdgePath(edge) {
+    const sourceNode = this.getNodeById(edge.source);
+    const targetNode = this.getNodeById(edge.target);
+    
+    if (!sourceNode || !targetNode) {
+      return;
+    }
+    
+    const sourceElement = document.getElementById(edge.source);
+    const targetElement = document.getElementById(edge.target);
+    
+    if (!sourceElement || !targetElement) {
+      return;
+    }
+    
+    const sourcePort = sourceElement.querySelector(`.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`);
+    const targetPort = targetElement.querySelector(`.node-input[data-port-index="${edge.targetInput}"] .port-handle`);
+    
+    if (!sourcePort || !targetPort) {
+      return;
+    }
+    
+    const sourceRect = sourcePort.getBoundingClientRect();
+    const targetRect = targetPort.getBoundingClientRect();
+    const canvasRect = this.canvas.getBoundingClientRect();
+    
+    const start = {
+      x: (sourceRect.left + sourceRect.width / 2 - canvasRect.left) / this.scale,
+      y: (sourceRect.top + sourceRect.height / 2 - canvasRect.top) / this.scale
+    };
+    
+    const end = {
+      x: (targetRect.left + targetRect.width / 2 - canvasRect.left) / this.scale,
+      y: (targetRect.top + targetRect.height / 2 - canvasRect.top) / this.scale
+    };
+    
+    // Ajuster les coordonnées pour tenir compte du décalage du canvas
+    start.x -= this.offset.x / this.scale;
+    start.y -= this.offset.y / this.scale;
+    end.x -= this.offset.x / this.scale;
+    end.y -= this.offset.y / this.scale;
+    
+    // Calculer les points de contrôle pour une courbe de Bézier
+    const dx = Math.abs(end.x - start.x);
+    const controlDistance = Math.min(dx * 0.5, 80);
+    
+    const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
+    
+    // Mettre à jour le chemin
+    const edgeElement = document.getElementById(edge.id);
+    if (edgeElement) {
+      const path = edgeElement.querySelector('path');
+      if (path) {
+        path.setAttribute('d', d);
+      }
+    }
+  }
+  
+  /**
+   * Sélectionne une arête
+   * @param {string} edgeId - ID de l'arête à sélectionner
+   */
   selectEdge(edgeId) {
-    // Désélectionner la connexion actuellement sélectionnée
-    if (this.selectedEdge) {
-      const oldEdgeEl = this.edgesLayer.querySelector(`.workflow-edge[data-id="${this.selectedEdge}"]`);
-      if (oldEdgeEl) {
-        oldEdgeEl.classList.remove('selected');
+    // Désélectionner l'arête précédemment sélectionnée
+    if (this.selectedEdgeId) {
+      const prevEdge = document.getElementById(this.selectedEdgeId);
+      if (prevEdge) {
+        prevEdge.classList.remove('selected');
       }
     }
     
-    // Désélectionner le nœud actuellement sélectionné
-    if (this.selectedNode) {
-      const oldNodeEl = this.canvasContent.querySelector(`.workflow-node[data-id="${this.selectedNode}"]`);
-      if (oldNodeEl) {
-        oldNodeEl.classList.remove('selected');
+    // Désélectionner le noeud précédemment sélectionné
+    if (this.selectedNodeId) {
+      const prevNode = document.getElementById(this.selectedNodeId);
+      if (prevNode) {
+        prevNode.classList.remove('selected');
       }
-      this.selectedNode = null;
+      this.selectedNodeId = null;
+      this.propertiesPanel.classList.remove('open');
     }
     
-    // Sélectionner la nouvelle connexion
-    this.selectedEdge = edgeId;
-    const edgeEl = this.edgesLayer.querySelector(`.workflow-edge[data-id="${edgeId}"]`);
-    if (edgeEl) {
-      edgeEl.classList.add('selected');
+    // Sélectionner la nouvelle arête
+    this.selectedEdgeId = edgeId;
+    const edge = document.getElementById(edgeId);
+    if (edge) {
+      edge.classList.add('selected');
+      this.emit('edgeSelected', this.getEdgeById(edgeId));
     }
-    
-    // Événement personnalisé
-    this.emit('edgeSelected', this.getEdgeById(edgeId));
   }
   
-  // Supprimer une connexion
+  /**
+   * Supprime une arête
+   * @param {string} edgeId - ID de l'arête à supprimer
+   */
   deleteEdge(edgeId) {
-    // Supprimer la connexion de la liste
-    this.edges = this.edges.filter(edge => edge.id !== edgeId);
-    
-    // Supprimer l'élément de la connexion du DOM
-    const edgeEl = this.edgesLayer.querySelector(`.workflow-edge[data-id="${edgeId}"]`);
-    if (edgeEl) {
-      edgeEl.remove();
-    }
-    
-    // Réinitialiser la sélection si nécessaire
-    if (this.selectedEdge === edgeId) {
-      this.selectedEdge = null;
-    }
-    
-    // Événement personnalisé
-    this.emit('edgeDeleted', edgeId);
-    
-    // Auto-sauvegarde si configuré
-    if (this.options.autosave) {
-      this.saveWorkflow();
+    const edgeIndex = this.edges.findIndex(edge => edge.id === edgeId);
+    if (edgeIndex !== -1) {
+      const edge = this.edges[edgeIndex];
+      this.edges.splice(edgeIndex, 1);
+      
+      // Supprimer l'élément DOM
+      const edgeElement = document.getElementById(edgeId);
+      if (edgeElement) {
+        edgeElement.remove();
+      }
+      
+      // Mettre à jour les ports pour supprimer la classe connected
+      const sourceNode = document.getElementById(edge.source);
+      const targetNode = document.getElementById(edge.target);
+      
+      if (sourceNode && targetNode) {
+        const sourcePort = sourceNode.querySelector(`.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`);
+        const targetPort = targetNode.querySelector(`.node-input[data-port-index="${edge.targetInput}"] .port-handle`);
+        
+        if (sourcePort) {
+          // Vérifier si ce port a d'autres connexions
+          const hasOtherConnections = this.edges.some(
+            otherEdge => otherEdge.source === edge.source && otherEdge.sourceOutput === edge.sourceOutput
+          );
+          
+          if (!hasOtherConnections) {
+            sourcePort.classList.remove('connected');
+          }
+        }
+        
+        if (targetPort) {
+          // Vérifier si ce port a d'autres connexions
+          const hasOtherConnections = this.edges.some(
+            otherEdge => otherEdge.target === edge.target && otherEdge.targetInput === edge.targetInput
+          );
+          
+          if (!hasOtherConnections) {
+            targetPort.classList.remove('connected');
+          }
+        }
+      }
+      
+      // Désélectionner l'arête si c'était celle sélectionnée
+      if (this.selectedEdgeId === edgeId) {
+        this.selectedEdgeId = null;
+      }
+      
+      // Émettre l'événement
+      this.emit('edgeRemoved', edge);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     }
   }
   
-  // Créer une connexion temporaire (pendant le drag & drop)
+  /**
+   * Crée une arête temporaire pendant le glisser-déposer
+   */
   createTempEdge() {
-    const tempEdge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    tempEdge.classList.add('workflow-temp-edge');
+    this.tempEdge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    this.tempEdge.className = 'temp-edge';
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.classList.add('workflow-edge-path');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#f4845f');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('stroke-dasharray', '5,5');
+    this.tempEdge.appendChild(path);
     
-    tempEdge.appendChild(path);
-    this.edgesLayer.appendChild(tempEdge);
+    this.edgesLayer.appendChild(this.tempEdge);
   }
   
-  // Mettre à jour la connexion temporaire pendant le drag
-  updateTempEdge() {
-    const tempEdge = this.edgesLayer.querySelector('.workflow-temp-edge');
-    if (!tempEdge || !this.startEdgeInfo) return;
+  /**
+   * Met à jour la position de l'arête temporaire
+   * @param {MouseEvent} e - Événement de la souris
+   */
+  updateTempEdge(e) {
+    if (!this.tempEdge || !this.sourceNodeId) {
+      return;
+    }
     
-    const path = tempEdge.querySelector('path');
+    const sourceNode = document.getElementById(this.sourceNodeId);
+    if (!sourceNode) {
+      return;
+    }
     
+    const sourcePort = sourceNode.querySelector(`.node-output[data-port-index="${this.sourcePortIndex}"] .port-handle`);
+    if (!sourcePort) {
+      return;
+    }
+    
+    const sourceRect = sourcePort.getBoundingClientRect();
     const canvasRect = this.canvas.getBoundingClientRect();
-    const endPoint = {
-      x: (this.mousePosition.x - canvasRect.left) / this.scale,
-      y: (this.mousePosition.y - canvasRect.top) / this.scale
+    
+    const start = {
+      x: (sourceRect.left + sourceRect.width / 2 - canvasRect.left) / this.scale,
+      y: (sourceRect.top + sourceRect.height / 2 - canvasRect.top) / this.scale
     };
     
-    const dx = Math.abs(endPoint.x - this.startEdgeInfo.x);
-    const pathString = `M ${this.startEdgeInfo.x} ${this.startEdgeInfo.y} C ${this.startEdgeInfo.x + dx/2} ${this.startEdgeInfo.y}, ${endPoint.x - dx/2} ${endPoint.y}, ${endPoint.x} ${endPoint.y}`;
+    const end = {
+      x: (e.clientX - canvasRect.left) / this.scale,
+      y: (e.clientY - canvasRect.top) / this.scale
+    };
     
-    path.setAttribute('d', pathString);
-  }
-  
-  // Supprimer la connexion temporaire
-  removeTempEdge() {
-    const tempEdge = this.edgesLayer.querySelector('.workflow-temp-edge');
-    if (tempEdge) {
-      tempEdge.remove();
+    // Ajuster les coordonnées pour tenir compte du décalage du canvas
+    start.x -= this.offset.x / this.scale;
+    start.y -= this.offset.y / this.scale;
+    end.x -= this.offset.x / this.scale;
+    end.y -= this.offset.y / this.scale;
+    
+    // Calculer les points de contrôle pour une courbe de Bézier
+    const dx = Math.abs(end.x - start.x);
+    const controlDistance = Math.min(dx * 0.5, 80);
+    
+    const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
+    
+    // Mettre à jour le chemin
+    const path = this.tempEdge.querySelector('path');
+    if (path) {
+      path.setAttribute('d', d);
     }
   }
   
-  // Mettre à jour toutes les connexions (après déplacement de nœuds)
+  /**
+   * Supprime l'arête temporaire
+   */
+  removeTempEdge() {
+    if (this.tempEdge) {
+      this.tempEdge.remove();
+      this.tempEdge = null;
+    }
+  }
+  
+  /**
+   * Met à jour toutes les arêtes du workflow
+   */
   updateEdges() {
-    // Supprimer toutes les connexions du DOM
-    this.edgesLayer.innerHTML = '';
-    
-    // Recréer toutes les connexions
     this.edges.forEach(edge => {
-      this.createEdgeElement(edge);
+      this.updateEdgePath(edge);
     });
   }
   
-  // Ouvrir la boîte de dialogue des propriétés d'un nœud
+  /**
+   * Ouvre le panneau de propriétés pour un noeud
+   * @param {string} nodeId - ID du noeud
+   */
   openNodeProperties(nodeId) {
     const node = this.getNodeById(nodeId);
-    if (!node) return;
-    
-    const nodeConfig = workflowConfig.nodeTypes[node.type];
-    if (!nodeConfig) return;
-    
-    // Créer un overlay pour le fond
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    
-    // Créer la boîte de dialogue
-    const dialog = document.createElement('div');
-    dialog.className = 'node-properties-dialog';
-    
-    // En-tête
-    const header = document.createElement('div');
-    header.className = 'node-properties-header';
-    header.innerHTML = `
-      <h3>Propriétés: ${nodeConfig.name}</h3>
-      <button class="node-properties-close"><i class="fas fa-times"></i></button>
-    `;
-    
-    // Contenu
-    const content = document.createElement('div');
-    content.className = 'node-properties-content';
-    
-    // Créer les champs pour chaque propriété
-    nodeConfig.properties.forEach(property => {
-      const group = document.createElement('div');
-      group.className = 'property-group';
-      
-      const label = document.createElement('label');
-      label.className = 'property-label';
-      label.textContent = property.label;
-      
-      let input;
-      
-      if (property.type === 'text') {
-        input = document.createElement('input');
-        input.className = 'property-input';
-        input.type = 'text';
-        input.name = property.name;
-        input.value = node.data[property.name] || '';
-      } else if (property.type === 'select') {
-        input = document.createElement('select');
-        input.className = 'property-select';
-        input.name = property.name;
-        
-        property.options.forEach(option => {
-          const optEl = document.createElement('option');
-          optEl.value = option;
-          optEl.textContent = option;
-          if (node.data[property.name] === option) {
-            optEl.selected = true;
-          }
-          input.appendChild(optEl);
-        });
-      } else if (property.type === 'code') {
-        input = document.createElement('textarea');
-        input.className = 'property-input property-code';
-        input.name = property.name;
-        input.value = node.data[property.name] || '';
-        input.rows = 6;
-      }
-      
-      group.appendChild(label);
-      group.appendChild(input);
-      content.appendChild(group);
-    });
-    
-    // Pied
-    const footer = document.createElement('div');
-    footer.className = 'node-properties-footer';
-    footer.innerHTML = `
-      <button class="properties-button cancel">Annuler</button>
-      <button class="properties-button apply">Appliquer</button>
-    `;
-    
-    // Assembler
-    dialog.appendChild(header);
-    dialog.appendChild(content);
-    dialog.appendChild(footer);
-    
-    // Ajouter au DOM
-    this.container.appendChild(overlay);
-    this.container.appendChild(dialog);
-    
-    // Attacher les événements
-    const closeBtn = header.querySelector('.node-properties-close');
-    const cancelBtn = footer.querySelector('.cancel');
-    const applyBtn = footer.querySelector('.apply');
-    
-    const closeDialog = () => {
-      dialog.remove();
-      overlay.remove();
-    };
-    
-    closeBtn.addEventListener('click', closeDialog);
-    cancelBtn.addEventListener('click', closeDialog);
-    
-    applyBtn.addEventListener('click', () => {
-      // Récupérer les valeurs des champs
-      const inputs = content.querySelectorAll('input, select, textarea');
-      inputs.forEach(input => {
-        node.data[input.name] = input.value;
-      });
-      
-      // Mettre à jour l'affichage du nœud
-      const nodeEl = this.canvasContent.querySelector(`.workflow-node[data-id="${nodeId}"]`);
-      if (nodeEl) {
-        nodeEl.querySelector('.node-title').textContent = node.data.name;
-        nodeEl.querySelector('.node-content').textContent = node.data.description || `Nœud ${node.type}`;
-      }
-      
-      // Événement personnalisé
-      this.emit('nodeUpdated', node);
-      
-      // Auto-sauvegarde si configuré
-      if (this.options.autosave) {
-        this.saveWorkflow();
-      }
-      
-      closeDialog();
-    });
-  }
-  
-  // Opérations de zoom
-  zoom(scale, center) {
-    const oldScale = this.scale;
-    this.scale *= scale;
-    
-    // Limiter le zoom
-    this.scale = Math.max(0.1, Math.min(3, this.scale));
-    
-    // Ajuster la translation pour zoomer vers le point de la souris
-    if (center && oldScale !== this.scale) {
-      const rect = this.canvas.getBoundingClientRect();
-      const mouse = {
-        x: (center.x - rect.left) / oldScale,
-        y: (center.y - rect.top) / oldScale
-      };
-      
-      this.translate.x -= (mouse.x - this.translate.x) * (1 - oldScale / this.scale);
-      this.translate.y -= (mouse.y - this.translate.y) * (1 - oldScale / this.scale);
+    if (!node) {
+      return;
     }
     
-    this.updateTransform();
-  }
-  
-  zoomIn() {
-    this.zoom(1.2, {
-      x: this.canvas.offsetWidth / 2,
-      y: this.canvas.offsetHeight / 2
+    // Titre du panneau
+    document.getElementById('properties-title').textContent = `Propriétés: ${node.label}`;
+    
+    // Contenu du panneau
+    this.propertiesContent.innerHTML = '';
+    
+    // Groupe d'informations générales
+    const infoGroup = document.createElement('div');
+    infoGroup.className = 'property-group';
+    
+    const infoTitle = document.createElement('h4');
+    infoTitle.textContent = 'Informations';
+    infoGroup.appendChild(infoTitle);
+    
+    // Type du noeud (non modifiable)
+    const typeRow = document.createElement('div');
+    typeRow.className = 'property-row';
+    
+    const typeLabel = document.createElement('label');
+    typeLabel.className = 'property-label';
+    typeLabel.textContent = 'Type';
+    
+    const typeInput = document.createElement('input');
+    typeInput.type = 'text';
+    typeInput.className = 'property-input';
+    typeInput.value = node.type;
+    typeInput.disabled = true;
+    
+    typeRow.appendChild(typeLabel);
+    typeRow.appendChild(typeInput);
+    infoGroup.appendChild(typeRow);
+    
+    // Étiquette du noeud
+    const labelRow = document.createElement('div');
+    labelRow.className = 'property-row';
+    
+    const labelLabel = document.createElement('label');
+    labelLabel.className = 'property-label';
+    labelLabel.textContent = 'Étiquette';
+    
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.className = 'property-input';
+    labelInput.value = node.label;
+    labelInput.addEventListener('change', () => {
+      node.label = labelInput.value;
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.querySelector('.node-title').textContent = node.label;
+      }
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     });
-  }
-  
-  zoomOut() {
-    this.zoom(0.8, {
-      x: this.canvas.offsetWidth / 2,
-      y: this.canvas.offsetHeight / 2
+    
+    labelRow.appendChild(labelLabel);
+    labelRow.appendChild(labelInput);
+    infoGroup.appendChild(labelRow);
+    
+    // Position X
+    const posXRow = document.createElement('div');
+    posXRow.className = 'property-row';
+    
+    const posXLabel = document.createElement('label');
+    posXLabel.className = 'property-label';
+    posXLabel.textContent = 'Position X';
+    
+    const posXInput = document.createElement('input');
+    posXInput.type = 'number';
+    posXInput.className = 'property-input';
+    posXInput.value = node.position.x;
+    posXInput.addEventListener('change', () => {
+      node.position.x = parseInt(posXInput.value);
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.style.left = `${node.position.x}px`;
+      }
+      this.updateEdges();
+      this.emit('nodePositionChanged', node);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
     });
+    
+    posXRow.appendChild(posXLabel);
+    posXRow.appendChild(posXInput);
+    infoGroup.appendChild(posXRow);
+    
+    // Position Y
+    const posYRow = document.createElement('div');
+    posYRow.className = 'property-row';
+    
+    const posYLabel = document.createElement('label');
+    posYLabel.className = 'property-label';
+    posYLabel.textContent = 'Position Y';
+    
+    const posYInput = document.createElement('input');
+    posYInput.type = 'number';
+    posYInput.className = 'property-input';
+    posYInput.value = node.position.y;
+    posYInput.addEventListener('change', () => {
+      node.position.y = parseInt(posYInput.value);
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.style.top = `${node.position.y}px`;
+      }
+      this.updateEdges();
+      this.emit('nodePositionChanged', node);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+    });
+    
+    posYRow.appendChild(posYLabel);
+    posYRow.appendChild(posYInput);
+    infoGroup.appendChild(posYRow);
+    
+    this.propertiesContent.appendChild(infoGroup);
+    
+    // Groupe de configuration spécifique au type de noeud
+    const configGroup = document.createElement('div');
+    configGroup.className = 'property-group';
+    
+    const configTitle = document.createElement('h4');
+    configTitle.textContent = 'Configuration';
+    configGroup.appendChild(configTitle);
+    
+    // Configuration spécifique selon le type de noeud
+    switch (node.type) {
+      case 'hl7-input':
+        // Exemple pour HL7-input
+        const sourceRow = document.createElement('div');
+        sourceRow.className = 'property-row';
+        
+        const sourceLabel = document.createElement('label');
+        sourceLabel.className = 'property-label';
+        sourceLabel.textContent = 'Source';
+        
+        const sourceSelect = document.createElement('select');
+        sourceSelect.className = 'property-input';
+        
+        const sources = [
+          { value: 'direct', label: 'Saisie directe' },
+          { value: 'file', label: 'Fichier' },
+          { value: 'api', label: 'API' }
+        ];
+        
+        sources.forEach(source => {
+          const option = document.createElement('option');
+          option.value = source.value;
+          option.textContent = source.label;
+          option.selected = (node.data.source === source.value);
+          sourceSelect.appendChild(option);
+        });
+        
+        sourceSelect.addEventListener('change', () => {
+          node.data.source = sourceSelect.value;
+          this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+        });
+        
+        sourceRow.appendChild(sourceLabel);
+        sourceRow.appendChild(sourceSelect);
+        configGroup.appendChild(sourceRow);
+        break;
+        
+      case 'fhir-converter':
+        // Exemple pour FHIR-converter
+        const templateRow = document.createElement('div');
+        templateRow.className = 'property-row';
+        
+        const templateLabel = document.createElement('label');
+        templateLabel.className = 'property-label';
+        templateLabel.textContent = 'Template';
+        
+        const templateSelect = document.createElement('select');
+        templateSelect.className = 'property-input';
+        
+        const templates = [
+          { value: 'default', label: 'Template par défaut' },
+          { value: 'france', label: 'Template français' },
+          { value: 'custom', label: 'Template personnalisé' }
+        ];
+        
+        templates.forEach(template => {
+          const option = document.createElement('option');
+          option.value = template.value;
+          option.textContent = template.label;
+          option.selected = (node.data.template === template.value);
+          templateSelect.appendChild(option);
+        });
+        
+        templateSelect.addEventListener('change', () => {
+          node.data.template = templateSelect.value;
+          this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+        });
+        
+        templateRow.appendChild(templateLabel);
+        templateRow.appendChild(templateSelect);
+        configGroup.appendChild(templateRow);
+        break;
+        
+      // Ajouter d'autres types de noeuds ici
+    }
+    
+    this.propertiesContent.appendChild(configGroup);
+    
+    // Afficher le panneau
+    this.propertiesPanel.classList.add('open');
   }
   
-  resetView() {
-    this.scale = 1;
-    this.translate = { x: 0, y: 0 };
-    this.updateTransform();
-  }
-  
-  updateTransform() {
-    this.canvasContent.style.transform = `translate(${this.translate.x}px, ${this.translate.y}px) scale(${this.scale})`;
-    this.updateEdges();
-  }
-  
-  // Mettre à jour le rendu complet
-  update() {
+  /**
+   * Effectue un zoom à une échelle donnée
+   * @param {number} scale - Facteur de zoom
+   * @param {Object} center - Point central du zoom { x, y }
+   */
+  zoom(scale, center = { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 }) {
+    const oldScale = this.scale;
+    
+    // Calculer la nouvelle échelle
+    this.scale *= scale;
+    
+    // Limiter l'échelle
+    this.scale = Math.max(this.options.minScale, Math.min(this.options.maxScale, this.scale));
+    
+    // Si l'échelle n'a pas changé, sortir
+    if (this.scale === oldScale) {
+      return;
+    }
+    
+    // Ajuster le décalage pour zoomer vers le point central
+    const { x: centerX, y: centerY } = center;
+    
+    this.offset.x = centerX - (centerX - this.offset.x) * (this.scale / oldScale);
+    this.offset.y = centerY - (centerY - this.offset.y) * (this.scale / oldScale);
+    
     // Mettre à jour la transformation
     this.updateTransform();
     
-    // Mettre à jour les connexions
+    // Mettre à jour les arêtes
     this.updateEdges();
   }
   
-  // Charger un workflow depuis le serveur
+  /**
+   * Zoom avant
+   */
+  zoomIn() {
+    this.zoom(1.2);
+  }
+  
+  /**
+   * Zoom arrière
+   */
+  zoomOut() {
+    this.zoom(0.8);
+  }
+  
+  /**
+   * Réinitialise la vue
+   */
+  resetView() {
+    this.scale = this.options.initialScale;
+    this.offset = { x: 0, y: 0 };
+    this.updateTransform();
+    this.updateEdges();
+  }
+  
+  /**
+   * Met à jour la transformation du canvas
+   */
+  updateTransform() {
+    this.canvas.style.transform = `translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`;
+  }
+  
+  /**
+   * Met à jour l'affichage de l'éditeur
+   */
+  update() {
+    // Mettre à jour les arêtes
+    this.updateEdges();
+  }
+  
+  /**
+   * Charge un workflow depuis le serveur
+   * @param {string} workflowId - ID du workflow à charger
+   */
   async loadWorkflow(workflowId) {
     try {
-      console.log(`Chargement du workflow ${workflowId}...`);
+      this.showLoading(true);
       
-      const token = getToken ? getToken() : localStorage.getItem('token');
-      
+      // Récupérer les données du workflow depuis le serveur
       const response = await fetch(`/api/workflows/${workflowId}`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': `Bearer ${getToken ? getToken() : ''}`,
           'X-API-KEY': 'dev-key'
         }
       });
       
       if (!response.ok) {
-        throw new Error(`Erreur lors du chargement du workflow: ${response.status}`);
+        throw new Error('Erreur lors du chargement du workflow');
       }
       
-      let data = await response.json();
+      const result = await response.json();
+      console.log('Workflow chargé:', result);
       
-      // Gérer différents formats de réponse
-      if (data.success && data.data) {
-        data = data.data;
+      let workflow;
+      if (result.success && result.data) {
+        workflow = result.data;
+      } else {
+        workflow = result;
       }
       
-      console.log('Workflow chargé:', data);
+      // Stocker l'ID du workflow
+      this.workflowId = workflow.id;
+      this.workflowName = workflow.name;
+      this.workflowDescription = workflow.description || '';
       
-      // Réinitialiser l'éditeur
-      this.nodes = [];
-      this.edges = [];
-      this.canvasContent.querySelectorAll('.workflow-node').forEach(el => el.remove());
-      this.edgesLayer.innerHTML = '';
+      // Effacer les noeuds et arêtes existants
+      this.clearWorkflow();
       
-      // Mettre à jour l'ID du workflow
-      this.options.workflowId = workflowId;
-      
-      // Charger les données de flux stockées dans flow_json
+      // Charger les noeuds et arêtes
       let flowData;
       try {
-        flowData = typeof data.flow_json === 'string' 
-          ? JSON.parse(data.flow_json) 
-          : data.flow_json || {};
+        flowData = typeof workflow.flow_json === 'string' 
+          ? JSON.parse(workflow.flow_json) 
+          : workflow.flow_json;
       } catch (e) {
         console.error('Erreur lors du parsing du JSON du workflow:', e);
         flowData = { nodes: [], edges: [] };
       }
       
-      // Format attendu: { nodes: [], edges: [] }
-      if (Array.isArray(flowData)) {
-        // Ancien format: transformer en format attendu
-        flowData = { nodes: flowData, edges: [] };
-      }
-      
-      // Charger les nœuds
+      // Créer les noeuds
       if (flowData.nodes && Array.isArray(flowData.nodes)) {
-        // Trouver l'ID maximum pour continuer l'auto-incrémentation
-        let maxNodeId = 0;
+        // Trouver le prochain ID à utiliser
+        const nodeIds = flowData.nodes.map(node => {
+          const idMatch = node.id.match(/node_(\d+)/);
+          return idMatch ? parseInt(idMatch[1]) : 0;
+        });
+        this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
         
         flowData.nodes.forEach(node => {
-          this.nodes.push(node);
-          this.createNodeElement(node);
+          const nodeElement = this.addNode(node.type, node.position);
           
-          // Extraire l'ID numérique pour l'auto-incrémentation
-          if (node.id && typeof node.id === 'string') {
-            const idMatch = node.id.match(/node_(\d+)/);
-            if (idMatch && idMatch[1]) {
-              const idNum = parseInt(idMatch[1]);
-              if (idNum > maxNodeId) {
-                maxNodeId = idNum;
-              }
-            }
+          // Copier les propriétés
+          nodeElement.label = node.label || nodeElement.label;
+          nodeElement.data = node.data || {};
+          
+          // Mettre à jour l'affichage du noeud
+          const domNode = document.getElementById(nodeElement.id);
+          if (domNode) {
+            domNode.querySelector('.node-title').textContent = nodeElement.label;
           }
         });
-        
-        this.nextNodeId = maxNodeId + 1;
       }
       
-      // Charger les connexions
+      // Créer les arêtes
       if (flowData.edges && Array.isArray(flowData.edges)) {
+        // Trouver le prochain ID à utiliser
+        const edgeIds = flowData.edges.map(edge => {
+          const idMatch = edge.id.match(/edge_(\d+)/);
+          return idMatch ? parseInt(idMatch[1]) : 0;
+        });
+        this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
+        
         flowData.edges.forEach(edge => {
-          this.edges.push(edge);
-          this.createEdgeElement(edge);
+          this.createEdge(
+            edge.source,
+            edge.target,
+            edge.sourceOutput,
+            edge.targetInput
+          );
         });
       }
       
-      // Mise à jour complète
-      this.update();
-      
-      // Événement personnalisé
-      this.emit('workflowLoaded', data);
+      this.showNotification(`Workflow "${this.workflowName}" chargé avec succès`, 'success');
+      this.showLoading(false);
     } catch (error) {
       console.error('Erreur lors du chargement du workflow:', error);
+      this.showNotification(`Erreur: ${error.message}`, 'error');
+      this.showLoading(false);
     }
   }
   
-  // Sauvegarder le workflow sur le serveur
+  /**
+   * Efface le workflow actuel
+   */
+  clearWorkflow() {
+    // Supprimer tous les noeuds et arêtes
+    this.nodesLayer.innerHTML = '';
+    this.edgesLayer.innerHTML = '';
+    
+    // Réinitialiser les tableaux
+    this.nodes = [];
+    this.edges = [];
+    
+    // Réinitialiser les sélections
+    this.selectedNodeId = null;
+    this.selectedEdgeId = null;
+    
+    // Fermer le panneau de propriétés
+    this.propertiesPanel.classList.remove('open');
+  }
+  
+  /**
+   * Sauvegarde le workflow sur le serveur
+   */
   async saveWorkflow() {
-    if (!this.options.workflowId) {
-      console.warn('Impossible de sauvegarder: pas d\'ID de workflow');
+    if (!this.workflowId) {
+      this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
       return;
     }
     
     try {
-      console.log(`Sauvegarde du workflow ${this.options.workflowId}...`);
+      this.showLoading(true);
       
-      // Préparer les données du flux
+      // Préparer les données du workflow
       const flowData = {
         nodes: this.nodes,
         edges: this.edges
       };
       
-      // Convertir en JSON
-      const flowJson = JSON.stringify(flowData);
+      const workflowData = {
+        name: this.workflowName,
+        description: this.workflowDescription,
+        flow_json: JSON.stringify(flowData)
+      };
       
-      const token = getToken ? getToken() : localStorage.getItem('token');
-      
-      // Envoyer au serveur
-      const response = await fetch(`/api/workflows/${this.options.workflowId}`, {
+      // Envoyer les données au serveur
+      const response = await fetch(`/api/workflows/${this.workflowId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': `Bearer ${getToken ? getToken() : ''}`,
           'X-API-KEY': 'dev-key'
         },
-        body: JSON.stringify({
-          flow_json: flowJson
-        })
+        body: JSON.stringify(workflowData)
       });
       
       if (!response.ok) {
-        throw new Error(`Erreur lors de la sauvegarde du workflow: ${response.status}`);
+        throw new Error('Erreur lors de la sauvegarde du workflow');
       }
       
-      const data = await response.json();
-      console.log('Workflow sauvegardé:', data);
-      
-      // Événement personnalisé
-      this.emit('workflowSaved', data);
-      
-      // Notification
-      this.showNotification('Workflow sauvegardé avec succès!', 'success');
+      this.showNotification('Workflow sauvegardé avec succès', 'success');
+      this.emit('workflowSaved', flowData);
+      this.showLoading(false);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du workflow:', error);
-      
-      // Notification d'erreur
       this.showNotification(`Erreur: ${error.message}`, 'error');
+      this.showLoading(false);
     }
   }
   
-  // Afficher une notification
+  /**
+   * Affiche une notification
+   * @param {string} message - Message à afficher
+   * @param {string} type - Type de notification (info, success, warning, error)
+   */
   showNotification(message, type = 'info') {
-    // Vérifier si showNotification existe dans le contexte global
-    if (typeof window.showNotification === 'function') {
-      window.showNotification(message, type);
-      return;
-    }
-    
-    // Implémentation simple par défaut
     const notification = document.createElement('div');
-    notification.className = `workflow-notification ${type}`;
+    notification.className = `editor-notification ${type}`;
     notification.textContent = message;
-    notification.style.position = 'fixed';
-    notification.style.bottom = '20px';
-    notification.style.right = '20px';
-    notification.style.padding = '10px 15px';
-    notification.style.borderRadius = '4px';
-    notification.style.color = 'white';
-    notification.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
-    notification.style.zIndex = '1000';
-    
-    if (type === 'error') {
-      notification.style.backgroundColor = '#E63946';
-    } else if (type === 'success') {
-      notification.style.backgroundColor = '#4CAF50';
-    } else {
-      notification.style.backgroundColor = '#457B9D';
-    }
     
     document.body.appendChild(notification);
     
+    // Afficher avec animation
     setTimeout(() => {
-      notification.style.opacity = '0';
-      notification.style.transition = 'opacity 0.5s ease';
-      
+      notification.classList.add('show');
+    }, 10);
+    
+    // Masquer automatiquement après un délai
+    setTimeout(() => {
+      notification.classList.remove('show');
       setTimeout(() => {
         notification.remove();
-      }, 500);
+      }, 300);
     }, 3000);
   }
   
-  // Récupérer un nœud par son ID
-  getNodeById(id) {
-    return this.nodes.find(node => node.id === id);
-  }
-  
-  // Récupérer une connexion par son ID
-  getEdgeById(id) {
-    return this.edges.find(edge => edge.id === id);
-  }
-  
-  // Système d'événements personnalisés
-  on(event, callback) {
-    if (!this.eventListeners[event]) {
-      this.eventListeners[event] = [];
-    }
-    this.eventListeners[event].push(callback);
-  }
-  
-  off(event, callback) {
-    if (!this.eventListeners[event]) return;
-    
-    if (callback) {
-      this.eventListeners[event] = this.eventListeners[event].filter(cb => cb !== callback);
+  /**
+   * Affiche ou masque l'overlay de chargement
+   * @param {boolean} show - Indique si l'overlay doit être affiché
+   */
+  showLoading(show) {
+    if (show) {
+      this.loadingOverlay.classList.add('show');
     } else {
-      this.eventListeners[event] = [];
+      this.loadingOverlay.classList.remove('show');
     }
   }
   
+  /**
+   * Récupère un noeud par son ID
+   * @param {string} id - ID du noeud
+   * @returns {Object|null} Le noeud trouvé ou null
+   */
+  getNodeById(id) {
+    return this.nodes.find(node => node.id === id) || null;
+  }
+  
+  /**
+   * Récupère une arête par son ID
+   * @param {string} id - ID de l'arête
+   * @returns {Object|null} L'arête trouvée ou null
+   */
+  getEdgeById(id) {
+    return this.edges.find(edge => edge.id === id) || null;
+  }
+  
+  /**
+   * Ajoute un écouteur d'événement
+   * @param {string} event - Nom de l'événement
+   * @param {Function} callback - Fonction de rappel
+   */
+  on(event, callback) {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event].push(callback);
+    }
+  }
+  
+  /**
+   * Supprime un écouteur d'événement
+   * @param {string} event - Nom de l'événement
+   * @param {Function} callback - Fonction de rappel à supprimer
+   */
+  off(event, callback) {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event] = this.eventListeners[event].filter(
+        cb => cb !== callback
+      );
+    }
+  }
+  
+  /**
+   * Émet un événement
+   * @param {string} event - Nom de l'événement
+   * @param {any} data - Données de l'événement
+   */
   emit(event, data) {
-    if (!this.eventListeners[event]) return;
-    
-    this.eventListeners[event].forEach(callback => {
-      try {
+    if (this.eventListeners[event]) {
+      this.eventListeners[event].forEach(callback => {
         callback(data);
-      } catch (error) {
-        console.error(`Erreur dans un gestionnaire d'événement ${event}:`, error);
-      }
-    });
+      });
+    }
   }
 }
 
-// Exporter la classe de l'éditeur
-window.WorkflowEditor = WorkflowEditor;
+// Autodetection
+document.addEventListener('DOMContentLoaded', function() {
+  const container = document.getElementById('workflow-editor-container');
+  if (container) {
+    console.log('Initialisation de l\'éditeur de workflow');
+    window.workflowEditor = new WorkflowEditor('workflow-editor-container');
+  }
+});

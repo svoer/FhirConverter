@@ -1,451 +1,493 @@
-/**
- * Styles pour l'éditeur de workflow visuel de FHIRHub
- * Design inspiré de n8n et ComfyUI avec la charte graphique FHIRHub
- */
-
-/* Container principal du flow */
 .workflow-editor-container {
-  width: 100%;
-  height: 600px;
-  background-color: #1c1e26;
-  border-radius: 8px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    height: 100%;
+    background-color: #2a2a2a;
+    position: relative;
+    overflow: hidden;
+    color: #f1f1f1;
+    font-family: 'Roboto', sans-serif;
+    border: 1px solid #444;
+    border-radius: 6px;
 }
 
-/* Contrôles d'édition et outils */
-.workflow-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-  display: flex;
-  gap: 8px;
+/* Canva principal où les noeuds sont placés */
+.workflow-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: transform 0.2s;
+    transform-origin: 0 0;
 }
 
-.control-button {
-  background: linear-gradient(45deg, #E63946, #F4845F);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.control-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-/* Palettes de nœuds */
+/* Palette de noeuds */
 .node-palette {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  width: 240px;
-  max-height: 580px;
-  background-color: #282a36;
-  border-radius: 8px;
-  z-index: 10;
-  overflow-y: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    background: linear-gradient(135deg, #cf3030 0%, #f27121 100%);
+    border-radius: 6px;
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
 }
 
-.node-palette-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #3d3f50;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.node-palette h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.node-palette-header h3 {
-  margin: 0;
-  color: white;
-  font-size: 14px;
+.node-palette-category {
+    margin-bottom: 10px;
 }
 
-.node-palette-close {
-  background: transparent;
-  border: none;
-  color: #999;
-  cursor: pointer;
-  font-size: 16px;
+.node-palette-category h4 {
+    margin: 0 0 5px 0;
+    color: #fff;
+    font-size: 14px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 5px;
+    border-radius: 4px;
 }
 
-.node-category {
-  border-bottom: 1px solid #3d3f50;
-  overflow: hidden;
+.node-palette-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: grab;
+    transition: all 0.2s;
 }
 
-.category-header {
-  padding: 10px 16px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #ddd;
-  background-color: #343746;
+.node-palette-item:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
-.category-header:hover {
-  background-color: #3c3e4f;
+.node-palette-item-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.category-content {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
+.node-palette-item-label {
+    font-size: 13px;
+    color: #fff;
 }
 
-.category-content.open {
-  max-height: 500px;
+/* Contrôles de l'éditeur */
+.editor-controls {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+    z-index: 100;
 }
 
-.node-item {
-  padding: 8px 16px 8px 24px;
-  cursor: grab;
-  color: #bbb;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: all 0.2s ease;
+.editor-controls button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #cf3030 0%, #f27121 100%);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
 }
 
-.node-item:hover {
-  background-color: #3c3e4f;
-  color: white;
+.editor-controls button:hover {
+    transform: scale(1.1);
 }
 
-.node-item-icon {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
+/* Nodes */
+.node {
+    position: absolute;
+    min-width: 150px;
+    background: linear-gradient(135deg, #2c2c2c 0%, #3a3a3a 100%);
+    border: 2px solid #555;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    padding: 0;
+    z-index: 10;
+    transition: box-shadow 0.2s, transform 0.1s;
+    font-size: 13px;
 }
 
-/* Styles pour les nœuds du flow */
-.workflow-node {
-  border-radius: 6px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-  min-width: 180px;
-  font-size: 14px;
-  position: relative;
-  overflow: hidden;
+.node:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
-.workflow-node.selected {
-  box-shadow: 0 0 0 2px #f4845f, 0 2px 5px rgba(0, 0, 0, 0.2);
+.node.selected {
+    border-color: #f27121;
+    box-shadow: 0 0 0 2px rgba(242, 113, 33, 0.3), 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
 .node-header {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  color: white;
-  font-weight: 600;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    background: linear-gradient(135deg, #cf3030 0%, #f27121 100%);
+    color: white;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    cursor: move;
 }
 
-.node-header-icon {
-  margin-right: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.node-title {
+    flex: 1;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.node-content {
-  padding: 8px 12px;
-  background-color: #2d2e3a;
-  font-size: 12px;
-  color: #bbb;
+.node-type {
+    font-size: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 2px 5px;
+    border-radius: 10px;
+    margin-left: 5px;
 }
 
-.node-handle {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #fff;
-  border: 2px solid #555;
+.node-body {
+    padding: 10px;
 }
 
-.node-handle.input {
-  border-color: #61dafb;
+.node-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    border-top: 1px solid #444;
 }
 
-.node-handle.output {
-  border-color: #f4845f;
+.node-inputs, .node-outputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 5px;
 }
 
-/* Types de nœuds */
-.node-hl7-input .node-header {
-  background: linear-gradient(to right, #E63946, #e85d69);
+.node-port {
+    height: 20px;
+    display: flex;
+    align-items: center;
+    position: relative;
 }
 
-.node-fhir-converter .node-header {
-  background: linear-gradient(to right, #457B9D, #5b8caa);
+.node-input {
+    padding-left: 20px;
 }
 
-.node-segment-extractor .node-header {
-  background: linear-gradient(to right, #A8DADC, #b9e2e3);
-  color: #2d3748;
+.node-output {
+    padding-right: 20px;
+    justify-content: flex-end;
 }
 
-.node-fhir-output .node-header {
-  background: linear-gradient(to right, #1D3557, #264567);
+.port-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #555;
+    border: 2px solid #999;
+    box-sizing: border-box;
+    cursor: pointer;
+    z-index: 15;
 }
 
-.node-function .node-header {
-  background: linear-gradient(to right, #3f51b5, #5f71d5);
+.node-input .port-handle {
+    left: -6px;
 }
 
-.node-condition .node-header {
-  background: linear-gradient(to right, #9c27b0, #af57c3);
+.node-output .port-handle {
+    right: -6px;
 }
 
-/* Styles des connexions */
-.react-flow__edge-path {
-  stroke: #bbb;
-  stroke-width: 2;
+.port-handle:hover {
+    background-color: #f27121;
+    border-color: #ff9f5b;
 }
 
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: #f4845f;
-  stroke-width: 3;
+.port-handle.connected {
+    background-color: #4caf50;
+    border-color: #8bc34a;
 }
 
-/* Zone de défilement et de zoom */
-.react-flow__zoompane {
-  cursor: grab;
+.port-label {
+    font-size: 12px;
 }
 
-.react-flow__zoompane.dragging {
-  cursor: grabbing;
+/* Edges */
+.edge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    pointer-events: none;
 }
 
-/* Minimap dans le coin pour la navigation */
-.react-flow__minimap {
-  right: 10px;
-  bottom: 10px;
-  background-color: #282a36;
-  border-radius: 4px;
-  overflow: hidden;
+.edge path {
+    fill: none;
+    stroke: #f27121;
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: stroke 0.2s, stroke-width 0.2s;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .node-palette {
-    width: 200px;
-  }
-  
-  .workflow-node {
-    min-width: 160px;
-  }
+.edge path:hover {
+    stroke: #ff9f5b;
+    stroke-width: 3;
 }
 
-/* Animations */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+.edge.selected path {
+    stroke: #f27121;
+    stroke-width: 3;
+    stroke-dasharray: 5, 3;
 }
 
-.node-saving {
-  animation: pulse 1s infinite;
+/* Temporary edge while dragging */
+.temp-edge path {
+    stroke: #f27121;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 5, 3;
 }
 
-/* Tooltips */
-.workflow-tooltip {
-  position: absolute;
-  background-color: #222;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 1000;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+/* Node Properties Panel */
+.node-properties {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 280px;
+    background-color: #222;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
+    display: none;
 }
 
-/* Menu contextuel */
-.context-menu {
-  position: absolute;
-  z-index: 1000;
-  background-color: #282a36;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  min-width: 160px;
-  overflow: hidden;
+.node-properties.open {
+    display: block;
 }
 
-.context-menu-item {
-  padding: 8px 16px;
-  color: #ddd;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.properties-header {
+    background: linear-gradient(135deg, #cf3030 0%, #f27121 100%);
+    padding: 10px 15px;
+    color: white;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.context-menu-item:hover {
-  background-color: #3c3e4f;
-  color: white;
+.properties-header h3 {
+    margin: 0;
+    font-size: 16px;
 }
 
-.context-menu-separator {
-  height: 1px;
-  background-color: #3d3f50;
-  margin: 4px 0;
+.close-properties {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
 }
 
-/* Dialog des propriétés du nœud */
-.node-properties-dialog {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: #282a36;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  width: 400px;
-  max-width: 90%;
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.node-properties-header {
-  padding: 12px 16px;
-  background: linear-gradient(45deg, #E63946, #F4845F);
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.node-properties-header h3 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.node-properties-close {
-  background: transparent;
-  border: none;
-  color: white;
-  cursor: pointer;
-  font-size: 18px;
-}
-
-.node-properties-content {
-  padding: 16px;
-  color: #ddd;
-  max-height: 60vh;
-  overflow-y: auto;
+.properties-content {
+    padding: 15px;
 }
 
 .property-group {
-  margin-bottom: 16px;
+    margin-bottom: 15px;
+}
+
+.property-group h4 {
+    margin: 0 0 10px 0;
+    color: #f27121;
+    font-size: 14px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+.property-row {
+    margin-bottom: 10px;
 }
 
 .property-label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 14px;
-  color: #bbb;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
 }
 
 .property-input {
-  width: 100%;
-  padding: 8px 12px;
-  background-color: #3c3e4f;
-  border: 1px solid #4d4f60;
-  border-radius: 4px;
-  color: white;
-  font-size: 14px;
+    width: 100%;
+    padding: 8px 10px;
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 13px;
 }
 
 .property-input:focus {
-  outline: none;
-  border-color: #f4845f;
+    border-color: #f27121;
+    outline: none;
 }
 
-.property-select {
-  width: 100%;
-  padding: 8px 12px;
-  background-color: #3c3e4f;
-  border: 1px solid #4d4f60;
-  border-radius: 4px;
-  color: white;
-  font-size: 14px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px;
+select.property-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f27121' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 35px;
 }
 
-.node-properties-footer {
-  padding: 12px 16px;
-  background-color: #22232e;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+/* Mini-map */
+.minimap {
+    position: absolute;
+    bottom: 60px;
+    right: 10px;
+    width: 200px;
+    height: 150px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 6px;
+    overflow: hidden;
+    z-index: 50;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
 }
 
-.properties-button {
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.minimap-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
 }
 
-.properties-button.cancel {
-  background-color: transparent;
-  border: 1px solid #4d4f60;
-  color: #bbb;
+.minimap-viewport {
+    position: absolute;
+    border: 2px solid #f27121;
+    opacity: 0.7;
+    pointer-events: none;
 }
 
-.properties-button.cancel:hover {
-  background-color: #3c3e4f;
-  color: white;
+/* Notifications */
+.editor-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s, transform 0.3s;
 }
 
-.properties-button.apply {
-  background: linear-gradient(45deg, #E63946, #F4845F);
-  border: none;
-  color: white;
+.editor-notification.info {
+    border-left: 4px solid #2196f3;
 }
 
-.properties-button.apply:hover {
-  box-shadow: 0 2px 8px rgba(244, 132, 95, 0.5);
+.editor-notification.success {
+    border-left: 4px solid #4caf50;
 }
 
-/* Style de l'overlay de fond lors de l'ouverture d'une modal */
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 990;
-  backdrop-filter: blur(2px);
+.editor-notification.warning {
+    border-left: 4px solid #ff9800;
+}
+
+.editor-notification.error {
+    border-left: 4px solid #f44336;
+}
+
+.editor-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Styles pour l'animation du chargement */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s linear 0.3s, opacity 0.3s;
+}
+
+.loading-overlay.show {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0s;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #f27121;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Styles de réactivité */
+@media (max-width: 768px) {
+    .node-palette {
+        width: 150px;
+    }
+    
+    .node-properties {
+        width: 250px;
+    }
+    
+    .minimap {
+        width: 150px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .node-palette, .node-properties, .minimap {
+        position: fixed;
+        max-height: 50vh;
+    }
 }
