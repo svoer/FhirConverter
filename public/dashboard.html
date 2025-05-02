@@ -118,6 +118,31 @@
     </div>
   </footer>
   
+  <!-- Bouton de réinitialisation de l'environnement -->
+  <a href="#" id="resetEnvironmentBtn" class="btn-reset-env">
+    <i class="fas fa-sync-alt"></i> Réinitialiser l'environnement
+  </a>
+  
+  <!-- Boîte de dialogue modale pour confirmation -->
+  <div id="resetConfirmModal" class="modal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 5px; width: 80%; max-width: 500px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+      <h3 style="color: #e74c3c; margin-top: 0;">⚠️ Attention: Réinitialisation de l'environnement</h3>
+      <p>Vous êtes sur le point de réinitialiser complètement l'environnement FHIRHub.</p>
+      <p>Cette action va:</p>
+      <ul style="margin-bottom: 20px;">
+        <li>Supprimer toutes les données de la base de données</li>
+        <li>Nettoyer les logs et fichiers temporaires</li>
+        <li>Effacer l'historique des conversions</li>
+        <li>Vider le cache des terminologies</li>
+      </ul>
+      <p style="font-weight: bold; color: #e74c3c;">Cette action est irréversible !</p>
+      <div style="text-align: right; margin-top: 20px;">
+        <button id="cancelResetBtn" style="background-color: #95a5a6; color: white; border: none; padding: 8px 15px; margin-right: 10px; border-radius: 4px; cursor: pointer;">Annuler</button>
+        <button id="confirmResetBtn" style="background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+  
   <!-- Le chatbot sera créé dynamiquement par support-chatbot.js -->
 
   <script>
@@ -151,12 +176,83 @@
       
       // Initialisation du chatbot de support
       initChatbot();
+      
+      // Gestionnaire d'événements pour le bouton de réinitialisation de l'environnement
+      initResetEnvironmentButton();
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
     function initChatbot() {
       // Pointeur vers le fichier externe qui initialise le chatbot
       console.log("Initialisation du chatbot via support-chatbot.js");
+    }
+    
+    // Initialisation du bouton de réinitialisation de l'environnement
+    function initResetEnvironmentButton() {
+      const resetBtn = document.getElementById('resetEnvironmentBtn');
+      const modal = document.getElementById('resetConfirmModal');
+      const cancelBtn = document.getElementById('cancelResetBtn');
+      const confirmBtn = document.getElementById('confirmResetBtn');
+      
+      // Afficher la boîte de dialogue modale au clic sur le bouton de réinitialisation
+      resetBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        modal.style.display = 'block';
+      });
+      
+      // Fermer la boîte de dialogue au clic sur "Annuler"
+      cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+      });
+      
+      // Fermer la boîte de dialogue en cliquant en dehors
+      window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+      
+      // Exécuter la réinitialisation au clic sur "Réinitialiser"
+      confirmBtn.addEventListener('click', function() {
+        // Afficher un message de traitement
+        confirmBtn.textContent = 'Réinitialisation en cours...';
+        confirmBtn.disabled = true;
+        
+        // Exécuter le script de réinitialisation via une requête au serveur
+        fetch('/api/admin/reset-environment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Erreur lors de la réinitialisation');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Fermer la boîte de dialogue
+          modal.style.display = 'none';
+          
+          // Afficher un message de confirmation
+          alert('L\'environnement a été réinitialisé avec succès. L\'application va redémarrer.');
+          
+          // Rediriger vers la page d'accueil après réinitialisation
+          setTimeout(() => {
+            window.location.href = '/login.html';
+          }, 1000);
+        })
+        .catch(error => {
+          console.error('Erreur:', error);
+          alert('Erreur lors de la réinitialisation. Veuillez consulter la console pour plus de détails.');
+          
+          // Réinitialiser le bouton
+          confirmBtn.textContent = 'Réinitialiser';
+          confirmBtn.disabled = false;
+        });
+      });
     }
     
     function fetchStats() {
