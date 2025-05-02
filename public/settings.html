@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres - FHIRHub</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/support-chatbot.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    .settings-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .tab-container {
+      margin-bottom: 1rem;
+    }
+
+    .tab-buttons {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .tab-buttons li {
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-right: 0.5rem;
+      border-radius: 4px 4px 0 0;
+      position: relative;
+    }
+
+    .tab-buttons li.active {
+      color: #e74c3c;
+      background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(231, 76, 60, 0.05));
+      border-bottom: 3px solid #e74c3c;
+      font-weight: 600;
+    }
+
+    .tab-buttons li:hover:not(.active) {
+      background-color: #f5f5f5;
+    }
+
+    .tab-buttons li i {
+      margin-right: 8px;
+    }
+
+    .tab-content {
+      margin-top: 20px;
+    }
+
+    .tab-pane {
+      display: none;
+      animation: fadeIn 0.5s;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .iframe-container {
+      width: 100%;
+      height: calc(100vh - 180px);
+      overflow: hidden;
+      border: none;
+      position: relative;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #e74c3c;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .section-header h2 {
+      margin: 0;
+    }
+
+    .section-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
+        <span>FHIRHub</span>
+      </div>
+      
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Conversion</a></li>
+        <li><a href="/application-management.html"><i class="fas fa-th"></i> Applications</a></li>
+        <li><a href="/workflows.html"><i class="fas fa-project-diagram"></i> Workflows</a></li>
+        <li><a href="/settings.html" class="active"><i class="fas fa-cog"></i> Paramètres</a></li>
+        <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
+        <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="container settings-container">
+      <h1>Paramètres</h1>
+      
+      <div class="tab-container">
+        <ul class="tab-buttons" id="settings-tabs">
+          <li data-tab="users" class="active"><i class="fas fa-users"></i> Utilisateurs</li>
+          <li data-tab="terminologies"><i class="fas fa-book-medical"></i> Terminologies</li>
+          <li data-tab="ai-settings"><i class="fas fa-robot"></i> Paramètres IA</li>
+        </ul>
+        
+        <div class="tab-content">
+          <div class="tab-pane active" id="users-tab">
+            <div class="section-header">
+              <h2>Gestion des Utilisateurs</h2>
+              <div class="section-buttons">
+                <button id="add-user-btn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Nouvel utilisateur</button>
+              </div>
+            </div>
+            <div id="users-container" class="iframe-container">
+              <div class="loading-overlay" id="users-loading">
+                <div class="spinner"></div>
+              </div>
+              <iframe id="users-iframe" src="/users.html" onload="hideLoading('users-loading')"></iframe>
+            </div>
+          </div>
+          
+          <div class="tab-pane" id="terminologies-tab">
+            <div class="section-header">
+              <h2>Gestion des Terminologies</h2>
+              <div class="section-buttons">
+                <button id="refresh-terminology-btn" class="btn btn-secondary"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+                <button id="import-terminology-btn" class="btn btn-primary"><i class="fas fa-file-import"></i> Importer</button>
+              </div>
+            </div>
+            <div id="terminologies-container" class="iframe-container">
+              <div class="loading-overlay" id="terminologies-loading">
+                <div class="spinner"></div>
+              </div>
+              <iframe id="terminologies-iframe" src="/terminologies.html" onload="hideLoading('terminologies-loading')"></iframe>
+            </div>
+          </div>
+          
+          <div class="tab-pane" id="ai-settings-tab">
+            <div class="section-header">
+              <h2>Paramètres IA</h2>
+              <div class="section-buttons">
+                <button id="test-ai-btn" class="btn btn-secondary"><i class="fas fa-vial"></i> Tester</button>
+                <button id="add-ai-provider-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un fournisseur</button>
+              </div>
+            </div>
+            <div id="ai-settings-container" class="iframe-container">
+              <div class="loading-overlay" id="ai-settings-loading">
+                <div class="spinner"></div>
+              </div>
+              <iframe id="ai-settings-iframe" src="/ai-settings.html" onload="hideLoading('ai-settings-loading')"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="/documentation.html">Documentation</a></li>
+        <li><a href="/api-docs">API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script src="/js/auth-utils.js"></script>
+  <script src="/js/support-chatbot.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login.html';
+        return;
+      }
+      
+      // Gestion de la déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+      });
+      
+      // Gestion des onglets
+      const tabButtons = document.querySelectorAll('#settings-tabs li');
+      
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          // Retirer la classe active de tous les onglets
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          
+          // Ajouter la classe active à l'onglet cliqué
+          this.classList.add('active');
+          
+          // Récupérer l'ID de l'onglet cible
+          const tabId = this.getAttribute('data-tab') + '-tab';
+          
+          // Masquer tous les contenus d'onglets
+          document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+          });
+          
+          // Afficher le contenu de l'onglet sélectionné
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+      
+      // Boutons de gestion des utilisateurs
+      document.getElementById('add-user-btn').addEventListener('click', function() {
+        // Ouvrir le modal d'ajout d'utilisateur dans l'iframe
+        const iframe = document.getElementById('users-iframe');
+        if (iframe.contentWindow.openAddUserModal) {
+          iframe.contentWindow.openAddUserModal();
+        }
+      });
+      
+      // Bouton de rafraîchissement des terminologies
+      document.getElementById('refresh-terminology-btn').addEventListener('click', function() {
+        // Rafraîchir l'iframe des terminologies
+        const iframe = document.getElementById('terminologies-iframe');
+        iframe.src = iframe.src;
+        document.getElementById('terminologies-loading').style.display = 'flex';
+      });
+      
+      // Bouton d'import de terminologie
+      document.getElementById('import-terminology-btn').addEventListener('click', function() {
+        // Ouvrir le modal d'import dans l'iframe
+        const iframe = document.getElementById('terminologies-iframe');
+        if (iframe.contentWindow.openImportModal) {
+          iframe.contentWindow.openImportModal();
+        }
+      });
+      
+      // Bouton de test IA
+      document.getElementById('test-ai-btn').addEventListener('click', function() {
+        // Appeler la fonction de test dans l'iframe
+        const iframe = document.getElementById('ai-settings-iframe');
+        if (iframe.contentWindow.testAIProvider) {
+          iframe.contentWindow.testAIProvider();
+        }
+      });
+      
+      // Bouton d'ajout de fournisseur IA
+      document.getElementById('add-ai-provider-btn').addEventListener('click', function() {
+        // Ouvrir le modal d'ajout dans l'iframe
+        const iframe = document.getElementById('ai-settings-iframe');
+        if (iframe.contentWindow.openAddProviderModal) {
+          iframe.contentWindow.openAddProviderModal();
+        }
+      });
+    });
+    
+    // Fonction pour masquer l'overlay de chargement
+    function hideLoading(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+  </script>
+</body>
+</html>
