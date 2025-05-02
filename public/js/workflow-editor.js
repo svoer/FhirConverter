@@ -277,9 +277,17 @@ class WorkflowEditor {
     resetBtn.title = 'Réinitialiser la vue';
     resetBtn.addEventListener('click', () => this.resetView());
     
+    // Bouton pour le One-Click Node Connection Wizard
+    const connectNodesBtn = document.createElement('button');
+    connectNodesBtn.innerHTML = '🔌';
+    connectNodesBtn.title = 'Assistant de connexion rapide';
+    connectNodesBtn.className = 'connect-nodes-btn';
+    connectNodesBtn.addEventListener('click', () => this.activateConnectionWizard());
+    
     this.controls.appendChild(zoomInBtn);
     this.controls.appendChild(zoomOutBtn);
     this.controls.appendChild(resetBtn);
+    this.controls.appendChild(connectNodesBtn);
     
     // Panneau de propriétés des noeuds
     this.propertiesPanel = document.createElement('div');
