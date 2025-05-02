@@ -882,8 +882,8 @@
                     
                     // Configurer l'iframe pour Node-RED (à adapter selon votre installation Node-RED)
                     // Dans un environnement réel, cela serait l'URL vers l'éditeur Node-RED avec l'ID du workflow
-                    // La route correcte est /node-red/ pour l'éditeur Node-RED intégré
-                    nodeRedIframe.src = `/node-red/?id=${workflow.id}`;
+                    // La route correcte est celle configurée dans app.js avec middleware d'authentification
+                    nodeRedIframe.src = `/node-red/?flowId=${workflow.id}&auth=${getToken()}`;
                     
                     // Afficher la modal de l'éditeur avancé
                     editorModal.style.display = 'block';

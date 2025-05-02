@@ -14,8 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialiser le chatbot (sans créer les éléments, car ils existent déjà dans le HTML)
   initChatbot();
   
-  // S'assurer que les événements sont correctement attachés
-  attachChatbotEvents();
+  // Attendre vraiment que le DOM soit complètement chargé, y compris tous les éléments imbriqués
+  // Utiliser un petit délai pour s'assurer que tout est bien chargé
+  setTimeout(() => {
+    // S'assurer que les événements sont correctement attachés
+    attachChatbotEvents();
+  }, 500);
 });
 
 // Variables globales
