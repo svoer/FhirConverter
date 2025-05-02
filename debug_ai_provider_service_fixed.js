@@ -1,125 +1,94 @@
 /**
- * Script de débogage pour tester le service aiProviderService
- * avec les corrections nécessaires pour les types de données
+ * Script de débogage pour insérer directement l'API Mistral dans la base de données
+ * Ce script est temporaire et sera supprimé après le développement
  */
+const dbService = require('./src/services/dbService');
 
-const path = require('path');
-const Database = require('better-sqlite3');
-
-// Configuration
-const dbPath = path.join(__dirname, 'data', 'fhirhub.db');
-console.log(`Connexion à la base de données: ${dbPath}`);
-
-// Ouvrir la connexion à la base de données
-const db = new Database(dbPath);
-
-// Supprimer le fournisseur de test s'il existe
-try {
-  const deleteStmt = db.prepare('DELETE FROM ai_providers WHERE provider_name = ?');
-  deleteStmt.run('test_service');
-  console.log('Suppression du fournisseur de test si existant.');
-} catch (error) {
-  console.log('Erreur lors de la suppression:', error.message);
-}
-
-// Fonction pour convertir les valeurs non supportées par SQLite
-function convertToSQLiteValue(value) {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  
-  if (typeof value === 'boolean') {
-    return value ? 1 : 0;
-  }
-  
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
-  }
-  
-  return value;
-}
-
-// Simulation de notre service avec correction des types
-function addProvider(providerData) {
+async function initMistralAPI() {
   try {
-    console.log('Données du fournisseur reçues:', providerData);
+    console.log('Initialisation du fournisseur Mistral AI pour le développement...');
     
-    // Vérification des données requises
-    if (!providerData.provider_name || !providerData.api_key) {
-      throw new Error('Le nom du fournisseur et la clé API sont obligatoires');
+    // Récupérer la clé API depuis les variables d'environnement
+    const apiKey = process.env.MISTRAL_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('Variable d\'environnement MISTRAL_API_KEY manquante');
     }
     
-    // Préparation des paramètres avec conversion des types
-    const params = [
-      convertToSQLiteValue(providerData.provider_name),
-      convertToSQLiteValue(providerData.api_key),
-      convertToSQLiteValue(providerData.api_url || ''),
-      convertToSQLiteValue(providerData.models || ''),
-      convertToSQLiteValue(providerData.status || 'active'),
-      convertToSQLiteValue(providerData.enabled === undefined ? 1 : providerData.enabled),
-      convertToSQLiteValue(providerData.settings || '{}')
-    ];
+    // Initialiser la connexion à la base de données
+    await dbService.initialize();
     
-    console.log('Paramètres préparés:', params);
+    // Vérifier si le fournisseur Mistral existe déjà
+    const existingProvider = await dbService.get('SELECT * FROM ai_providers WHERE provider_name = ?', ['mistral']);
     
-    // Insertion dans la base de données
-    const stmt = db.prepare(`
-      INSERT INTO ai_providers (
-        provider_name, api_key, api_url, models, status, enabled, settings
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    if (existingProvider) {
+      console.log('Le fournisseur Mistral existe déjà. Mise à jour...');
+      
+      // Mettre à jour la clé API
+      await dbService.run(`
+        UPDATE ai_providers 
+        SET api_key = ?, 
+            enabled = 1, 
+            status = 'active',
+            api_url = ?,
+            models = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE provider_name = 'mistral'
+      `, [apiKey, 'https://api.mistral.ai/v1', 'mistral-large-latest']);
+      
+      console.log('Fournisseur Mistral mis à jour avec succès !');
+    } else {
+      console.log('Création d\'un nouveau fournisseur Mistral...');
+      
+      // Paramètres par défaut pour Mistral
+      const settings = JSON.stringify({
+        temperature: 0.7,
+        max_tokens: 4000
+      });
+      
+      // Insérer le fournisseur Mistral
+      await dbService.run(`
+        INSERT INTO ai_providers (
+          provider_name, api_key, api_url, models, status, enabled, settings
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        'mistral',
+        apiKey,
+        'https://api.mistral.ai/v1',
+        'mistral-large-latest',
+        'active',
+        1,
+        settings
+      ]);
+      
+      console.log('Fournisseur Mistral ajouté avec succès !');
+    }
     
-    const result = stmt.run(...params);
-    console.log('Insertion réussie:', result);
+    // Vérifier que le fournisseur est bien configuré
+    const provider = await dbService.get('SELECT * FROM ai_providers WHERE provider_name = ?', ['mistral']);
+    console.log('Fournisseur Mistral configuré:', { 
+      id: provider.id,
+      provider_name: provider.provider_name,
+      api_url: provider.api_url,
+      models: provider.models,
+      status: provider.status,
+      enabled: provider.enabled
+    });
     
-    // Récupérer le fournisseur ajouté
-    const provider = db.prepare('SELECT * FROM ai_providers WHERE id = ?').get(result.lastInsertRowid);
-    console.log('Fournisseur ajouté:', provider);
+    console.log('Initialisation du fournisseur Mistral terminée !');
     
-    return provider;
+    // Fermer la connexion à la base de données
+    await dbService.close();
   } catch (error) {
-    console.error('Erreur lors de l\'ajout du fournisseur:', error);
-    throw error;
+    console.error('Erreur lors de l\'initialisation du fournisseur Mistral:', error);
+    // Fermer la connexion à la base de données en cas d'erreur
+    try {
+      await dbService.close();
+    } catch (closeError) {
+      console.error('Erreur lors de la fermeture de la connexion:', closeError);
+    }
   }
 }
 
-// Tester l'ajout d'un fournisseur
-try {
-  // Test avec un objet settings et un booléen
-  console.log('\nTest 1: Avec un objet settings et un booléen');
-  const result1 = addProvider({
-    provider_name: 'test_service',
-    api_key: 'test-key-service',
-    api_url: 'https://example.com',
-    models: 'model1,model2',
-    enabled: true,
-    settings: {
-      temperature: 0.7,
-      max_tokens: 4000
-    }
-  });
-  
-  // Supprimer pour le prochain test
-  db.prepare('DELETE FROM ai_providers WHERE id = ?').run(result1.id);
-  
-  // Test avec une chaîne settings et un nombre pour enabled
-  console.log('\nTest 2: Avec une chaîne settings et un nombre pour enabled');
-  const result2 = addProvider({
-    provider_name: 'test_service',
-    api_key: 'test-key-service',
-    api_url: 'https://example.com',
-    models: 'model1,model2',
-    enabled: 1,
-    settings: '{"temperature":0.7,"max_tokens":4000}'
-  });
-  
-  // Nettoyage final
-  db.prepare('DELETE FROM ai_providers WHERE id = ?').run(result2.id);
-  
-} catch (error) {
-  console.error('Erreur lors du test:', error);
-} finally {
-  // Fermer la connexion
-  db.close();
-  console.log('\nConnexion à la base de données fermée');
-}
+// Exécuter la fonction principale
+initMistralAPI();
