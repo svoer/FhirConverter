@@ -118,6 +118,9 @@
 .workflow-canvas {
     transition: transform 0.2s;
     transform-origin: 0 0;
+    min-width: 4000px;  /* Taille minimale large pour supporter les workflows complexes */
+    min-height: 4000px; /* Taille minimale haute pour supporter les workflows complexes */
+    position: absolute; /* Position absolue pour permettre un débordement contrôlé */
 }
 
 /* Palette de noeuds avec style neutre */

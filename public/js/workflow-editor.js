@@ -95,15 +95,26 @@ class WorkflowEditor {
    * Crée le canevas principal
    */
   createCanvas() {
+    // Définir les dimensions du canvas pour un espace de travail très large
+    this.canvasSize = {
+      width: 4000,  // Grande taille pour supporter les workflows complexes
+      height: 4000  // Grande taille pour supporter les workflows complexes
+    };
+    
     this.canvas = document.createElement('div');
     this.canvas.className = 'workflow-canvas';
+    
+    // Définir les dimensions explicitement
+    this.canvas.style.width = this.canvasSize.width + 'px';
+    this.canvas.style.height = this.canvasSize.height + 'px';
+    
     this.container.appendChild(this.canvas);
     
-    // Ajouter un SVG pour les liaisons
+    // Ajouter un SVG pour les liaisons avec des dimensions adaptées
     this.edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.edgesLayer.setAttribute('class', 'edges-layer');
-    this.edgesLayer.setAttribute('width', '100%');
-    this.edgesLayer.setAttribute('height', '100%');
+    this.edgesLayer.setAttribute('width', this.canvasSize.width);
+    this.edgesLayer.setAttribute('height', this.canvasSize.height);
     this.edgesLayer.style.position = 'absolute';
     this.edgesLayer.style.top = '0';
     this.edgesLayer.style.left = '0';
@@ -121,6 +132,28 @@ class WorkflowEditor {
     this.loadingOverlay.className = 'loading-overlay';
     this.loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
     this.container.appendChild(this.loadingOverlay);
+    
+    // Centrer le canvas initialement
+    this.centerCanvas();
+  }
+  
+  /**
+   * Centre le canvas pour que la vue soit au milieu du grand canvas
+   */
+  centerCanvas() {
+    // Obtenir les dimensions du conteneur
+    const containerRect = this.container.getBoundingClientRect();
+    
+    // Calculer l'offset nécessaire pour centrer le canvas
+    const offsetX = (containerRect.width - this.canvasSize.width) / 2;
+    const offsetY = (containerRect.height - this.canvasSize.height) / 2;
+    
+    // Appliquer l'offset pour centrer
+    this.offset.x = offsetX;
+    this.offset.y = offsetY;
+    
+    // Mettre à jour la transformation
+    this.updateTransform();
   }
   
   /**
@@ -2135,8 +2168,11 @@ class WorkflowEditor {
    */
   resetView() {
     this.scale = this.options.initialScale;
-    this.offset = { x: 0, y: 0 };
-    this.updateTransform();
+    
+    // Au lieu de réinitialiser l'offset à {x: 0, y: 0}, centrer le canvas
+    // Ce qui offre une meilleure expérience utilisateur avec de grands workflows
+    this.centerCanvas();
+    
     this.updateEdges();
   }
   
