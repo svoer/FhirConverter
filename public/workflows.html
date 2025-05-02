@@ -441,8 +441,86 @@
                 <p>Chargement des workflows...</p>
             </div>
             
+            <!-- Section des templates de workflow -->
+            <div class="workflow-templates-container">
+                <div class="templates-header">
+                    <h2 class="templates-title">Templates de workflow prédéfinis</h2>
+                    <p>Utilisez ces templates pour démarrer rapidement un nouveau workflow</p>
+                </div>
+                <div id="templates-grid" class="templates-grid">
+                    <!-- Les templates seront chargés ici dynamiquement -->
+                </div>
+            </div>
+            
             <div class="workflow-grid" id="workflow-grid">
                 <!-- Contenu généré dynamiquement -->
+            </div>
+            
+            <!-- Container pour la visualisation des exécutions -->
+            <div id="execution-container" class="workflow-execution-section" style="display: none;">
+                <h2>Exécution de workflow</h2>
+                <div id="execution-visualization"></div>
+            </div>
+            
+            <!-- Container pour le test de workflow -->
+            <div id="test-workflow-container" class="workflow-test-container" style="display: none;">
+                <div class="test-header">
+                    <h2 class="test-title">Test du workflow: <span id="test-workflow-name">-</span></h2>
+                    <button id="close-test-container" class="btn-icon"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="test-body">
+                    <form id="test-workflow-form">
+                        <input type="hidden" id="test-workflow-id">
+                        <div class="test-form">
+                            <div class="test-input">
+                                <div class="test-title-section">Entrée</div>
+                                <div class="test-option">
+                                    <label for="test-input-type" class="test-option-label">Type d'entrée</label>
+                                    <select id="test-input-type" class="test-select">
+                                        <option value="text">Texte HL7</option>
+                                        <option value="file">Fichier HL7</option>
+                                        <option value="sample">Exemple</option>
+                                    </select>
+                                </div>
+                                <textarea id="test-input-content" class="test-input-area" placeholder="Collez votre message HL7 ici..."></textarea>
+                            </div>
+                            <div class="test-options">
+                                <div class="test-title-section">Options</div>
+                                <div class="test-option">
+                                    <label for="test-option-profile" class="test-option-label">Profil de conversion</label>
+                                    <select id="test-option-profile" class="test-select">
+                                        <option value="default">Standard</option>
+                                        <option value="french">Français</option>
+                                        <option value="enhanced">Amélioré</option>
+                                    </select>
+                                    <p class="test-option-description">Sélectionnez le profil de conversion à utiliser</p>
+                                </div>
+                                <div class="test-option">
+                                    <label class="test-option-label">Options supplémentaires</label>
+                                    <div class="test-checkbox-container">
+                                        <input type="checkbox" id="test-option-validate" class="test-checkbox" checked>
+                                        <label for="test-option-validate">Valider le message HL7</label>
+                                    </div>
+                                    <div class="test-checkbox-container">
+                                        <input type="checkbox" id="test-option-detailed" class="test-checkbox" checked>
+                                        <label for="test-option-detailed">Journalisation détaillée</label>
+                                    </div>
+                                    <div class="test-checkbox-container">
+                                        <input type="checkbox" id="test-option-ai" class="test-checkbox">
+                                        <label for="test-option-ai">Utiliser l'IA pour l'enrichissement</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="test-actions">
+                            <button type="button" id="test-workflow-cancel" class="btn btn-secondary">Annuler</button>
+                            <button type="button" id="test-workflow-run" class="btn btn-primary"><i class="fas fa-play"></i> Exécuter</button>
+                        </div>
+                    </form>
+                    <div id="test-results" class="test-results">
+                        <!-- Les résultats de test seront affichés ici -->
+                    </div>
+                </div>
             </div>
             </div>
         </main>
@@ -1112,9 +1190,384 @@
                 }
             }
             
+            // Chargement et affichage des templates de workflow
+            function loadWorkflowTemplates() {
+                const templatesGrid = document.getElementById('templates-grid');
+                templatesGrid.innerHTML = '';
+                
+                // Utiliser les templates définis dans workflow-templates.js
+                if (typeof workflowTemplates !== 'undefined') {
+                    workflowTemplates.forEach(template => {
+                        const templateCard = document.createElement('div');
+                        templateCard.className = 'template-card';
+                        templateCard.dataset.templateId = template.id;
+                        
+                        // Vérifier si l'image du template existe
+                        const thumbSrc = template.thumbnail || '';
+                        const hasThumb = thumbSrc && thumbSrc.length > 0;
+                        
+                        templateCard.innerHTML = `
+                            <div class="template-thumbnail ${hasThumb ? '' : 'no-image'}">
+                                ${hasThumb 
+                                    ? `<img src="${thumbSrc}" alt="${template.name}" onerror="this.onerror=null; this.parentElement.classList.add('no-image'); this.parentElement.innerHTML='<i class=\\'fas fa-project-diagram\\'></i>';">`
+                                    : `<i class="fas fa-project-diagram"></i>`
+                                }
+                            </div>
+                            <div class="template-info">
+                                <h3 class="template-name">${template.name}</h3>
+                                <p class="template-description">${template.description}</p>
+                            </div>
+                            <div class="template-actions">
+                                <button class="btn-primary use-template-btn" data-template-id="${template.id}">
+                                    <i class="fas fa-plus-circle"></i> Utiliser ce template
+                                </button>
+                            </div>
+                        `;
+                        
+                        templatesGrid.appendChild(templateCard);
+                        
+                        // Ajouter l'événement au bouton d'utilisation du template
+                        const useBtn = templateCard.querySelector('.use-template-btn');
+                        useBtn.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            createWorkflowFromTemplate(template.id);
+                        });
+                        
+                        // Ajouter l'événement au clic sur la carte (même effet que le bouton)
+                        templateCard.addEventListener('click', () => {
+                            createWorkflowFromTemplate(template.id);
+                        });
+                    });
+                } else {
+                    templatesGrid.innerHTML = `
+                        <div style="text-align: center; padding: 40px; grid-column: 1 / -1;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ddd; margin-bottom: 20px;"></i>
+                            <h3>Templates non disponibles</h3>
+                            <p>Les templates de workflow n'ont pas pu être chargés. Veuillez réessayer plus tard.</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Fonction pour créer un workflow à partir d'un template
+            async function createWorkflowFromTemplate(templateId) {
+                try {
+                    // Afficher la modal de création de workflow
+                    modalTitle.textContent = 'Nouveau Workflow depuis Template';
+                    document.getElementById('workflow-id').value = '';
+                    
+                    // Récupérer le template
+                    const template = getTemplateById(templateId);
+                    if (!template) {
+                        throw new Error(`Template ${templateId} introuvable`);
+                    }
+                    
+                    // Préremplir le nom et la description avec ceux du template
+                    document.getElementById('workflow-name').value = template.name;
+                    document.getElementById('workflow-description').value = template.description;
+                    document.getElementById('workflow-active').checked = true;
+                    
+                    // Préremplir l'éditeur JSON avec la configuration du template
+                    const templateConfig = {
+                        nodes: template.nodes || [],
+                        edges: template.edges || []
+                    };
+                    jsonEditor.setValue(JSON.stringify(templateConfig, null, 2));
+                    
+                    // Afficher la modal
+                    workflowModal.style.display = 'block';
+                    
+                    // Indiquer qu'il s'agit d'un template
+                    workflowModal.dataset.fromTemplate = templateId;
+                } catch (error) {
+                    console.error('Erreur lors de la création depuis template:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
+            // Fonction pour dupliquer un workflow existant
+            async function duplicateWorkflow(workflowId) {
+                try {
+                    // Récupérer les détails du workflow à dupliquer
+                    const response = await fetch(`/api/workflows/${workflowId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la récupération du workflow');
+                    }
+                    
+                    const workflow = await response.json();
+                    console.log('Workflow à dupliquer:', workflow);
+                    
+                    // Préparer le nouveau workflow
+                    const originalName = workflow.name || '';
+                    const newWorkflow = {
+                        application_id: workflow.application_id,
+                        name: `${originalName} (copie)`,
+                        description: workflow.description || '',
+                        is_active: workflow.is_active || 1,
+                        flow_json: workflow.flow_json || '[]'
+                    };
+                    
+                    // Créer le nouveau workflow
+                    const createResponse = await fetch('/api/workflows', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        },
+                        body: JSON.stringify(newWorkflow)
+                    });
+                    
+                    if (!createResponse.ok) {
+                        throw new Error('Erreur lors de la duplication du workflow');
+                    }
+                    
+                    const result = await createResponse.json();
+                    
+                    // Rafraîchir la liste des workflows
+                    await loadWorkflows(applicationFilter.value);
+                    
+                    showNotification('Workflow dupliqué avec succès', 'success');
+                    
+                    return result;
+                } catch (error) {
+                    console.error('Erreur lors de la duplication:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                    throw error;
+                }
+            }
+            
+            // Fonction pour afficher l'interface de test d'un workflow
+            function showWorkflowTestInterface(workflowId, workflowName) {
+                // Masquer les sections non pertinentes
+                document.getElementById('execution-container').style.display = 'none';
+                
+                // Afficher la section de test
+                const testContainer = document.getElementById('test-workflow-container');
+                testContainer.style.display = 'block';
+                
+                // Mettre à jour les informations de test
+                document.getElementById('test-workflow-id').value = workflowId;
+                document.getElementById('test-workflow-name').textContent = workflowName;
+                document.getElementById('test-input-content').value = '';
+                document.getElementById('test-results').style.display = 'none';
+                
+                // Faire défiler jusqu'à la section de test
+                testContainer.scrollIntoView({ behavior: 'smooth' });
+                
+                // Gestionnaire pour le bouton d'exécution
+                document.getElementById('test-workflow-run').onclick = () => executeWorkflowTest(workflowId);
+                
+                // Gestionnaire pour le bouton d'annulation
+                document.getElementById('test-workflow-cancel').onclick = () => {
+                    testContainer.style.display = 'none';
+                };
+                
+                // Gestionnaire pour le bouton de fermeture
+                document.getElementById('close-test-container').onclick = () => {
+                    testContainer.style.display = 'none';
+                };
+                
+                // Remplir l'exemple par défaut si le type d'entrée est "sample"
+                document.getElementById('test-input-type').onchange = function() {
+                    if (this.value === 'sample') {
+                        document.getElementById('test-input-content').value = 
+                            'MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20110614075841||ADT^A01|1407511|P|2.5.1|||AL|NE|||||\\r\\n' +
+                            'EVN|A01|20110614075841|||||\\r\\n' +
+                            'PID|1||10006579^^^1^MR^1||DUCK^DONALD^D||19241010|M||1|111 DUCK ST^^FOWL^CA^99999^USA|1|8885551212|8885551212|1|2|999-99-9999|||1^^^^^|||||||||||||||||||\\r\\n' +
+                            'PV1|1|I|ER^^^1^1^^^ER|3|||12345^DUCK^DONALD^D^^^^^^&1.2.840.113619.6.197&ISO^L^^^NPI^L^^^NPI|||||||||||||1|||||||||||||||||||||||||20110614075841|||||||||';
+                    } else if (this.value === 'text' && document.getElementById('test-input-content').value === '') {
+                        document.getElementById('test-input-content').value = '';
+                    }
+                };
+            }
+            
+            // Fonction pour exécuter un test de workflow
+            async function executeWorkflowTest(workflowId) {
+                const inputContent = document.getElementById('test-input-content').value;
+                if (!inputContent) {
+                    showNotification('Veuillez entrer un message HL7 à convertir', 'warning');
+                    return;
+                }
+                
+                const options = {
+                    profile: document.getElementById('test-option-profile').value,
+                    validate: document.getElementById('test-option-validate').checked,
+                    detailedLogs: document.getElementById('test-option-detailed').checked,
+                    useAI: document.getElementById('test-option-ai').checked
+                };
+                
+                // Afficher un indicateur de chargement
+                const resultContainer = document.getElementById('test-results');
+                resultContainer.innerHTML = `
+                    <div style="text-align: center; padding: 30px;">
+                        <div class="spinner" style="margin: 0 auto 20px;"></div>
+                        <p>Exécution en cours, veuillez patienter...</p>
+                    </div>
+                `;
+                resultContainer.style.display = 'block';
+                
+                try {
+                    // Exécuter le workflow via l'API
+                    const result = await workflowExecutionManager.executeWorkflow(workflowId, inputContent, options);
+                    
+                    if (result.success) {
+                        // Créer une visualisation de l'exécution
+                        createExecutionVisualization('test-results', result.execution);
+                    } else {
+                        resultContainer.innerHTML = `
+                            <div class="error-message">
+                                <h3><i class="fas fa-exclamation-circle"></i> Erreur lors de l'exécution</h3>
+                                <p>${result.error || 'Une erreur inconnue est survenue'}</p>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Erreur lors de l\'exécution du test:', error);
+                    resultContainer.innerHTML = `
+                        <div class="error-message">
+                            <h3><i class="fas fa-exclamation-circle"></i> Erreur lors de l'exécution</h3>
+                            <p>${error.message || 'Une erreur inconnue est survenue'}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Remplacer la fonction de création des cartes de workflow pour ajouter les boutons supplémentaires
+            function createWorkflowCard(workflow) {
+                const card = document.createElement('div');
+                card.className = 'workflow-card';
+                
+                // Fonction originale mais avec ajout des nouveaux boutons
+                card.innerHTML = `
+                    <div class="workflow-header">
+                        <h3>${workflow.name}</h3>
+                        <span class="workflow-status ${workflow.is_active ? 'status-active' : 'status-inactive'}"></span>
+                    </div>
+                    <div class="workflow-body">
+                        <p><strong>Application:</strong> ${workflow.application_name}</p>
+                        <p>${workflow.description || 'Aucune description'}</p>
+                        <p><strong>Créé le:</strong> ${new Date(workflow.created_at).toLocaleString()}</p>
+                    </div>
+                    <div class="workflow-footer">
+                        <!-- Ajout des nouveaux boutons -->
+                        <button class="test-workflow-btn" data-id="${workflow.id}" data-name="${workflow.name}">
+                            <i class="fas fa-play"></i> Tester
+                        </button>
+                        <button class="duplicate-workflow-btn" data-id="${workflow.id}">
+                            <i class="fas fa-copy"></i> Dupliquer
+                        </button>
+                        <div class="workflow-actions">
+                            <button class="edit-workflow-btn" data-id="${workflow.id}">
+                                <i class="fas fa-edit"></i> Modifier
+                            </button>
+                            <button class="delete-workflow-btn" data-id="${workflow.id}">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Ajout des gestionnaires d'événements aux nouveaux boutons
+                card.querySelector('.test-workflow-btn').addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    showWorkflowTestInterface(id, name);
+                });
+                
+                card.querySelector('.duplicate-workflow-btn').addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    duplicateWorkflow(id);
+                });
+                
+                return card;
+            }
+            
+            // Remplacer la fonction de rendu des workflows
+            function renderWorkflows(workflows) {
+                workflowGrid.innerHTML = '';
+                
+                if (workflows.length === 0) {
+                    workflowGrid.innerHTML = '<p>Aucun workflow trouvé.</p>';
+                    return;
+                }
+                
+                workflows.forEach(workflow => {
+                    const card = createWorkflowCard(workflow);
+                    workflowGrid.appendChild(card);
+                    
+                    // Ajouter les écouteurs d'événements originaux
+                    card.querySelector('.edit-workflow-btn').addEventListener('click', function() {
+                        const workflowId = this.getAttribute('data-id');
+                        openWorkflowEditor(workflowId);
+                    });
+                    
+                    card.querySelector('.delete-workflow-btn').addEventListener('click', function() {
+                        const workflowId = this.getAttribute('data-id');
+                        if (confirm('Êtes-vous sûr de vouloir supprimer ce workflow ?')) {
+                            deleteWorkflow(workflowId);
+                        }
+                    });
+                });
+            }
+            
+            // Surcharger la fonction loadWorkflows pour utiliser renderWorkflows
+            const originalLoadWorkflows = loadWorkflows;
+            loadWorkflows = async function(applicationId = 'all') {
+                try {
+                    workflowGrid.innerHTML = '';
+                    loadingSpinner.style.display = 'block';
+                    
+                    let url = '/api/workflows';
+                    if (applicationId !== 'all') {
+                        url = `/api/workflows/application/${applicationId}`;
+                    }
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors du chargement des workflows');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Workflows chargés:', result);
+                    
+                    loadingSpinner.style.display = 'none';
+                    
+                    // Vérifier que la réponse contient les données attendues
+                    let workflows = [];
+                    if (result.success && result.data) {
+                        workflows = result.data;
+                    } else if (Array.isArray(result)) {
+                        workflows = result;
+                    } else {
+                        console.warn('Format de réponse inattendu pour les workflows:', result);
+                    }
+                    
+                    // Utiliser la nouvelle fonction de rendu
+                    renderWorkflows(workflows);
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    loadingSpinner.style.display = 'none';
+                    workflowGrid.innerHTML = `<p>Erreur lors du chargement des workflows: ${error.message}</p>`;
+                }
+            };
+            
             // Initialisation de la page
             loadApplications();
             loadWorkflows();
+            loadWorkflowTemplates();
             checkUrlParams();
         });
     </script>

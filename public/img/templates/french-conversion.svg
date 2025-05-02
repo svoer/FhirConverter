@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="200" viewBox="0 0 300 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="200" fill="#f5f5f5"/>
+  
+  <!-- Title -->
+  <text x="150" y="25" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" fill="#333">Modèle Français</text>
+  
+  <!-- French flag design -->
+  <rect x="15" y="35" width="15" height="10" fill="#0055A4"/>
+  <rect x="30" y="35" width="15" height="10" fill="#FFFFFF"/>
+  <rect x="45" y="35" width="15" height="10" fill="#EF4135"/>
+  
+  <!-- Input Node -->
+  <rect x="20" y="60" width="60" height="40" rx="5" fill="#E74C3C" stroke="#C0392B" stroke-width="2"/>
+  <text x="50" y="82" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Entrée HL7</text>
+  
+  <!-- French Terminology Node -->
+  <rect x="120" y="60" width="60" height="40" rx="5" fill="#3498DB" stroke="#2980B9" stroke-width="2"/>
+  <text x="150" y="76" font-family="Arial" font-size="9" text-anchor="middle" fill="white">Mappage</text>
+  <text x="150" y="86" font-family="Arial" font-size="9" text-anchor="middle" fill="white">Terminologies</text>
+  
+  <!-- Conversion Node -->
+  <rect x="120" y="120" width="60" height="40" rx="5" fill="#F39C12" stroke="#D35400" stroke-width="2"/>
+  <text x="150" y="142" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Convertir</text>
+  
+  <!-- Output Node -->
+  <rect x="220" y="120" width="60" height="40" rx="5" fill="#27AE60" stroke="#2ECC71" stroke-width="2"/>
+  <text x="250" y="142" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Sortie FHIR</text>
+  
+  <!-- Connections -->
+  <line x1="80" y1="80" x2="120" y2="80" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="100" x2="150" y2="120" stroke="#333" stroke-width="2"/>
+  <line x1="180" y1="140" x2="220" y2="140" stroke="#333" stroke-width="2"/>
+  
+  <!-- Arrows -->
+  <polygon points="118,76 125,80 118,84" fill="#333"/>
+  <polygon points="146,118 150,125 154,118" fill="#333"/>
+  <polygon points="218,136 225,140 218,144" fill="#333"/>
+  
+  <!-- ANS Label -->
+  <text x="250" y="40" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="#0055A4">Compatible ANS</text>
+  <circle cx="250" cy="40" r="18" stroke="#0055A4" stroke-width="1" fill="none"/>
+  
+  <!-- French Systems -->
+  <rect x="220" y="65" width="60" height="30" rx="5" fill="#F5F5F5" stroke="#DDD" stroke-width="1"/>
+  <text x="250" y="80" font-family="Arial" font-size="8" text-anchor="middle" fill="#333">Terminologies</text>
+  <text x="250" y="90" font-family="Arial" font-size="8" text-anchor="middle" fill="#333">Françaises</text>
+</svg>
