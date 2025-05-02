@@ -1304,7 +1304,18 @@
         console.log('Terminology files response:', response);
         
         // Extraire les données depuis la réponse
-        const files = response.data || response;
+        let files = [];
+        
+        if (response && response.success && Array.isArray(response.data)) {
+          // Format API moderne avec { success: true, data: [...] }
+          files = response.data;
+        } else if (Array.isArray(response)) {
+          // Format API simple array
+          files = response;
+        } else if (response && typeof response === 'object') {
+          // Autre format potentiel
+          files = response.files || response.data || [];
+        }
         
         if (!files || !Array.isArray(files) || files.length === 0) {
           filesTable.innerHTML = '<tr><td colspan="6" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
@@ -1313,18 +1324,40 @@
         
         filesTable.innerHTML = '';
         files.forEach(file => {
+          // Pour déboguer
+          console.log('Processing file:', file);
+          
+          // Déterminer le nom de fichier à partir des propriétés disponibles
+          const filename = file.filename || file.name || file.file || 'Sans nom';
+          
+          // Récupérer l'ID de manière sécurisée
+          const fileId = file.id || '';
+          
+          // Créer un ID de donnée sécurisé pour les attributs data-*
+          const safeFilename = filename.replace(/[^a-z0-9]/gi, '_');
+          
+          // Gérer la date dans différents formats
+          let dateStr = 'N/A';
+          if (file.last_updated) {
+            dateStr = formatDate(file.last_updated);
+          } else if (file.lastModified) {
+            dateStr = formatDate(new Date(file.lastModified));
+          } else if (file.updated_at) {
+            dateStr = formatDate(file.updated_at);
+          }
+          
           filesTable.innerHTML += `
             <tr>
-              <td>${file.filename}</td>
+              <td>${filename}</td>
               <td>${file.type || 'Inconnu'}</td>
               <td>${file.description || '-'}</td>
-              <td>${formatDate(file.last_updated)}</td>
-              <td>${file.count || 0} éléments</td>
+              <td>${dateStr}</td>
+              <td>${file.count || file.size ? (file.size + ' octets') : '0 éléments'}</td>
               <td>
-                <button class="btn btn-icon view-file" data-id="${file.id}" data-filename="${file.filename}">
+                <button class="btn btn-icon view-file" data-id="${fileId}" data-filename="${safeFilename}">
                   <i class="fas fa-eye"></i>
                 </button>
-                <button class="btn btn-icon delete-file" data-id="${file.id}">
+                <button class="btn btn-icon delete-file" data-id="${fileId}" data-filename="${safeFilename}">
                   <i class="fas fa-trash"></i>
                 </button>
               </td>
@@ -1398,7 +1431,18 @@
         console.log('AI Providers response:', response);
         
         // Extraire les données depuis la réponse
-        const providers = response.data || response;
+        let providers = [];
+        
+        if (response && response.success && Array.isArray(response.data)) {
+          // Format API moderne avec { success: true, data: [...] }
+          providers = response.data;
+        } else if (Array.isArray(response)) {
+          // Format API simple array
+          providers = response;
+        } else if (response && typeof response === 'object') {
+          // Autre format potentiel
+          providers = response.providers || response.data || [];
+        }
         
         loadingSpinner.style.display = 'none';
         
@@ -1409,32 +1453,45 @@
         
         let html = '';
         providers.forEach(provider => {
-          const statusClass = provider.enabled ? 'ai-status-active' : 'ai-status-inactive';
-          const statusText = provider.enabled ? 'Actif' : 'Inactif';
+          // Pour déboguer
+          console.log('Processing provider:', provider);
+          
+          // Sécuriser l'accès aux propriétés
+          const id = provider.id || '';
+          const name = provider.name || provider.provider_name || 'Fournisseur IA';
+          const description = provider.description || 'Aucune description disponible';
+          const models = provider.models || 'Par défaut';
+          const created_at = provider.created_at || new Date().toISOString();
+          
+          // Déterminer le statut
+          const isEnabled = provider.enabled === 1 || provider.enabled === true || 
+                          provider.status === 'active' || provider.status === 'enabled';
+          const statusClass = isEnabled ? 'ai-status-active' : 'ai-status-inactive';
+          const statusText = isEnabled ? 'Actif' : 'Inactif';
           
           html += `
-            <div class="ai-card" data-id="${provider.id}">
+            <div class="ai-card" data-id="${id}">
               <div class="ai-card-header">
                 <h3>
-                  <i class="ai-provider-icon ${getProviderIcon(provider.name)}"></i>
-                  ${provider.name}
+                  <i class="ai-provider-icon ${getProviderIcon(name)}"></i>
+                  ${name}
                 </h3>
                 <span class="ai-status ${statusClass}">${statusText}</span>
               </div>
               <div class="ai-card-body">
-                <p>${provider.description || 'Aucune description disponible'}</p>
+                <p>${description}</p>
                 <div class="ai-card-info">
-                  <span>Modèles: ${provider.models || 'Par défaut'}</span>
-                  <span>Ajouté le: ${formatDate(provider.created_at)}</span>
+                  <span>Modèles: ${models}</span>
+                  <span>Ajouté le: ${formatDate(created_at)}</span>
                 </div>
                 <div class="ai-card-actions">
-                  <button class="btn btn-sm btn-secondary test-provider" data-id="${provider.id}">
+                  <button class="btn btn-sm btn-secondary test-provider" data-id="${id}">
                     <i class="fas fa-vial"></i> Tester
                   </button>
-                  <button class="btn btn-sm btn-primary edit-provider" data-id="${provider.id}">
+                  <button class="btn btn-sm btn-primary edit-provider" data-id="${id}">
                     <i class="fas fa-pencil-alt"></i> Modifier
                   </button>
-                  <button class="btn btn-sm btn-danger delete-provider" data-id="${provider.id}">
+                  <button class="btn btn-sm btn-danger delete-provider" data-id="${id}">
                     <i class="fas fa-trash"></i> Supprimer
                   </button>
                 </div>
@@ -1484,7 +1541,18 @@
         console.log('AI Providers List response:', response);
         
         // Extraire les données depuis la réponse
-        const providers = response.data || response;
+        let providers = [];
+        
+        if (response && response.success && Array.isArray(response.data)) {
+          // Format API moderne avec { success: true, data: [...] }
+          providers = response.data;
+        } else if (Array.isArray(response)) {
+          // Format API simple array
+          providers = response;
+        } else if (response && typeof response === 'object') {
+          // Autre format potentiel
+          providers = response.providers || response.data || [];
+        }
         
         if (!providers || !Array.isArray(providers) || providers.length === 0) {
           providerList.innerHTML = '<div class="alert alert-info">Aucun fournisseur d\'IA disponible</div>';
@@ -1493,13 +1561,21 @@
         
         let html = '';
         providers.forEach(provider => {
+          // Pour déboguer
+          console.log('Processing supported provider:', provider);
+          
+          // Sécuriser l'accès aux propriétés
+          const name = provider.name || provider.provider_name || 'Fournisseur IA';
+          const displayName = provider.display_name || name;
+          const description = provider.description || 'Aucune description disponible';
+          
           html += `
-            <div class="ai-provider-card" data-name="${provider.name}">
+            <div class="ai-provider-card" data-name="${name}">
               <div class="ai-provider-logo">
-                <i class="${getProviderIcon(provider.name)}"></i>
+                <i class="${getProviderIcon(name)}"></i>
               </div>
-              <h3 class="ai-provider-title">${provider.display_name || provider.name}</h3>
-              <p class="ai-provider-description">${provider.description || 'Aucune description disponible'}</p>
+              <h3 class="ai-provider-title">${displayName}</h3>
+              <p class="ai-provider-description">${description}</p>
             </div>
           `;
         });
@@ -1537,25 +1613,55 @@
     
     async function editAIProvider(providerId) {
       try {
-        const provider = await fetchWithAuth(`/api/ai-providers/${providerId}`);
+        const response = await fetchWithAuth(`/api/ai-providers/${providerId}`);
+        console.log('Edit provider response:', response);
+        
+        // Extraire les données depuis la réponse
+        let provider = {};
+        if (response && response.success && response.data) {
+          provider = response.data;
+        } else if (response && typeof response === 'object') {
+          provider = response;
+        }
         
         document.getElementById('provider-form').reset();
         document.getElementById('provider-mode').value = 'edit';
         document.getElementById('provider-modal-title').textContent = 'Modifier le fournisseur d\'IA';
         document.getElementById('provider-id').value = providerId;
-        document.getElementById('provider-name').value = provider.name;
-        document.getElementById('api-url').value = provider.api_url || '';
-        document.getElementById('api-models').value = provider.models || '';
+        
+        // Extraire les propriétés de manière sécurisée
+        const name = provider.name || provider.provider_name || '';
+        const apiUrl = provider.api_url || '';
+        const models = provider.models || '';
+        
+        document.getElementById('provider-name').value = name;
+        document.getElementById('api-url').value = apiUrl;
+        document.getElementById('api-models').value = models;
+        
+        // Déterminer le statut
+        const isEnabled = provider.enabled === 1 || provider.enabled === true || 
+                          provider.status === 'active' || provider.status === 'enabled';
         
         // Définir le statut
-        if (provider.enabled) {
+        if (isEnabled) {
           document.getElementById('status-active').checked = true;
         } else {
           document.getElementById('status-inactive').checked = true;
         }
         
-        // Paramètres avancés
-        document.getElementById('settings').value = provider.settings ? JSON.stringify(provider.settings, null, 2) : '{}';
+        // Paramètres avancés - gérer différentes structures possibles
+        let settings = {};
+        if (typeof provider.settings === 'string') {
+          try {
+            settings = JSON.parse(provider.settings);
+          } catch (e) {
+            console.error('Erreur lors de la conversion des paramètres:', e);
+          }
+        } else if (provider.settings && typeof provider.settings === 'object') {
+          settings = provider.settings;
+        }
+        
+        document.getElementById('settings').value = JSON.stringify(settings, null, 2);
         
         // Afficher l'info de clé
         document.getElementById('api-key-info').classList.remove('hidden');
@@ -1563,6 +1669,7 @@
         
         openModal('provider-modal');
       } catch (error) {
+        console.error('Erreur complète:', error);
         showError('Erreur lors du chargement du fournisseur d\'IA: ' + error.message);
       }
     }
@@ -1629,7 +1736,13 @@
         'gemini': 'fas fa-gem'
       };
       
-      return icons[providerName.toLowerCase()] || 'fas fa-cog';
+      // Vérifier si providerName est défini avant d'appeler toLowerCase
+      if (!providerName) return 'fas fa-cog';
+      
+      // Assurez-vous que c'est bien une chaîne de caractères
+      const name = typeof providerName === 'string' ? providerName : String(providerName);
+      
+      return icons[name.toLowerCase()] || 'fas fa-cog';
     }
   </script>
 </body>
