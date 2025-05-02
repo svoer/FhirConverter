@@ -803,6 +803,9 @@ module.exports = {
   updateWorkflow,
   deleteWorkflow,
   executeWorkflow,
+  executeWorkflowForApplication,
+  logWorkflowExecution,
+  getWorkflowExecutionHistory,
   getEditorUrl,
   getCustomNodeDefinitions,
   // Cette fonction n'est plus disponible mais est maintenue pour la compatibilité
