@@ -168,14 +168,58 @@ fi
 # Installation des modules Python nécessaires si Python est disponible
 if [ ! -z "$PYTHON_CMD" ]; then
   echo "   Installation des modules Python requis..."
+  
+  # Vérifier si pip est disponible
+  PIP_CMD=""
   if command -v pip3 &> /dev/null; then
-    pip3 install hl7 requests --quiet
-    echo "   ✅ Modules Python installés avec pip3"
+    PIP_CMD="pip3"
+    echo "   ✅ pip3 trouvé"
   elif command -v pip &> /dev/null; then
-    pip install hl7 requests --quiet
-    echo "   ✅ Modules Python installés avec pip"
+    PIP_CMD="pip"
+    echo "   ✅ pip trouvé"
   else
-    echo "   ⚠️ pip non trouvé. Les modules Python requis n'ont pas été installés."
+    echo "   ⚠️ pip non trouvé, tentative d'installation..."
+    
+    # Tentative d'installation de pip
+    if [ "$PYTHON_CMD" = "python3" ]; then
+      # Pour les distributions basées sur Debian/Ubuntu
+      if command -v apt-get &> /dev/null; then
+        echo "   Tentative d'installation de pip avec apt-get..."
+        apt-get update -qq && apt-get install -y python3-pip >/dev/null 2>&1
+      # Pour les distributions basées sur RHEL/CentOS/Fedora
+      elif command -v dnf &> /dev/null; then
+        echo "   Tentative d'installation de pip avec dnf..."
+        dnf install -y python3-pip >/dev/null 2>&1
+      elif command -v yum &> /dev/null; then
+        echo "   Tentative d'installation de pip avec yum..."
+        yum install -y python3-pip >/dev/null 2>&1
+      # Installation manuelle de pip si les gestionnaires de paquets ne sont pas disponibles
+      else
+        echo "   Tentative d'installation manuelle de pip..."
+        curl -s https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+        $PYTHON_CMD get-pip.py --quiet
+        rm -f get-pip.py
+      fi
+      
+      # Vérifier si l'installation a réussi
+      if command -v pip3 &> /dev/null; then
+        PIP_CMD="pip3"
+        echo "   ✅ pip3 installé avec succès"
+      elif command -v pip &> /dev/null; then
+        PIP_CMD="pip"
+        echo "   ✅ pip installé avec succès"
+      fi
+    fi
+  fi
+  
+  # Installation des modules requis si pip est disponible
+  if [ ! -z "$PIP_CMD" ]; then
+    echo "   Installation des modules hl7 et requests..."
+    $PIP_CMD install hl7 requests --quiet
+    echo "   ✅ Modules Python installés avec $PIP_CMD"
+  else
+    echo "   ⚠️ Impossible d'installer pip. Les modules Python requis n'ont pas été installés."
+    echo "   Pour installer manuellement, exécutez: $PYTHON_CMD -m pip install hl7 requests"
   fi
 fi
 

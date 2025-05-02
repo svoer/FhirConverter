@@ -250,28 +250,77 @@ fi
 
 # Vérification de l'installation Python pour les scripts auxiliaires
 echo -e "${BLUE}[5/6] Vérification de Python...${NC}"
+
+# Détecter Python
+PYTHON_CMD=""
 if command -v python3 &> /dev/null; then
+  PYTHON_CMD="python3"
   echo -e "${GREEN}✅ Python 3 trouvé: $(python3 --version)${NC}"
-  # Optionnel: vérifier les modules Python
-  if command -v pip3 &> /dev/null; then
-    if ! pip3 list | grep -q "hl7"; then
-      echo -e "${YELLOW}Module hl7 Python manquant, installation...${NC}"
-      pip3 install hl7 --quiet
-    fi
-    if ! pip3 list | grep -q "requests"; then
-      echo -e "${YELLOW}Module requests Python manquant, installation...${NC}"
-      pip3 install requests --quiet
-    fi
-  fi
 elif command -v python &> /dev/null; then
   PYTHON_VERSION=$(python --version 2>&1)
   if [[ $PYTHON_VERSION == Python\ 3* ]]; then
+    PYTHON_CMD="python"
     echo -e "${GREEN}✅ Python 3 trouvé: $PYTHON_VERSION${NC}"
   else
+    PYTHON_CMD="python"
     echo -e "${YELLOW}⚠️ Python $PYTHON_VERSION trouvé, mais Python 3 est recommandé${NC}"
   fi
 else
   echo -e "${YELLOW}⚠️ Python non trouvé. Certaines fonctionnalités pourraient ne pas être disponibles.${NC}"
+fi
+
+# Vérifier et installer les modules Python si nécessaire
+if [ ! -z "$PYTHON_CMD" ]; then
+  # Détecter pip
+  PIP_CMD=""
+  if command -v pip3 &> /dev/null; then
+    PIP_CMD="pip3"
+  elif command -v pip &> /dev/null; then
+    PIP_CMD="pip"
+  elif [ "$PYTHON_CMD" = "python3" ]; then
+    PIP_CMD="$PYTHON_CMD -m pip"
+    # Vérifier si le module pip est disponible
+    if ! $PYTHON_CMD -m pip --version &> /dev/null; then
+      echo -e "${YELLOW}Module pip non trouvé. Tentative d'installation via ensurepip...${NC}"
+      $PYTHON_CMD -m ensurepip --upgrade --default-pip &> /dev/null || true
+      
+      # Vérifier à nouveau si pip est disponible
+      if $PYTHON_CMD -m pip --version &> /dev/null; then
+        echo -e "${GREEN}✅ Module pip installé avec succès${NC}"
+      else
+        echo -e "${YELLOW}⚠️ Impossible d'installer pip automatiquement${NC}"
+        PIP_CMD=""
+      fi
+    fi
+  elif [ "$PYTHON_CMD" = "python" ]; then
+    PIP_CMD="$PYTHON_CMD -m pip"
+    # Vérifier si le module pip est disponible
+    if ! $PYTHON_CMD -m pip --version &> /dev/null; then
+      PIP_CMD=""
+    fi
+  fi
+  
+  # Installer les modules requis si pip est disponible
+  if [ ! -z "$PIP_CMD" ]; then
+    # Vérifier si les modules sont déjà installés
+    if ! $PYTHON_CMD -c "import hl7" &> /dev/null; then
+      echo -e "${YELLOW}Module hl7 Python manquant, installation...${NC}"
+      $PIP_CMD install hl7 --quiet
+      if $PYTHON_CMD -c "import hl7" &> /dev/null; then
+        echo -e "${GREEN}✅ Module hl7 Python installé avec succès${NC}"
+      fi
+    fi
+    
+    if ! $PYTHON_CMD -c "import requests" &> /dev/null; then
+      echo -e "${YELLOW}Module requests Python manquant, installation...${NC}"
+      $PIP_CMD install requests --quiet
+      if $PYTHON_CMD -c "import requests" &> /dev/null; then
+        echo -e "${GREEN}✅ Module requests Python installé avec succès${NC}"
+      fi
+    fi
+  else
+    echo -e "${YELLOW}⚠️ pip non disponible. Certains modules Python pourraient manquer.${NC}"
+  fi
 fi
 
 # Vérifier si le port 5000 est déjà utilisé et le libérer si nécessaire
