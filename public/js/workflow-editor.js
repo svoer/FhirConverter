@@ -1222,10 +1222,17 @@ class WorkflowEditor {
       const portRect = portElem.getBoundingClientRect();
       const canvasRect = this.canvas.getBoundingClientRect();
       
-      // Calculer la position absolue du port
+      // Calculer la position relative du port par rapport au nœud
+      const nodeRect = nodeElem.getBoundingClientRect();
+      
+      // Calculer la position relative du port par rapport au nœud
+      const portRelativeX = portRect.left - nodeRect.left + (portRect.width / 2);
+      const portRelativeY = portRect.top - nodeRect.top + (portRect.height / 2);
+      
+      // Calculer la position absolue du port en fonction de la position du nœud
       return {
-        x: (portRect.left + portRect.width/2 - canvasRect.left) / this.scale - this.offset.x / this.scale,
-        y: (portRect.top + portRect.height/2 - canvasRect.top) / this.scale - this.offset.y / this.scale
+        x: node.position.x + portRelativeX,
+        y: node.position.y + portRelativeY
       };
     } catch (err) {
       console.error("[Workflow] Erreur lors du calcul de la position du port:", err);
@@ -1367,10 +1374,14 @@ class WorkflowEditor {
     const sourcePortRect = sourcePort.getBoundingClientRect();
     const sourceNodeRect = sourceNode.getBoundingClientRect();
     
-    // Calculer le centre du port par rapport à son nœud parent
+    // Calculer le centre du port par rapport à son nœud parent de manière cohérente
+    // avec la méthode getPortPosition
+    const portRelativeX = sourcePortRect.left - sourceNodeRect.left + (sourcePortRect.width / 2);
+    const portRelativeY = sourcePortRect.top - sourceNodeRect.top + (sourcePortRect.height / 2);
+    
     const start = {
-      x: sourceNodeData.position.x + (sourcePortRect.left - sourceNodeRect.left) + sourcePortRect.width / 2,
-      y: sourceNodeData.position.y + (sourcePortRect.top - sourceNodeRect.top) + sourcePortRect.height / 2
+      x: sourceNodeData.position.x + portRelativeX,
+      y: sourceNodeData.position.y + portRelativeY
     };
     
     // Position de la souris dans les coordonnées du canvas
