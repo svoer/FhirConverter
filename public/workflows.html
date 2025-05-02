@@ -527,7 +527,7 @@
             const cancelWorkflow = document.getElementById('cancel-workflow');
             const saveWorkflow = document.getElementById('save-workflow');
             const workflowForm = document.getElementById('workflow-form');
-            const modalTitle = document.getElementById('workflow-modal-title');
+            const modalTitle = document.getElementById('modal-title');
             const workflowGrid = document.getElementById('workflow-grid');
             const applicationFilter = document.getElementById('application-filter');
             const workflowApplication = document.getElementById('workflow-application');
@@ -880,7 +880,7 @@
                     jsonEditor.setValue(JSON.stringify(workflow.flow_json ? JSON.parse(workflow.flow_json) : [], null, 2));
                     
                     // Afficher la modal d'édition (celle qu'on utilise déjà pour créer/modifier)
-                    document.getElementById('workflow-modal-title').textContent = `Éditer le workflow: ${workflow.name}`;
+                    document.getElementById('modal-title').textContent = `Éditer le workflow: ${workflow.name}`;
                     document.getElementById('workflow-id').value = workflow.id;
                     document.getElementById('workflow-name').value = workflow.name;
                     document.getElementById('workflow-description').value = workflow.description || '';
