@@ -84,9 +84,18 @@ fi
 install_local_nodejs() {
   echo "📦 Installation locale de Node.js v${NODE_VERSION}..."
   
-  # Vérifier si l'archive existe déjà
-  if [ ! -f "./vendor/${NODE_ARCHIVE}" ]; then
+  # Toujours nettoyer les installations précédentes pour éviter les conflits
+  echo "   Nettoyage des installations précédentes..."
+  rm -rf "${NODE_LOCAL_PATH}"
+  rm -rf "./vendor/${NODE_DIR}"
+  
+  # Re-créer le répertoire vendor
+  mkdir -p "./vendor"
+  
+  # Vérifier si l'archive existe déjà et si elle est valide
+  if [ ! -f "./vendor/${NODE_ARCHIVE}" ] || [ ! -s "./vendor/${NODE_ARCHIVE}" ]; then
     echo "   Téléchargement de Node.js v${NODE_VERSION}..."
+    rm -f "./vendor/${NODE_ARCHIVE}"  # Supprimer le fichier s'il existe mais est vide
     
     # Vérifier si curl ou wget est disponible
     if command -v curl &> /dev/null; then
@@ -99,43 +108,84 @@ install_local_nodejs() {
       exit 1
     fi
     
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ] || [ ! -s "./vendor/${NODE_ARCHIVE}" ]; then
       echo "❌ Échec du téléchargement de Node.js."
       exit 1
     fi
   else
-    echo "   Archive Node.js déjà téléchargée."
+    echo "   Archive Node.js trouvée, vérification..."
+    # Vérifier si l'archive est valide
+    if ! tar -tzf "./vendor/${NODE_ARCHIVE}" &> /dev/null; then
+      echo "   Archive Node.js corrompue, nouvelle tentative de téléchargement..."
+      rm -f "./vendor/${NODE_ARCHIVE}"
+      if command -v curl &> /dev/null; then
+        curl -L -o "./vendor/${NODE_ARCHIVE}" "${NODE_URL}" --progress-bar
+      elif command -v wget &> /dev/null; then
+        wget -O "./vendor/${NODE_ARCHIVE}" "${NODE_URL}" --show-progress
+      fi
+    else
+      echo "   Archive Node.js validée."
+    fi
   fi
   
-  # Extraire l'archive si le répertoire n'existe pas
-  if [ ! -d "${NODE_LOCAL_PATH}" ]; then
-    echo "   Extraction de Node.js..."
-    mkdir -p "${NODE_LOCAL_PATH}"
-    tar -xzf "./vendor/${NODE_ARCHIVE}" -C "./vendor/"
-    mv "./vendor/${NODE_DIR}"/* "${NODE_LOCAL_PATH}/"
-    rm -rf "./vendor/${NODE_DIR}"
-    
-    if [ $? -ne 0 ]; then
-      echo "❌ Échec de l'extraction de Node.js."
+  # Extraire l'archive
+  echo "   Extraction de Node.js..."
+  mkdir -p "${NODE_LOCAL_PATH}"
+  
+  # Extraction avec gestion d'erreur détaillée
+  if ! tar -xzf "./vendor/${NODE_ARCHIVE}" -C "./vendor/"; then
+    echo "❌ Échec de l'extraction de l'archive Node.js. Vérification des permissions..."
+    # Vérifier si c'est un problème de permissions
+    chmod -R 755 "./vendor"
+    if ! tar -xzf "./vendor/${NODE_ARCHIVE}" -C "./vendor/"; then
+      echo "❌ L'extraction a échoué même avec les permissions corrigées."
       exit 1
     fi
-  else
-    echo "   Node.js déjà extrait."
   fi
   
-  echo "✅ Node.js v${NODE_VERSION} installé localement avec succès."
+  if [ ! -d "./vendor/${NODE_DIR}" ]; then
+    echo "❌ Le répertoire extrait n'existe pas. L'extraction a probablement échoué."
+    exit 1
+  fi
+  
+  # Déplacer les fichiers avec gestion d'erreur
+  echo "   Déplacement des fichiers Node.js..."
+  if ! cp -rf "./vendor/${NODE_DIR}"/* "${NODE_LOCAL_PATH}/"; then
+    echo "❌ Impossible de copier les fichiers Node.js. Vérification des permissions..."
+    chmod -R 755 "./vendor/${NODE_DIR}"
+    if ! cp -rf "./vendor/${NODE_DIR}"/* "${NODE_LOCAL_PATH}/"; then
+      echo "❌ La copie a échoué même avec les permissions corrigées."
+      exit 1
+    fi
+  fi
+  
+  # Nettoyer
+  rm -rf "./vendor/${NODE_DIR}"
+  
+  # Rendre les binaires exécutables
+  echo "   Configuration des permissions des binaires..."
+  chmod +x "${NODE_LOCAL_PATH}/bin/node"
+  chmod +x "${NODE_LOCAL_PATH}/bin/npm"
   
   # Exporter les variables d'environnement pour utiliser la version locale
   export PATH="${PWD}/${NODE_LOCAL_PATH}/bin:$PATH"
   export USE_LOCAL_NODEJS=1
   
   # Vérifier l'installation
-  if ! command -v "${PWD}/${NODE_LOCAL_PATH}/bin/node" &> /dev/null; then
-    echo "❌ L'installation locale de Node.js a échoué."
+  if [ ! -f "${PWD}/${NODE_LOCAL_PATH}/bin/node" ]; then
+    echo "❌ Fichier binaire node introuvable dans ${PWD}/${NODE_LOCAL_PATH}/bin/"
+    ls -la "${PWD}/${NODE_LOCAL_PATH}/bin/" || echo "Impossible de lister le répertoire"
     exit 1
   fi
   
-  echo "   Version locale de Node.js utilisée: $("${PWD}/${NODE_LOCAL_PATH}/bin/node" -v)"
+  if ! "${PWD}/${NODE_LOCAL_PATH}/bin/node" --version &> /dev/null; then
+    echo "❌ Le binaire node existe mais ne peut pas être exécuté."
+    file "${PWD}/${NODE_LOCAL_PATH}/bin/node" || echo "Impossible d'examiner le fichier"
+    exit 1
+  fi
+  
+  echo "✅ Node.js v${NODE_VERSION} installé localement avec succès."
+  echo "   Version locale de Node.js utilisée: $("${PWD}/${NODE_LOCAL_PATH}/bin/node" --version)"
 }
 
 # Déterminer si Node.js est déjà installé sur le système
