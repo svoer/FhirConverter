@@ -228,6 +228,9 @@
     window.openImportModal = openImportModal;
     
     document.addEventListener('DOMContentLoaded', () => {
+      // Configuration pour l'intégration iframe
+      FHIRHubAuth.setupIframeAuth();
+      
       // Vérifier les droits d'administrateur
       if (!FHIRHubAuth.checkAdminRights()) {
         return; // Arrêter l'exécution si l'utilisateur n'est pas administrateur
