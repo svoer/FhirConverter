@@ -57,6 +57,12 @@ yarn-error.log*
 attached_assets/*
 !attached_assets/.gitkeep
 
+# Fichiers de développement 
+debug_*.js
+*_debug.*
+token.txt
+backup/
+
 # Node.js intégré
 vendor/nodejs/
 vendor/temp/
