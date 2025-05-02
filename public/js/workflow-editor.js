@@ -300,17 +300,28 @@ class WorkflowEditor {
         }
       });
       
-      document.addEventListener('mouseup', () => {
+      document.addEventListener('mouseup', (e) => {
         if (this.isDragging) {
           this.isDragging = false;
           this.container.style.cursor = 'default';
         }
         
         if (this.isCreatingEdge) {
-          this.removeTempEdge();
-          this.isCreatingEdge = false;
-          this.sourceNodeId = null;
-          this.sourcePortIndex = null;
+          // Nous laissons le gestionnaire d'événements spécifique du port gérer cette partie
+          // Mais ajoutons une protection supplémentaire pour éviter des arêtes incomplètes
+          console.log("[Workflow] Fin de l'opération de création d'arête");
+          
+          // S'assurer que tout est bien nettoyé
+          setTimeout(() => {
+            if (this.isCreatingEdge) {
+              console.warn("[Workflow] Nettoyage forcé après tentative de création d'arête");
+              this.removeTempEdge();
+              this.isCreatingEdge = false;
+              this.sourceNodeId = null;
+              this.sourcePortIndex = null;
+              this.clearPortHighlights();
+            }
+          }, 100);
         }
       });
     }
@@ -748,6 +759,17 @@ class WorkflowEditor {
             document.removeEventListener('mousemove', mousemove);
             document.removeEventListener('mouseup', mouseup);
             
+            // Vérifier si l'événement a bien été initié avec les données requises
+            if (!this.sourceNodeId || this.sourcePortIndex === null) {
+              console.warn("[Workflow] Impossible de créer l'arête: informations source incomplètes");
+              this.clearPortHighlights();
+              this.removeTempEdge();
+              this.isCreatingEdge = false;
+              this.sourceNodeId = null;
+              this.sourcePortIndex = null;
+              return;
+            }
+            
             // Vérifier si nous avons relâché sur un port d'entrée
             const target = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
             if (target && target.classList.contains('port-handle')) {
@@ -758,16 +780,27 @@ class WorkflowEditor {
                 if (targetNode && targetNode.id !== node.id) {
                   const targetPortIndex = parseInt(targetPort.getAttribute('data-port-index'));
                   
-                  // Créer l'arête
-                  this.createEdge(
-                    this.sourceNodeId,
-                    targetNode.id,
-                    this.sourcePortIndex,
-                    targetPortIndex
-                  );
-                  
-                  // Feedback visuel
-                  this.showNotification('Connexion établie', 'success');
+                  // Vérifier que les identifiants sont valides
+                  if (this.sourceNodeId && targetNode.id) {
+                    console.log(`[Workflow] Tentative de création d'arête: source=${this.sourceNodeId}, cible=${targetNode.id}, sourcePort=${this.sourcePortIndex}, targetPort=${targetPortIndex}`);
+                    
+                    // Créer l'arête
+                    const newEdge = this.createEdge(
+                      this.sourceNodeId,
+                      targetNode.id,
+                      this.sourcePortIndex,
+                      targetPortIndex
+                    );
+                    
+                    if (newEdge) {
+                      // Feedback visuel
+                      this.showNotification('Connexion établie', 'success');
+                    } else {
+                      this.showNotification('Échec de la connexion', 'error');
+                    }
+                  } else {
+                    console.warn(`[Workflow] Identifiants de nœuds invalides: source=${this.sourceNodeId}, cible=${targetNode.id}`);
+                  }
                 }
               }
             }
