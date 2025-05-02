@@ -213,19 +213,21 @@ body {
 }
 
 .btn-reset-env {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 15px;
-  background-color: #e74c3c;
+  padding: 8px 12px;
+  background: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
   color: white;
-  border-radius: 5px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  margin-top: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
   transition: all 0.3s ease;
+  border: none;
+  width: 100%;
 }
 
 .btn-reset-env i {
@@ -233,9 +235,10 @@ body {
 }
 
 .btn-reset-env:hover {
-  background-color: #c0392b;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }
 
 .login-container {
