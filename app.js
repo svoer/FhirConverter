@@ -809,14 +809,24 @@ if (redApp) {
       const proxy = createProxyMiddleware({
         target: `http://localhost:${nodeRedPort}`,
         changeOrigin: true,
+        ws: true, // Support des WebSockets
         pathRewrite: {
           '^/node-red': '/' // Réécrire /node-red vers / sur la cible
         },
         onProxyReq: (proxyReq, req, res) => {
           // Conserver les paramètres d'URL importants pour Node-RED
+          console.log(`[WORKFLOW] Proxy: demande ${req.method} ${req.url} vers http://localhost:${nodeRedPort}`);
           if (req.query.workflowId) {
             console.log(`[WORKFLOW] Transmission du workflowId ${req.query.workflowId} au proxy Node-RED`);
           }
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          console.log(`[WORKFLOW] Proxy: réponse ${proxyRes.statusCode} de http://localhost:${nodeRedPort}`);
+        },
+        onError: (err, req, res) => {
+          console.error(`[WORKFLOW] Erreur de proxy:`, err);
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end(`Erreur de proxy: ${err.message}`);
         },
         logLevel: 'debug'
       });
