@@ -2526,6 +2526,422 @@ class WorkflowEditor {
       });
     }
   }
+
+  /**
+   * Active l'assistant de connexion rapide de nœuds
+   * Affiche une interface utilisateur pour sélectionner et connecter les nœuds facilement
+   */
+  activateConnectionWizard() {
+    // Vérifier s'il y a au moins deux nœuds dans le workflow
+    if (this.nodes.length < 2) {
+      this.showNotification('Ajoutez au moins deux nœuds pour utiliser l\'assistant de connexion', 'warning');
+      return;
+    }
+    
+    // Créer l'interface de l'assistant
+    this.createConnectionWizardUI();
+  }
+  
+  /**
+   * Crée l'interface utilisateur de l'assistant de connexion
+   */
+  createConnectionWizardUI() {
+    // Créer l'overlay de l'assistant
+    const wizardOverlay = document.createElement('div');
+    wizardOverlay.className = 'connection-wizard-overlay';
+    
+    // Créer le panneau de l'assistant
+    const wizardPanel = document.createElement('div');
+    wizardPanel.className = 'connection-wizard-panel';
+    
+    // Créer l'en-tête
+    const wizardHeader = document.createElement('div');
+    wizardHeader.className = 'wizard-header';
+    
+    const wizardTitle = document.createElement('h3');
+    wizardTitle.textContent = 'Assistant de connexion rapide';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.className = 'close-wizard';
+    closeBtn.addEventListener('click', () => {
+      wizardOverlay.remove();
+    });
+    
+    wizardHeader.appendChild(wizardTitle);
+    wizardHeader.appendChild(closeBtn);
+    
+    // Créer le contenu
+    const wizardContent = document.createElement('div');
+    wizardContent.className = 'wizard-content';
+    
+    // Lister tous les nœuds dans le workflow
+    const nodeList = document.createElement('div');
+    nodeList.className = 'node-connection-list';
+    
+    // Ajouter les nœuds à la liste
+    this.nodes.forEach(node => {
+      const nodeItem = document.createElement('div');
+      nodeItem.className = 'node-connection-item';
+      nodeItem.setAttribute('data-node-id', node.id);
+      
+      const nodeInfo = document.createElement('div');
+      nodeInfo.className = 'node-info';
+      
+      const nodeType = document.createElement('span');
+      nodeType.className = 'node-type';
+      nodeType.textContent = node.label;
+      
+      nodeInfo.appendChild(nodeType);
+      nodeItem.appendChild(nodeInfo);
+      
+      // Ajouter les ports de sortie disponibles
+      if (node.outputs && node.outputs.length > 0) {
+        const outputsContainer = document.createElement('div');
+        outputsContainer.className = 'port-list outputs';
+        
+        node.outputs.forEach((output, index) => {
+          const portItem = document.createElement('div');
+          portItem.className = 'port-item output';
+          portItem.setAttribute('data-port-index', index);
+          portItem.textContent = output.label;
+          
+          // Ajouter l'événement pour sélectionner ce port comme source
+          portItem.addEventListener('click', () => {
+            // Désélectionner tous les autres ports sources
+            document.querySelectorAll('.port-item.output.selected').forEach(el => {
+              el.classList.remove('selected');
+            });
+            
+            // Sélectionner ce port
+            portItem.classList.add('selected');
+            
+            // Mettre à jour les connexions possibles
+            this.updatePossibleConnections(node.id, index);
+          });
+          
+          outputsContainer.appendChild(portItem);
+        });
+        
+        nodeItem.appendChild(outputsContainer);
+      }
+      
+      nodeList.appendChild(nodeItem);
+    });
+    
+    // Conteneur pour afficher les connexions possibles
+    const possibleConnectionsContainer = document.createElement('div');
+    possibleConnectionsContainer.className = 'possible-connections';
+    possibleConnectionsContainer.innerHTML = '<p>Sélectionnez un port de sortie pour voir les connexions possibles</p>';
+    
+    wizardContent.appendChild(document.createElement('h4')).textContent = 'Nœuds disponibles';
+    wizardContent.appendChild(nodeList);
+    wizardContent.appendChild(document.createElement('h4')).textContent = 'Connexions possibles';
+    wizardContent.appendChild(possibleConnectionsContainer);
+    
+    // Assembler le panneau
+    wizardPanel.appendChild(wizardHeader);
+    wizardPanel.appendChild(wizardContent);
+    wizardOverlay.appendChild(wizardPanel);
+    
+    // Ajouter l'overlay au conteneur
+    this.container.appendChild(wizardOverlay);
+  }
+  
+  /**
+   * Met à jour la liste des connexions possibles à partir d'un port source
+   * @param {string} sourceNodeId - ID du nœud source
+   * @param {number} outputIndex - Index du port de sortie
+   */
+  updatePossibleConnections(sourceNodeId, outputIndex) {
+    const sourceNode = this.getNodeById(sourceNodeId);
+    const possibleConnectionsContainer = document.querySelector('.possible-connections');
+    
+    if (!sourceNode || !possibleConnectionsContainer) return;
+    
+    // Vider le conteneur
+    possibleConnectionsContainer.innerHTML = '';
+    
+    // Titre
+    const title = document.createElement('h4');
+    title.textContent = `Connecter depuis: ${sourceNode.label} > ${sourceNode.outputs[outputIndex].label}`;
+    possibleConnectionsContainer.appendChild(title);
+    
+    // Trouver tous les ports d'entrée compatibles
+    let foundCompatible = false;
+    
+    this.nodes.forEach(targetNode => {
+      // Ne pas proposer le même nœud comme cible
+      if (targetNode.id === sourceNodeId) return;
+      
+      // Ne pas proposer les nœuds qui ont déjà une connexion depuis ce port
+      const existingConnections = this.edges.filter(edge => 
+        edge.source === sourceNodeId && 
+        edge.sourceOutput === outputIndex &&
+        edge.target === targetNode.id
+      );
+      
+      if (existingConnections.length > 0) return;
+      
+      // Créer un élément pour le nœud cible s'il a des entrées
+      if (targetNode.inputs && targetNode.inputs.length > 0) {
+        const targetNodeItem = document.createElement('div');
+        targetNodeItem.className = 'target-node-item';
+        
+        const nodeLabel = document.createElement('div');
+        nodeLabel.className = 'target-node-label';
+        nodeLabel.textContent = targetNode.label;
+        targetNodeItem.appendChild(nodeLabel);
+        
+        // Liste des ports d'entrée
+        const inputList = document.createElement('div');
+        inputList.className = 'target-port-list';
+        
+        let hasCompatiblePorts = false;
+        
+        // Ajouter chaque port d'entrée
+        targetNode.inputs.forEach((input, inputIndex) => {
+          const portItem = document.createElement('div');
+          portItem.className = 'target-port-item';
+          portItem.textContent = input.label;
+          
+          // Vérifier si ce port d'entrée est déjà connecté
+          const isConnected = this.edges.some(edge => 
+            edge.target === targetNode.id && 
+            edge.targetInput === inputIndex
+          );
+          
+          if (isConnected) {
+            portItem.classList.add('connected');
+            portItem.title = 'Ce port est déjà connecté';
+          } else {
+            portItem.classList.add('available');
+            hasCompatiblePorts = true;
+            foundCompatible = true;
+            
+            // Ajouter l'événement pour créer la connexion
+            portItem.addEventListener('click', () => {
+              this.createOneClickConnection(sourceNodeId, targetNode.id, outputIndex, inputIndex);
+              // Fermer l'assistant après la connexion
+              document.querySelector('.connection-wizard-overlay').remove();
+            });
+          }
+          
+          inputList.appendChild(portItem);
+        });
+        
+        // N'ajouter le nœud que s'il a au moins un port compatible
+        if (hasCompatiblePorts) {
+          targetNodeItem.appendChild(inputList);
+          possibleConnectionsContainer.appendChild(targetNodeItem);
+        }
+      }
+    });
+    
+    // Message si aucune connexion possible n'est trouvée
+    if (!foundCompatible) {
+      const noConnectionsMsg = document.createElement('p');
+      noConnectionsMsg.className = 'no-connections-msg';
+      noConnectionsMsg.textContent = 'Aucune connexion possible trouvée. Tous les ports compatibles sont déjà connectés.';
+      possibleConnectionsContainer.appendChild(noConnectionsMsg);
+      
+      // Ajouter un bouton pour ajouter un nouveau nœud
+      const addNodeBtn = document.createElement('button');
+      addNodeBtn.className = 'add-compatible-node-btn';
+      addNodeBtn.textContent = 'Ajouter un nœud compatible';
+      addNodeBtn.addEventListener('click', () => {
+        // Fermer l'assistant
+        document.querySelector('.connection-wizard-overlay').remove();
+        
+        // Suggérer des types de nœuds compatibles selon le contexte
+        this.suggestCompatibleNodeTypes(sourceNode, outputIndex);
+      });
+      
+      possibleConnectionsContainer.appendChild(addNodeBtn);
+    }
+  }
+  
+  /**
+   * Crée une connexion via l'assistant de connexion rapide
+   * @param {string} sourceId - ID du nœud source
+   * @param {string} targetId - ID du nœud cible
+   * @param {number} sourceOutput - Index du port de sortie
+   * @param {number} targetInput - Index du port d'entrée
+   */
+  createOneClickConnection(sourceId, targetId, sourceOutput, targetInput) {
+    // Créer l'arête
+    const edge = this.createEdge(sourceId, targetId, sourceOutput, targetInput);
+    
+    // Notification de succès
+    this.showNotification('Connexion créée avec succès', 'success');
+    
+    // Mettre en évidence les nœuds connectés brièvement
+    const sourceEl = document.querySelector(`[data-node-id="${sourceId}"]`);
+    const targetEl = document.querySelector(`[data-node-id="${targetId}"]`);
+    
+    if (sourceEl && targetEl) {
+      sourceEl.classList.add('highlight-connected');
+      targetEl.classList.add('highlight-connected');
+      
+      setTimeout(() => {
+        sourceEl.classList.remove('highlight-connected');
+        targetEl.classList.remove('highlight-connected');
+      }, 1500);
+    }
+    
+    return edge;
+  }
+  
+  /**
+   * Suggère des types de nœuds compatibles selon le contexte
+   * @param {Object} sourceNode - Nœud source
+   * @param {number} outputIndex - Index du port de sortie
+   */
+  suggestCompatibleNodeTypes(sourceNode, outputIndex) {
+    // Ici, on pourrait implémenter une logique plus sophistiquée
+    // pour suggérer des types de nœuds compatibles selon la sortie du nœud source
+    
+    // Pour l'exemple, créons une boîte de dialogue simple
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.className = 'wizard-dialog-overlay';
+    
+    const dialogPanel = document.createElement('div');
+    dialogPanel.className = 'wizard-dialog-panel';
+    
+    // En-tête
+    const dialogHeader = document.createElement('div');
+    dialogHeader.className = 'wizard-dialog-header';
+    
+    const dialogTitle = document.createElement('h3');
+    dialogTitle.textContent = 'Suggérer un nœud compatible';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '×';
+    closeBtn.className = 'close-wizard-dialog';
+    closeBtn.addEventListener('click', () => {
+      dialogOverlay.remove();
+    });
+    
+    dialogHeader.appendChild(dialogTitle);
+    dialogHeader.appendChild(closeBtn);
+    
+    // Contenu
+    const dialogContent = document.createElement('div');
+    dialogContent.className = 'wizard-dialog-content';
+    
+    dialogContent.innerHTML = `
+      <p>Suggérer un nœud compatible avec <strong>${sourceNode.label}</strong> (sortie: <strong>${sourceNode.outputs[outputIndex].label}</strong>)</p>
+    `;
+    
+    // Liste de nœuds suggérés (dans une implémentation réelle, cela dépendrait du contexte)
+    const suggestedNodes = [
+      { type: 'field-mapper', label: 'Mapper champs' },
+      { type: 'transform', label: 'Transformer' },
+      { type: 'condition', label: 'Condition' }
+    ];
+    
+    // Si la sortie est HL7, suggérer le convertisseur FHIR
+    if (sourceNode.outputs[outputIndex].name === 'message' || sourceNode.type === 'hl7-input') {
+      suggestedNodes.unshift({ type: 'fhir-converter', label: 'Convertir FHIR' });
+    }
+    
+    // Si la sortie est FHIR, suggérer la sortie FHIR
+    if (sourceNode.outputs[outputIndex].name === 'fhir' || sourceNode.type === 'fhir-converter') {
+      suggestedNodes.unshift({ type: 'fhir-output', label: 'Sortie FHIR' });
+    }
+    
+    const nodeTypesList = document.createElement('div');
+    nodeTypesList.className = 'suggested-node-types';
+    
+    suggestedNodes.forEach(nodeType => {
+      const nodeTypeItem = document.createElement('div');
+      nodeTypeItem.className = 'suggested-node-type';
+      nodeTypeItem.setAttribute('data-node-type', nodeType.type);
+      
+      nodeTypeItem.textContent = nodeType.label;
+      
+      // Ajouter l'événement pour créer ce type de nœud
+      nodeTypeItem.addEventListener('click', () => {
+        // Fermer la boîte de dialogue
+        dialogOverlay.remove();
+        
+        // Ajouter le nœud suggéré
+        this.addSuggestedNodeAndConnect(nodeType.type, sourceNode.id, outputIndex);
+      });
+      
+      nodeTypesList.appendChild(nodeTypeItem);
+    });
+    
+    dialogContent.appendChild(nodeTypesList);
+    
+    // Assembler la boîte de dialogue
+    dialogPanel.appendChild(dialogHeader);
+    dialogPanel.appendChild(dialogContent);
+    dialogOverlay.appendChild(dialogPanel);
+    
+    // Ajouter la boîte de dialogue au DOM
+    this.container.appendChild(dialogOverlay);
+  }
+  
+  /**
+   * Ajoute un nœud suggéré et le connecte automatiquement au nœud source
+   * @param {string} nodeType - Type de nœud à ajouter
+   * @param {string} sourceNodeId - ID du nœud source
+   * @param {number} outputIndex - Index du port de sortie du nœud source
+   */
+  addSuggestedNodeAndConnect(nodeType, sourceNodeId, outputIndex) {
+    // Trouver le nœud source
+    const sourceNode = this.getNodeById(sourceNodeId);
+    if (!sourceNode) return;
+    
+    // Calculer une position à droite du nœud source
+    const position = {
+      x: sourceNode.position.x + sourceNode.width + 100,
+      y: sourceNode.position.y
+    };
+    
+    // Ajouter le nouveau nœud
+    const newNode = this.addNode(nodeType, position);
+    
+    // Attendre que le DOM soit mis à jour
+    setTimeout(() => {
+      // Connecter automatiquement le premier port d'entrée disponible
+      if (newNode.inputs && newNode.inputs.length > 0) {
+        this.createOneClickConnection(sourceNodeId, newNode.id, outputIndex, 0);
+      }
+      
+      // Notification
+      this.showNotification(`Nœud ${newNode.label} ajouté et connecté`, 'success');
+    }, 100);
+  }
+  
+  /**
+   * Affiche une notification dans l'interface
+   * @param {string} message - Message à afficher
+   * @param {string} type - Type de notification (success, warning, error)
+   */
+  showNotification(message, type = 'info') {
+    // Créer l'élément de notification
+    const notification = document.createElement('div');
+    notification.className = `workflow-notification ${type}`;
+    notification.textContent = message;
+    
+    // Ajouter au conteneur
+    this.container.appendChild(notification);
+    
+    // Animation d'entrée
+    setTimeout(() => {
+      notification.classList.add('show');
+    }, 10);
+    
+    // Supprimer après un délai
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
+  }
 }
 
 // Autodetection
