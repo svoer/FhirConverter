@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="/css/styles.css">
     <!-- Styles pour l'éditeur de workflow visuel -->
     <link rel="stylesheet" href="/css/workflow-editor.css">
+    <!-- Style spécifique pour la page des workflows -->
+    <link rel="stylesheet" href="/css/workflows.css">
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -387,26 +389,42 @@
         <div class="container">
         <!-- Contenu principal -->
         <main>
-            <h2>Workflows</h2>
-            <p class="description">Créez et gérez des workflows de transformation pour personnaliser le traitement des messages HL7 et FHIR pour chaque application.</p>
-            
-            <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
-            
-            <div class="filter-container">
-                <label for="application-filter">Filtrer par application:</label>
-                <select id="application-filter" class="filter-select">
-                    <option value="all">Toutes les applications</option>
-                    <!-- Options ajoutées dynamiquement -->
-                </select>
-            </div>
-            
-            <div class="loading-spinner" id="loading-spinner">
-                <div class="spinner"></div>
-                <p>Chargement des workflows...</p>
-            </div>
-            
-            <div class="workflow-grid" id="workflow-grid">
-                <!-- Contenu généré dynamiquement -->
+            <div class="workflow-container">
+                <div class="workflow-tabs">
+                    <div class="workflow-tab active">Workflows</div>
+                    <div class="workflow-tab">Credentials</div>
+                    <div class="workflow-tab">Exécutions</div>
+                </div>
+                
+                <div class="workflow-filter-bar">
+                    <div class="workflow-search">
+                        <input type="text" placeholder="Recherche" id="workflow-search">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    
+                    <div class="workflow-sort">
+                        <select id="application-filter">
+                            <option value="last_updated">Trier par dernière mise à jour</option>
+                            <option value="name">Trier par nom</option>
+                            <option value="app">Trier par application</option>
+                        </select>
+                    </div>
+                    
+                    <div class="workflow-actions">
+                        <button id="add-workflow-btn" class="add-workflow">
+                            <i class="fas fa-plus"></i>Nouveau Workflow
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="loading-spinner" id="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Chargement des workflows...</p>
+                </div>
+                
+                <div class="workflow-list" id="workflow-grid">
+                    <!-- Le contenu sera généré dynamiquement par JavaScript -->
+                </div>
             </div>
         </main>
         
@@ -499,8 +517,10 @@
     </div>
 
     <!-- Footer -->
-    <footer>
-        <p>&copy; 2025 FHIRHub - Tous droits réservés</p>
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">&copy; 2025 FHIRHub - Tous droits réservés</p>
+        </div>
     </footer>
 
     <!-- Scripts -->
