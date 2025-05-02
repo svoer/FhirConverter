@@ -90,21 +90,19 @@ function createChatbotElements() {
   // Créer le HTML du chatbot
   const chatbotHTML = `
     <div class="chatbot-container" id="fhirhub-chatbot">
-      <div class="chatbot-header">
+      <div class="chatbot-header" id="chatbotHeader">
         <div class="chatbot-header-title">
-          <i class="chatbot-header-icon fas fa-robot"></i>
-          <span>Assistant FHIRHub</span>
+          <i class="fas fa-robot chatbot-header-icon"></i>
+          <span>Support FHIRHub</span>
         </div>
-        <button class="chatbot-toggle" type="button">
-          <i class="fas fa-chevron-up" id="chatbot-toggle-icon"></i>
+        <button class="chatbot-toggle" id="chatbotToggle" type="button">
+          <i class="fas fa-chevron-up"></i>
         </button>
       </div>
-      <div class="chatbot-body" id="chatbot-messages"></div>
-      <div class="chatbot-footer">
-        <input type="text" class="chatbot-input" id="chatbot-input" placeholder="Posez votre question ici...">
-        <button class="chatbot-send" id="chatbot-send" type="button">
-          <i class="fas fa-paper-plane"></i>
-        </button>
+      <div class="chatbot-messages" id="chatbotMessages"></div>
+      <div class="chatbot-input-container">
+        <input type="text" id="chatbotInput" placeholder="Comment puis-je vous aider ?">
+        <button id="chatbotSend"><i class="fas fa-paper-plane"></i></button>
       </div>
     </div>
   `;
@@ -120,9 +118,9 @@ function createChatbotElements() {
  * Fonction spécifique pour attacher les événements du chatbot
  */
 function attachChatbotEvents() {
-  const chatbotHeader = document.querySelector('.chatbot-header');
-  const chatbotInput = document.getElementById('chatbot-input');
-  const chatbotSendButton = document.getElementById('chatbot-send');
+  const chatbotHeader = document.getElementById('chatbotHeader');
+  const chatbotInput = document.getElementById('chatbotInput');
+  const chatbotSendButton = document.getElementById('chatbotSend');
   
   // Vérifier que les éléments existent
   if (!chatbotHeader || !chatbotInput || !chatbotSendButton) {
@@ -212,7 +210,7 @@ async function loadAIProvider() {
  * @param {string} content - Le contenu du message
  */
 function addMessage(role, content) {
-  const messagesContainer = document.querySelector('.chatbot-messages');
+  const messagesContainer = document.querySelector('.chatbot-messages') || document.getElementById('chatbotMessages');
   if (!messagesContainer) {
     console.error("Container de messages du chatbot non trouvé");
     return;
@@ -243,7 +241,7 @@ function addMessage(role, content) {
  * Ajoute un indicateur de chargement pendant la réponse de l'IA
  */
 function addLoadingIndicator() {
-  const messagesContainer = document.querySelector('.chatbot-messages');
+  const messagesContainer = document.querySelector('.chatbot-messages') || document.getElementById('chatbotMessages');
   if (!messagesContainer) {
     console.error("Container de messages du chatbot non trouvé");
     return;
@@ -278,7 +276,7 @@ async function sendMessage() {
   }
   
   // Récupérer le message
-  const inputField = document.getElementById('chatbot-input');
+  const inputField = document.getElementById('chatbotInput');
   if (!inputField) return;
   
   const message = inputField.value.trim();
