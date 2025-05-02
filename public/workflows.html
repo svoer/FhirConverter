@@ -422,10 +422,14 @@
 
     <!-- Scripts -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <script src="js/common.js"></script>
     <script src="js/auth-utils.js"></script>
     <script src="js/support-chatbot.js"></script>
     <script>
+        // Fonction d'aide pour obtenir le token d'authentification
+        function getToken() {
+            return getAuthToken(); // Utilise la fonction de auth-utils.js
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Initialisation de l'éditeur JSON
             const jsonEditor = ace.edit("json-editor");
