@@ -105,6 +105,72 @@ body {
   margin-right: 6px;
 }
 
+/* Styles pour le menu déroulant */
+.nav-menu .dropdown {
+  position: relative;
+}
+
+.nav-menu .dropdown-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.nav-menu .dropdown-toggle .fa-caret-down {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  transition: transform 0.3s;
+}
+
+.nav-menu .dropdown:hover .fa-caret-down {
+  transform: rotate(180deg);
+}
+
+.nav-menu .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--gradient-dark);
+  min-width: 180px;
+  max-width: 250px;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s;
+  z-index: 1000;
+}
+
+.nav-menu .dropdown:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.nav-menu .dropdown-menu li {
+  margin: 0;
+  width: 100%;
+}
+
+.nav-menu .dropdown-menu a {
+  padding: 10px 15px;
+  display: block;
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-menu .dropdown-menu a:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.nav-menu .dropdown-menu li:last-child a {
+  border-bottom: none;
+  border-radius: 0 0 4px 4px;
+}
+
 .main-content {
   padding: 2rem 0;
   flex: 1;
