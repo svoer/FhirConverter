@@ -239,6 +239,19 @@ else
   echo -e "${GREEN}✅ Tous les modules Node.js requis sont présents${NC}"
 fi
 
+# Mise à jour du système AlmaLinux si nécessaire
+if command -v dnf &> /dev/null; then
+  echo -e "${BLUE}Vérification des mises à jour système pour AlmaLinux...${NC}"
+  if sudo dnf check-update -q; then
+    echo -e "${GREEN}✅ Système à jour${NC}"
+  else
+    echo -e "${YELLOW}Mise à jour du système...${NC}"
+    sudo dnf update -y -q || true
+    sudo dnf upgrade -y -q || true
+    echo -e "${GREEN}✅ Système mis à jour${NC}"
+  fi
+fi
+
 # Vérification du dossier workflows
 if [ ! -d "./data/workflows" ]; then
   echo -e "${YELLOW}⚠️ Dossier workflows non trouvé, création...${NC}"
@@ -286,7 +299,8 @@ if [ ! -z "$PYTHON_CMD" ]; then
       # Essayer d'installer pip avec dnf pour AlmaLinux/RHEL
       if command -v dnf &> /dev/null; then
         echo -e "${YELLOW}Tentative d'installation de pip avec dnf pour AlmaLinux/RHEL...${NC}"
-        sudo dnf install -y python3-pip >/dev/null 2>&1 || true
+        sudo dnf install -y python3-pip || true
+        echo -e "${GREEN}✅ Commande d'installation de pip exécutée${NC}"
       else
         # Tentative d'installation via ensurepip
         $PYTHON_CMD -m ensurepip --upgrade --default-pip &> /dev/null || true

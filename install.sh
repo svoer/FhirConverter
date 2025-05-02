@@ -22,11 +22,14 @@ mkdir -p ./vendor
 # Vérification de l'environnement
 echo "[1/7] Vérification de l'environnement..."
 
-# Vérifier les mises à jour système sur AlmaLinux/RHEL
+# Vérifier et installer les mises à jour système sur AlmaLinux/RHEL
 if command -v dnf &> /dev/null; then
-  echo "Vérification des mises à jour système avec dnf..."
-  sudo dnf check-update || true
-  echo "✅ Vérification des mises à jour terminée"
+  echo "Vérification et installation des mises à jour système avec dnf..."
+  echo "Exécution de sudo dnf update..."
+  sudo dnf update -y || true
+  echo "Exécution de sudo dnf upgrade..."
+  sudo dnf upgrade -y || true
+  echo "✅ Mise à jour système terminée"
 fi
 
 # Fonction pour télécharger et installer Node.js localement
