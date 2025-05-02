@@ -48,6 +48,7 @@ function setupChatbotEvents() {
   const chatbotHeader = document.querySelector('.chatbot-header');
   const chatbotInput = document.getElementById('chatbot-input');
   const chatbotSend = document.getElementById('chatbot-send');
+  const chatbotToggle = document.querySelector('.chatbot-toggle');
   
   if (!chatbotHeader || !chatbotInput || !chatbotSend) {
     console.error("Éléments du chatbot manquants dans le DOM de workflows.html");
@@ -142,7 +143,7 @@ async function handleSendMessage() {
  * Ajoute un message au chatbot
  */
 function addMessage(type, content) {
-  const messagesContainer = document.querySelector('.chatbot-messages');
+  const messagesContainer = document.getElementById('chatbot-messages');
   if (!messagesContainer) return;
   
   const messageElement = document.createElement('div');
