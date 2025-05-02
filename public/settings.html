@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres - FHIRHub</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  <style>
+    .tabs-container {
+      display: flex;
+      flex-direction: column;
+      margin-top: 1.5rem;
+    }
+
+    .tabs-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-button {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #777;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-button:hover {
+      color: var(--primary-color);
+    }
+
+    .tab-button.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.5s;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .settings-header {
+      background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      color: white;
+      padding: 1.5rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 1.5rem;
+      box-shadow: var(--box-shadow);
+    }
+
+    .settings-header h1 {
+      margin-top: 0;
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .settings-header p {
+      margin-bottom: 0;
+      opacity: 0.9;
+    }
+
+    /* Styles spécifiques aux utilisateurs */
+    .users-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .user-card {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .user-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .user-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--primary-gradient-start), var(--primary-gradient-end));
+    }
+
+    .user-card-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .user-avatar {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-right: 1rem;
+    }
+
+    .user-info h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .user-info .user-role {
+      color: #777;
+      font-size: 0.85rem;
+    }
+
+    .user-actions {
+      margin-top: auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    /* Styles pour les terminologies */
+    .terminology-item {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .terminology-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .terminology-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+      border-radius: 8px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      flex-shrink: 0;
+    }
+
+    .terminology-info {
+      flex: 1;
+    }
+
+    .terminology-info h3 {
+      margin: 0 0 0.25rem;
+      font-size: 1.1rem;
+    }
+
+    .terminology-info p {
+      margin: 0;
+      color: #777;
+      font-size: 0.9rem;
+    }
+
+    .terminology-stats {
+      display: flex;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .terminology-stat {
+      margin-right: 1rem;
+      color: #555;
+    }
+
+    .terminology-stat b {
+      color: var(--primary-color);
+    }
+
+    .terminology-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Styles pour les paramètres IA */
+    .ai-settings-form {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 1.5rem;
+    }
+
+    .ai-provider-card {
+      background: linear-gradient(145deg, #fff, #f9f9f9);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid var(--primary-color);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ai-provider-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .ai-provider-logo {
+      width: 50px;
+      height: 50px;
+      background: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-right: 1rem;
+    }
+
+    .ai-provider-name {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .ai-provider-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    .status-active {
+      background-color: rgba(46, 204, 113, 0.15);
+      color: #27ae60;
+    }
+
+    .status-inactive {
+      background-color: rgba(231, 76, 60, 0.15);
+      color: #c0392b;
+    }
+
+    .form-switch {
+      display: flex;
+      align-items: center;
+      margin: 1rem 0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      margin-left: 1rem;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .api-key-info {
+      display: flex;
+      align-items: center;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="logo">
+        <img src="/img/flame-icon-white.svg" alt="Logo FHIRHub" width="24">
+        <span>FHIRHub</span>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/dashboard.html"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+        <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Convertir</a></li>
+        <li><a href="/workflows.html"><i class="fas fa-project-diagram"></i> Workflows</a></li>
+        <li><a href="/application-management.html"><i class="fas fa-plug"></i> Applications</a></li>
+        <li><a href="/settings.html" class="active"><i class="fas fa-cog"></i> Paramètres</a></li>
+        <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
+        <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
+        <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/dashboard.html">Accueil</a> / <span>Paramètres</span>
+      </div>
+
+      <div class="settings-header">
+        <h1><i class="fas fa-cog"></i> Paramètres</h1>
+        <p>Configurez les utilisateurs, les terminologies et les fonctionnalités IA pour adapter FHIRHub à vos besoins.</p>
+      </div>
+
+      <div class="tabs-container">
+        <div class="tabs-nav">
+          <button class="tab-button active" data-tab="users"><i class="fas fa-users"></i> Utilisateurs</button>
+          <button class="tab-button" data-tab="terminologies"><i class="fas fa-book-medical"></i> Terminologies</button>
+          <button class="tab-button" data-tab="ai-settings"><i class="fas fa-robot"></i> Paramètres IA</button>
+        </div>
+
+        <!-- TAB: Utilisateurs -->
+        <div class="tab-content active" id="users">
+          <div class="card-header">
+            <h2 class="card-title">Gestion des utilisateurs</h2>
+            <button id="addUserBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Ajouter un utilisateur</button>
+          </div>
+          
+          <p>Gérez les accès à l'application et définissez les niveaux d'autorisation des utilisateurs.</p>
+          
+          <div class="users-grid" id="usersGrid">
+            <!-- Les utilisateurs seront chargés dynamiquement ici -->
+          </div>
+        </div>
+
+        <!-- TAB: Terminologies -->
+        <div class="tab-content" id="terminologies">
+          <div class="card-header">
+            <h2 class="card-title">Terminologies médicales françaises</h2>
+            <button id="updateTermBtn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Mettre à jour</button>
+          </div>
+          
+          <p>Gérez les terminologies médicales françaises utilisées pour la conversion HL7 vers FHIR.</p>
+          
+          <div class="terminology-list" id="terminologyList">
+            <!-- Les terminologies seront chargées dynamiquement ici -->
+          </div>
+        </div>
+
+        <!-- TAB: Paramètres IA -->
+        <div class="tab-content" id="ai-settings">
+          <div class="card-header">
+            <h2 class="card-title">Paramètres de l'IA</h2>
+            <button id="testAIBtn" class="btn btn-primary"><i class="fas fa-vial"></i> Tester la connexion</button>
+          </div>
+          
+          <p>Configurez les fournisseurs d'IA pour l'assistance conversationnelle et l'analyse intelligente.</p>
+          
+          <div class="ai-providers" id="aiProviders">
+            <!-- Les fournisseurs d'IA seront chargés dynamiquement ici -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">
+        &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+      </div>
+      <ul class="footer-links">
+        <li><a href="/documentation.html">Documentation</a></li>
+        <li><a href="/api-docs">API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <div id="addUserModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Ajouter un utilisateur</h2>
+      <form id="addUserForm">
+        <div class="form-group">
+          <label for="username">Nom d'utilisateur</label>
+          <input type="text" id="username" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Mot de passe</label>
+          <input type="password" id="password" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="role">Rôle</label>
+          <select id="role" class="form-control" required>
+            <option value="admin">Administrateur</option>
+            <option value="user">Utilisateur standard</option>
+            <option value="readonly">Lecture seule</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Ajouter</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="editUserModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Modifier l'utilisateur</h2>
+      <form id="editUserForm">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label for="editUsername">Nom d'utilisateur</label>
+          <input type="text" id="editUsername" class="form-control" readonly>
+        </div>
+        <div class="form-group">
+          <label for="editPassword">Nouveau mot de passe (laisser vide pour ne pas changer)</label>
+          <input type="password" id="editPassword" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="editRole">Rôle</label>
+          <select id="editRole" class="form-control" required>
+            <option value="admin">Administrateur</option>
+            <option value="user">Utilisateur standard</option>
+            <option value="readonly">Lecture seule</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="confirmDeleteModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Confirmation de suppression</h2>
+      <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
+      <input type="hidden" id="deleteUserId">
+      <div class="modal-actions">
+        <button id="cancelDeleteBtn" class="btn btn-secondary">Annuler</button>
+        <button id="confirmDeleteBtn" class="btn btn-danger">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gestion des onglets
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const tabId = button.getAttribute('data-tab');
+          
+          // Désactiver tous les onglets
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabContents.forEach(content => content.classList.remove('active'));
+          
+          // Activer l'onglet sélectionné
+          button.classList.add('active');
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+
+      // Charger les utilisateurs
+      loadUsers();
+      
+      // Charger les terminologies
+      loadTerminologies();
+      
+      // Charger les paramètres IA
+      loadAIProviders();
+      
+      // Gestionnaire de déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin'
+        })
+        .then(response => {
+          if (response.ok) {
+            window.location.href = '/login.html';
+          }
+        });
+      });
+      
+      // Gestion des modals
+      const modals = document.querySelectorAll('.modal');
+      const closeButtons = document.querySelectorAll('.close');
+      
+      document.getElementById('addUserBtn').addEventListener('click', function() {
+        document.getElementById('addUserModal').style.display = 'block';
+      });
+      
+      closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          modals.forEach(modal => {
+            modal.style.display = 'none';
+          });
+        });
+      });
+      
+      window.addEventListener('click', function(event) {
+        modals.forEach(modal => {
+          if (event.target === modal) {
+            modal.style.display = 'none';
+          }
+        });
+      });
+      
+      // Formulaire d'ajout d'utilisateur
+      document.getElementById('addUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const userData = {
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+          role: document.getElementById('role').value
+        };
+        
+        fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('addUserModal').style.display = 'none';
+          document.getElementById('addUserForm').reset();
+          loadUsers();
+        })
+        .catch(error => console.error('Erreur:', error));
+      });
+      
+      // Formulaire d'édition d'utilisateur
+      document.getElementById('editUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const userId = document.getElementById('editUserId').value;
+        
+        const userData = {
+          password: document.getElementById('editPassword').value,
+          role: document.getElementById('editRole').value
+        };
+        
+        // Si le mot de passe est vide, ne pas l'inclure dans la mise à jour
+        if (!userData.password) {
+          delete userData.password;
+        }
+        
+        fetch(`/api/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        })
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('editUserModal').style.display = 'none';
+          loadUsers();
+        })
+        .catch(error => console.error('Erreur:', error));
+      });
+      
+      // Suppression d'utilisateur
+      document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        const userId = document.getElementById('deleteUserId').value;
+        
+        fetch(`/api/users/${userId}`, {
+          method: 'DELETE'
+        })
+        .then(response => {
+          if (response.ok) {
+            document.getElementById('confirmDeleteModal').style.display = 'none';
+            loadUsers();
+          }
+        })
+        .catch(error => console.error('Erreur:', error));
+      });
+      
+      document.getElementById('cancelDeleteBtn').addEventListener('click', function() {
+        document.getElementById('confirmDeleteModal').style.display = 'none';
+      });
+      
+      // Mise à jour des terminologies
+      document.getElementById('updateTermBtn').addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour en cours...';
+        
+        fetch('/api/terminologies/update', {
+          method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+          this.disabled = false;
+          this.innerHTML = '<i class="fas fa-sync-alt"></i> Mettre à jour';
+          loadTerminologies();
+        })
+        .catch(error => {
+          console.error('Erreur:', error);
+          this.disabled = false;
+          this.innerHTML = '<i class="fas fa-sync-alt"></i> Mettre à jour';
+        });
+      });
+      
+      // Test de connexion IA
+      document.getElementById('testAIBtn').addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test en cours...';
+        
+        fetch('/api/ai/test-connection', {
+          method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+          this.disabled = false;
+          this.innerHTML = '<i class="fas fa-vial"></i> Tester la connexion';
+          
+          if (data.success) {
+            alert('Connexion réussie à l\'API d\'IA!');
+          } else {
+            alert('Échec de la connexion: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Erreur:', error);
+          this.disabled = false;
+          this.innerHTML = '<i class="fas fa-vial"></i> Tester la connexion';
+          alert('Erreur lors du test de connexion');
+        });
+      });
+    });
+    
+    // Fonctions pour charger les données
+    function loadUsers() {
+      fetch('/api/users')
+        .then(response => response.json())
+        .then(users => {
+          const usersGrid = document.getElementById('usersGrid');
+          usersGrid.innerHTML = '';
+          
+          users.forEach(user => {
+            const userInitial = user.username.charAt(0).toUpperCase();
+            let roleText = 'Utilisateur';
+            let roleIcon = 'fa-user';
+            
+            if (user.role === 'admin') {
+              roleText = 'Administrateur';
+              roleIcon = 'fa-user-shield';
+            } else if (user.role === 'readonly') {
+              roleText = 'Lecture seule';
+              roleIcon = 'fa-user-tag';
+            }
+            
+            const userCard = document.createElement('div');
+            userCard.className = 'user-card';
+            userCard.innerHTML = `
+              <div class="user-card-header">
+                <div class="user-avatar">${userInitial}</div>
+                <div class="user-info">
+                  <h3>${user.username}</h3>
+                  <div class="user-role"><i class="fas ${roleIcon}"></i> ${roleText}</div>
+                </div>
+              </div>
+              <div class="user-meta">
+                <div class="user-created">Créé le: ${new Date(user.created_at).toLocaleDateString()}</div>
+              </div>
+              <div class="user-actions">
+                <button class="btn btn-secondary edit-user" data-id="${user.id}" data-username="${user.username}" data-role="${user.role}">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger delete-user" data-id="${user.id}" data-username="${user.username}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `;
+            
+            usersGrid.appendChild(userCard);
+          });
+          
+          // Attacher les écouteurs d'événements pour éditer/supprimer
+          document.querySelectorAll('.edit-user').forEach(button => {
+            button.addEventListener('click', function() {
+              const userId = this.getAttribute('data-id');
+              const username = this.getAttribute('data-username');
+              const role = this.getAttribute('data-role');
+              
+              document.getElementById('editUserId').value = userId;
+              document.getElementById('editUsername').value = username;
+              document.getElementById('editRole').value = role;
+              document.getElementById('editPassword').value = '';
+              
+              document.getElementById('editUserModal').style.display = 'block';
+            });
+          });
+          
+          document.querySelectorAll('.delete-user').forEach(button => {
+            button.addEventListener('click', function() {
+              const userId = this.getAttribute('data-id');
+              const username = this.getAttribute('data-username');
+              
+              document.getElementById('deleteUserId').value = userId;
+              document.getElementById('confirmDeleteModal').querySelector('p').textContent = 
+                `Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ? Cette action est irréversible.`;
+              
+              document.getElementById('confirmDeleteModal').style.display = 'block';
+            });
+          });
+        })
+        .catch(error => console.error('Erreur:', error));
+    }
+    
+    function loadTerminologies() {
+      fetch('/api/terminologies')
+        .then(response => response.json())
+        .then(terminologies => {
+          const terminologyList = document.getElementById('terminologyList');
+          terminologyList.innerHTML = '';
+          
+          if (terminologies.length === 0) {
+            terminologyList.innerHTML = `
+              <div class="terminology-item">
+                <div class="terminology-icon"><i class="fas fa-info-circle"></i></div>
+                <div class="terminology-info">
+                  <h3>Aucune terminologie</h3>
+                  <p>Aucune terminologie n'est actuellement disponible. Veuillez effectuer une mise à jour.</p>
+                </div>
+              </div>
+            `;
+            return;
+          }
+          
+          terminologies.forEach(term => {
+            const termItem = document.createElement('div');
+            termItem.className = 'terminology-item';
+            termItem.innerHTML = `
+              <div class="terminology-icon"><i class="fas fa-book-medical"></i></div>
+              <div class="terminology-info">
+                <h3>${term.name}</h3>
+                <p>${term.description || 'Aucune description disponible'}</p>
+                <div class="terminology-stats">
+                  <div class="terminology-stat">Version: <b>${term.version || 'N/A'}</b></div>
+                  <div class="terminology-stat">Codes: <b>${term.code_count || '0'}</b></div>
+                  <div class="terminology-stat">Mise à jour: <b>${new Date(term.updated_at).toLocaleDateString()}</b></div>
+                </div>
+              </div>
+              <div class="terminology-actions">
+                <button class="btn btn-secondary" onclick="viewTerminology(${term.id})">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            `;
+            
+            terminologyList.appendChild(termItem);
+          });
+        })
+        .catch(error => console.error('Erreur:', error));
+    }
+    
+    function loadAIProviders() {
+      fetch('/api/ai/providers')
+        .then(response => response.json())
+        .then(providers => {
+          const aiProviders = document.getElementById('aiProviders');
+          aiProviders.innerHTML = '';
+          
+          if (providers.length === 0) {
+            aiProviders.innerHTML = `
+              <div class="ai-provider-card">
+                <div class="ai-provider-header">
+                  <div class="ai-provider-logo"><i class="fas fa-robot"></i></div>
+                  <h3 class="ai-provider-name">Aucun fournisseur d'IA</h3>
+                </div>
+                <p>Aucun fournisseur d'IA n'est configuré. Ajoutez un fournisseur pour activer les fonctionnalités d'IA.</p>
+                <button id="addAIProviderBtn" class="btn btn-primary">
+                  <i class="fas fa-plus"></i> Ajouter un fournisseur
+                </button>
+              </div>
+            `;
+            return;
+          }
+          
+          providers.forEach(provider => {
+            const providerCard = document.createElement('div');
+            providerCard.className = 'ai-provider-card';
+            
+            let logoIcon = 'fa-robot';
+            if (provider.name.toLowerCase().includes('mistral')) {
+              logoIcon = 'fa-wind';
+            } else if (provider.name.toLowerCase().includes('openai') || provider.name.toLowerCase().includes('gpt')) {
+              logoIcon = 'fa-brain';
+            } else if (provider.name.toLowerCase().includes('anthropic') || provider.name.toLowerCase().includes('claude')) {
+              logoIcon = 'fa-comment-dots';
+            }
+            
+            providerCard.innerHTML = `
+              <div class="ai-provider-header">
+                <div class="ai-provider-logo"><i class="fas ${logoIcon}"></i></div>
+                <h3 class="ai-provider-name">${provider.name}</h3>
+                <span class="ai-provider-status ${provider.enabled ? 'status-active' : 'status-inactive'}">
+                  ${provider.enabled ? 'Activé' : 'Désactivé'}
+                </span>
+              </div>
+              <div class="form-switch">
+                <label for="toggle-${provider.id}">Activer ce fournisseur</label>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-${provider.id}" ${provider.enabled ? 'checked' : ''} onchange="toggleAIProvider(${provider.id}, this.checked)">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label for="api-key-${provider.id}">Clé API</label>
+                <input type="password" id="api-key-${provider.id}" class="form-control" value="${provider.api_key ? '••••••••••••••••' : ''}" placeholder="Entrez la clé API">
+                <div class="api-key-info">
+                  <i class="fas fa-info-circle"></i>
+                  <span>La clé API est stockée de manière sécurisée et utilisée uniquement pour les requêtes authentifiées.</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="model-${provider.id}">Modèle</label>
+                <input type="text" id="model-${provider.id}" class="form-control" value="${provider.model || ''}" placeholder="Nom du modèle (ex: mistral-medium)">
+              </div>
+              <button class="btn btn-primary" onclick="saveAIProvider(${provider.id})">
+                <i class="fas fa-save"></i> Enregistrer
+              </button>
+            `;
+            
+            aiProviders.appendChild(providerCard);
+          });
+        })
+        .catch(error => console.error('Erreur:', error));
+    }
+
+    function viewTerminology(id) {
+      alert('Fonctionnalité à implémenter: Afficher les détails de la terminologie ' + id);
+    }
+    
+    function toggleAIProvider(id, status) {
+      fetch(`/api/ai/providers/${id}/toggle`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enabled: status })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Provider updated:', data);
+      })
+      .catch(error => console.error('Erreur:', error));
+    }
+    
+    function saveAIProvider(id) {
+      const apiKey = document.getElementById(`api-key-${id}`).value;
+      const model = document.getElementById(`model-${id}`).value;
+      
+      // Ne pas envoyer la clé API si elle n'a pas été modifiée (toujours masquée)
+      const data = {
+        model: model
+      };
+      
+      if (apiKey && !apiKey.includes('•')) {
+        data.api_key = apiKey;
+      }
+      
+      fetch(`/api/ai/providers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert('Fournisseur d\'IA mis à jour avec succès');
+      })
+      .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour du fournisseur d\'IA');
+      });
+    }
+  </script>
+</body>
+</html>
