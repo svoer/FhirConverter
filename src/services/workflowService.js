@@ -48,8 +48,8 @@ async function initialize() {
     
     // Configuration de Node-RED
     redSettings = {
-      httpAdminRoot: '/',
-      httpNodeRoot: '/api',
+      httpAdminRoot: '/',         // L'interface d'édition sera accessible sous /node-red/
+      httpNodeRoot: '/api',       // Les API du flow seront sous /node-red/api/
       userDir: userDir,
       functionGlobalContext: {
         // On peut ajouter ici des objets accessibles dans les fonctions Node-RED

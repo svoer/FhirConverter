@@ -761,6 +761,8 @@ if (redApp) {
     // Ou utiliser la clé API
     const apiKey = req.query.apiKey || req.headers['x-api-key'];
     
+    console.log('[WORKFLOW] Tentative d\'accès à Node-RED - Token:', !!token, 'API Key:', !!apiKey);
+    
     if (apiKey === 'dev-key') {
       // Si la clé API est la clé de développement, permettre l'accès
       console.log('[WORKFLOW] Accès à Node-RED autorisé avec clé API de développement');
@@ -771,11 +773,19 @@ if (redApp) {
         const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Vérifier l'utilisateur depuis la base de données
-        const user = db.prepare(`SELECT id, username, role FROM users WHERE id = ?`).get(decoded.id);
+        console.log('[WORKFLOW] Token JWT décodé:', decoded);
         
-        if (user && user.role === 'admin') {
+        // Plusieurs manières possibles de stocker le rôle dans le token
+        const isAdmin = 
+          decoded.role === 'admin' || 
+          (Array.isArray(decoded.roles) && decoded.roles.includes('admin')) ||
+          decoded.isAdmin === true;
+        
+        if (isAdmin) {
+          console.log('[WORKFLOW] Accès à Node-RED autorisé pour un administrateur');
           return redApp(req, res, next);
+        } else {
+          console.log('[WORKFLOW] Rôle non administrateur détecté:', decoded.role || decoded.roles);
         }
       } catch (error) {
         console.error('[WORKFLOW] Erreur de vérification du token JWT:', error.message);

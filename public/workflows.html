@@ -858,9 +858,18 @@
                     }
                     // Ajouter également la clé API de développement
                     editorUrl += '&apiKey=dev-key';
+                    
                     console.log('Workflow récupéré pour l\'éditeur:', await getWorkflow(id));
-                    nodeRedIframe.src = editorUrl;
-                    editorModal.style.display = 'block';
+                    console.log('URL de l\'éditeur générée:', editorUrl);
+                    
+                    // Ouvrir dans un nouvel onglet plutôt que dans l'iframe
+                    window.open(editorUrl, '_blank');
+                    
+                    // Fermer la modal
+                    editorModal.style.display = 'none';
+                    
+                    // Informer l'utilisateur
+                    showNotification('Éditeur de workflow ouvert dans un nouvel onglet', 'info');
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
