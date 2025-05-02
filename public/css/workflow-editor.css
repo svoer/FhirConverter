@@ -1,0 +1,451 @@
+/**
+ * Styles pour l'éditeur de workflow visuel de FHIRHub
+ * Design inspiré de n8n et ComfyUI avec la charte graphique FHIRHub
+ */
+
+/* Container principal du flow */
+.workflow-editor-container {
+  width: 100%;
+  height: 600px;
+  background-color: #1c1e26;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Contrôles d'édition et outils */
+.workflow-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+.control-button {
+  background: linear-gradient(45deg, #E63946, #F4845F);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.control-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Palettes de nœuds */
+.node-palette {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 240px;
+  max-height: 580px;
+  background-color: #282a36;
+  border-radius: 8px;
+  z-index: 10;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.node-palette-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #3d3f50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-palette-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 14px;
+}
+
+.node-palette-close {
+  background: transparent;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.node-category {
+  border-bottom: 1px solid #3d3f50;
+  overflow: hidden;
+}
+
+.category-header {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ddd;
+  background-color: #343746;
+}
+
+.category-header:hover {
+  background-color: #3c3e4f;
+}
+
+.category-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.category-content.open {
+  max-height: 500px;
+}
+
+.node-item {
+  padding: 8px 16px 8px 24px;
+  cursor: grab;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.node-item:hover {
+  background-color: #3c3e4f;
+  color: white;
+}
+
+.node-item-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+/* Styles pour les nœuds du flow */
+.workflow-node {
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  font-size: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.workflow-node.selected {
+  box-shadow: 0 0 0 2px #f4845f, 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  color: white;
+  font-weight: 600;
+}
+
+.node-header-icon {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node-content {
+  padding: 8px 12px;
+  background-color: #2d2e3a;
+  font-size: 12px;
+  color: #bbb;
+}
+
+.node-handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: 2px solid #555;
+}
+
+.node-handle.input {
+  border-color: #61dafb;
+}
+
+.node-handle.output {
+  border-color: #f4845f;
+}
+
+/* Types de nœuds */
+.node-hl7-input .node-header {
+  background: linear-gradient(to right, #E63946, #e85d69);
+}
+
+.node-fhir-converter .node-header {
+  background: linear-gradient(to right, #457B9D, #5b8caa);
+}
+
+.node-segment-extractor .node-header {
+  background: linear-gradient(to right, #A8DADC, #b9e2e3);
+  color: #2d3748;
+}
+
+.node-fhir-output .node-header {
+  background: linear-gradient(to right, #1D3557, #264567);
+}
+
+.node-function .node-header {
+  background: linear-gradient(to right, #3f51b5, #5f71d5);
+}
+
+.node-condition .node-header {
+  background: linear-gradient(to right, #9c27b0, #af57c3);
+}
+
+/* Styles des connexions */
+.react-flow__edge-path {
+  stroke: #bbb;
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #f4845f;
+  stroke-width: 3;
+}
+
+/* Zone de défilement et de zoom */
+.react-flow__zoompane {
+  cursor: grab;
+}
+
+.react-flow__zoompane.dragging {
+  cursor: grabbing;
+}
+
+/* Minimap dans le coin pour la navigation */
+.react-flow__minimap {
+  right: 10px;
+  bottom: 10px;
+  background-color: #282a36;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .node-palette {
+    width: 200px;
+  }
+  
+  .workflow-node {
+    min-width: 160px;
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.node-saving {
+  animation: pulse 1s infinite;
+}
+
+/* Tooltips */
+.workflow-tooltip {
+  position: absolute;
+  background-color: #222;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Menu contextuel */
+.context-menu {
+  position: absolute;
+  z-index: 1000;
+  background-color: #282a36;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  padding: 8px 16px;
+  color: #ddd;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.context-menu-item:hover {
+  background-color: #3c3e4f;
+  color: white;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #3d3f50;
+  margin: 4px 0;
+}
+
+/* Dialog des propriétés du nœud */
+.node-properties-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #282a36;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  width: 400px;
+  max-width: 90%;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.node-properties-header {
+  padding: 12px 16px;
+  background: linear-gradient(45deg, #E63946, #F4845F);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-properties-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.node-properties-close {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.node-properties-content {
+  padding: 16px;
+  color: #ddd;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.property-group {
+  margin-bottom: 16px;
+}
+
+.property-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: #bbb;
+}
+
+.property-input {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #3c3e4f;
+  border: 1px solid #4d4f60;
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+}
+
+.property-input:focus {
+  outline: none;
+  border-color: #f4845f;
+}
+
+.property-select {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #3c3e4f;
+  border: 1px solid #4d4f60;
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+}
+
+.node-properties-footer {
+  padding: 12px 16px;
+  background-color: #22232e;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.properties-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.properties-button.cancel {
+  background-color: transparent;
+  border: 1px solid #4d4f60;
+  color: #bbb;
+}
+
+.properties-button.cancel:hover {
+  background-color: #3c3e4f;
+  color: white;
+}
+
+.properties-button.apply {
+  background: linear-gradient(45deg, #E63946, #F4845F);
+  border: none;
+  color: white;
+}
+
+.properties-button.apply:hover {
+  box-shadow: 0 2px 8px rgba(244, 132, 95, 0.5);
+}
+
+/* Style de l'overlay de fond lors de l'ouverture d'une modal */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 990;
+  backdrop-filter: blur(2px);
+}
