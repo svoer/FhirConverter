@@ -144,7 +144,8 @@ body {
   z-index: 1000;
 }
 
-.nav-menu .dropdown:hover .dropdown-menu {
+.nav-menu .dropdown:hover .dropdown-menu,
+.nav-menu .dropdown.active .dropdown-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

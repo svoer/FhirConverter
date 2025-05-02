@@ -506,5 +506,38 @@
       });
     }
   </script>
+  
+  <!-- Script pour la gestion du menu déroulant -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gestion du clic sur les menus déroulants
+      const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+      
+      dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          const parent = this.parentElement;
+          
+          // Fermer tous les autres menus déroulants
+          document.querySelectorAll('.dropdown').forEach(dropdown => {
+            if (dropdown !== parent) {
+              dropdown.classList.remove('active');
+            }
+          });
+          
+          // Basculer la classe 'active' sur le menu cliqué
+          parent.classList.toggle('active');
+          
+          // Fermer le menu au clic en dehors
+          document.addEventListener('click', function closeDropdown(event) {
+            if (!parent.contains(event.target)) {
+              parent.classList.remove('active');
+              document.removeEventListener('click', closeDropdown);
+            }
+          });
+        });
+      });
+    });
+  </script>
 </body>
 </html>
