@@ -139,18 +139,27 @@ class WorkflowEditor {
   
   /**
    * Centre le canvas pour que la vue soit au milieu du grand canvas
+   * ou centre un point spécifique si des coordonnées sont fournies
+   * @param {Object} point - Point à centrer { x, y }, optionnel
    */
-  centerCanvas() {
+  centerCanvas(point = null) {
     // Obtenir les dimensions du conteneur
     const containerRect = this.container.getBoundingClientRect();
     
-    // Calculer l'offset nécessaire pour centrer le canvas
-    const offsetX = (containerRect.width - this.canvasSize.width) / 2;
-    const offsetY = (containerRect.height - this.canvasSize.height) / 2;
-    
-    // Appliquer l'offset pour centrer
-    this.offset.x = offsetX;
-    this.offset.y = offsetY;
+    if (point) {
+      // Centrer sur le point spécifié
+      this.offset.x = containerRect.width / 2 - point.x * this.scale;
+      this.offset.y = containerRect.height / 2 - point.y * this.scale;
+    } else {
+      // Centrer le canvas - placer le centre du canvas au milieu du viewport
+      const targetX = this.canvasSize.width / 2;  // Point au milieu du grand canvas
+      const targetY = this.canvasSize.height / 2;
+      
+      this.offset.x = containerRect.width / 2 - targetX * this.scale;
+      this.offset.y = containerRect.height / 2 - targetY * this.scale;
+      
+      console.log(`[Workflow] Centrage du canvas: offset calculé (${this.offset.x}, ${this.offset.y})`);
+    }
     
     // Mettre à jour la transformation
     this.updateTransform();
@@ -427,9 +436,24 @@ class WorkflowEditor {
           dropEvent.clientX > rect.left && dropEvent.clientX < rect.right &&
           dropEvent.clientY > rect.top && dropEvent.clientY < rect.bottom
         ) {
+          // Obtenir les coordonnées du point de dépose par rapport à la fenêtre
+          const dropX = dropEvent.clientX;
+          const dropY = dropEvent.clientY;
+          
+          // Calculer le centre du viewport visible
+          const viewportCenterX = rect.left + rect.width / 2;
+          const viewportCenterY = rect.top + rect.height / 2;
+          
+          // Si le point de dépose est trop éloigné du centre visible (plus de 100px),
+          // utiliser le centre visible comme coordonnée de dépose
+          const useX = Math.abs(dropX - viewportCenterX) > 200 ? viewportCenterX : dropX;
+          const useY = Math.abs(dropY - viewportCenterY) > 200 ? viewportCenterY : dropY;
+          
           // Convertir les coordonnées écran en coordonnées canvas
-          const canvasX = (dropEvent.clientX - rect.left - this.offset.x) / this.scale;
-          const canvasY = (dropEvent.clientY - rect.top - this.offset.y) / this.scale;
+          const canvasX = (useX - rect.left - this.offset.x) / this.scale;
+          const canvasY = (useY - rect.top - this.offset.y) / this.scale;
+          
+          console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} à la position (${canvasX}, ${canvasY})`);
           
           // Ajouter le noeud
           this.addNode(nodeType, { x: canvasX, y: canvasY });
