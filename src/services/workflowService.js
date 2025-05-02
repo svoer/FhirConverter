@@ -1,23 +1,17 @@
 /**
  * Service de gestion des workflows pour FHIRHub
- * Gère l'intégration avec Node-RED et les workflows personnalisés par application
+ * Remplace l'intégration Node-RED par un éditeur visuel intégré
  */
 
 const db = require('./dbService');
 const path = require('path');
 const fs = require('fs');
-const RED = require('node-red');
-const http = require('http');
-const express = require('express');
 
 // État du service
 let initialized = false;
-let redSettings = null;
-let redApp = null;
-let redServer = null;
 
 /**
- * Initialiser le service Node-RED
+ * Initialiser le service de workflow
  * @returns {Promise<void>}
  */
 async function initialize() {
@@ -34,100 +28,13 @@ async function initialize() {
       await db.initialize();
     }
     
-    // Créer le répertoire pour les données Node-RED si nécessaire
-    const userDir = path.join(process.cwd(), 'data', 'node-red');
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
+    // Créer le répertoire pour les données de workflow si nécessaire
+    const workflowDir = path.join(process.cwd(), 'data', 'workflows');
+    if (!fs.existsSync(workflowDir)) {
+      fs.mkdirSync(workflowDir, { recursive: true });
     }
     
-    // Créer une application Express dédiée à Node-RED
-    redApp = express();
-    
-    // Créer un serveur HTTP pour Node-RED (utilisé en interne)
-    redServer = http.createServer(redApp);
-    
-    // Configuration de Node-RED
-    redSettings = {
-      httpAdminRoot: '/node-red/editor',  // L'interface d'édition sera accessible sous /node-red/editor/
-      httpNodeRoot: '/node-red/api',     // Les API du flow seront sous /node-red/api/
-      userDir: userDir,
-      functionGlobalContext: {
-        // On peut ajouter ici des objets accessibles dans les fonctions Node-RED
-      },
-      editorTheme: {
-        page: {
-          title: "FHIRHub Workflow",
-          favicon: "/img/flame-icon.png",
-          css: "/css/node-red-custom.css"
-        },
-        header: {
-          title: "FHIRHub Workflow Editor",
-          image: "/img/flame-icon-white.svg",
-        },
-        palette: {
-          categories: [
-            { id: "fhirhub", label: "FHIRHub" },
-            { id: "common", label: "Standard" },
-            { id: "function", label: "Fonctions" },
-            { id: "input", label: "Entrées" },
-            { id: "output", label: "Sorties" },
-            { id: "parser", label: "Analyseurs" }
-          ]
-        }
-      },
-      logging: {
-        console: {
-          level: "info",
-          metrics: false,
-          audit: false
-        }
-      }
-    };
-    
-    // Initialiser Node-RED
-    RED.init(redServer, redSettings);
-    
-    // Charger les nœuds personnalisés
-    try {
-      // Spécifier le répertoire des nœuds personnalisés
-      const nodesDir = path.join(process.cwd(), 'src', 'node-red', 'nodes');
-      
-      // Configuration pour les nœuds personnalisés
-      redSettings.nodesDir = nodesDir;
-      
-      // Charger les nœuds manuellement en appelant leur fonction module
-      const hl7InputNode = require(path.join(nodesDir, 'hl7-input.js'));
-      const fhirConverterNode = require(path.join(nodesDir, 'fhir-converter.js'));
-      const segmentExtractorNode = require(path.join(nodesDir, 'segment-extractor.js'));
-      const fhirOutputNode = require(path.join(nodesDir, 'fhir-output.js'));
-      
-      // Enregistrer les nœuds dans Node-RED
-      hl7InputNode(RED);
-      fhirConverterNode(RED);
-      segmentExtractorNode(RED);
-      fhirOutputNode(RED);
-      
-      console.log('[WORKFLOW] Nœuds personnalisés FHIRHub enregistrés manuellement');
-    } catch (error) {
-      console.error('[WORKFLOW] Erreur lors du chargement des nœuds personnalisés:', error);
-    }
-    
-    // Ajouter les routes de l'éditeur Node-RED à notre application Express
-    redApp.use(redSettings.httpAdminRoot, RED.httpAdmin);
-    
-    // Ajouter les routes d'API Node-RED à notre application Express
-    redApp.use(redSettings.httpNodeRoot, RED.httpNode);
-    
-    // Démarrer Node-RED sans serveur séparé, utiliser le même port que l'application principale
-    await new Promise((resolve) => {
-      RED.start().then(() => {
-        // Stocker une référence à l'éditeur Node-RED pour y accéder plus tard
-        global.nodeRedInitialized = true;
-        console.log(`[WORKFLOW] Node-RED démarré et intégré à l'application principale`);
-        console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED via /node-red/`);
-        resolve();
-      });
-    });
+    console.log('[WORKFLOW] Éditeur Node-RED non disponible');
     
     initialized = true;
     console.log('[WORKFLOW] Service de workflow initialisé avec succès');
@@ -499,6 +406,6 @@ module.exports = {
   executeWorkflow,
   getEditorUrl,
   getCustomNodeDefinitions,
-  // Permet d'accéder à l'application Express Node-RED pour l'intégrer à notre app principale
-  getRedApp: () => redApp
+  // Cette fonction n'est plus disponible mais est maintenue pour la compatibilité
+  getRedApp: () => null
 };
