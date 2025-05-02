@@ -98,9 +98,9 @@ class WorkflowEditor {
     this.canvas.className = 'workflow-canvas';
     this.container.appendChild(this.canvas);
     
-    // Ajouter une div pour les liaisons
+    // Ajouter un SVG pour les liaisons
     this.edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    this.edgesLayer.className = 'edge';
+    this.edgesLayer.setAttribute('class', 'edge');
     this.canvas.appendChild(this.edgesLayer);
     
     // Ajouter la couche des noeuds
@@ -857,7 +857,7 @@ class WorkflowEditor {
   createEdgeElement(edge) {
     const edgeElement = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     edgeElement.id = edge.id;
-    edgeElement.className = 'edge';
+    edgeElement.setAttribute('class', 'edge');
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     edgeElement.appendChild(path);
@@ -1031,7 +1031,7 @@ class WorkflowEditor {
    */
   createTempEdge() {
     this.tempEdge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    this.tempEdge.className = 'temp-edge';
+    this.tempEdge.setAttribute('class', 'temp-edge');
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.tempEdge.appendChild(path);
