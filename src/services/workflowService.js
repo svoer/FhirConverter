@@ -396,19 +396,17 @@ async function executeWorkflow(applicationId, inputData) {
 }
 
 /**
- * Obtenir l'URL de l'éditeur Node-RED
+ * Obtenir l'URL de l'éditeur de workflow
  * @param {number} workflowId - ID du workflow à éditer
- * @returns {string} URL de l'éditeur Node-RED
+ * @returns {string} URL pour l'édition du workflow
  */
 function getEditorUrl(workflowId) {
-  if (!initialized || !redSettings) {
-    throw new Error('Le service de workflow n\'est pas initialisé');
-  }
-  
-  // Utiliser le chemin configuré pour Node-RED dans redSettings
-  // Notez que dans notre configuration, httpAdminRoot est '/node-red-editor'
-  const editorUrl = `${redSettings.httpAdminRoot}/?workflowId=${workflowId}`;
-  console.log(`[WORKFLOW] URL de l'éditeur Node-RED: ${editorUrl}`);
+  // Nous avons changé l'approche pour utiliser un éditeur JSON simplifié
+  // au lieu d'intégrer Node-RED directement
+  // Le paramètre useJsonEditor=true indique au frontend d'utiliser l'éditeur JSON 
+  // au lieu de tenter d'ouvrir Node-RED
+  const editorUrl = `/workflows.html?editWorkflow=${workflowId}&useJsonEditor=true`;
+  console.log(`[WORKFLOW] URL de l'éditeur de workflow: ${editorUrl}`);
   
   return editorUrl;
 }

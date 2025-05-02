@@ -950,9 +950,24 @@
                 });
             }
             
+            // Vérifier si un workflow doit être ouvert directement dans l'éditeur JSON
+            function checkUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const workflowId = urlParams.get('editWorkflow');
+                const useJsonEditor = urlParams.get('useJsonEditor');
+                
+                if (workflowId && useJsonEditor === 'true') {
+                    // On attend que les données soient chargées avant d'ouvrir l'éditeur
+                    setTimeout(async () => {
+                        await openWorkflowEditor(workflowId);
+                    }, 500);
+                }
+            }
+            
             // Initialisation de la page
             loadApplications();
             loadWorkflows();
+            checkUrlParams();
         });
     </script>
 </body>
