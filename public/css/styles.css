@@ -439,6 +439,12 @@ body {
   box-shadow: var(--box-shadow);
   padding: 1.5rem;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
 .stat-value {
@@ -450,6 +456,113 @@ body {
 
 .stat-label {
   font-size: 1rem;
+  color: #777;
+}
+
+/* Styles pour les cartes de bénéfices */
+.benefits-header {
+  margin: 2rem 0 1rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.benefits-header h2 {
+  color: var(--primary-color);
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.benefits-subtitle {
+  color: #777;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.benefits-cards {
+  margin-top: 1rem;
+}
+
+.benefit-card {
+  background: linear-gradient(145deg, #fff, #f9f9f9);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+  overflow: hidden;
+  position: relative;
+}
+
+.benefit-card:nth-child(1) {
+  border-left-color: #e67e22;
+}
+
+.benefit-card:nth-child(2) {
+  border-left-color: #27ae60;
+}
+
+.benefit-card:nth-child(3) {
+  border-left-color: #3498db;
+}
+
+.benefit-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.benefit-card:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.05), rgba(243, 156, 18, 0.05));
+  z-index: 0;
+}
+
+.benefit-icon {
+  background: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.benefit-icon i {
+  font-size: 1.5rem;
+  color: white;
+}
+
+.benefit-content {
+  flex: 1;
+  z-index: 1;
+}
+
+.benefit-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+}
+
+.benefit-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.benefit-detail {
+  font-size: 0.85rem;
   color: #777;
 }
 
