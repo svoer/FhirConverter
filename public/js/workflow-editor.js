@@ -624,6 +624,8 @@ class WorkflowEditor {
               }
             }
             
+            // S'assurer que tous les surlignages sont nettoyés
+            this.clearPortHighlights();
             this.removeTempEdge();
             this.isCreatingEdge = false;
             this.sourceNodeId = null;
@@ -711,6 +713,8 @@ class WorkflowEditor {
               }
             }
             
+            // S'assurer que tous les surlignages sont nettoyés
+            this.clearPortHighlights();
             this.removeTempEdge();
             this.isCreatingEdge = false;
             this.sourceNodeId = null;
@@ -1155,6 +1159,35 @@ class WorkflowEditor {
     if (path) {
       path.setAttribute('d', d);
     }
+    
+    // Désactiver la mise en évidence sur tous les ports
+    this.clearPortHighlights();
+    
+    // Vérifier si nous survolons un port compatible et le mettre en évidence
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    if (target && target.classList.contains('port-handle')) {
+      const targetPort = target.closest('.node-port');
+      
+      if (targetPort) {
+        const targetNode = targetPort.closest('.node');
+        if (targetNode && targetNode.id !== this.sourceNodeId) {
+          // Si nous commençons par une entrée, chercher une sortie et vice versa
+          const compatibleType = this.isInputPortSource ? 'output' : 'input';
+          if (targetPort.getAttribute('data-port-type') === compatibleType) {
+            target.classList.add('highlight');
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Nettoie les surlignages des ports
+   */
+  clearPortHighlights() {
+    document.querySelectorAll('.port-handle.highlight').forEach(port => {
+      port.classList.remove('highlight');
+    });
   }
   
   /**
@@ -1165,6 +1198,8 @@ class WorkflowEditor {
       this.tempEdge.remove();
       this.tempEdge = null;
     }
+    // Nettoyer tous les surlignages de ports qui pourraient rester
+    this.clearPortHighlights();
   }
   
   /**
