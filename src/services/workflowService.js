@@ -407,18 +407,12 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  // Obtenir l'URL complète incluant l'adresse IP du serveur, en utilisant le port direct de Node-RED
-  // Cela permet d'accéder directement à Node-RED sans passer par le proxy qui ne fonctionne pas correctement
-  const nodeRedPort = global.nodeRedPort;
+  // Maintenant que nous avons un proxy HTTP configuré dans app.js,
+  // nous pouvons utiliser l'URL relative qui sera gérée par le proxy
+  console.log(`[WORKFLOW] URL de l'éditeur: /node-red?workflowId=${workflowId}`);
   
-  if (!nodeRedPort) {
-    throw new Error('Le port Node-RED n\'est pas disponible');
-  }
-  
-  console.log(`[WORKFLOW] URL de l'éditeur: http://localhost:${nodeRedPort}/?workflowId=${workflowId}`);
-  
-  // Note: ceci est une URL directe au serveur Node-RED interne, pas une route relative
-  return `http://localhost:${nodeRedPort}/?workflowId=${workflowId}`;
+  // Noter que le port est stocké dans global.nodeRedPort et utilisé par le proxy dans app.js
+  return `/node-red?workflowId=${workflowId}`;
 }
 
 /**
