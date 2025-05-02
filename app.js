@@ -751,76 +751,10 @@ app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
 app.use('/api/workflows', workflowsRoutes);
 
-// Intégrer l'éditeur Node-RED directement dans l'application Express
-const redApp = workflowService.getRedApp();
-if (redApp) {
-  // Configurer l'éditeur Node-RED dans notre application Express principale
-  // Ne pas utiliser app.use('/node-red', redApp) directement car cela court-circuiterait l'authentification
-  app.use('/node-red', (req, res, next) => {
-    // Récupérer le token JWT des paramètres d'URL ou des en-têtes
-    const token = req.query.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
-    
-    // Ou utiliser la clé API
-    const apiKey = req.query.apiKey || req.headers['x-api-key'];
-    
-    console.log('[WORKFLOW] Tentative d\'accès à Node-RED - Token:', !!token, 'API Key:', !!apiKey);
-    
-    let isAuthorized = false;
-    
-    if (apiKey === 'dev-key') {
-      // Si la clé API est la clé de développement, permettre l'accès
-      console.log('[WORKFLOW] Accès à Node-RED autorisé avec clé API de développement');
-      isAuthorized = true;
-    } else if (token) {
-      // Vérifier le token JWT
-      try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
-        console.log('[WORKFLOW] Token JWT décodé:', decoded);
-        
-        // Plusieurs manières possibles de stocker le rôle dans le token
-        const isAdmin = 
-          decoded.role === 'admin' || 
-          (Array.isArray(decoded.roles) && decoded.roles.includes('admin')) ||
-          decoded.isAdmin === true;
-        
-        if (isAdmin) {
-          console.log('[WORKFLOW] Accès à Node-RED autorisé pour un administrateur');
-          isAuthorized = true;
-        } else {
-          console.log('[WORKFLOW] Rôle non administrateur détecté:', decoded.role || decoded.roles);
-        }
-      } catch (error) {
-        console.error('[WORKFLOW] Erreur de vérification du token JWT:', error.message);
-      }
-    }
-    
-    if (isAuthorized) {
-      // Si autorisé, passer la requête au module Node-RED directement
-      console.log(`[WORKFLOW] Accès direct à Node-RED: ${req.method} ${req.url}`);
-      
-      // Travailler directement avec l'application Express de Node-RED
-      return redApp(req, res, next);
-    }
-    
-    // Si le token est invalide ou manquant
-    if (req.headers.accept?.includes('application/json')) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Unauthorized', 
-        message: 'Accès non autorisé à Node-RED'
-      });
-    } else {
-      // Rediriger vers la page de connexion
-      return res.redirect('/login.html');
-    }
-  });
-  console.log('[WORKFLOW] Éditeur Node-RED intégré directement à l\'application avec protection d\'authentification');
-  console.log('[WORKFLOW] Accessible via /node-red');
-} else {
-  console.warn('[WORKFLOW] Éditeur Node-RED non disponible');
-}
+// L'application utilise maintenant l'éditeur de workflow visuel personnalisé
+// La fonctionnalité Node-RED a été remplacée par notre propre implémentation
+console.log('[WORKFLOW] Utilisation de l\'éditeur de workflow visuel personnalisé');
+console.log('[WORKFLOW] Accessible via /workflows.html');
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
 const server = app.listen(PORT, () => {

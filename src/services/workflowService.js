@@ -34,7 +34,7 @@ async function initialize() {
       fs.mkdirSync(workflowDir, { recursive: true });
     }
     
-    console.log('[WORKFLOW] Éditeur Node-RED non disponible');
+    console.log('[WORKFLOW] Initialisation de l\'éditeur de workflow visuel personnalisé');
     
     initialized = true;
     console.log('[WORKFLOW] Service de workflow initialisé avec succès');

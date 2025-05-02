@@ -221,12 +221,31 @@ fi
 
 # Vérification des dépendances nécessaires
 echo -e "${BLUE}[4/6] Vérification des dépendances...${NC}"
-if ! $NPM_CMD list typescript > /dev/null 2>&1 || ! $NPM_CMD list ts-node > /dev/null 2>&1; then
-  echo -e "${YELLOW}Installation des dépendances TypeScript manquantes...${NC}"
-  $NPM_CMD install --no-save typescript ts-node @types/node
-  echo -e "${GREEN}✅ Dépendances TypeScript installées${NC}"
+
+# Vérification des modules Node.js essentiels
+MISSING_MODULES=""
+for module in typescript ts-node node-red; do
+  if ! $NPM_CMD list $module > /dev/null 2>&1; then
+    MISSING_MODULES="$MISSING_MODULES $module"
+  fi
+done
+
+# Installation des modules manquants si nécessaire
+if [ ! -z "$MISSING_MODULES" ]; then
+  echo -e "${YELLOW}Installation des modules manquants: $MISSING_MODULES${NC}"
+  $NPM_CMD install --no-save $MISSING_MODULES @types/node
+  echo -e "${GREEN}✅ Modules Node.js manquants installés${NC}"
 else
-  echo -e "${GREEN}✅ Dépendances TypeScript vérifiées${NC}"
+  echo -e "${GREEN}✅ Tous les modules Node.js requis sont présents${NC}"
+fi
+
+# Vérification de Node-RED
+if [ -d "./data/node-red" ]; then
+  echo -e "${GREEN}✅ Configuration Node-RED détectée${NC}"
+else
+  echo -e "${YELLOW}⚠️ Dossier Node-RED non trouvé, il sera créé au premier démarrage${NC}"
+  # Créer le dossier pour éviter des erreurs
+  mkdir -p ./data/node-red
 fi
 
 # Vérification de l'installation Python pour les scripts auxiliaires
