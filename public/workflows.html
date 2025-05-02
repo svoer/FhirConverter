@@ -7,11 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/styles.css">
-    <!-- Inclusion du chatbot spécifique aux workflows -->
-    <link rel="stylesheet" href="/css/support-chatbot.css">
     <!-- Styles pour l'éditeur de workflow visuel -->
     <link rel="stylesheet" href="/css/workflow-editor.css">
-    <!-- Pas besoin d'inclure support-chatbot.js ici, on utilise workflow-chatbot.js à la place -->
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -1063,25 +1060,6 @@
         });
     </script>
     
-    <!-- Structure HTML du chatbot -->
-    <div class="chatbot-container">
-        <div class="chatbot-header">
-            <div class="chatbot-header-title">
-                <span class="chatbot-header-icon"><i class="fas fa-robot"></i></span>
-                <span>Assistant FHIRHub</span>
-            </div>
-            <button class="chatbot-toggle"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="chatbot-body">
-            <div id="chatbot-messages" class="chatbot-messages"></div>
-        </div>
-        <div class="chatbot-footer">
-            <input id="chatbot-input" class="chatbot-input" type="text" placeholder="Poser une question...">
-            <button id="chatbot-send" class="chatbot-send"><i class="fas fa-paper-plane"></i></button>
-        </div>
-    </div>
-    
-    <!-- Script du chatbot spécifique aux workflows -->
-    <script src="js/workflow-chatbot.js" defer></script>
+    <!-- Nous avons retiré le chatbot de cette page à la demande de l'utilisateur -->
 </body>
 </html>
