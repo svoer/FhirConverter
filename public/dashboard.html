@@ -137,7 +137,8 @@
   </div>
   
   <button class="support-button" id="supportButton">
-    <span>Support FHIRHub</span>
+    <i class="fas fa-headset"></i>
+    <span>Support</span>
   </button>
 
   <script>
@@ -183,6 +184,11 @@
       const chatbotSend = document.getElementById('chatbotSend');
       const chatbotMessages = document.getElementById('chatbotMessages');
       
+      // S'assurer que le chatbot est fermé au démarrage
+      if (chatbotContainer) {
+        chatbotContainer.classList.remove('open');
+      }
+      
       // Ajouter un message initial
       if (chatbotMessages && !chatbotMessages.hasChildNodes()) {
         const initialMessage = document.createElement('div');
@@ -193,19 +199,31 @@
       
       // Gérer le bouton de support
       if (supportButton) {
-        supportButton.addEventListener('click', function() {
+        supportButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
           chatbotContainer.classList.add('open');
           setTimeout(() => chatbotInput.focus(), 300);
         });
       }
       
+      // Gérer le bouton toggle du chatbot
+      if (chatbotToggle) {
+        chatbotToggle.addEventListener('click', function(e) {
+          e.stopPropagation(); // Empêcher la propagation au header
+          chatbotContainer.classList.toggle('open');
+        });
+      }
+      
       // Gérer l'en-tête du chatbot (ouverture/fermeture)
       if (chatbotHeader) {
-        chatbotHeader.addEventListener('click', function() {
-          chatbotContainer.classList.toggle('open');
-          
-          if (chatbotContainer.classList.contains('open')) {
-            setTimeout(() => chatbotInput.focus(), 300);
+        chatbotHeader.addEventListener('click', function(e) {
+          if (e.target !== chatbotToggle && !chatbotToggle.contains(e.target)) {
+            chatbotContainer.classList.toggle('open');
+            
+            if (chatbotContainer.classList.contains('open')) {
+              setTimeout(() => chatbotInput.focus(), 300);
+            }
           }
         });
       }

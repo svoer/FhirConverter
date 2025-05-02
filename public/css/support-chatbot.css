@@ -294,7 +294,7 @@
 /* Style pour le bouton de support */
 .support-button {
   position: fixed;
-  bottom: 20px;
+  bottom: 80px;  /* Repositionné pour éviter la superposition */
   right: 20px;
   padding: 10px 20px;
   background: linear-gradient(135deg, #e63946, #f4a261);
