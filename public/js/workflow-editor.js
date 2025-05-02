@@ -129,6 +129,9 @@ class WorkflowEditor {
     paletteTitle.textContent = 'Nœuds disponibles';
     this.nodePalette.appendChild(paletteTitle);
     
+    // Rendre la palette déplaçable
+    this.makeElementDraggable(this.nodePalette, paletteTitle);
+    
     // Catégories de noeuds
     const categories = [
       {
@@ -547,6 +550,14 @@ class WorkflowEditor {
     nodeHeader.appendChild(nodeTitle);
     nodeHeader.appendChild(nodeType);
     nodeElement.appendChild(nodeHeader);
+    
+    // Ajouter une poignée de redimensionnement
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    nodeElement.appendChild(resizeHandle);
+    
+    // Rendre le nœud déplaçable par son en-tête
+    this.makeElementDraggable(nodeElement, nodeHeader);
     
     // Corps du noeud
     const nodeBody = document.createElement('div');
@@ -969,25 +980,27 @@ class WorkflowEditor {
       return;
     }
     
-    const sourceRect = sourcePort.getBoundingClientRect();
-    const targetRect = targetPort.getBoundingClientRect();
-    const canvasRect = this.canvas.getBoundingClientRect();
+    // Calculer directement la position des ports en fonction de la position des nœuds
+    // plutôt que d'utiliser getBoundingClientRect qui peut causer des décalages
+    const sourcePortOffset = {
+      x: sourceNode.position.x + sourceElement.offsetWidth, // Port de sortie à droite du nœud
+      y: sourceNode.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
+    };
+    
+    const targetPortOffset = {
+      x: targetNode.position.x, // Port d'entrée à gauche du nœud
+      y: targetNode.position.y + targetPort.offsetTop + targetPort.offsetHeight / 2
+    };
     
     const start = {
-      x: (sourceRect.left + sourceRect.width / 2 - canvasRect.left) / this.scale,
-      y: (sourceRect.top + sourceRect.height / 2 - canvasRect.top) / this.scale
+      x: sourcePortOffset.x,
+      y: sourcePortOffset.y
     };
     
     const end = {
-      x: (targetRect.left + targetRect.width / 2 - canvasRect.left) / this.scale,
-      y: (targetRect.top + targetRect.height / 2 - canvasRect.top) / this.scale
+      x: targetPortOffset.x,
+      y: targetPortOffset.y
     };
-    
-    // Ajuster les coordonnées pour tenir compte du décalage du canvas
-    start.x -= this.offset.x / this.scale;
-    start.y -= this.offset.y / this.scale;
-    end.x -= this.offset.x / this.scale;
-    end.y -= this.offset.y / this.scale;
     
     // Calculer les points de contrôle pour une courbe de Bézier
     const dx = Math.abs(end.x - start.x);
@@ -1132,24 +1145,30 @@ class WorkflowEditor {
       return;
     }
     
-    const sourceRect = sourcePort.getBoundingClientRect();
+    // Obtenir les données du nœud source
+    const sourceNodeData = this.getNodeById(this.sourceNodeId);
+    
+    let start;
+    if (this.isInputPortSource) {
+      // Si on commence par une entrée, la position initiale est à gauche du nœud
+      start = {
+        x: sourceNodeData.position.x,
+        y: sourceNodeData.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
+      };
+    } else {
+      // Si on commence par une sortie, la position initiale est à droite du nœud
+      start = {
+        x: sourceNodeData.position.x + sourceNode.offsetWidth,
+        y: sourceNodeData.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
+      };
+    }
+    
+    // Position de la souris dans les coordonnées du canvas
     const canvasRect = this.canvas.getBoundingClientRect();
-    
-    const start = {
-      x: (sourceRect.left + sourceRect.width / 2 - canvasRect.left) / this.scale,
-      y: (sourceRect.top + sourceRect.height / 2 - canvasRect.top) / this.scale
-    };
-    
     const end = {
-      x: (e.clientX - canvasRect.left) / this.scale,
-      y: (e.clientY - canvasRect.top) / this.scale
+      x: (e.clientX - canvasRect.left) / this.scale - this.offset.x / this.scale,
+      y: (e.clientY - canvasRect.top) / this.scale - this.offset.y / this.scale
     };
-    
-    // Ajuster les coordonnées pour tenir compte du décalage du canvas
-    start.x -= this.offset.x / this.scale;
-    start.y -= this.offset.y / this.scale;
-    end.x -= this.offset.x / this.scale;
-    end.y -= this.offset.y / this.scale;
     
     // Calculer les points de contrôle pour une courbe de Bézier
     const dx = Math.abs(end.x - start.x);
