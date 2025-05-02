@@ -1009,10 +1009,32 @@
         // Vérifier la structure de la réponse
         console.log('Users response:', response);
         
-        // Extraire les données depuis la réponse
-        const users = response.data || response;
+        // Ajout de vérification robuste pour éviter l'erreur "Cannot read properties of undefined (reading 'data')"
+        if (!response) {
+          throw new Error('Réponse vide ou invalide');
+        }
         
-        if (!users || !Array.isArray(users) || users.length === 0) {
+        // Extraire les données depuis la réponse
+        // La structure peut être soit {success: true, data: [...]} soit directement un tableau
+        let users = [];
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Format {success: true, data: [...]}
+          users = response.data;
+        } else if (Array.isArray(response)) {
+          // Format direct [...]
+          users = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          // Au cas où data existe mais success n'existe pas
+          users = response.data;
+        } else {
+          console.error('Format de réponse non reconnu:', response);
+          usersList.innerHTML = '<tr><td colspan="5" class="empty-row">Erreur lors du chargement des utilisateurs: format de données invalide</td></tr>';
+          return;
+        }
+        
+        // Si aucun utilisateur n'est trouvé
+        if (users.length === 0) {
           usersList.innerHTML = '<tr><td colspan="5" class="empty-row">Aucun utilisateur trouvé</td></tr>';
           return;
         }
@@ -1140,10 +1162,31 @@
         // Vérifier la structure de la réponse
         console.log('Applications response:', response);
         
-        // Extraire les données depuis la réponse
-        const applications = response.data || response;
+        // Ajout de vérification robuste pour éviter l'erreur "Cannot read properties of undefined"
+        if (!response) {
+          throw new Error('Réponse vide ou invalide');
+        }
         
-        if (!applications || !Array.isArray(applications) || applications.length === 0) {
+        // Extraire les données depuis la réponse
+        // La structure peut être soit {success: true, data: [...]} soit directement un tableau
+        let applications = [];
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Format {success: true, data: [...]}
+          applications = response.data;
+        } else if (Array.isArray(response)) {
+          // Format direct [...]
+          applications = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          // Au cas où data existe mais success n'existe pas
+          applications = response.data;
+        } else {
+          console.error('Format de réponse non reconnu:', response);
+          applicationsList.innerHTML = '<tr><td colspan="5" class="empty-row">Erreur: format de données invalide</td></tr>';
+          return;
+        }
+        
+        if (applications.length === 0) {
           applicationsList.innerHTML = '<tr><td colspan="5" class="empty-row">Aucune application trouvée</td></tr>';
           return;
         }
@@ -1199,10 +1242,31 @@
         // Vérifier la structure de la réponse
         console.log('API Keys response:', response);
         
-        // Extraire les données depuis la réponse
-        const keys = response.data || response;
+        // Ajout de vérification robuste pour éviter l'erreur "Cannot read properties of undefined"
+        if (!response) {
+          throw new Error('Réponse vide ou invalide');
+        }
         
-        if (!keys || !Array.isArray(keys) || keys.length === 0) {
+        // Extraire les données depuis la réponse
+        // La structure peut être soit {success: true, data: [...]} soit directement un tableau
+        let keys = [];
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Format {success: true, data: [...]}
+          keys = response.data;
+        } else if (Array.isArray(response)) {
+          // Format direct [...]
+          keys = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          // Au cas où data existe mais success n'existe pas
+          keys = response.data;
+        } else {
+          console.error('Format de réponse non reconnu:', response);
+          keysList.innerHTML = '<tr><td colspan="6" class="empty-row">Erreur: format de données invalide</td></tr>';
+          return;
+        }
+        
+        if (keys.length === 0) {
           keysList.innerHTML = '<tr><td colspan="6" class="empty-row">Aucune clé API trouvée</td></tr>';
           return;
         }
