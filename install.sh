@@ -22,6 +22,13 @@ mkdir -p ./vendor
 # Vérification de l'environnement
 echo "[1/7] Vérification de l'environnement..."
 
+# Vérifier les mises à jour système sur AlmaLinux/RHEL
+if command -v dnf &> /dev/null; then
+  echo "Vérification des mises à jour système avec dnf..."
+  sudo dnf check-update || true
+  echo "✅ Vérification des mises à jour terminée"
+fi
+
 # Fonction pour télécharger et installer Node.js localement
 install_local_nodejs() {
   echo "📦 Installation locale de Node.js v${NODE_VERSION}..."
@@ -186,10 +193,10 @@ if [ ! -z "$PYTHON_CMD" ]; then
       if command -v apt-get &> /dev/null; then
         echo "   Tentative d'installation de pip avec apt-get..."
         apt-get update -qq && apt-get install -y python3-pip >/dev/null 2>&1
-      # Pour les distributions basées sur RHEL/CentOS/Fedora
+      # Pour les distributions basées sur RHEL/CentOS/Fedora/AlmaLinux
       elif command -v dnf &> /dev/null; then
-        echo "   Tentative d'installation de pip avec dnf..."
-        dnf install -y python3-pip >/dev/null 2>&1
+        echo "   Tentative d'installation de pip avec dnf (AlmaLinux/RHEL/CentOS)..."
+        sudo dnf install -y python3-pip || true
       elif command -v yum &> /dev/null; then
         echo "   Tentative d'installation de pip avec yum..."
         yum install -y python3-pip >/dev/null 2>&1

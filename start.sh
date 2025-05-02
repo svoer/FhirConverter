@@ -281,8 +281,16 @@ if [ ! -z "$PYTHON_CMD" ]; then
     PIP_CMD="$PYTHON_CMD -m pip"
     # Vérifier si le module pip est disponible
     if ! $PYTHON_CMD -m pip --version &> /dev/null; then
-      echo -e "${YELLOW}Module pip non trouvé. Tentative d'installation via ensurepip...${NC}"
-      $PYTHON_CMD -m ensurepip --upgrade --default-pip &> /dev/null || true
+      echo -e "${YELLOW}Module pip non trouvé. Tentative d'installation...${NC}"
+      
+      # Essayer d'installer pip avec dnf pour AlmaLinux/RHEL
+      if command -v dnf &> /dev/null; then
+        echo -e "${YELLOW}Tentative d'installation de pip avec dnf pour AlmaLinux/RHEL...${NC}"
+        sudo dnf install -y python3-pip >/dev/null 2>&1 || true
+      else
+        # Tentative d'installation via ensurepip
+        $PYTHON_CMD -m ensurepip --upgrade --default-pip &> /dev/null || true
+      fi
       
       # Vérifier à nouveau si pip est disponible
       if $PYTHON_CMD -m pip --version &> /dev/null; then
