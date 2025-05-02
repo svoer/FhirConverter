@@ -254,6 +254,103 @@ fi
 
 # Initialisation de la base de données
 echo "[5/7] Initialisation de la base de données..."
+echo "[DB] Création des tables dans la base de données SQLite..."
+
+# Vérifier si le fichier de base de données existe
+DB_PATH="./data/fhirhub.db"
+if [ ! -f "$DB_PATH" ]; then
+  echo "   Création d'une nouvelle base de données: $DB_PATH"
+  touch "$DB_PATH"
+fi
+
+# Exécuter l'initialisation de la base de données avec Node.js
+echo "   Initialisation des schémas de tables..."
+
+# Créer un script temporaire pour initialiser la base de données
+cat > ./init-db.js << 'EOL'
+const dbService = require('./src/services/dbService');
+const schema = require('./src/db/schema');
+
+async function initializeDatabase() {
+  console.log("[DB] Démarrage de l'initialisation de la base de données...");
+  
+  try {
+    // Créer toutes les tables définies dans le schéma
+    for (const table of schema.ALL_SCHEMAS) {
+      console.log(`[DB] Création de la table ${table.tableName}...`);
+      await dbService.createTable(table.tableName, table.columns);
+    }
+    
+    // Vérifier si l'utilisateur admin existe déjà
+    const adminExists = await dbService.query(
+      'SELECT COUNT(*) as count FROM users WHERE username = ?',
+      ['admin']
+    );
+    
+    // Créer l'utilisateur admin par défaut si nécessaire
+    if (adminExists[0].count === 0) {
+      console.log("[DB] Création de l'utilisateur admin par défaut...");
+      await dbService.query(
+        'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
+        ['admin', '$2b$10$PeXcZgN6w9SYJ0CsVr3zxeVGoSGgvDIGQWIWjJQBkeVKdQ0.CH95W', 'admin', 'admin@example.com']
+      );
+    }
+    
+    // Vérifier si l'application par défaut existe déjà
+    const defaultAppExists = await dbService.query(
+      'SELECT COUNT(*) as count FROM applications WHERE name = ?',
+      ['Default']
+    );
+    
+    // Créer l'application par défaut si nécessaire
+    if (defaultAppExists[0].count === 0) {
+      console.log("[DB] Création de l'application par défaut...");
+      await dbService.query(
+        'INSERT INTO applications (name, description) VALUES (?, ?)',
+        ['Default', 'Application par défaut pour le développement']
+      );
+    }
+    
+    // Vérifier si la clé API de développement existe déjà
+    const devKeyExists = await dbService.query(
+      'SELECT COUNT(*) as count FROM api_keys WHERE key = ?',
+      ['dev-key']
+    );
+    
+    // Créer la clé API de développement si nécessaire
+    if (devKeyExists[0].count === 0) {
+      console.log("[DB] Création de la clé API de développement...");
+      await dbService.query(
+        'INSERT INTO api_keys (application_id, key, name, environment) VALUES ((SELECT id FROM applications WHERE name = "Default"), ?, ?, ?)',
+        ['dev-key', 'Clé de développement', 'development']
+      );
+    }
+    
+    console.log("[DB] Initialisation de la base de données terminée avec succès!");
+  } catch (error) {
+    console.error("[DB] Erreur lors de l'initialisation de la base de données:", error);
+    process.exit(1);
+  }
+  
+  process.exit(0);
+}
+
+initializeDatabase();
+EOL
+
+# Exécuter le script avec Node.js
+echo "   Initialisation de la base de données avec Node.js..."
+${NODE_CMD} init-db.js
+
+# Vérifier si l'initialisation a réussi
+if [ $? -ne 0 ]; then
+  echo "❌ Erreur lors de l'initialisation de la base de données. Vérifiez les logs pour plus de détails."
+else
+  echo "✅ Base de données initialisée avec succès"
+  # Supprimer le script temporaire
+  rm -f ./init-db.js
+fi
+
 echo "[TERMINOLOGY] Préparation des terminologies françaises..."
 
 # Vérifier que le dossier french_terminology existe et contient les fichiers nécessaires
