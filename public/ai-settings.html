@@ -369,10 +369,21 @@
   </footer>
 
   <script>
+    // Fonction pour ouvrir le modal d'ajout de fournisseur IA, accessible depuis l'extérieur
+    function openAddProviderModal() {
+      showProviderSelection();
+    }
+    
+    // Exposer la fonction globalement pour qu'elle soit accessible depuis la page parent
+    window.openAddProviderModal = openAddProviderModal;
+    
     // Vérifier si l'utilisateur est admin avant d'afficher la page
     document.addEventListener('DOMContentLoaded', function() {
       FHIRHubAuth.checkUserRole(['admin'], '/dashboard.html');
       loadProviders();
+    
+      // Configuration pour l'intégration iframe
+      FHIRHubAuth.setupIframeAuth();
     });
     
     // Variables globales
