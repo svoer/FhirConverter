@@ -57,12 +57,7 @@
         </div>
       </div>
       
-      <!-- Indicateurs de bénéfices utilisateur -->
-      <div class="benefits-header">
-        <h2>Bénéfices utilisateur</h2>
-        <span class="benefits-subtitle">Estimations basées sur vos données d'utilisation</span>
-      </div>
-      
+      <!-- Indicateurs avancés -->
       <div class="dashboard-cards benefits-cards">
         <div class="benefit-card">
           <div class="benefit-icon"><i class="fas fa-clock"></i></div>
@@ -83,11 +78,11 @@
         </div>
         
         <div class="benefit-card">
-          <div class="benefit-icon"><i class="fas fa-coins"></i></div>
+          <div class="benefit-icon"><i class="fas fa-chart-line"></i></div>
           <div class="benefit-content">
-            <div class="benefit-value" id="costSaved"><span class="counter">250</span> €</div>
-            <div class="benefit-label">Économies estimées</div>
-            <div class="benefit-detail">Basé sur un taux horaire moyen</div>
+            <div class="benefit-value" id="efficiencyRate"><span class="counter">94</span>%</div>
+            <div class="benefit-label">Taux d'efficacité</div>
+            <div class="benefit-detail">Optimisation des ressources</div>
           </div>
         </div>
       </div>
@@ -335,7 +330,7 @@
       });
     }
     
-    // Calcul et mise à jour des indicateurs de bénéfices
+    // Calcul et mise à jour des indicateurs avancés
     function updateBenefitsMetrics(data) {
       const conversions = data.conversions || 0;
       const avgProcessingTime = data.conversionStats?.avgTime || 0;
@@ -348,14 +343,23 @@
       // Calcul du taux de conformité (estimation pour la démo)
       const complianceRate = 98;
       
-      // Calcul des économies financières (basé sur un tarif horaire moyen de 70€)
-      const hourlyRate = 70;
-      const costSaved = Math.round(timeSavedHours * hourlyRate);
+      // Calcul du taux d'efficacité basé sur les performances du système
+      // (Combinaison de la vitesse de conversion et du nombre moyen de ressources)
+      let efficiencyRate = 94;
+      if (conversions > 0 && avgProcessingTime > 0) {
+        // Formule d'efficacité personnalisée qui augmente avec le nombre de conversions
+        // et le nombre de ressources, mais diminue avec le temps de traitement
+        efficiencyRate = Math.min(98, Math.max(85, 
+          90 + (Math.log(conversions + 1) * 3) - (avgProcessingTime > 500 ? 5 : 0) + 
+          (avgResources > 10 ? 3 : 0)
+        ));
+        efficiencyRate = Math.round(efficiencyRate);
+      }
       
       // Mise à jour des valeurs sur le tableau de bord
       document.querySelector('#timeSaved .counter').textContent = timeSavedHours;
       document.querySelector('#complianceRate .counter').textContent = complianceRate;
-      document.querySelector('#costSaved .counter').textContent = costSaved;
+      document.querySelector('#efficiencyRate .counter').textContent = efficiencyRate;
       
       // Animation des compteurs pour un effet visuel plus attractif
       animateCounters();

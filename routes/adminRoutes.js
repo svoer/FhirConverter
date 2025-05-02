@@ -24,13 +24,13 @@ function adminOnly(req, res, next) {
   }
 }
 
-// Réinitialisation de l'environnement (simple endpoint)
+// Réinitialisation des statistiques uniquement
 router.post('/reset-environment', (req, res) => {
   // Vérifier que nous sommes dans l'environnement de production
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({
       success: false,
-      message: 'La réinitialisation de l\'environnement est désactivée en production'
+      message: 'La réinitialisation des statistiques est désactivée en production'
     });
   }
 
@@ -43,35 +43,50 @@ router.post('/reset-environment', (req, res) => {
     });
   }
 
-  logger.info('[ADMIN] Demande de réinitialisation de l\'environnement reçue');
+  logger.info('[ADMIN] Demande de réinitialisation des statistiques reçue');
 
   // Pour éviter l'erreur, on confirme immédiatement
-  return res.status(200).json({
+  res.status(200).json({
     success: true,
-    message: 'Demande de réinitialisation reçue',
-    details: 'Le processus de réinitialisation a été lancé en arrière-plan. Veuillez vous reconnecter dans quelques secondes.'
+    message: 'Demande de réinitialisation des statistiques reçue',
+    details: 'Le processus de réinitialisation a été lancé en arrière-plan. Les statistiques seront mises à jour.'
   });
   
-  // Le code suivant est exécuté après la réponse au client
-  // Chemin vers le script de réinitialisation
-  const scriptPath = path.join(__dirname, '..', 'reset-environment.sh');
-  
-  // Exécuter le script avec l'option --force pour éviter la confirmation interactive
-  // et le détacher du processus principal pour éviter les problèmes
-  setTimeout(() => {
+  // Réinitialisation des statistiques en conservant les autres données
+  setTimeout(async () => {
     try {
-      exec(`bash ${scriptPath} --force`, (error, stdout, stderr) => {
-        if (error) {
-          logger.error(`[ADMIN] Erreur lors de la réinitialisation: ${error.message}`);
-          logger.error(`[ADMIN] stderr: ${stderr}`);
+      // Réinitialiser uniquement la table des logs de conversion
+      await dbService.query('DELETE FROM conversion_logs');
+      
+      // Nettoyer les fichiers de logs
+      const logsPath = path.join(__dirname, '..', 'logs');
+      fs.readdir(logsPath, (err, files) => {
+        if (err) {
+          logger.error(`[ADMIN] Erreur lors de la lecture du dossier logs: ${err.message}`);
           return;
         }
         
-        logger.info('[ADMIN] Réinitialisation de l\'environnement terminée avec succès');
-        logger.debug(`[ADMIN] Sortie du script: ${stdout}`);
+        // Supprimer uniquement les fichiers de logs de conversion
+        files.forEach(file => {
+          if (file.includes('conversion') || file.includes('stats')) {
+            fs.unlink(path.join(logsPath, file), err => {
+              if (err) {
+                logger.error(`[ADMIN] Erreur lors de la suppression du fichier de logs: ${err.message}`);
+              }
+            });
+          }
+        });
       });
+      
+      // Journaliser la réinitialisation dans les logs système
+      await dbService.query(
+        'INSERT INTO system_logs (event_type, message, severity) VALUES (?, ?, ?)',
+        ['RESET_STATS', 'Réinitialisation des statistiques effectuée', 'INFO']
+      );
+      
+      logger.info('[ADMIN] Réinitialisation des statistiques terminée avec succès');
     } catch (e) {
-      logger.error(`[ADMIN] Exception lors de l'exécution du script: ${e.message}`);
+      logger.error(`[ADMIN] Exception lors de la réinitialisation des statistiques: ${e.message}`);
     }
   }, 100);
 });

@@ -459,28 +459,9 @@ body {
   color: #777;
 }
 
-/* Styles pour les cartes de bénéfices */
-.benefits-header {
-  margin: 2rem 0 1rem;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.benefits-header h2 {
-  color: var(--primary-color);
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.benefits-subtitle {
-  color: #777;
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
+/* Styles pour les cartes d'indicateurs avancés */
 .benefits-cards {
-  margin-top: 1rem;
+  margin: 2rem 0;
 }
 
 .benefit-card {
