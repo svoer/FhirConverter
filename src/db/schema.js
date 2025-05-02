@@ -192,6 +192,25 @@ const AI_PROVIDERS_SCHEMA = {
   `
 };
 
+/**
+ * Schéma de la table des workflows
+ * @type {Object}
+ */
+const WORKFLOWS_SCHEMA = {
+  tableName: 'workflows',
+  columns: `
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_active INTEGER DEFAULT 1,
+    flow_json TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+  `
+};
+
 // Liste de tous les schémas
 const ALL_SCHEMAS = [
   USERS_SCHEMA,
@@ -202,7 +221,8 @@ const ALL_SCHEMAS = [
   NOTIFICATIONS_SCHEMA,
   API_ACTIVITY_LOGS_SCHEMA,
   API_USAGE_LIMITS_SCHEMA,
-  AI_PROVIDERS_SCHEMA
+  AI_PROVIDERS_SCHEMA,
+  WORKFLOWS_SCHEMA
 ];
 
 module.exports = {
@@ -215,5 +235,6 @@ module.exports = {
   API_ACTIVITY_LOGS_SCHEMA,
   API_USAGE_LIMITS_SCHEMA,
   AI_PROVIDERS_SCHEMA,
+  WORKFLOWS_SCHEMA,
   ALL_SCHEMAS
 };

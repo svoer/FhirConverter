@@ -18,7 +18,136 @@ if not exist "vendor" mkdir vendor
 if not exist "vendor\temp" mkdir vendor\temp
 
 REM Vérification de l'environnement
-echo [1/7] Vérification de l'environnement...
+echo [1/8] Vérification de l'environnement...
+
+REM Vérification de l'environnement Python
+echo Vérification de Python...
+set "PYTHON_CMD="
+set "PYTHON_VERSION="
+
+where python3 >nul 2>nul
+if %errorlevel% equ 0 (
+  set "PYTHON_CMD=python3"
+  for /f "tokens=*" %%i in ('python3 --version 2^>^&1') do set PYTHON_VERSION=%%i
+  echo ✅ Python 3 trouvé: %PYTHON_VERSION%
+) else (
+  where python >nul 2>nul
+  if %errorlevel% equ 0 (
+    set "PYTHON_CMD=python"
+    for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+    
+    echo %PYTHON_VERSION% | findstr "Python 3" >nul
+    if %errorlevel% equ 0 (
+      echo ✅ Python 3 trouvé: %PYTHON_VERSION%
+    ) else (
+      echo ⚠️ %PYTHON_VERSION% trouvé, mais Python 3 est recommandé
+    )
+  ) else (
+    echo ⚠️ Python non trouvé. Tentative d'installation automatique...
+    
+    REM Tentative de téléchargement et d'installation de Python 3.10 via PowerShell
+    echo Téléchargement de Python 3.10...
+    mkdir vendor\temp 2>nul
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; try { (New-Object Net.WebClient).DownloadFile('https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe', 'vendor\temp\python-3.10.11-amd64.exe'); Write-Host 'Téléchargement réussi'; exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }}"
+    
+    if %errorlevel% equ 0 (
+      echo Installation silencieuse de Python 3.10...
+      vendor\temp\python-3.10.11-amd64.exe /quiet InstallAllUsers=0 PrependPath=1 Include_test=0
+      timeout /t 5 /nobreak > nul
+      
+      echo Vérification de l'installation de Python...
+      REM Rafraîchir les variables d'environnement après l'installation
+      call refreshenv 2>nul || (
+        echo Exécution de command prompt refresh...
+        call cmd /c exit /b 0
+      )
+      
+      where python >nul 2>nul
+      if %errorlevel% equ 0 (
+        set "PYTHON_CMD=python"
+        for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+        echo ✅ Python 3 installé avec succès: %PYTHON_VERSION%
+      ) else (
+        echo ⚠️ L'installation automatique de Python a échoué
+        echo ⚠️ Veuillez installer Python 3.10+ manuellement
+      )
+    ) else (
+      echo ⚠️ Échec du téléchargement de Python
+      echo ⚠️ Veuillez installer Python 3.10+ manuellement
+    )
+  )
+)
+
+REM Vérifier pip et installer les modules requis
+if not "%PYTHON_CMD%"=="" (
+  REM Détecter pip
+  set "PIP_CMD="
+  
+  where pip3 >nul 2>nul
+  if %errorlevel% equ 0 (
+    set "PIP_CMD=pip3"
+    for /f "tokens=*" %%i in ('pip3 --version 2^>^&1') do echo ✅ Pip trouvé: %%i
+  ) else (
+    where pip >nul 2>nul
+    if %errorlevel% equ 0 (
+      set "PIP_CMD=pip"
+      for /f "tokens=*" %%i in ('pip --version 2^>^&1') do echo ✅ Pip trouvé: %%i
+    ) else (
+      echo Vérification de pip via module Python...
+      %PYTHON_CMD% -m pip --version >nul 2>nul
+      if %errorlevel% equ 0 (
+        set "PIP_CMD=%PYTHON_CMD% -m pip"
+        for /f "tokens=*" %%i in ('%PYTHON_CMD% -m pip --version 2^>^&1') do echo ✅ Pip trouvé via Python module: %%i
+      ) else (
+        echo ⚠️ Module pip non trouvé. Tentative d'installation...
+        
+        REM Tentative d'installation via ensurepip
+        %PYTHON_CMD% -m ensurepip --upgrade --default-pip >nul 2>nul
+        
+        REM Vérifier à nouveau si pip est disponible
+        %PYTHON_CMD% -m pip --version >nul 2>nul
+        if %errorlevel% equ 0 (
+          set "PIP_CMD=%PYTHON_CMD% -m pip"
+          echo ✅ Module pip installé avec succès
+        ) else (
+          echo ⚠️ Impossible d'installer pip automatiquement
+        )
+      )
+    )
+  )
+  
+  REM Installer les modules requis si pip est disponible
+  if not "%PIP_CMD%"=="" (
+    echo Installation/vérification des modules Python requis...
+    
+    %PYTHON_CMD% -c "import hl7" >nul 2>nul
+    if %errorlevel% neq 0 (
+      echo Installation du module hl7...
+      %PIP_CMD% install hl7
+      %PYTHON_CMD% -c "import hl7" >nul 2>nul
+      if %errorlevel% equ 0 (
+        echo ✅ Module hl7 installé avec succès
+      )
+    ) else (
+      echo ✅ Module hl7 déjà installé
+    )
+    
+    %PYTHON_CMD% -c "import requests" >nul 2>nul
+    if %errorlevel% neq 0 (
+      echo Installation du module requests...
+      %PIP_CMD% install requests
+      %PYTHON_CMD% -c "import requests" >nul 2>nul
+      if %errorlevel% equ 0 (
+        echo ✅ Module requests installé avec succès
+      )
+    ) else (
+      echo ✅ Module requests déjà installé
+    )
+  )
+)
+
+echo ✅ Vérification de Python terminée
+echo.
 
 goto :check_system_nodejs
 

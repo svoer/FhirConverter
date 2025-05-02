@@ -1,13 +1,67 @@
 @echo off
 setlocal enableextensions
 
-echo Démarrage de FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
-echo Initialisation du nouveau système de conversion HL7 vers FHIR...
-echo Utilisation du convertisseur HL7 vers FHIR optimisé avec mappings de terminologie ANS...
+echo =========================================================
+echo    FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
+echo    Version 1.2.0 - Compatible ANS
+echo    %date% %time%
+echo =========================================================
+echo Initialisation du système de conversion HL7 vers FHIR...
+echo Chargement des terminologies françaises...
+echo Activation du convertisseur optimisé avec mappings ANS...
 echo ----------------------------------------------------
-echo Préparation du Serveur Multi-Terminologies français terminée
-echo Systèmes terminologiques ANS intégrés via le système de mapping centralisé
+echo ✓ Serveur Multi-Terminologies français initialisé
+echo ✓ Systèmes terminologiques ANS intégrés
 echo ----------------------------------------------------
+
+REM Vérification des dépendances Python si nécessaire
+echo [1/5] Vérification de Python...
+set "PYTHON_CMD="
+set "PYTHON_VERSION="
+
+where python3 >nul 2>nul
+if %errorlevel% equ 0 (
+  set "PYTHON_CMD=python3"
+  for /f "tokens=*" %%i in ('python3 --version 2^>^&1') do set PYTHON_VERSION=%%i
+  echo ✅ Python 3 trouvé: %PYTHON_VERSION%
+) else (
+  where python >nul 2>nul
+  if %errorlevel% equ 0 (
+    set "PYTHON_CMD=python"
+    for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYTHON_VERSION=%%i
+    
+    echo %PYTHON_VERSION% | findstr "Python 3" >nul
+    if %errorlevel% equ 0 (
+      echo ✅ Python 3 trouvé: %PYTHON_VERSION%
+    ) else (
+      echo ⚠️ %PYTHON_VERSION% trouvé, mais Python 3 est recommandé
+      echo ⚠️ Certaines fonctionnalités pourraient ne pas fonctionner correctement
+    )
+  ) else (
+    echo ⚠️ Python non trouvé. Certaines fonctionnalités seront limitées.
+    echo    Pour une installation complète, exécutez install.bat
+  )
+)
+
+REM Vérification rapide de pip et des modules nécessaires
+if not "%PYTHON_CMD%"=="" (
+  %PYTHON_CMD% -m pip --version >nul 2>nul
+  if %errorlevel% equ 0 (
+    %PYTHON_CMD% -c "import hl7" >nul 2>nul
+    if %errorlevel% neq 0 (
+      echo ⚠️ Module Python hl7 manquant
+      echo    Pour une installation complète, exécutez install.bat
+    )
+    %PYTHON_CMD% -c "import requests" >nul 2>nul
+    if %errorlevel% neq 0 (
+      echo ⚠️ Module Python requests manquant
+      echo    Pour une installation complète, exécutez install.bat
+    )
+  ) else (
+    echo ⚠️ pip non trouvé. Les modules Python requis pourraient manquer.
+    echo    Pour une installation complète, exécutez install.bat
+  )
+)
 
 REM Vérification de l'existence du dossier data et ses sous-dossiers
 if not exist "data" (
