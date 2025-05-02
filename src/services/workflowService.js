@@ -273,7 +273,7 @@ async function deleteWorkflow(id) {
  * @param {Object} inputData - Données d'entrée (message HL7)
  * @returns {Promise<Object>} Résultat du workflow
  */
-async function executeWorkflow(applicationId, inputData) {
+async function executeWorkflowForApplication(applicationId, inputData) {
   try {
     await initialize();
     
@@ -293,11 +293,410 @@ async function executeWorkflow(applicationId, inputData) {
     const workflow = workflows[0];
     console.log(`[WORKFLOW] Exécution du workflow "${workflow.name}" pour l'application ${applicationId}`);
     
-    // Exécution des nœuds du workflow à partir du JSON défini
-    // Pour simplifier, on se contente de retourner les données d'entrée telles quelles
-    return inputData;
+    // Utiliser la fonction executeWorkflow avec le workflow trouvé
+    return await executeWorkflow(workflow.id, inputData);
   } catch (error) {
     console.error(`[WORKFLOW] Erreur lors de l'exécution du workflow pour l'application ${applicationId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Exécuter un workflow spécifique avec des options
+ * @param {number} workflowId - ID du workflow
+ * @param {string} inputData - Données d'entrée (message HL7)
+ * @param {Object} options - Options d'exécution
+ * @returns {Promise<Object>} Résultat du workflow
+ */
+async function executeWorkflow(workflowId, inputData, options = {}) {
+  try {
+    await initialize();
+    console.log(`[WORKFLOW] Exécution du workflow ${workflowId} avec options:`, options);
+    
+    // Récupérer le workflow
+    const workflow = await getWorkflowById(workflowId);
+    if (!workflow) {
+      throw new Error(`Workflow avec l'ID ${workflowId} non trouvé`);
+    }
+    
+    if (!workflow.is_active) {
+      throw new Error(`Le workflow ${workflowId} est inactif`);
+    }
+    
+    // Tracer le début de l'exécution
+    console.log(`[WORKFLOW] Début de l'exécution du workflow "${workflow.name}"`);
+    const startTime = Date.now();
+    
+    // Récupérer la configuration du workflow
+    let flowConfig = [];
+    try {
+      flowConfig = JSON.parse(workflow.flow_json);
+    } catch (e) {
+      console.error('[WORKFLOW] Erreur lors du parsing du JSON du workflow:', e);
+      flowConfig = [];
+    }
+    
+    // Extraire les nœuds et les connexions
+    const nodes = Array.isArray(flowConfig.nodes) ? flowConfig.nodes : flowConfig;
+    const edges = flowConfig.edges || [];
+    
+    // Initialiser la structure de résultat
+    const result = {
+      workflowId: workflowId,
+      workflowName: workflow.name,
+      status: 'success',
+      startTime: new Date(startTime).toISOString(),
+      duration: 0,
+      nodeCount: nodes.length,
+      steps: [],
+      input: inputData.substring(0, 200) + (inputData.length > 200 ? '...' : ''),
+      result: null,
+      message: 'Exécution en cours'
+    };
+    
+    // Simuler l'exécution (pour ce prototype, une simulation basique)
+    // Dans une implémentation réelle, on exécuterait chaque nœud en respectant les connexions
+    
+    // Structure pour stocker les résultats intermédiaires de chaque nœud
+    const nodeResults = {};
+    
+    try {
+      // Déterminer l'entrée et la sortie du workflow
+      const inputNodes = nodes.filter(n => n.type === 'inputHL7' || n.type.includes('input'));
+      const outputNodes = nodes.filter(n => n.type === 'outputFHIR' || n.type.includes('output'));
+      
+      // Si nous n'avons pas de nœuds d'entrée ou de sortie, simulation simple
+      if (inputNodes.length === 0 || outputNodes.length === 0) {
+        // Simuler une exécution simplifiée du workflow
+        for (const node of nodes) {
+          const stepStartTime = Date.now();
+          
+          // Simulation du traitement selon le type de nœud
+          let nodeOutput = null;
+          let stepStatus = 'success';
+          let stepMessage = '';
+          
+          try {
+            // Simuler différents types de traitement selon le type de nœud
+            if (node.type === 'inputHL7' || node.type.includes('input')) {
+              nodeOutput = inputData;
+              stepMessage = 'Message HL7 reçu';
+            } else if (node.type === 'validateHL7' || node.type.includes('validate')) {
+              nodeOutput = { validated: true, originalMessage: inputData };
+              stepMessage = 'Message HL7 validé';
+            } else if (node.type === 'convertHL7toFHIR' || node.type.includes('convert')) {
+              // Simuler une conversion en FHIR (très simplifiée)
+              nodeOutput = {
+                resourceType: 'Bundle',
+                id: 'generated-' + Math.random().toString(36).substring(2, 15),
+                type: 'transaction',
+                entry: [
+                  {
+                    resourceType: 'Patient',
+                    id: 'pat-' + Math.random().toString(36).substring(2, 10),
+                    name: [{ family: 'Doe', given: ['John'] }]
+                  }
+                ]
+              };
+              stepMessage = 'Conversion en FHIR effectuée';
+            } else if (node.type === 'outputFHIR' || node.type.includes('output')) {
+              // Nœud de sortie, on garde le résultat précédent
+              const previousNode = edges.find(e => e.target === node.id)?.source;
+              nodeOutput = previousNode ? nodeResults[previousNode] : { error: 'Nœud précédent non trouvé' };
+              stepMessage = 'Sortie FHIR générée';
+              
+              // Définir le résultat final
+              result.result = nodeOutput;
+            } else {
+              // Autres types de nœuds
+              nodeOutput = { type: node.type, simulated: true };
+              stepMessage = `Traitement du nœud ${node.type} simulé`;
+            }
+            
+            // Stocker le résultat du nœud
+            nodeResults[node.id] = nodeOutput;
+          } catch (nodeError) {
+            console.error(`[WORKFLOW] Erreur lors de l'exécution du nœud ${node.id}:`, nodeError);
+            stepStatus = 'error';
+            stepMessage = nodeError.message || 'Erreur lors de l\'exécution du nœud';
+            result.status = 'error';
+          }
+          
+          // Calculer la durée du traitement du nœud
+          const stepDuration = Date.now() - stepStartTime;
+          
+          // Ajouter l'étape au résultat
+          result.steps.push({
+            nodeId: node.id,
+            nodeName: node.label || node.type,
+            status: stepStatus,
+            duration: stepDuration,
+            message: stepMessage,
+            input: node.type.includes('input') ? inputData : 'Données intermédiaires',
+            output: node.type.includes('output') ? nodeOutput : 'Données intermédiaires'
+          });
+        }
+      } else {
+        // Simulation d'exécution avec traçage des entrées/sorties réelles
+        
+        // Mapper les nœuds par ID pour faciliter l'accès
+        const nodesById = {};
+        nodes.forEach(node => {
+          nodesById[node.id] = node;
+        });
+        
+        // Ajouter le résultat du nœud d'entrée
+        const inputNode = inputNodes[0];
+        nodeResults[inputNode.id] = inputData;
+        
+        result.steps.push({
+          nodeId: inputNode.id,
+          nodeName: inputNode.label || 'Entrée HL7',
+          status: 'success',
+          duration: 10, // Durée simulée
+          message: 'Message HL7 reçu',
+          input: inputData,
+          output: inputData
+        });
+        
+        // Suivre les connexions pour simuler l'exécution du workflow
+        let processing = new Set([inputNode.id]);
+        let processed = new Set();
+        let iteration = 0;
+        
+        // Limiter les itérations pour éviter une boucle infinie
+        while (processing.size > 0 && iteration < 100) {
+          iteration++;
+          const currentNodeIds = [...processing];
+          processing = new Set();
+          
+          for (const currentId of currentNodeIds) {
+            processed.add(currentId);
+            
+            // Trouver toutes les connexions sortantes
+            const outboundEdges = edges.filter(edge => edge.source === currentId);
+            
+            for (const edge of outboundEdges) {
+              const targetId = edge.target;
+              const targetNode = nodesById[targetId];
+              
+              if (!targetNode) continue;
+              
+              // Simuler le traitement du nœud cible
+              const stepStartTime = Date.now();
+              let stepStatus = 'success';
+              let stepMessage = '';
+              let nodeOutput = null;
+              
+              try {
+                // Obtenir l'entrée du nœud (sortie du nœud précédent)
+                const nodeInput = nodeResults[currentId];
+                
+                // Simuler différents types de traitement selon le type de nœud
+                if (targetNode.type === 'validateHL7' || targetNode.type.includes('validate')) {
+                  nodeOutput = { validated: true, originalMessage: nodeInput };
+                  stepMessage = 'Message HL7 validé';
+                } else if (targetNode.type === 'convertHL7toFHIR' || targetNode.type.includes('convert')) {
+                  // Simuler une conversion en FHIR (très simplifiée)
+                  nodeOutput = {
+                    resourceType: 'Bundle',
+                    id: 'generated-' + Math.random().toString(36).substring(2, 15),
+                    type: 'transaction',
+                    entry: [
+                      {
+                        resourceType: 'Patient',
+                        id: 'pat-' + Math.random().toString(36).substring(2, 10),
+                        name: [{ family: 'Doe', given: ['John'] }]
+                      }
+                    ]
+                  };
+                  stepMessage = 'Conversion en FHIR effectuée';
+                } else if (targetNode.type === 'outputFHIR' || targetNode.type.includes('output')) {
+                  // Nœud de sortie, on garde le résultat précédent
+                  nodeOutput = nodeInput;
+                  stepMessage = 'Sortie FHIR générée';
+                  
+                  // Définir le résultat final
+                  result.result = nodeOutput;
+                } else if (targetNode.type === 'aiDataEnrichment' || targetNode.type.includes('ai')) {
+                  // Simulation d'enrichissement IA
+                  if (options.useAI) {
+                    nodeOutput = {
+                      enriched: true,
+                      originalData: nodeInput,
+                      additionalData: { confidence: 0.95, aiEnhanced: true }
+                    };
+                    stepMessage = 'Données enrichies par IA';
+                  } else {
+                    nodeOutput = nodeInput;
+                    stepMessage = 'Enrichissement par IA ignoré (option désactivée)';
+                  }
+                } else {
+                  // Autres types de nœuds
+                  nodeOutput = { 
+                    processed: true, 
+                    type: targetNode.type, 
+                    originalData: nodeInput,
+                    processedAt: new Date().toISOString()
+                  };
+                  stepMessage = `Traitement du nœud ${targetNode.type}`;
+                }
+                
+                // Stocker le résultat du nœud
+                nodeResults[targetId] = nodeOutput;
+              } catch (nodeError) {
+                console.error(`[WORKFLOW] Erreur lors de l'exécution du nœud ${targetId}:`, nodeError);
+                stepStatus = 'error';
+                stepMessage = nodeError.message || 'Erreur lors de l\'exécution du nœud';
+                result.status = 'error';
+              }
+              
+              // Calculer la durée du traitement du nœud
+              const stepDuration = Date.now() - stepStartTime;
+              
+              // Ajouter l'étape au résultat
+              result.steps.push({
+                nodeId: targetId,
+                nodeName: targetNode.label || targetNode.type || 'Nœud sans nom',
+                status: stepStatus,
+                duration: stepDuration,
+                message: stepMessage,
+                input: typeof nodeResults[currentId] === 'string' ? 
+                  nodeResults[currentId].substring(0, 100) + '...' : 
+                  'Données intermédiaires',
+                output: targetNode.type.includes('output') ? 
+                  nodeOutput : 
+                  'Données intermédiaires'
+              });
+              
+              // Ajouter ce nœud à la liste des nœuds à traiter sauf s'il a déjà été traité
+              if (!processed.has(targetId)) {
+                processing.add(targetId);
+              }
+            }
+          }
+        }
+      }
+      
+      // Si aucun résultat n'a été défini, utiliser un placeholder
+      if (!result.result) {
+        result.result = { message: "Simulation d'exécution du workflow terminée" };
+      }
+      
+      result.message = result.status === 'success' ? 
+        'Workflow exécuté avec succès' : 
+        'Erreur lors de l\'exécution du workflow';
+    } catch (executionError) {
+      console.error('[WORKFLOW] Erreur lors de la simulation du workflow:', executionError);
+      result.status = 'error';
+      result.message = executionError.message || 'Erreur lors de l\'exécution du workflow';
+    }
+    
+    // Calculer la durée totale
+    result.duration = Date.now() - startTime;
+    
+    // Tracer la fin de l'exécution
+    console.log(`[WORKFLOW] Fin de l'exécution du workflow "${workflow.name}" en ${result.duration}ms, statut: ${result.status}`);
+    
+    return result;
+  } catch (error) {
+    console.error(`[WORKFLOW] Erreur lors de l'exécution du workflow ${workflowId}:`, error);
+    
+    // Retourner une structure de résultat même en cas d'erreur
+    return {
+      workflowId: workflowId,
+      status: 'error',
+      duration: 0,
+      steps: [],
+      message: error.message || 'Erreur lors de l\'exécution du workflow'
+    };
+  }
+}
+
+/**
+ * Journaliser l'exécution d'un workflow
+ * @param {Object} executionData - Données de l'exécution
+ * @returns {Promise<Object>} Résultat de la journalisation
+ */
+async function logWorkflowExecution(executionData) {
+  try {
+    await initialize();
+    
+    // Vérifier si la table existe, sinon la créer
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS workflow_executions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        workflow_id INTEGER NOT NULL,
+        input_data TEXT,
+        output_data TEXT,
+        execution_time INTEGER,
+        status TEXT,
+        executed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        executed_by INTEGER,
+        FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // Insérer les données d'exécution
+    const result = await db.run(`
+      INSERT INTO workflow_executions (
+        workflow_id, input_data, output_data, execution_time, status, executed_by
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `, [
+      executionData.workflow_id,
+      executionData.input_data || '',
+      executionData.output_data || '',
+      executionData.execution_time || 0,
+      executionData.status || 'unknown',
+      executionData.executed_by || null
+    ]);
+    
+    console.log(`[WORKFLOW] Exécution du workflow ${executionData.workflow_id} journalisée avec succès`);
+    return { id: result.lastID };
+  } catch (error) {
+    console.error('[WORKFLOW] Erreur lors de la journalisation de l\'exécution du workflow:', error);
+    // Ne pas propager l'erreur, la journalisation ne doit pas bloquer le processus
+    return null;
+  }
+}
+
+/**
+ * Récupérer l'historique des exécutions d'un workflow
+ * @param {number} workflowId - ID du workflow
+ * @returns {Promise<Array>} Historique des exécutions
+ */
+async function getWorkflowExecutionHistory(workflowId) {
+  try {
+    await initialize();
+    
+    // Vérifier si la table existe
+    const tableExists = await db.get(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='workflow_executions'
+    `);
+    
+    if (!tableExists) {
+      console.log('[WORKFLOW] La table des exécutions de workflow n\'existe pas encore');
+      return [];
+    }
+    
+    // Récupérer l'historique des exécutions
+    const executions = await db.query(`
+      SELECT 
+        id, workflow_id, 
+        execution_time, status, executed_at, executed_by,
+        substr(input_data, 1, 100) as input_preview,
+        substr(output_data, 1, 100) as output_preview
+      FROM workflow_executions
+      WHERE workflow_id = ?
+      ORDER BY executed_at DESC
+      LIMIT 50
+    `, [workflowId]);
+    
+    console.log(`[WORKFLOW] Récupération de ${executions.length} exécutions pour le workflow ${workflowId}`);
+    return executions;
+  } catch (error) {
+    console.error(`[WORKFLOW] Erreur lors de la récupération de l'historique d'exécutions pour le workflow ${workflowId}:`, error);
     throw error;
   }
 }

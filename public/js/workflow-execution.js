@@ -1,517 +1,224 @@
 /**
- * Workflow Execution
- * Ce fichier contient les fonctions pour l'exécution, le monitoring et les tests
- * des workflows HL7 vers FHIR
+ * Gestionnaire d'exécution de workflows
+ * Ce fichier contient les fonctions pour exécuter et visualiser les exécutions
+ * de workflows dans l'interface utilisateur
  */
 
-// Classe pour gérer les exécutions de workflows
-class WorkflowExecutionManager {
-  constructor() {
-    this.activeExecutions = new Map();
-    this.executionHistory = [];
-    this.listeners = new Map();
-  }
-
-  // Lancer une exécution de workflow
-  async executeWorkflow(workflowId, inputData, options = {}) {
-    const executionId = `exec-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
-    // Créer un nouvel objet d'exécution
-    const execution = {
-      id: executionId,
-      workflowId,
-      startTime: new Date(),
-      endTime: null,
-      status: 'running',
-      progress: 0,
-      nodes: {},
-      input: inputData,
-      output: null,
-      logs: [],
-      error: null,
-      options
-    };
-    
-    // Ajouter l'exécution à la liste des exécutions actives
-    this.activeExecutions.set(executionId, execution);
-    
-    // Notifier les listeners qu'une nouvelle exécution a démarré
-    this._notifyListeners('execution-started', execution);
-    
+// Gestionnaire d'exécution de workflow
+const workflowExecutionManager = {
+  // Exécute un workflow via l'API et retourne les résultats
+  executeWorkflow: async function(workflowId, inputContent, options = {}) {
     try {
-      // Appeler l'API pour exécuter le workflow
-      const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+      const payload = {
+        workflowId: workflowId,
+        input: inputContent,
+        options: options
+      };
+
+      const response = await fetch('/api/workflows/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` || `X-API-KEY: dev-key`
+          'Authorization': `Bearer ${getToken()}`,
+          'X-API-KEY': 'dev-key'
         },
-        body: JSON.stringify({
-          input: inputData,
-          options
-        })
+        body: JSON.stringify(payload)
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de l\'exécution du workflow');
       }
-      
-      // Traiter la réponse
+
       const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Erreur lors de l\'exécution du workflow');
-      }
-      
-      // Mettre à jour l'exécution avec les résultats
-      execution.endTime = new Date();
-      execution.status = 'completed';
-      execution.progress = 100;
-      execution.output = result.data.output;
-      execution.logs = result.data.logs || [];
-      execution.executionTime = result.data.executionTime;
-      
-      // Mettre à jour les statistiques des nœuds
-      if (result.data.nodes) {
-        execution.nodes = result.data.nodes;
-      }
-      
-      // Mettre à jour l'exécution dans la liste
-      this.activeExecutions.set(executionId, execution);
-      
-      // Notifier les listeners que l'exécution est terminée
-      this._notifyListeners('execution-completed', execution);
-      
-      // Ajouter cette exécution à l'historique
-      this._addToHistory(execution);
-      
       return {
         success: true,
-        executionId,
-        execution
+        execution: result.data,
+        message: result.message || 'Exécution réussie'
       };
     } catch (error) {
-      // Gérer les erreurs
-      execution.endTime = new Date();
-      execution.status = 'failed';
-      execution.error = error.message;
-      
-      // Mettre à jour l'exécution dans la liste
-      this.activeExecutions.set(executionId, execution);
-      
-      // Notifier les listeners que l'exécution a échoué
-      this._notifyListeners('execution-failed', execution);
-      
-      // Ajouter cette exécution à l'historique
-      this._addToHistory(execution);
-      
+      console.error('Erreur d\'exécution:', error);
       return {
         success: false,
-        executionId,
-        execution,
-        error: error.message
+        error: error.message || 'Une erreur est survenue lors de l\'exécution'
       };
     }
-  }
-  
-  // Arrêter une exécution en cours
-  async stopExecution(executionId) {
-    const execution = this.activeExecutions.get(executionId);
-    
-    if (!execution || execution.status !== 'running') {
-      return {
-        success: false,
-        message: `L'exécution ${executionId} n'est pas en cours`
-      };
-    }
-    
+  },
+
+  // Récupère l'historique des exécutions pour un workflow
+  getExecutionHistory: async function(workflowId) {
     try {
-      // Appeler l'API pour arrêter l'exécution
-      const response = await fetch(`/api/workflows/executions/${executionId}/stop`, {
-        method: 'POST',
+      const response = await fetch(`/api/workflows/${workflowId}/executions`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}` || `X-API-KEY: dev-key`
+          'Authorization': `Bearer ${getToken()}`,
+          'X-API-KEY': 'dev-key'
         }
       });
-      
+
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
+        throw new Error('Erreur lors de la récupération de l\'historique d\'exécutions');
       }
-      
+
       const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Erreur lors de l\'arrêt de l\'exécution');
-      }
-      
-      // Mettre à jour l'exécution
-      execution.endTime = new Date();
-      execution.status = 'stopped';
-      
-      // Mettre à jour l'exécution dans la liste
-      this.activeExecutions.set(executionId, execution);
-      
-      // Notifier les listeners que l'exécution a été arrêtée
-      this._notifyListeners('execution-stopped', execution);
-      
-      // Ajouter cette exécution à l'historique
-      this._addToHistory(execution);
-      
       return {
         success: true,
-        execution
+        history: result.data || []
       };
     } catch (error) {
+      console.error('Erreur historique:', error);
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Une erreur est survenue'
       };
     }
   }
-  
-  // Récupérer une exécution par son ID
-  getExecution(executionId) {
-    // Vérifier d'abord dans les exécutions actives
-    if (this.activeExecutions.has(executionId)) {
-      return this.activeExecutions.get(executionId);
-    }
-    
-    // Sinon, chercher dans l'historique
-    return this.executionHistory.find(execution => execution.id === executionId);
-  }
-  
-  // Récupérer toutes les exécutions actives
-  getAllActiveExecutions() {
-    return Array.from(this.activeExecutions.values());
-  }
-  
-  // Récupérer l'historique des exécutions
-  getExecutionHistory(limit = 10) {
-    return this.executionHistory.slice(0, limit);
-  }
-  
-  // Récupérer les exécutions pour un workflow spécifique
-  getExecutionsByWorkflow(workflowId, limit = 10) {
-    return this.executionHistory
-      .filter(execution => execution.workflowId === workflowId)
-      .slice(0, limit);
-  }
-  
-  // Ajouter un listener pour les événements d'exécution
-  addListener(event, callback) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, []);
-    }
-    
-    this.listeners.get(event).push(callback);
-  }
-  
-  // Supprimer un listener
-  removeListener(event, callback) {
-    if (!this.listeners.has(event)) return;
-    
-    const callbackIndex = this.listeners.get(event).indexOf(callback);
-    if (callbackIndex !== -1) {
-      this.listeners.get(event).splice(callbackIndex, 1);
-    }
-  }
-  
-  // Notifier les listeners d'un événement
-  _notifyListeners(event, data) {
-    if (!this.listeners.has(event)) return;
-    
-    this.listeners.get(event).forEach(callback => {
-      try {
-        callback(data);
-      } catch (error) {
-        console.error(`Erreur dans le listener pour l'événement ${event}:`, error);
-      }
-    });
-  }
-  
-  // Ajouter une exécution à l'historique
-  _addToHistory(execution) {
-    // Supprimer l'exécution des actives si elle y est
-    if (this.activeExecutions.has(execution.id)) {
-      this.activeExecutions.delete(execution.id);
-    }
-    
-    // Ajouter à l'historique (au début pour avoir les plus récentes en premier)
-    this.executionHistory.unshift(execution);
-    
-    // Limiter la taille de l'historique (max 100 entrées)
-    if (this.executionHistory.length > 100) {
-      this.executionHistory.pop();
-    }
-    
-    // Notifier les listeners que l'historique a été mis à jour
-    this._notifyListeners('history-updated', this.executionHistory);
-  }
-  
-  // Récupérer l'historique depuis le serveur
-  async fetchExecutionHistory(workflowId = null, limit = 50) {
-    try {
-      const url = workflowId 
-        ? `/api/workflows/${workflowId}/executions?limit=${limit}` 
-        : `/api/workflows/executions?limit=${limit}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}` || `X-API-KEY: dev-key`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status} ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Erreur lors de la récupération de l\'historique');
-      }
-      
-      // Mettre à jour l'historique
-      this.executionHistory = result.data;
-      
-      // Notifier les listeners que l'historique a été mis à jour
-      this._notifyListeners('history-updated', this.executionHistory);
-      
-      return {
-        success: true,
-        history: this.executionHistory
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-}
+};
 
-// Créer une instance du gestionnaire d'exécution
-const workflowExecutionManager = new WorkflowExecutionManager();
-
-// Fonction pour créer l'interface de visualisation des exécutions
-function createExecutionVisualization(containerId, execution) {
+// Fonction pour créer une visualisation d'exécution
+function createExecutionVisualization(containerId, executionData) {
   const container = document.getElementById(containerId);
-  if (!container) return;
-  
-  // Effacer le contenu actuel
-  container.innerHTML = '';
-  
-  // Créer l'en-tête de visualisation
-  const header = document.createElement('div');
-  header.className = 'execution-header';
-  
-  // Déterminer la classe de statut
-  let statusClass = '';
-  let statusIcon = '';
-  
-  switch (execution.status) {
-    case 'running':
-      statusClass = 'status-running';
-      statusIcon = '<i class="fas fa-spinner fa-spin"></i>';
-      break;
-    case 'completed':
-      statusClass = 'status-completed';
-      statusIcon = '<i class="fas fa-check-circle"></i>';
-      break;
-    case 'failed':
-      statusClass = 'status-failed';
-      statusIcon = '<i class="fas fa-times-circle"></i>';
-      break;
-    case 'stopped':
-      statusClass = 'status-stopped';
-      statusIcon = '<i class="fas fa-stop-circle"></i>';
-      break;
-    default:
-      statusClass = 'status-unknown';
-      statusIcon = '<i class="fas fa-question-circle"></i>';
+  if (!container) {
+    console.error(`Conteneur ${containerId} non trouvé`);
+    return;
   }
-  
-  header.innerHTML = `
-    <div class="execution-title">
-      <span class="execution-id">Exécution #${execution.id.substring(5, 13)}</span>
-      <span class="execution-status ${statusClass}">${statusIcon} ${execution.status}</span>
-    </div>
-    <div class="execution-meta">
-      <span class="execution-time">
-        <i class="far fa-clock"></i> 
-        Démarré le ${execution.startTime.toLocaleString()}
-        ${execution.endTime ? ` - Terminé le ${execution.endTime.toLocaleString()}` : ''}
-      </span>
-      ${execution.executionTime ? `<span class="execution-duration"><i class="fas fa-stopwatch"></i> Durée: ${execution.executionTime} ms</span>` : ''}
-    </div>
+
+  // Structure de base pour la visualisation
+  let htmlContent = `
+    <div class="execution-results">
+      <div class="execution-header">
+        <h3>Résultats de l'exécution</h3>
+        <div class="execution-stats">
+          <span class="stat-item">
+            <i class="fas fa-clock"></i> Durée: ${executionData.duration || 0}ms
+          </span>
+          <span class="stat-item">
+            <i class="fas fa-cubes"></i> Nœuds: ${executionData.nodeCount || 0}
+          </span>
+          <span class="stat-item status-${executionData.status === 'success' ? 'success' : 'error'}">
+            <i class="fas fa-${executionData.status === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+            Statut: ${executionData.status === 'success' ? 'Succès' : 'Échec'}
+          </span>
+        </div>
+      </div>
   `;
-  
-  container.appendChild(header);
-  
-  // Créer la visualisation du workflow
-  const visualizationContainer = document.createElement('div');
-  visualizationContainer.className = 'execution-visualization';
-  container.appendChild(visualizationContainer);
-  
-  // Ajouter les onglets
-  const tabs = document.createElement('div');
-  tabs.className = 'execution-tabs';
-  tabs.innerHTML = `
-    <div class="execution-tab active" data-tab="details">Détails</div>
-    <div class="execution-tab" data-tab="logs">Logs</div>
-    <div class="execution-tab" data-tab="input">Entrée</div>
-    <div class="execution-tab" data-tab="output">Sortie</div>
-  `;
-  
-  container.appendChild(tabs);
-  
-  // Ajouter le contenu des onglets
-  const tabContents = document.createElement('div');
-  tabContents.className = 'execution-tab-contents';
-  
-  // Onglet détails
-  const detailsTab = document.createElement('div');
-  detailsTab.className = 'execution-tab-content active';
-  detailsTab.id = 'details-tab';
-  
-  if (execution.nodes && Object.keys(execution.nodes).length > 0) {
-    const nodesTable = document.createElement('table');
-    nodesTable.className = 'nodes-table';
-    nodesTable.innerHTML = `
-      <thead>
-        <tr>
-          <th>Nœud</th>
-          <th>Statut</th>
-          <th>Durée</th>
-          <th>Entrées</th>
-          <th>Sorties</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${Object.entries(execution.nodes).map(([nodeId, nodeData]) => `
-          <tr>
-            <td>${nodeData.label || nodeId}</td>
-            <td class="status-${nodeData.status || 'unknown'}">${nodeData.status || 'Inconnu'}</td>
-            <td>${nodeData.executionTime ? `${nodeData.executionTime} ms` : '-'}</td>
-            <td>${nodeData.inputCount || 0}</td>
-            <td>${nodeData.outputCount || 0}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    `;
-    detailsTab.appendChild(nodesTable);
-  } else {
-    detailsTab.innerHTML = '<p class="no-data">Aucun détail d\'exécution disponible</p>';
-  }
-  
-  tabContents.appendChild(detailsTab);
-  
-  // Onglet logs
-  const logsTab = document.createElement('div');
-  logsTab.className = 'execution-tab-content';
-  logsTab.id = 'logs-tab';
-  
-  if (execution.logs && execution.logs.length > 0) {
-    const logsContainer = document.createElement('div');
-    logsContainer.className = 'logs-container';
+
+  // Si nous avons des étapes d'exécution, les afficher
+  if (executionData.steps && executionData.steps.length > 0) {
+    htmlContent += `<div class="execution-steps">`;
     
-    execution.logs.forEach(log => {
-      const logEntry = document.createElement('div');
-      logEntry.className = `log-entry log-${log.level || 'info'}`;
-      logEntry.innerHTML = `
-        <span class="log-time">[${new Date(log.timestamp).toLocaleTimeString()}]</span>
-        <span class="log-level">[${log.level || 'INFO'}]</span>
-        <span class="log-message">${log.message}</span>
+    executionData.steps.forEach((step, index) => {
+      const isSuccess = step.status === 'success';
+      const statusClass = isSuccess ? 'success' : 'error';
+      
+      htmlContent += `
+        <div class="execution-step status-${statusClass}">
+          <div class="step-header">
+            <span class="step-number">${index + 1}</span>
+            <span class="step-title">${step.nodeName || 'Étape sans nom'}</span>
+            <span class="step-status">
+              <i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-circle'}"></i>
+              ${isSuccess ? 'Succès' : 'Échec'}
+            </span>
+          </div>
+          <div class="step-details">
+            <div class="step-timing">Durée: ${step.duration || 0}ms</div>
+            ${step.message ? `<div class="step-message">${step.message}</div>` : ''}
+          </div>
       `;
-      logsContainer.appendChild(logEntry);
+
+      // Afficher les données d'entrée
+      if (step.input) {
+        htmlContent += `
+          <div class="step-io-container">
+            <div class="step-io-header input"><i class="fas fa-sign-in-alt"></i> Entrée</div>
+            <pre class="step-io-content">${formatIOData(step.input)}</pre>
+          </div>
+        `;
+      }
+
+      // Afficher les données de sortie si disponibles
+      if (step.output) {
+        htmlContent += `
+          <div class="step-io-container">
+            <div class="step-io-header output"><i class="fas fa-sign-out-alt"></i> Sortie</div>
+            <pre class="step-io-content">${formatIOData(step.output)}</pre>
+          </div>
+        `;
+      }
+
+      htmlContent += `</div>`;  // Fin de l'étape
     });
     
-    logsTab.appendChild(logsContainer);
-  } else {
-    logsTab.innerHTML = '<p class="no-data">Aucun log disponible</p>';
+    htmlContent += `</div>`;  // Fin des étapes
+  } else if (executionData.message) {
+    // Si pas d'étapes mais un message global
+    htmlContent += `
+      <div class="execution-message">
+        <p>${executionData.message}</p>
+      </div>
+    `;
   }
-  
-  tabContents.appendChild(logsTab);
-  
-  // Onglet entrée
-  const inputTab = document.createElement('div');
-  inputTab.className = 'execution-tab-content';
-  inputTab.id = 'input-tab';
-  
-  if (execution.input) {
-    const inputPre = document.createElement('pre');
-    inputPre.className = 'code-display';
-    
-    try {
-      // Si l'entrée est un objet, afficher au format JSON
-      if (typeof execution.input === 'object') {
-        inputPre.innerHTML = JSON.stringify(execution.input, null, 2);
-      } else {
-        inputPre.innerHTML = execution.input;
-      }
-    } catch (error) {
-      inputPre.innerHTML = `Erreur lors de l'affichage de l'entrée: ${error.message}`;
-    }
-    
-    inputTab.appendChild(inputPre);
-  } else {
-    inputTab.innerHTML = '<p class="no-data">Aucune donnée d\'entrée disponible</p>';
+
+  // Résultat final de l'exécution
+  if (executionData.result) {
+    htmlContent += `
+      <div class="execution-result">
+        <div class="result-header">
+          <h4><i class="fas fa-flag-checkered"></i> Résultat final</h4>
+        </div>
+        <pre class="result-content">${formatIOData(executionData.result)}</pre>
+      </div>
+    `;
   }
-  
-  tabContents.appendChild(inputTab);
-  
-  // Onglet sortie
-  const outputTab = document.createElement('div');
-  outputTab.className = 'execution-tab-content';
-  outputTab.id = 'output-tab';
-  
-  if (execution.output) {
-    const outputPre = document.createElement('pre');
-    outputPre.className = 'code-display';
-    
-    try {
-      // Si la sortie est un objet, afficher au format JSON
-      if (typeof execution.output === 'object') {
-        outputPre.innerHTML = JSON.stringify(execution.output, null, 2);
-      } else {
-        outputPre.innerHTML = execution.output;
-      }
-    } catch (error) {
-      outputPre.innerHTML = `Erreur lors de l'affichage de la sortie: ${error.message}`;
-    }
-    
-    outputTab.appendChild(outputPre);
-  } else if (execution.status === 'running') {
-    outputTab.innerHTML = '<p class="no-data">Exécution en cours, veuillez patienter...</p>';
-  } else if (execution.status === 'failed') {
-    outputTab.innerHTML = `<p class="error-message">Erreur: ${execution.error || 'Erreur inconnue'}</p>`;
-  } else {
-    outputTab.innerHTML = '<p class="no-data">Aucune donnée de sortie disponible</p>';
-  }
-  
-  tabContents.appendChild(outputTab);
-  
-  container.appendChild(tabContents);
-  
-  // Ajouter les interactions aux onglets
-  const tabElements = tabs.querySelectorAll('.execution-tab');
-  tabElements.forEach(tab => {
-    tab.addEventListener('click', function() {
-      // Désactiver tous les onglets et contenus
-      tabs.querySelectorAll('.execution-tab').forEach(t => t.classList.remove('active'));
-      tabContents.querySelectorAll('.execution-tab-content').forEach(c => c.classList.remove('active'));
-      
-      // Activer l'onglet cliqué
-      this.classList.add('active');
-      
-      // Activer le contenu correspondant
-      const tabId = this.getAttribute('data-tab');
-      document.getElementById(`${tabId}-tab`).classList.add('active');
-    });
-  });
+
+  htmlContent += `</div>`;  // Fin des résultats d'exécution
+
+  // Mettre à jour le conteneur
+  container.innerHTML = htmlContent;
+  container.style.display = 'block';
 }
 
-// Exporter les fonctions et classes
-window.WorkflowExecutionManager = WorkflowExecutionManager;
-window.workflowExecutionManager = workflowExecutionManager;
-window.createExecutionVisualization = createExecutionVisualization;
+// Fonction utilitaire pour formater les données d'entrée/sortie
+function formatIOData(data) {
+  if (typeof data === 'object') {
+    try {
+      return JSON.stringify(data, null, 2);
+    } catch (e) {
+      console.error('Erreur lors du formatage des données:', e);
+      return String(data);
+    }
+  }
+  return String(data);
+}
+
+// Initialisation au chargement du document
+document.addEventListener('DOMContentLoaded', function() {
+  const testContainer = document.getElementById('test-workflow-container');
+  const closeTestBtn = document.getElementById('close-test-container');
+  
+  // Gestionnaire pour fermer la section de test
+  if (closeTestBtn) {
+    closeTestBtn.addEventListener('click', function() {
+      testContainer.style.display = 'none';
+    });
+  }
+  
+  // Gestionnaire de changement de type d'entrée
+  const inputTypeSelect = document.getElementById('test-input-type');
+  if (inputTypeSelect) {
+    inputTypeSelect.addEventListener('change', function() {
+      const inputContent = document.getElementById('test-input-content');
+      
+      // Si le type d'entrée est "sample", charger un exemple
+      if (this.value === 'sample') {
+        inputContent.value = 
+          'MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20110614075841||ADT^A01|1407511|P|2.5.1|||AL|NE|||||\\r\\n' +
+          'EVN|A01|20110614075841|||||\\r\\n' +
+          'PID|1||10006579^^^1^MR^1||DUCK^DONALD^D||19241010|M||1|111 DUCK ST^^FOWL^CA^99999^USA|1|8885551212|8885551212|1|2|999-99-9999|||1^^^^^|||||||||||||||||||\\r\\n' +
+          'PV1|1|I|ER^^^1^1^^^ER|3|||12345^DUCK^DONALD^D^^^^^^&1.2.840.113619.6.197&ISO^L^^^NPI^L^^^NPI|||||||||||||1|||||||||||||||||||||||||20110614075841|||||||||';
+      } else if (this.value === 'text' && inputContent.value === '') {
+        inputContent.value = '';
+      }
+    });
+  }
+});

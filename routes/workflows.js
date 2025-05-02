@@ -365,4 +365,158 @@ router.get('/:id/editor', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/workflows/execute:
+ *   post:
+ *     summary: Exécuter un workflow
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - workflowId
+ *               - input
+ *             properties:
+ *               workflowId:
+ *                 type: integer
+ *               input:
+ *                 type: string
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   profile:
+ *                     type: string
+ *                   validate:
+ *                     type: boolean
+ *                   detailedLogs:
+ *                     type: boolean
+ *                   useAI:
+ *                     type: boolean
+ *     responses:
+ *       200:
+ *         description: Résultat de l'exécution du workflow
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/execute', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+  try {
+    const { workflowId, input, options = {} } = req.body;
+    
+    if (!workflowId || !input) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'L\'ID du workflow et les données d\'entrée sont obligatoires' 
+      });
+    }
+    
+    const id = parseInt(workflowId);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID de workflow invalide' });
+    }
+    
+    const workflow = await workflowService.getWorkflowById(id);
+    if (!workflow) {
+      return res.status(404).json({ success: false, message: 'Workflow non trouvé' });
+    }
+    
+    if (!workflow.is_active) {
+      return res.status(400).json({ success: false, message: 'Ce workflow est inactif' });
+    }
+    
+    console.log(`[API] Exécution du workflow ${id} avec options:`, options);
+    
+    // Exécution du workflow
+    const result = await workflowService.executeWorkflow(id, input, options);
+    
+    // Journaliser l'exécution
+    await workflowService.logWorkflowExecution({
+      workflow_id: id,
+      input_data: input.substring(0, 1000), // Limiter la taille des données journalisées
+      output_data: JSON.stringify(result).substring(0, 1000),
+      execution_time: result.duration || 0,
+      status: result.status || 'unknown',
+      executed_by: req.user ? req.user.id : null
+    });
+    
+    res.json({
+      success: true,
+      message: 'Workflow exécuté avec succès',
+      data: result
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de l\'exécution du workflow:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de l\'exécution du workflow',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflows/{id}/executions:
+ *   get:
+ *     summary: Récupérer l'historique des exécutions d'un workflow
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du workflow
+ *     responses:
+ *       200:
+ *         description: Historique des exécutions
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/executions', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID de workflow invalide' });
+    }
+    
+    const workflow = await workflowService.getWorkflowById(id);
+    if (!workflow) {
+      return res.status(404).json({ success: false, message: 'Workflow non trouvé' });
+    }
+    
+    const executions = await workflowService.getWorkflowExecutionHistory(id);
+    
+    res.json({
+      success: true,
+      data: executions
+    });
+  } catch (error) {
+    console.error(`[API] Erreur lors de la récupération de l'historique d'exécutions pour le workflow ${req.params.id}:`, error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération de l\'historique d\'exécutions',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
