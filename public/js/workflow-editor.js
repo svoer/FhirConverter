@@ -45,6 +45,7 @@ class WorkflowEditor {
     this.isCreatingEdge = false;
     this.sourceNodeId = null;
     this.sourcePortIndex = null;
+    this.isInputPortSource = false; // Indique si on commence une arête depuis un port d'entrée
     this.workflowId = null;
     this.workflowName = '';
     this.workflowDescription = '';
@@ -573,7 +574,65 @@ class WorkflowEditor {
         // Ajouter l'événement pour la connexion d'arêtes
         portHandle.addEventListener('mousedown', (e) => {
           e.stopPropagation();
-          // TODO: Gérer la création d'arêtes en entrée
+          
+          // Pour les ports d'entrée, nous autorisons aussi de commencer une connexion,
+          // mais nous cherchons les ports de sortie comme cibles
+          this.sourceNodeId = node.id;
+          this.sourcePortIndex = index;
+          this.isCreatingEdge = true;
+          this.isInputPortSource = true; // Marquer qu'on part d'une entrée
+          
+          this.createTempEdge();
+          
+          const rect = portHandle.getBoundingClientRect();
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const startX = rect.left + rect.width / 2 - canvasRect.left;
+          const startY = rect.top + rect.height / 2 - canvasRect.top;
+          
+          this.updateTempEdge({ clientX: e.clientX, clientY: e.clientY });
+          
+          // Ajouter l'événement pour suivre la fin de l'arête
+          const mousemove = (moveEvent) => {
+            this.updateTempEdge(moveEvent);
+          };
+          
+          const mouseup = (upEvent) => {
+            document.removeEventListener('mousemove', mousemove);
+            document.removeEventListener('mouseup', mouseup);
+            
+            // Vérifier si nous avons relâché sur un port de sortie
+            const target = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+            if (target && target.classList.contains('port-handle')) {
+              const targetPort = target.closest('.node-port');
+              
+              if (targetPort && targetPort.getAttribute('data-port-type') === 'output') {
+                const targetNode = targetPort.closest('.node');
+                if (targetNode && targetNode.id !== node.id) {
+                  const targetPortIndex = parseInt(targetPort.getAttribute('data-port-index'));
+                  
+                  // Créer l'arête (en inversant source et target car on part d'une entrée)
+                  this.createEdge(
+                    targetNode.id,
+                    this.sourceNodeId,
+                    targetPortIndex,
+                    this.sourcePortIndex
+                  );
+                  
+                  // Feedback visuel
+                  this.showNotification('Connexion établie', 'success');
+                }
+              }
+            }
+            
+            this.removeTempEdge();
+            this.isCreatingEdge = false;
+            this.sourceNodeId = null;
+            this.sourcePortIndex = null;
+            this.isInputPortSource = false;
+          };
+          
+          document.addEventListener('mousemove', mousemove);
+          document.addEventListener('mouseup', mouseup);
         });
       });
       
@@ -631,7 +690,7 @@ class WorkflowEditor {
             // Vérifier si nous avons relâché sur un port d'entrée
             const target = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
             if (target && target.classList.contains('port-handle')) {
-              const targetPort = target.parentElement;
+              const targetPort = target.closest('.node-port');
               
               if (targetPort && targetPort.getAttribute('data-port-type') === 'input') {
                 const targetNode = targetPort.closest('.node');
@@ -645,6 +704,9 @@ class WorkflowEditor {
                     this.sourcePortIndex,
                     targetPortIndex
                   );
+                  
+                  // Feedback visuel
+                  this.showNotification('Connexion établie', 'success');
                 }
               }
             }
@@ -1053,7 +1115,12 @@ class WorkflowEditor {
       return;
     }
     
-    const sourcePort = sourceNode.querySelector(`.node-output[data-port-index="${this.sourcePortIndex}"] .port-handle`);
+    // Sélectionner le port approprié en fonction de si nous commençons par une entrée ou une sortie
+    const portSelector = this.isInputPortSource 
+      ? `.node-input[data-port-index="${this.sourcePortIndex}"] .port-handle` 
+      : `.node-output[data-port-index="${this.sourcePortIndex}"] .port-handle`;
+    
+    const sourcePort = sourceNode.querySelector(portSelector);
     if (!sourcePort) {
       return;
     }
