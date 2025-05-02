@@ -757,8 +757,10 @@ console.log('[WORKFLOW] Utilisation de l\'éditeur de workflow visuel personnali
 console.log('[WORKFLOW] Accessible via /workflows.html');
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
-const server = app.listen(PORT, () => {
-  console.log(`[SERVER] FHIRHub démarré sur le port ${PORT}`);
+// Écouter sur toutes les interfaces (0.0.0.0) pour permettre l'accès externe
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[SERVER] FHIRHub démarré sur le port ${PORT} (0.0.0.0)`);
+  console.log(`[SERVER] Accessible sur http://localhost:${PORT} et http://<ip-serveur>:${PORT}`);
 });
 
 // Gestion des erreurs de démarrage du serveur
