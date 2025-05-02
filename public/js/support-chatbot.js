@@ -50,19 +50,24 @@ N'oublie pas:
  * Initialise le chatbot
  */
 async function initChatbot() {
-  // Les éléments du chatbot existent déjà dans le HTML
-  // createChatbotElements();
-  
-  // Ajouter les écouteurs d'événements
-  addEventListeners();
-  
-  // Ne pas ajouter de message de bienvenue car il existe déjà dans le HTML
-  // addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
-  
-  // Charger le fournisseur d'IA configuré
-  await loadAIProvider();
-  
-  console.log('Chatbot FHIRHub initialisé avec succès.');
+  // Vérifier si nous sommes sur la page dashboard
+  if (window.location.pathname.includes('dashboard')) {
+    // Créer les éléments du chatbot si nécessaire
+    createChatbotElements();
+    
+    // Ajouter les écouteurs d'événements
+    attachChatbotEvents();
+    
+    // Ne pas ajouter de message de bienvenue car il existe déjà dans le HTML
+    // addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
+    
+    // Charger le fournisseur d'IA configuré
+    await loadAIProvider();
+    
+    console.log('Chatbot FHIRHub initialisé avec succès.');
+  } else {
+    console.log('Page non dashboard, le chatbot ne sera pas chargé.');
+  }
 }
 
 /**
