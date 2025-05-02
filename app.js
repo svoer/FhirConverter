@@ -753,15 +753,45 @@ app.use('/api/workflows', workflowsRoutes);
 // Intégrer l'éditeur Node-RED
 const redApp = workflowService.getRedApp();
 if (redApp) {
-  // Route spéciale pour l'éditeur Node-RED
+  // Route spéciale pour l'éditeur Node-RED avec authentification JWT
   app.use('/node-red', (req, res, next) => {
-    // Vérifier si l'utilisateur est authentifié
-    if (req.isAuthenticated() && req.user.role === 'admin') {
-      // Passer au middleware Node-RED
+    // Récupérer le token JWT des paramètres d'URL ou des en-têtes
+    const token = req.query.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+    
+    // Ou utiliser la clé API
+    const apiKey = req.query.apiKey || req.headers['x-api-key'];
+    
+    if (apiKey === 'dev-key') {
+      // Si la clé API est la clé de développement, permettre l'accès
+      console.log('[WORKFLOW] Accès à Node-RED autorisé avec clé API de développement');
       return redApp(req, res, next);
+    } else if (token) {
+      // Vérifier le token JWT
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Vérifier l'utilisateur depuis la base de données
+        const user = db.prepare(`SELECT id, username, role FROM users WHERE id = ?`).get(decoded.id);
+        
+        if (user && user.role === 'admin') {
+          return redApp(req, res, next);
+        }
+      } catch (error) {
+        console.error('[WORKFLOW] Erreur de vérification du token JWT:', error.message);
+      }
+    }
+    
+    // Si le token est invalide ou manquant
+    if (req.headers.accept?.includes('application/json')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Unauthorized', 
+        message: 'Accès non autorisé à Node-RED'
+      });
     } else {
-      // Rediriger vers la page de connexion si non autorisé
-      res.redirect('/login.html');
+      // Rediriger vers la page de connexion
+      return res.redirect('/login.html');
     }
   });
   console.log('[WORKFLOW] Éditeur Node-RED intégré à l\'application avec protection d\'authentification');
