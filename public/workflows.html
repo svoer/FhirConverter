@@ -540,12 +540,29 @@
         </div>
     </footer>
 
+    <!-- Div pour notifications -->
+    <div id="notification" class="notification-container"></div>
+    
     <!-- Scripts -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <script src="js/auth-utils.js"></script>
     <!-- Scripts pour l'éditeur visuel de workflow -->
     <script src="js/workflow-editor.js"></script>
     <script src="js/workflow-integration.js"></script>
+    <script>
+        // Fonction pour afficher les notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification-container ${type}`;
+            notification.style.display = 'block';
+            
+            // Masquer la notification après 3 secondes
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+    </script>
     <script>
         // Fonction d'aide pour obtenir le token d'authentification
         function getToken() {

@@ -3,6 +3,38 @@
   margin-top: 20px;
 }
 
+/* Styles pour les notifications */
+.notification-container {
+  display: none;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 20px;
+  border-radius: 5px;
+  font-weight: 500;
+  color: #fff;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  text-align: center;
+}
+
+.notification-container.success {
+  background-color: #4caf50;
+}
+
+.notification-container.error {
+  background-color: #f44336;
+}
+
+.notification-container.info {
+  background-color: #2196f3;
+}
+
+.notification-container.warning {
+  background-color: #ff9800;
+}
+
 .workflow-tabs {
   display: flex;
   border-bottom: 2px solid #e0e0e0;

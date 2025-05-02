@@ -131,12 +131,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Crée une carte de workflow dans le style montré dans l'image
+     * Crée une carte de workflow avec le bloc de couleur dégradé et l'interrupteur
      * @param {Object} workflow - Données du workflow
      * @returns {HTMLElement} - Élément DOM de la carte de workflow
      */
     function createWorkflowCard(workflow) {
-        // Créer d'abord une carte de style traditionnel 
+        // Créer la carte
         const card = document.createElement('div');
         card.className = 'workflow-card'; 
         
@@ -152,70 +152,52 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (diffDays === 1) {
             timeText = "hier";
         } else {
-            timeText = `${diffDays} jours`;
+            timeText = `il y a ${diffDays} jours`;
         }
         
-        // Structure HTML basique
+        // Structure HTML selon l'image fournie
         card.innerHTML = `
-            <div class="workflow-detail-card">
-                <div class="workflow-header">
-                    <h3>${workflow.name}</h3>
-                </div>
-                <div class="workflow-body">
-                    <p>Dernière mise à jour ${timeText}</p>
-                    <p>${workflow.description || 'Aucune description'}</p>
-                    <p>Application: ${workflow.application_name}</p>
-                    <p>Dernière mise à jour: ${new Date(workflow.updated_at).toLocaleString()}</p>
-                </div>
-                <div class="workflow-footer">
-                    <button class="edit-btn" data-id="${workflow.id}">Modifier</button>
-                    <button class="editor-btn" data-id="${workflow.id}">Éditeur</button>
-                    <div class="workflow-actions">
-                        <button class="duplicate-btn" data-id="${workflow.id}">Dupliquer</button>
-                        <button class="delete-btn" data-id="${workflow.id}">Supprimer</button>
-                    </div>
+            <div class="workflow-header" style="background: linear-gradient(90deg, #e63946, #f4a261); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 18px;">${workflow.name}</h3>
+                <label class="workflow-toggle">
+                    <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="workflow-body" style="padding: 15px; border: 1px solid #e0e0e0; border-top: none;">
+                <p>Dernière mise à jour ${timeText}</p>
+                <p>${workflow.description || 'Aucune description'}</p>
+                <p>Application: ${workflow.application_name}</p>
+                <p>Dernière mise à jour: ${new Date(workflow.updated_at).toLocaleString()}</p>
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="edit-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Modifier</button>
+                    <button class="editor-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Éditeur</button>
+                    <button class="delete-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: auto;">Supprimer</button>
                 </div>
             </div>
         `;
         
-        // Trouver le header pour ajouter l'interrupteur
-        const header = card.querySelector('.workflow-header');
-        if (header) {
-            // Créer l'interrupteur
-            const toggle = document.createElement('label');
-            toggle.className = 'workflow-toggle';
-            toggle.innerHTML = `
-                <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-            `;
-            
-            // Ajouter l'interrupteur au header
-            header.appendChild(toggle);
-            
-            // Ajouter l'événement de changement à l'interrupteur
-            const toggleInput = toggle.querySelector('input');
-            if (toggleInput) {
-                toggleInput.addEventListener('change', function(e) {
-                    e.stopPropagation(); // Éviter de propager l'événement à la carte
-                    const workflowId = this.getAttribute('data-id');
-                    updateWorkflowStatus(workflowId, this.checked);
-                });
-            }
+        // Ajouter l'événement de changement à l'interrupteur
+        const toggleInput = card.querySelector('.status-toggle');
+        if (toggleInput) {
+            toggleInput.addEventListener('change', function(e) {
+                e.stopPropagation(); // Éviter de propager l'événement à la carte
+                const workflowId = this.getAttribute('data-id');
+                updateWorkflowStatus(workflowId, this.checked);
+            });
         }
         
         // Ajouter les gestionnaires d'événements pour les boutons
         card.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const action = this.className.split('-')[0]; // edit, editor, duplicate, delete
+                const action = this.className.split('-')[0]; // edit, editor, delete
                 const workflowId = this.getAttribute('data-id');
                 
                 if (action === 'editor') {
                     openVisualEditor(workflowId);
                 } else if (action === 'edit') {
                     editWorkflow(workflowId);
-                } else if (action === 'duplicate') {
-                    duplicateWorkflow(workflowId);
                 } else if (action === 'delete') {
                     deleteWorkflow(workflowId);
                 }
