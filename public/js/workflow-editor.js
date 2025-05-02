@@ -556,6 +556,44 @@ class WorkflowEditor {
     resizeHandle.className = 'resize-handle';
     nodeElement.appendChild(resizeHandle);
     
+    // Gérer le redimensionnement via la poignée
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = nodeElement.offsetWidth;
+      const startHeight = nodeElement.offsetHeight;
+      
+      const mousemove = (moveEvent) => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        
+        const newWidth = Math.max(150, startWidth + dx);
+        const newHeight = Math.max(100, startHeight + dy);
+        
+        nodeElement.style.width = `${newWidth}px`;
+        nodeElement.style.height = `${newHeight}px`;
+        
+        // Mettre à jour les dimensions dans l'objet nœud
+        node.width = newWidth;
+        node.height = newHeight;
+        
+        // Mettre à jour les connexions
+        this.updateEdges();
+      };
+      
+      const mouseup = () => {
+        document.removeEventListener('mousemove', mousemove);
+        document.removeEventListener('mouseup', mouseup);
+        this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+      };
+      
+      document.addEventListener('mousemove', mousemove);
+      document.addEventListener('mouseup', mouseup);
+    });
+    
     // Rendre le nœud déplaçable par son en-tête
     this.makeElementDraggable(nodeElement, nodeHeader);
     
@@ -1300,59 +1338,37 @@ class WorkflowEditor {
     labelRow.appendChild(labelInput);
     infoGroup.appendChild(labelRow);
     
-    // Position X
-    const posXRow = document.createElement('div');
-    posXRow.className = 'property-row';
+    // Dimensions du noeud (affichage informatif)
+    const dimRow = document.createElement('div');
+    dimRow.className = 'property-row';
     
-    const posXLabel = document.createElement('label');
-    posXLabel.className = 'property-label';
-    posXLabel.textContent = 'Position X';
+    const dimLabel = document.createElement('label');
+    dimLabel.className = 'property-label';
+    dimLabel.textContent = 'Dimensions';
     
-    const posXInput = document.createElement('input');
-    posXInput.type = 'number';
-    posXInput.className = 'property-input';
-    posXInput.value = node.position.x;
-    posXInput.addEventListener('change', () => {
-      node.position.x = parseInt(posXInput.value);
-      const nodeElement = document.getElementById(node.id);
-      if (nodeElement) {
-        nodeElement.style.left = `${node.position.x}px`;
-      }
-      this.updateEdges();
-      this.emit('nodePositionChanged', node);
-      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
-    });
+    const dimText = document.createElement('div');
+    dimText.className = 'property-value';
+    dimText.style.padding = '8px 10px';
+    dimText.style.background = '#f9f9f9';
+    dimText.style.border = '1px solid #ddd';
+    dimText.style.borderRadius = '4px';
+    dimText.style.fontSize = '13px';
+    dimText.style.color = '#666';
+    dimText.textContent = `${node.width} × ${node.height} px`;
     
-    posXRow.appendChild(posXLabel);
-    posXRow.appendChild(posXInput);
-    infoGroup.appendChild(posXRow);
+    dimRow.appendChild(dimLabel);
+    dimRow.appendChild(dimText);
+    infoGroup.appendChild(dimRow);
     
-    // Position Y
-    const posYRow = document.createElement('div');
-    posYRow.className = 'property-row';
-    
-    const posYLabel = document.createElement('label');
-    posYLabel.className = 'property-label';
-    posYLabel.textContent = 'Position Y';
-    
-    const posYInput = document.createElement('input');
-    posYInput.type = 'number';
-    posYInput.className = 'property-input';
-    posYInput.value = node.position.y;
-    posYInput.addEventListener('change', () => {
-      node.position.y = parseInt(posYInput.value);
-      const nodeElement = document.getElementById(node.id);
-      if (nodeElement) {
-        nodeElement.style.top = `${node.position.y}px`;
-      }
-      this.updateEdges();
-      this.emit('nodePositionChanged', node);
-      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
-    });
-    
-    posYRow.appendChild(posYLabel);
-    posYRow.appendChild(posYInput);
-    infoGroup.appendChild(posYRow);
+    // Note pour expliquer le redimensionnement
+    const noteRow = document.createElement('div');
+    noteRow.className = 'property-row';
+    noteRow.style.fontSize = '12px';
+    noteRow.style.fontStyle = 'italic';
+    noteRow.style.color = '#888';
+    noteRow.style.margin = '5px 0';
+    noteRow.textContent = 'Utilisez le coin inférieur droit du nœud pour redimensionner.';
+    infoGroup.appendChild(noteRow);
     
     this.propertiesContent.appendChild(infoGroup);
     
