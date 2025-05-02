@@ -609,13 +609,44 @@
                 workflowModal.style.display = 'none';
             });
             
-            // Fermer la modal de l'éditeur
-            closeEditorModal.addEventListener('click', function() {
+            // Fermer et sauvegarder l'éditeur
+            closeEditor.addEventListener('click', function() {
                 editorModal.style.display = 'none';
             });
             
-            closeEditor.addEventListener('click', function() {
-                editorModal.style.display = 'none';
+            saveWorkflowEditor.addEventListener('click', async function() {
+                try {
+                    // Récupérer l'ID du workflow actuel
+                    const workflowId = editorModal.getAttribute('data-workflow-id');
+                    if (!workflowId) {
+                        throw new Error('ID du workflow non trouvé');
+                    }
+                    
+                    // Récupérer la configuration du workflow depuis l'éditeur visuel
+                    const workflowConfig = window.workflowEditor ? window.workflowEditor.getConfig() : [];
+                    
+                    // Mise à jour du workflow
+                    const response = await fetch(`/api/workflows/${workflowId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        },
+                        body: JSON.stringify({
+                            flow_json: JSON.stringify(workflowConfig)
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la sauvegarde du workflow');
+                    }
+                    
+                    showNotification('Workflow sauvegardé avec succès', 'success');
+                } catch (error) {
+                    console.error('Erreur lors de la sauvegarde:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
             });
             
             // Fermer la modal en cliquant en dehors
@@ -866,7 +897,7 @@
                 }
             }
             
-            // Ouvrir l'éditeur avancé de workflow (Node-RED)
+            // Ouvrir l'éditeur visuel de workflow en plein écran
             async function openWorkflowEditor(id) {
                 try {
                     // Récupérer les informations sur le workflow directement
@@ -892,8 +923,40 @@
                     // Mettre à jour le titre de l'éditeur
                     editorTitle.textContent = `Éditeur visuel: ${workflow.name}`;
                     
+                    // Stocker l'ID du workflow dans l'attribut data de la modal
+                    editorModal.setAttribute('data-workflow-id', workflow.id);
+                    
                     // Afficher la modal de l'éditeur visuel
                     editorModal.style.display = 'block';
+                    
+                    // Initialiser l'éditeur visuel
+                    const workflowData = workflow.flow_json;
+                    const parsedData = typeof workflowData === 'string' && workflowData.trim() !== '' 
+                        ? JSON.parse(workflowData) 
+                        : [];
+                    
+                    const editorContainer = document.getElementById('workflow-editor-container');
+                    
+                    // Si un éditeur existe déjà, le supprimer
+                    if (window.workflowEditor) {
+                        try {
+                            window.workflowEditor.destroy();
+                        } catch (e) {
+                            console.warn('Erreur lors de la destruction de l\'éditeur:', e);
+                        }
+                    }
+                    
+                    // Vider le conteneur
+                    editorContainer.innerHTML = '';
+                    
+                    // Créer une nouvelle instance de l'éditeur
+                    console.log('Initialisation de l\'éditeur de workflow');
+                    window.workflowEditor = new WorkflowEditor('workflow-editor-container', {
+                        initialData: parsedData,
+                        snapToGrid: true,
+                        gridSize: 20,
+                        theme: 'neutral'
+                    });
                     
                     // Informer l'utilisateur
                     showNotification('Éditeur visuel de workflow ouvert.', 'info');
