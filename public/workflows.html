@@ -812,28 +812,10 @@
                 }
             }
             
-            // Ouvrir l'éditeur de workflow
+            // Ouvrir l'éditeur de workflow simplifié (éditeur JSON)
             async function openWorkflowEditor(id) {
                 try {
-                    const response = await fetch(`/api/workflows/${id}/editor`, {
-                        headers: {
-                            'Authorization': `Bearer ${getToken()}`,
-                            'X-API-KEY': 'dev-key'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Erreur lors de la récupération de l\'URL de l\'éditeur');
-                    }
-                    
-                    const result = await response.json();
-                    console.log('URL de l\'éditeur récupérée:', result);
-                    
-                    let data = result;
-                    if (result.success && result.data) {
-                        data = result.data;
-                    }
-                    
+                    // Récupérer les informations sur le workflow directement
                     const workflowResponse = await fetch(`/api/workflows/${id}`, {
                         headers: {
                             'Authorization': `Bearer ${getToken()}`,
@@ -841,41 +823,35 @@
                         }
                     });
                     
+                    if (!workflowResponse.ok) {
+                        throw new Error('Erreur lors de la récupération des données du workflow');
+                    }
+                    
                     const workflowResult = await workflowResponse.json();
-                    console.log('Workflow récupéré pour l\'éditeur:', workflowResult);
+                    console.log('Workflow récupéré pour édition:', workflowResult);
                     
                     let workflow = workflowResult;
                     if (workflowResult.success && workflowResult.data) {
                         workflow = workflowResult.data;
                     }
                     
-                    editorTitle.textContent = `Éditeur: ${workflow.name}`;
-                    // Récupérer l'URL de l'éditeur qui pointe maintenant vers /node-red-editor/
-                    let editorUrl = data.editor_url;
+                    // Au lieu d'ouvrir dans un nouvel onglet, on va utiliser notre propre éditeur JSON
+                    // Remplir la zone de texte avec le JSON du workflow
+                    jsonEditor.setValue(JSON.stringify(workflow.flow_json ? JSON.parse(workflow.flow_json) : [], null, 2));
                     
-                    // Ajouter le token d'authentification JWT à l'URL pour éviter de demander une connexion
-                    const token = getToken();
-                    if (token) {
-                        editorUrl += (editorUrl.includes('?') ? '&' : '?') + 'token=' + token;
-                    }
+                    // Afficher la modal d'édition (celle qu'on utilise déjà pour créer/modifier)
+                    document.getElementById('workflow-modal-title').textContent = `Éditer le workflow: ${workflow.name}`;
+                    document.getElementById('workflow-id').value = workflow.id;
+                    document.getElementById('workflow-name').value = workflow.name;
+                    document.getElementById('workflow-description').value = workflow.description || '';
+                    document.getElementById('workflow-application').value = workflow.application_id;
+                    document.getElementById('workflow-active').checked = workflow.is_active == 1;
                     
-                    // Ajouter également la clé API de développement comme solution de secours
-                    editorUrl += '&apiKey=dev-key';
-                    
-                    // Afficher l'URL dans la console pour débuggage
-                    console.log('URL Node-RED avec authentification:', editorUrl);
-                    
-                    console.log('Workflow récupéré pour l\'éditeur:', await getWorkflow(id));
-                    console.log('URL de l\'éditeur générée:', editorUrl);
-                    
-                    // Ouvrir dans un nouvel onglet plutôt que dans l'iframe
-                    window.open(editorUrl, '_blank');
-                    
-                    // Fermer la modal
-                    editorModal.style.display = 'none';
+                    // Afficher la modal
+                    workflowModal.style.display = 'block';
                     
                     // Informer l'utilisateur
-                    showNotification('Éditeur de workflow ouvert dans un nouvel onglet', 'info');
+                    showNotification('Éditeur de workflow ouvert. Les modifications seront sauvegardées en cliquant sur Enregistrer.', 'info');
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
