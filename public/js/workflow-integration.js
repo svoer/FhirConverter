@@ -356,8 +356,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Utiliser le nouveau format de carte pour chaque workflow
+                // Supprimer les doublons en utilisant un Map avec l'ID comme clé
+                const uniqueWorkflows = new Map();
                 workflows.forEach(workflow => {
+                    uniqueWorkflows.set(workflow.id, workflow);
+                });
+                
+                // Utiliser le nouveau format de carte pour chaque workflow unique
+                uniqueWorkflows.forEach(workflow => {
                     const card = createWorkflowCard(workflow);
                     workflowGrid.appendChild(card);
                 });
