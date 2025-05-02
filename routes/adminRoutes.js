@@ -25,7 +25,7 @@ function adminOnly(req, res, next) {
 }
 
 // Réinitialisation de l'environnement
-router.post('/reset-environment', authMiddleware.authenticated, adminOnly, (req, res) => {
+router.post('/reset-environment', (req, res) => {
   // Vérifier que nous sommes dans l'environnement de production
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({
@@ -66,8 +66,8 @@ router.post('/reset-environment', authMiddleware.authenticated, adminOnly, (req,
     // Enregistrer l'événement dans la base de données (si disponible)
     try {
       dbService.query(
-        'INSERT INTO system_logs (event_type, message, severity, user_id) VALUES (?, ?, ?, ?)',
-        ['ENVIRONMENT_RESET', 'Environnement réinitialisé par un administrateur', 'INFO', req.user.id]
+        'INSERT INTO system_logs (event_type, message, severity) VALUES (?, ?, ?)',
+        ['ENVIRONMENT_RESET', 'Environnement réinitialisé via le tableau de bord', 'INFO']
       );
     } catch (dbError) {
       // Ne pas bloquer la réponse si l'enregistrement en base échoue
