@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Utilisateurs - Contenu</title>
+  <title>Gestion des Utilisateurs - Contenu</title>
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -20,23 +20,135 @@
     .page-header {
       display: none;
     }
+    
+    .user-header {
+      background-color: #f8f9fa;
+      font-weight: 600;
+      display: flex;
+      padding: 10px;
+      border-radius: 5px 5px 0 0;
+      border-bottom: 2px solid #e9ecef;
+    }
+    
+    .user-row {
+      display: flex;
+      padding: 12px 10px;
+      background-color: white;
+      border-bottom: 1px solid #e9ecef;
+      transition: background-color 0.2s;
+    }
+    
+    .user-row:hover {
+      background-color: #f8f9fa;
+    }
+    
+    .user-id {
+      flex: 0 0 60px;
+    }
+    
+    .user-name {
+      flex: 1;
+    }
+    
+    .user-role {
+      flex: 0 0 150px;
+      text-align: center;
+    }
+    
+    .user-created {
+      flex: 0 0 180px;
+    }
+    
+    .user-actions {
+      flex: 0 0 180px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    
+    .role-badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      display: inline-block;
+    }
+    
+    .admin-badge {
+      background-color: #ffa5001a;
+      color: #ff6b00;
+      border: 1px solid #ff8c00;
+    }
+    
+    .user-badge {
+      background-color: #e9ecef;
+      color: #495057;
+      border: 1px solid #ced4da;
+    }
+    
+    .action-btn {
+      padding: 3px 8px;
+      font-size: 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid #ced4da;
+      background-color: #f8f9fa;
+      color: #495057;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .action-btn:hover {
+      background-color: #e9ecef;
+    }
+    
+    .action-btn.edit-btn:hover {
+      color: #2b5797;
+      border-color: #2b5797;
+    }
+    
+    .action-btn.delete-btn:hover {
+      color: #dc3545;
+      border-color: #dc3545;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .error-message {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+      text-align: center;
+    }
+    
+    .no-data {
+      background-color: #f8f9fa;
+      padding: 25px;
+      border-radius: 5px;
+      text-align: center;
+      color: #6c757d;
+      margin: 15px 0;
+    }
   </style>
 </head>
 <body>
   <div class="users-container">
-    <div class="users-list" id="usersList">
-      <!-- Les utilisateurs seront chargés ici -->
+    <div id="usersList" class="users-list">
       <div class="loading">
         <i class="fas fa-spinner fa-spin"></i> Chargement des utilisateurs...
       </div>
     </div>
   </div>
-
+  
   <!-- Modal d'ajout/modification d'utilisateur -->
   <div id="userModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 class="modal-title" id="modalTitle">Nouvel utilisateur</h2>
+        <h2 class="modal-title" id="userModalTitle">Ajouter un utilisateur</h2>
       </div>
       
       <div class="modal-body">
@@ -51,7 +163,7 @@
           <div class="form-group">
             <label for="password" class="form-label">Mot de passe</label>
             <input type="password" id="password" class="form-input">
-            <small id="passwordHelp" class="form-text">Laissez vide pour conserver le mot de passe actuel</small>
+            <small class="form-text" id="passwordHelp">Laissez vide pour conserver le mot de passe actuel.</small>
           </div>
           
           <div class="form-group">
@@ -79,7 +191,7 @@
       </div>
       
       <div class="modal-body">
-        <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
+        <p id="deleteUserMessage">Êtes-vous sûr de vouloir supprimer cet utilisateur ?</p>
       </div>
       
       <div class="modal-footer">
@@ -90,20 +202,19 @@
   </div>
 
   <script>
-    // Variable pour stocker l'ID de l'utilisateur à supprimer
     let userToDelete = null;
     
     document.addEventListener('DOMContentLoaded', function() {
-      // Charger la liste des utilisateurs
+      // Charger les utilisateurs
       fetchUsers();
       
-      // Gestion des événements pour les boutons
+      // Gestionnaires d'événements
       document.getElementById('cancelUserBtn').addEventListener('click', closeUserModal);
       document.getElementById('saveUserBtn').addEventListener('click', saveUser);
       document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
       document.getElementById('confirmDeleteBtn').addEventListener('click', deleteUser);
       
-      // Exposer la fonction openAddUserModal pour qu'elle puisse être appelée depuis la page parent
+      // Exposer la fonction openAddUserModal pour être appelée depuis la page parente
       window.openAddUserModal = openAddUserModal;
     });
     
@@ -111,43 +222,34 @@
       // Réinitialiser le formulaire
       document.getElementById('userForm').reset();
       document.getElementById('userId').value = '';
-      document.getElementById('modalTitle').textContent = 'Nouvel utilisateur';
-      document.getElementById('password').required = true;
       document.getElementById('passwordHelp').style.display = 'none';
+      document.getElementById('userModalTitle').textContent = 'Ajouter un utilisateur';
       
       // Afficher la modale
       document.getElementById('userModal').style.display = 'block';
     }
     
-    function openEditUserModal(userId, username, role) {
-      // Remplir le formulaire avec les données de l'utilisateur
-      document.getElementById('userId').value = userId;
+    function openEditUserModal(id, username, role) {
+      // Remplir le formulaire
+      document.getElementById('userId').value = id;
       document.getElementById('username').value = username;
+      document.getElementById('password').value = '';
       document.getElementById('role').value = role;
-      document.getElementById('password').required = false;
       document.getElementById('passwordHelp').style.display = 'block';
-      
-      // Changer le titre de la modale
-      document.getElementById('modalTitle').textContent = 'Modifier l\'utilisateur';
+      document.getElementById('userModalTitle').textContent = 'Modifier l\'utilisateur';
       
       // Afficher la modale
       document.getElementById('userModal').style.display = 'block';
-    }
-    
-    function openDeleteModal(userId, username) {
-      // Stocker l'ID de l'utilisateur à supprimer
-      userToDelete = userId;
-      
-      // Personnaliser le message de confirmation
-      const message = document.querySelector('#deleteUserModal .modal-body p');
-      message.textContent = `Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ? Cette action est irréversible.`;
-      
-      // Afficher la modale
-      document.getElementById('deleteUserModal').style.display = 'block';
     }
     
     function closeUserModal() {
       document.getElementById('userModal').style.display = 'none';
+    }
+    
+    function openDeleteModal(id, username) {
+      userToDelete = id;
+      document.getElementById('deleteUserMessage').textContent = `Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ?`;
+      document.getElementById('deleteUserModal').style.display = 'block';
     }
     
     function closeDeleteModal() {
@@ -305,7 +407,7 @@
       if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
         window.parent.FHIRHubAuth.fetchWithAuth(url, options, true)
           .then(response => response.json())
-          .then(handleSaveResponse)
+          .then(data => handleSaveResponse(data, userId))
           .catch(handleSaveError);
       } else {
         // Fallback si la fonction d'authentification n'est pas disponible

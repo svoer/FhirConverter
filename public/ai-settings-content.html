@@ -310,12 +310,27 @@
     });
     
     function loadProviders() {
-      fetch('/api/ai-providers', {
-        method: 'GET',
-        headers: {
-          'X-API-KEY': 'dev-key'
-        }
-      })
+      // Utilisation de la fonction d'authentification avec la clé API
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth('/api/ai-providers', { method: 'GET' }, true)
+          .then(response => response.json())
+          .then(data => {
+            providers = data.success ? data.data : [];
+            renderProviders();
+            updateTestProviderOptions();
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            showError('Une erreur est survenue lors de la récupération des fournisseurs d\'IA.');
+          });
+      } else {
+        // Fallback si la fonction d'authentification n'est pas disponible
+        fetch('/api/ai-providers', {
+          method: 'GET',
+          headers: {
+            'X-API-KEY': 'dev-key'
+          }
+        })
       .then(response => response.json())
       .then(data => {
         providers = data.success ? data.data : [];
@@ -582,20 +597,46 @@
       const url = providerId ? `/api/ai-providers/${providerId}` : '/api/ai-providers';
       const method = providerId ? 'PUT' : 'POST';
       
-      // Envoyer la requête (simulée)
-      console.log(`Envoi de la requête ${method} à ${url}:`, providerData);
+      // Options de la requête
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(providerData)
+      };
       
-      // Simuler une réponse réussie
-      setTimeout(() => {
-        // Fermer la modale
-        closeProviderModal();
-        
-        // Refresh la liste
-        loadProviders();
-        
-        // Afficher un message de succès
-        alert(providerId ? 'Fournisseur mis à jour avec succès.' : 'Fournisseur créé avec succès.');
-      }, 500);
+      // Envoyer la requête avec authentification
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth(url, options, true)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Fermer la modale
+              closeProviderModal();
+              
+              // Refresh la liste
+              loadProviders();
+              
+              // Afficher un message de succès
+              alert(providerId ? 'Fournisseur mis à jour avec succès.' : 'Fournisseur créé avec succès.');
+            } else {
+              alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+            }
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de l\'enregistrement du fournisseur.');
+          });
+      } else {
+        // Simuler une réponse réussie (pour la démo seulement)
+        console.log(`Envoi de la requête ${method} à ${url}:`, providerData);
+        setTimeout(() => {
+          closeProviderModal();
+          loadProviders();
+          alert(providerId ? 'Fournisseur mis à jour avec succès.' : 'Fournisseur créé avec succès.');
+        }, 500);
+      }
     }
     
     function runTest() {
@@ -611,34 +652,85 @@
       const resultContainer = document.getElementById('test-result');
       resultContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Test en cours...</div>';
       
-      // Simuler une réponse (remplacer par une vraie requête API)
-      setTimeout(() => {
-        const provider = providers.find(p => p.id === parseInt(providerId));
-        const response = `En tant que modèle ${provider.model || 'IA'} de ${provider.name}, je peux vous aider avec diverses tâches comme la rédaction de contenu, la réponse à des questions, la création de résumés, et bien plus encore.
+      // Options de la requête
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          provider_id: providerId,
+          prompt: prompt
+        })
+      };
+      
+      // Envoyer la requête avec authentification
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth('/api/ai-providers/test', options, true)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              resultContainer.innerHTML = `<div class="test-response">${data.response.replace(/\n/g, '<br>')}</div>`;
+            } else {
+              resultContainer.innerHTML = `<div class="error-message">${data.message || 'Une erreur est survenue lors du test.'}</div>`;
+            }
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            resultContainer.innerHTML = `<div class="error-message">Une erreur est survenue lors du test.</div>`;
+          });
+      } else {
+        // Simuler une réponse (pour la démo seulement)
+        setTimeout(() => {
+          const provider = providers.find(p => p.id === parseInt(providerId));
+          const response = `En tant que modèle ${provider?.model || 'IA'} de ${provider?.name || 'fournisseur'}, je peux vous aider avec diverses tâches comme la rédaction de contenu, la réponse à des questions, la création de résumés, et bien plus encore.
 
 Je suis conçu pour comprendre et générer du texte en langage naturel. N'hésitez pas à me poser vos questions ou à me demander de l'aide pour vos projets.`;
-        
-        resultContainer.innerHTML = `<div class="test-response">${response.replace(/\n/g, '<br>')}</div>`;
-      }, 1500);
+          
+          resultContainer.innerHTML = `<div class="test-response">${response.replace(/\n/g, '<br>')}</div>`;
+        }, 1500);
+      }
     }
     
     function deleteProvider() {
       if (!providerToDelete) return;
       
-      // Simuler la suppression
-      console.log(`Suppression du fournisseur ID: ${providerToDelete}`);
+      // Options de la requête
+      const options = {
+        method: 'DELETE'
+      };
       
-      // Simuler une réponse réussie
-      setTimeout(() => {
-        // Fermer la modale
-        closeDeleteModal();
-        
-        // Refresh la liste
-        loadProviders();
-        
-        // Afficher un message de succès
-        alert('Fournisseur supprimé avec succès.');
-      }, 500);
+      // Envoyer la requête avec authentification
+      if (window.parent.FHIRHubAuth && window.parent.FHIRHubAuth.fetchWithAuth) {
+        window.parent.FHIRHubAuth.fetchWithAuth(`/api/ai-providers/${providerToDelete}`, options, true)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Fermer la modale
+              closeDeleteModal();
+              
+              // Refresh la liste
+              loadProviders();
+              
+              // Afficher un message de succès
+              alert('Fournisseur supprimé avec succès.');
+            } else {
+              alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+            }
+          })
+          .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la suppression du fournisseur.');
+          });
+      } else {
+        // Simuler une réponse réussie (pour la démo seulement)
+        console.log(`Suppression du fournisseur ID: ${providerToDelete}`);
+        setTimeout(() => {
+          closeDeleteModal();
+          loadProviders();
+          alert('Fournisseur supprimé avec succès.');
+        }, 500);
+      }
     }
     
     function showError(message) {
