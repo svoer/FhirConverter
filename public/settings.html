@@ -316,9 +316,20 @@
       });
     });
     
-    // Fonction pour masquer l'overlay de chargement
+    // Fonction pour masquer l'overlay de chargement et initialiser les iframes
     function hideLoading(id) {
       document.getElementById(id).style.display = 'none';
+      
+      // Ajouter la classe in-iframe au body de l'iframe pour éviter les doubles scrollbars
+      try {
+        const iframeId = id.replace('-loading', '');
+        const iframe = document.getElementById(iframeId);
+        if (iframe && iframe.contentWindow && iframe.contentWindow.document.body) {
+          iframe.contentWindow.document.body.classList.add('in-iframe');
+        }
+      } catch (e) {
+        console.error('Erreur lors de l\'ajout de la classe in-iframe:', e);
+      }
     }
   </script>
 </body>

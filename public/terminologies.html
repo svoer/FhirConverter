@@ -9,6 +9,18 @@
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/admin.css">
   <script src="/js/auth-utils.js"></script>
+  <style>
+    /* Style pour éviter le double scrollbar lorsque chargé dans une iframe */
+    body.in-iframe {
+      overflow: visible;
+      height: auto;
+    }
+    
+    /* Ajuster l'affichage dans l'iframe */
+    body.in-iframe .main-content {
+      padding-top: 0;
+    }
+  </style>
 </head>
 <body>
   <header class="header">
