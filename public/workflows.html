@@ -6,7 +6,20 @@
     <title>Workflows - FHIRHub</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/support-chatbot.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/lint/lint.min.css">
+    
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/lint/lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/lint/json-lint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
     <style>
         .workflow-grid {
             display: grid;
@@ -227,12 +240,30 @@
             margin-top: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            overflow: hidden;
         }
         
         #json-editor {
             width: 100%;
             height: 100%;
             font-size: 14px;
+        }
+        
+        /* Styles spécifiques pour CodeMirror */
+        .CodeMirror {
+            height: 100%;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .CodeMirror-gutters {
+            background-color: #272822;
+            border-right: 1px solid #3e3d32;
+        }
+        
+        .CodeMirror-linenumber {
+            color: #8f908a;
         }
         
         .tab-container {
@@ -487,11 +518,7 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialisation de l'éditeur JSON
-            const jsonEditor = ace.edit("json-editor");
-            jsonEditor.setTheme("ace/theme/monokai");
-            jsonEditor.session.setMode("ace/mode/json");
-            jsonEditor.setValue(JSON.stringify([], null, 2));
+            // L'éditeur JSON est maintenant initialisé avec CodeMirror plus haut dans le code
             
             // Récupération des références des éléments
             const addWorkflowBtn = document.getElementById('add-workflow-btn');
@@ -500,7 +527,7 @@
             const cancelWorkflow = document.getElementById('cancel-workflow');
             const saveWorkflow = document.getElementById('save-workflow');
             const workflowForm = document.getElementById('workflow-form');
-            const modalTitle = document.getElementById('modal-title');
+            const modalTitle = document.getElementById('workflow-modal-title');
             const workflowGrid = document.getElementById('workflow-grid');
             const applicationFilter = document.getElementById('application-filter');
             const workflowApplication = document.getElementById('workflow-application');
@@ -512,6 +539,19 @@
             const closeEditor = document.getElementById('close-editor');
             const nodeRedIframe = document.getElementById('node-red-iframe');
             const editorTitle = document.getElementById('editor-title');
+            
+            // Initialisation de l'éditeur JSON
+            const jsonEditor = CodeMirror(document.getElementById('json-editor'), {
+                lineNumbers: true,
+                mode: { name: "javascript", json: true },
+                theme: "monokai",
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 2,
+                tabSize: 2,
+                lint: true,
+                gutters: ["CodeMirror-lint-markers"]
+            });
             
             // Gestion des onglets
             const tabButtons = document.querySelectorAll('.tab-buttons li');
