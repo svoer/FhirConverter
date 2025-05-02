@@ -1,10 +1,12 @@
 #!/bin/bash
 
 # Script d'installation pour l'application FHIRHub
-# Version 1.1.0
+# Convertisseur HL7 v2.5 vers FHIR R4 avec terminologies françaises
+# Version 1.2.0
 
 echo "=========================================================="
 echo "     Installation de FHIRHub - Convertisseur HL7 vers FHIR"
+echo "     Version 1.2.0 - ANS Compatible"
 echo "=========================================================="
 
 # Définir les variables pour Node.js intégré
@@ -143,6 +145,42 @@ echo "✅ Structure des dossiers de données créée"
 
 # Installation des dépendances
 echo "[3/7] Installation des dépendances..."
+
+# Vérifier si Python est disponible
+echo "   Vérification de Python..."
+if command -v python3 &> /dev/null; then
+  PYTHON_CMD="python3"
+  echo "   ✅ Python 3 trouvé: $(python3 --version)"
+elif command -v python &> /dev/null; then
+  PYTHON_VERSION=$(python --version 2>&1)
+  if [[ $PYTHON_VERSION == Python\ 3* ]]; then
+    PYTHON_CMD="python"
+    echo "   ✅ Python 3 trouvé: $PYTHON_VERSION"
+  else
+    echo "   ⚠️ Python $PYTHON_VERSION trouvé, mais Python 3 est recommandé"
+    PYTHON_CMD="python"
+  fi
+else
+  echo "   ⚠️ Python non trouvé. Certaines fonctionnalités pourraient ne pas être disponibles."
+  PYTHON_CMD=""
+fi
+
+# Installation des modules Python nécessaires si Python est disponible
+if [ ! -z "$PYTHON_CMD" ]; then
+  echo "   Installation des modules Python requis..."
+  if command -v pip3 &> /dev/null; then
+    pip3 install hl7 requests --quiet
+    echo "   ✅ Modules Python installés avec pip3"
+  elif command -v pip &> /dev/null; then
+    pip install hl7 requests --quiet
+    echo "   ✅ Modules Python installés avec pip"
+  else
+    echo "   ⚠️ pip non trouvé. Les modules Python requis n'ont pas été installés."
+  fi
+fi
+
+# Installation des dépendances Node.js
+echo "   Installation des modules Node.js..."
 $NPM_CMD install
 
 # Configuration de l'environnement
