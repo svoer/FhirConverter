@@ -854,7 +854,7 @@
                 }
             }
             
-            // Ouvrir l'éditeur de workflow simplifié (éditeur JSON)
+            // Ouvrir l'éditeur avancé de workflow (Node-RED)
             async function openWorkflowEditor(id) {
                 try {
                     // Récupérer les informations sur le workflow directement
@@ -870,49 +870,26 @@
                     }
                     
                     const workflowResult = await workflowResponse.json();
-                    console.log('Workflow récupéré pour édition:', workflowResult);
+                    console.log('Workflow récupéré pour l\'éditeur avancé:', workflowResult);
                     
                     let workflow = workflowResult;
                     if (workflowResult.success && workflowResult.data) {
                         workflow = workflowResult.data;
                     }
                     
-                    // Activer l'onglet JSON pour l'édition
-                    document.querySelectorAll('.tab-buttons li').forEach(btn => btn.classList.remove('active'));
-                    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    // Mettre à jour le titre de l'éditeur
+                    editorTitle.textContent = `Éditeur avancé: ${workflow.name}`;
                     
-                    // Sélectionner et activer l'onglet JSON
-                    const jsonTabBtn = document.querySelector('.tab-buttons li[data-tab="json-tab"]');
-                    if (jsonTabBtn) {
-                        jsonTabBtn.classList.add('active');
-                        const jsonTabPane = document.getElementById('json-tab');
-                        if (jsonTabPane) {
-                            jsonTabPane.classList.add('active');
-                        }
-                    }
+                    // Configurer l'iframe pour Node-RED (à adapter selon votre installation Node-RED)
+                    // Dans un environnement réel, cela serait l'URL vers l'éditeur Node-RED avec l'ID du workflow
+                    nodeRedIframe.src = `/node-red-editor/?id=${workflow.id}`;
                     
-                    // Au lieu d'ouvrir dans un nouvel onglet, on va utiliser notre propre éditeur JSON
-                    // Remplir la zone de texte avec le JSON du workflow
-                    jsonEditor.setValue(JSON.stringify(workflow.flow_json ? JSON.parse(workflow.flow_json) : [], null, 2));
-                    
-                    // Afficher la modal d'édition (celle qu'on utilise déjà pour créer/modifier)
-                    document.getElementById('modal-title').textContent = `Éditer le workflow: ${workflow.name}`;
-                    document.getElementById('workflow-id').value = workflow.id;
-                    document.getElementById('workflow-name').value = workflow.name;
-                    document.getElementById('workflow-description').value = workflow.description || '';
-                    document.getElementById('workflow-application').value = workflow.application_id;
-                    document.getElementById('workflow-active').checked = workflow.is_active == 1;
-                    
-                    // Afficher la modal
-                    workflowModal.style.display = 'block';
-                    
-                    // Actualiser l'éditeur CodeMirror pour qu'il se redimensionne correctement
-                    setTimeout(() => {
-                        jsonEditor.refresh();
-                    }, 100);
+                    // Afficher la modal de l'éditeur avancé
+                    editorModal.style.display = 'block';
                     
                     // Informer l'utilisateur
-                    showNotification('Éditeur de workflow ouvert. Les modifications seront sauvegardées en cliquant sur Enregistrer.', 'info');
+                    showNotification('Éditeur avancé de workflow ouvert.', 'info');
+                    
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');

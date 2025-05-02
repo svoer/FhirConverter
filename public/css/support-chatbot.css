@@ -15,11 +15,11 @@
   flex-direction: column;
   z-index: 1000;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: max-height 0.3s ease;
   max-height: 30px; /* Montrer seulement la barre de titre initialement */
 }
 
-.chatbot-container.expanded {
+.chatbot-container.open {
   max-height: 400px; /* Hauteur complète quand ouvert */
 }
 
@@ -66,7 +66,8 @@
   gap: 10px;
 }
 
-.chatbot-message {
+/* Styles pour les messages du chatbot */
+.message {
   max-width: 80%;
   padding: 10px 12px;
   border-radius: 15px;
@@ -75,16 +76,27 @@
   animation: fadeIn 0.3s ease;
 }
 
-.chatbot-message.user {
+.message.user {
   align-self: flex-end;
   background-color: #f0f0f0;
   border-top-right-radius: 5px;
+  color: #333;
 }
 
-.chatbot-message.assistant {
+.message.system {
   align-self: flex-start;
   background-color: #e74c3c0f;
   border-top-left-radius: 5px;
+  color: #333;
+}
+
+/* Rétrocompatibilité avec ancien code */
+.chatbot-message {
+  max-width: 80%;
+  padding: 10px 12px;
+  border-radius: 15px;
+  margin-bottom: 5px;
+  word-break: break-word;
 }
 
 .chatbot-footer {
@@ -140,6 +152,26 @@
 }
 
 /* Style pour l'indicateur de chargement */
+.message.typing {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border-radius: 15px;
+  align-self: flex-start;
+  font-size: 14px;
+  color: #777;
+  max-width: 80px;
+  font-style: italic;
+}
+
+.message.typing span {
+  display: inline-block;
+  animation: typingAnimation 1s infinite;
+}
+
+/* Rétrocompatibilité avec l'ancien code */
 .chatbot-typing {
   display: flex;
   align-items: center;
