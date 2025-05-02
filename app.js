@@ -755,8 +755,8 @@ app.use('/api/workflows', workflowsRoutes);
 const redApp = workflowService.getRedApp();
 if (redApp) {
   // Configurer l'éditeur Node-RED dans notre application Express principale
-  // Ne pas utiliser app.use('/node-red-editor', redApp) directement car cela court-circuiterait l'authentification
-  app.use('/node-red-editor', (req, res, next) => {
+  // Ne pas utiliser app.use('/node-red', redApp) directement car cela court-circuiterait l'authentification
+  app.use('/node-red', (req, res, next) => {
     // Récupérer le token JWT des paramètres d'URL ou des en-têtes
     const token = req.query.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
     
@@ -817,7 +817,7 @@ if (redApp) {
     }
   });
   console.log('[WORKFLOW] Éditeur Node-RED intégré directement à l\'application avec protection d\'authentification');
-  console.log('[WORKFLOW] Accessible via /node-red-editor');
+  console.log('[WORKFLOW] Accessible via /node-red');
 } else {
   console.warn('[WORKFLOW] Éditeur Node-RED non disponible');
 }
