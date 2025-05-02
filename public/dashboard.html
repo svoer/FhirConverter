@@ -117,6 +117,19 @@
       </ul>
     </div>
   </footer>
+  
+  <!-- Chatbot de support -->
+  <div class="chatbot-container">
+    <div class="chatbot-messages" id="chatbotMessages"></div>
+    <div class="chatbot-input-container">
+      <input type="text" id="chatbotInput" placeholder="Comment puis-je vous aider ?">
+      <button id="chatbotSend"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+  
+  <button class="support-button" id="supportButton">
+    <span>Support FHIRHub</span>
+  </button>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {

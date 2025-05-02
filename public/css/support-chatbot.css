@@ -24,7 +24,7 @@
 }
 
 .chatbot-header {
-  background: linear-gradient(135deg, #e74c3c, #f39c12);
+  background: linear-gradient(135deg, #666666, #999999);
   color: white;
   padding: 5px 10px;
   display: flex;
@@ -92,11 +92,11 @@
 }
 
 #chatbot-input:focus {
-  border-color: #e74c3c;
+  border-color: #666;
 }
 
 #chatbot-send {
-  background: linear-gradient(135deg, #e74c3c, #f39c12);
+  background: linear-gradient(135deg, #666666, #999999);
   color: white;
   border: none;
   border-radius: 50%;
@@ -132,7 +132,7 @@
 
 .message.system {
   align-self: flex-start;
-  background-color: #e74c3c0f;
+  background-color: rgba(100, 100, 100, 0.06);
   border-top-left-radius: 5px;
   color: #333;
 }
@@ -164,11 +164,11 @@
 }
 
 .chatbot-input:focus {
-  border-color: #e74c3c;
+  border-color: #666;
 }
 
 .chatbot-send {
-  background: linear-gradient(135deg, #e74c3c, #f39c12);
+  background: linear-gradient(135deg, #666666, #999999);
   color: white;
   border: none;
   border-radius: 20px;
@@ -266,7 +266,7 @@
   right: 20px;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #e74c3c, #f39c12);
+  background: linear-gradient(135deg, #666666, #999999);
   border-radius: 50%;
   display: none;
   justify-content: center;
@@ -289,6 +289,33 @@
 
 .chatbot-hidden .chatbot-container {
   display: none;
+}
+
+/* Style pour le bouton de support */
+.support-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #666666, #999999);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 999;
+  transition: all 0.3s ease;
+}
+
+.support-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Style pour les supports dans différentes tailles d'écran */
