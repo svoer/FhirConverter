@@ -225,6 +225,36 @@ function injectChatbot() {
   }
 }
 
+/**
+ * Fonction spéciale pour les iframes qui détecte si l'iframe est chargée dans settings.html
+ * et utilise le token d'authentification de la page parent
+ */
+function setupIframeAuth() {
+  // Détecter si nous sommes dans une iframe
+  if (window.parent !== window) {
+    try {
+      // Essayer d'accéder à la page parent (même origine)
+      if (window.parent.FHIRHubAuth) {
+        // Récupérer les infos d'authentification depuis la page parent
+        const parentToken = window.parent.FHIRHubAuth.getAuthToken();
+        const parentUser = window.parent.FHIRHubAuth.getCurrentUser();
+        
+        if (parentToken && parentUser) {
+          // Stocker les informations localement pour cette iframe
+          localStorage.setItem('token', parentToken);
+          localStorage.setItem('user', JSON.stringify(parentUser));
+          console.log('Authentification iframe synchronisée avec la page parent');
+        }
+      }
+    } catch (e) {
+      console.error('Erreur lors de la synchronisation d\'authentification avec la page parent:', e);
+    }
+  }
+}
+
+// Appeler automatiquement la fonction setupIframeAuth au chargement
+document.addEventListener('DOMContentLoaded', setupIframeAuth);
+
 // Exporter les fonctions pour usage global
 window.FHIRHubAuth = {
   isAuthenticated,
@@ -238,5 +268,6 @@ window.FHIRHubAuth = {
   checkAdminRights,
   checkUserRole,
   initAuthListeners,
-  injectChatbot
+  injectChatbot,
+  setupIframeAuth
 };

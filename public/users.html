@@ -272,6 +272,18 @@
   </footer>
 
   <script>
+    // Fonction pour ouvrir le modal d'ajout utilisateur accessible depuis l'extérieur
+    function openAddUserModal() {
+      const modal = document.getElementById('createUserModal');
+      if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('createUserForm').reset();
+      }
+    }
+    
+    // Exposer la fonction globalement pour qu'elle soit accessible depuis la page parent
+    window.openAddUserModal = openAddUserModal;
+    
     document.addEventListener('DOMContentLoaded', function() {
       // Vérifier l'authentification
       const token = localStorage.getItem('token');
