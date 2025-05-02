@@ -436,27 +436,19 @@ class WorkflowEditor {
           dropEvent.clientX > rect.left && dropEvent.clientX < rect.right &&
           dropEvent.clientY > rect.top && dropEvent.clientY < rect.bottom
         ) {
-          // Obtenir les coordonnées du point de dépose par rapport à la fenêtre
-          const dropX = dropEvent.clientX;
-          const dropY = dropEvent.clientY;
+          // Utiliser les coordonnées actuelles de la souris pour calculer le point central
+          // de la vue visible actuelle
+          const viewportCenterX = rect.width / 2;
+          const viewportCenterY = rect.height / 2;
           
-          // Calculer le centre du viewport visible
-          const viewportCenterX = rect.left + rect.width / 2;
-          const viewportCenterY = rect.top + rect.height / 2;
+          // Calculer le point central du canvas en coordonnées canvas
+          const centerCanvasX = (viewportCenterX - this.offset.x) / this.scale;
+          const centerCanvasY = (viewportCenterY - this.offset.y) / this.scale;
           
-          // Si le point de dépose est trop éloigné du centre visible (plus de 100px),
-          // utiliser le centre visible comme coordonnée de dépose
-          const useX = Math.abs(dropX - viewportCenterX) > 200 ? viewportCenterX : dropX;
-          const useY = Math.abs(dropY - viewportCenterY) > 200 ? viewportCenterY : dropY;
+          console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} au centre (${centerCanvasX}, ${centerCanvasY})`);
           
-          // Convertir les coordonnées écran en coordonnées canvas
-          const canvasX = (useX - rect.left - this.offset.x) / this.scale;
-          const canvasY = (useY - rect.top - this.offset.y) / this.scale;
-          
-          console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} à la position (${canvasX}, ${canvasY})`);
-          
-          // Ajouter le noeud
-          this.addNode(nodeType, { x: canvasX, y: canvasY });
+          // Ajouter le nœud au centre de la vue
+          this.addNode(nodeType, { x: centerCanvasX, y: centerCanvasY });
         }
         
         // Supprimer le fantôme
