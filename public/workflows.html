@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- Inclusion du chatbot spécifique aux workflows -->
     <link rel="stylesheet" href="css/support-chatbot.css">
+    <!-- Pas besoin d'inclure support-chatbot.js ici, on utilise workflow-chatbot.js à la place -->
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -884,7 +885,7 @@
                     // Configurer l'iframe pour Node-RED (à adapter selon votre installation Node-RED)
                     // Dans un environnement réel, cela serait l'URL vers l'éditeur Node-RED avec l'ID du workflow
                     // La route correcte est celle configurée dans app.js avec middleware d'authentification
-                    nodeRedIframe.src = `/node-red/?flowId=${workflow.id}&auth=${getToken()}`;
+                    nodeRedIframe.src = `/node-red/editor/?flowId=${workflow.id}&auth=${getToken()}`;
                     
                     // Afficher la modal de l'éditeur avancé
                     editorModal.style.display = 'block';

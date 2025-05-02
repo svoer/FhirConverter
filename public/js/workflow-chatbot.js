@@ -11,11 +11,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('Initialisation du chatbot pour workflows.html');
   
-  // Charger le fournisseur d'IA
-  loadAIProvider();
-  
-  // Attacher les événements spécifiques à cette page
-  setupChatbotEvents();
+  // Petit délai pour s'assurer que le DOM est entièrement chargé
+  setTimeout(() => {
+    // Charger le fournisseur d'IA
+    loadAIProvider();
+    
+    // Attacher les événements spécifiques à cette page
+    setupChatbotEvents();
+    
+    console.log('Vérification des éléments DOM:');
+    console.log('Header:', document.querySelector('.chatbot-header'));
+    console.log('Messages:', document.getElementById('chatbot-messages'));
+    console.log('Input:', document.getElementById('chatbot-input'));
+    console.log('Send button:', document.getElementById('chatbot-send'));
+  }, 500);
 });
 
 // Variables globales
@@ -110,7 +119,7 @@ async function handleSendMessage() {
   loadingIndicator.className = 'message system typing';
   loadingIndicator.id = 'typing-indicator';
   loadingIndicator.innerHTML = 'Chargement...';
-  document.querySelector('.chatbot-messages').appendChild(loadingIndicator);
+  document.getElementById('chatbot-messages').appendChild(loadingIndicator);
   
   // Marquer comme en attente
   isWaitingForResponse = true;
