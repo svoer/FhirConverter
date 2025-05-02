@@ -719,6 +719,28 @@
                 }
             }
             
+            // Récupérer un workflow par son ID
+            async function getWorkflow(id) {
+                try {
+                    const response = await fetch(`/api/workflows/${id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de la récupération du workflow');
+                    }
+                    
+                    const result = await response.json();
+                    return result;
+                } catch (error) {
+                    console.error('Erreur lors de la récupération du workflow:', error);
+                    throw error;
+                }
+            }
+            
             // Éditer un workflow
             async function editWorkflow(id) {
                 try {
@@ -828,7 +850,16 @@
                     }
                     
                     editorTitle.textContent = `Éditeur: ${workflow.name}`;
-                    nodeRedIframe.src = data.editor_url;
+                    // Ajouter le token JWT et apiKey comme paramètres d'URL
+                    let editorUrl = data.editor_url;
+                    const token = getToken();
+                    if (token) {
+                        editorUrl += (editorUrl.includes('?') ? '&' : '?') + 'token=' + token;
+                    }
+                    // Ajouter également la clé API de développement
+                    editorUrl += '&apiKey=dev-key';
+                    console.log('Workflow récupéré pour l\'éditeur:', await getWorkflow(id));
+                    nodeRedIframe.src = editorUrl;
                     editorModal.style.display = 'block';
                 } catch (error) {
                     console.error('Erreur:', error);
