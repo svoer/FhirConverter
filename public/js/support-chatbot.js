@@ -11,8 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   
-  // Créer le chatbot s'il n'existe pas déjà
+  // Initialiser le chatbot (sans créer les éléments, car ils existent déjà dans le HTML)
   initChatbot();
+  
+  // S'assurer que les événements sont correctement attachés
+  attachChatbotEvents();
 });
 
 // Variables globales
@@ -105,59 +108,62 @@ function createChatbotElements() {
 }
 
 /**
- * Ajoute les écouteurs d'événements
+ * Fonction spécifique pour attacher les événements du chatbot
  */
-function addEventListeners() {
-  // Gestion de l'ouverture/fermeture du chatbot
-  document.addEventListener('click', event => {
-    const header = event.target.closest('.chatbot-header');
-    const toggle = event.target.closest('.chatbot-toggle');
+function attachChatbotEvents() {
+  const chatbotHeader = document.querySelector('.chatbot-header');
+  const chatbotInput = document.getElementById('chatbot-input');
+  const chatbotSendButton = document.getElementById('chatbot-send');
+  
+  // Vérifier que les éléments existent
+  if (!chatbotHeader || !chatbotInput || !chatbotSendButton) {
+    console.error("Éléments du chatbot manquants dans le DOM");
+    console.log("Header:", chatbotHeader);
+    console.log("Input:", chatbotInput);
+    console.log("Send button:", chatbotSendButton);
+    return;
+  }
+  
+  // Gestion de l'ouverture/fermeture du chatbot via le header
+  chatbotHeader.addEventListener('click', function(event) {
+    event.preventDefault();
+    const chatbot = document.querySelector('.chatbot-container');
     
-    if (header || toggle) {
-      event.preventDefault();
-      
-      const chatbot = document.querySelector('.chatbot-container');
-      if (!chatbot) {
-        console.error("ERREUR: Chatbot non trouvé dans le DOM!");
-        return;
-      }
-      
-      console.log('CHATBOT CLIC DÉTECTÉ!');
-      console.log('- Élément cliqué:', event.target);
-      console.log('- Target classList:', event.target.classList);
-      console.log('- Header trouvé:', !!header);
-      console.log('- Toggle trouvé:', !!toggle);
-      
-      // État avant le basculement
-      const wasExpanded = chatbot.classList.contains('open');
-      console.log('- État avant clic:', wasExpanded ? 'Ouvert' : 'Fermé');
-      
-      // Basculer la classe open pour l'animation CSS
-      chatbot.classList.toggle('open');
-      
-      // État après le basculement
-      console.log('- État après clic:', chatbot.classList.contains('open') ? 'Ouvert' : 'Fermé');
-      
-      // Focus sur l'input quand ouvert
-      if (chatbot.classList.contains('open')) {
-        const input = document.getElementById('chatbot-input');
-        if (input) setTimeout(() => input.focus(), 300);
-      }
+    // Basculer la classe open pour l'animation CSS
+    chatbot.classList.toggle('open');
+    console.log('Chatbot toggled:', chatbot.classList.contains('open') ? 'ouvert' : 'fermé');
+    
+    // Focus sur l'input quand ouvert
+    if (chatbot.classList.contains('open')) {
+      setTimeout(() => chatbotInput.focus(), 300);
     }
-    
-    // Envoi du message via le bouton
-    if (event.target.closest('#chatbot-send')) {
+  });
+  
+  // Envoi du message via le bouton
+  chatbotSendButton.addEventListener('click', function(event) {
+    event.preventDefault();
+    sendMessage();
+  });
+  
+  // Envoi du message via la touche Entrée
+  chatbotInput.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
       sendMessage();
     }
   });
   
-  // Envoi du message via la touche Entrée
-  document.addEventListener('keypress', event => {
-    if (event.key === 'Enter' && event.target.id === 'chatbot-input') {
-      event.preventDefault();
-      sendMessage();
-    }
-  });
+  console.log("Événements du chatbot attachés avec succès");
+}
+
+/**
+ * Ajoute les écouteurs d'événements (version générique)
+ * Cette fonction est conservée pour la rétrocompatibilité
+ */
+function addEventListeners() {
+  // Cette fonction est maintenant remplacée par attachChatbotEvents
+  // mais est conservée pour la compatibilité avec le code existant
+  console.log("Note: addEventListeners est déprécié, utilisez attachChatbotEvents");
 }
 
 /**
