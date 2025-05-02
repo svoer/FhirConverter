@@ -850,11 +850,20 @@
                     }
                     
                     editorTitle.textContent = `Éditeur: ${workflow.name}`;
-                    // Utiliser l'URL de l'éditeur telle quelle sans modification
-                    // Cette URL est maintenant une URL directe vers Node-RED sur son port spécifique
+                    // Récupérer l'URL de l'éditeur qui pointe maintenant vers /node-red-editor/
                     let editorUrl = data.editor_url;
+                    
+                    // Ajouter le token d'authentification JWT à l'URL pour éviter de demander une connexion
+                    const token = getToken();
+                    if (token) {
+                        editorUrl += (editorUrl.includes('?') ? '&' : '?') + 'token=' + token;
+                    }
+                    
+                    // Ajouter également la clé API de développement comme solution de secours
+                    editorUrl += '&apiKey=dev-key';
+                    
                     // Afficher l'URL dans la console pour débuggage
-                    console.log('URL directe de Node-RED utilisée:', editorUrl);
+                    console.log('URL Node-RED avec authentification:', editorUrl);
                     
                     console.log('Workflow récupéré pour l\'éditeur:', await getWorkflow(id));
                     console.log('URL de l\'éditeur générée:', editorUrl);

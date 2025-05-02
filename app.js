@@ -751,11 +751,11 @@ app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
 app.use('/api/workflows', workflowsRoutes);
 
-// Intégrer l'éditeur Node-RED
+// Intégrer l'éditeur Node-RED directement dans l'application Express
 const redApp = workflowService.getRedApp();
 if (redApp) {
-  // Configurer un proxy pour Node-RED et ajouter l'authentification JWT
-  app.use('/node-red', (req, res, next) => {
+  // Configurer une route spécifique pour l'éditeur Node-RED dans notre application
+  app.use('/node-red-editor', (req, res, next) => {
     // Récupérer le token JWT des paramètres d'URL ou des en-têtes
     const token = req.query.token || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
     
@@ -796,43 +796,11 @@ if (redApp) {
     }
     
     if (isAuthorized) {
-      // Si autorisé, créer et utiliser le proxy HTTP vers le port Node-RED
-      const nodeRedPort = global.nodeRedPort;
-      if (!nodeRedPort) {
-        console.error('[WORKFLOW] Port Node-RED non disponible, Node-RED n\'est peut-être pas initialisé');
-        return res.status(500).send('Erreur serveur: Node-RED n\'est pas initialisé');
-      }
+      // Si autorisé, passer la requête au module Node-RED directement
+      console.log(`[WORKFLOW] Accès direct à Node-RED: ${req.method} ${req.url}`);
       
-      console.log(`[WORKFLOW] Redirection proxy vers Node-RED (port ${nodeRedPort})`);
-      
-      // Créer le proxy 
-      const proxy = createProxyMiddleware({
-        target: `http://localhost:${nodeRedPort}`,
-        changeOrigin: true,
-        ws: true, // Support des WebSockets
-        pathRewrite: {
-          '^/node-red': '/' // Réécrire /node-red vers / sur la cible
-        },
-        onProxyReq: (proxyReq, req, res) => {
-          // Conserver les paramètres d'URL importants pour Node-RED
-          console.log(`[WORKFLOW] Proxy: demande ${req.method} ${req.url} vers http://localhost:${nodeRedPort}`);
-          if (req.query.workflowId) {
-            console.log(`[WORKFLOW] Transmission du workflowId ${req.query.workflowId} au proxy Node-RED`);
-          }
-        },
-        onProxyRes: (proxyRes, req, res) => {
-          console.log(`[WORKFLOW] Proxy: réponse ${proxyRes.statusCode} de http://localhost:${nodeRedPort}`);
-        },
-        onError: (err, req, res) => {
-          console.error(`[WORKFLOW] Erreur de proxy:`, err);
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end(`Erreur de proxy: ${err.message}`);
-        },
-        logLevel: 'debug'
-      });
-      
-      // Exécuter le proxy
-      return proxy(req, res, next);
+      // Travailler directement avec l'application Express de Node-RED
+      return redApp(req, res, next);
     }
     
     // Si le token est invalide ou manquant
@@ -847,7 +815,8 @@ if (redApp) {
       return res.redirect('/login.html');
     }
   });
-  console.log('[WORKFLOW] Éditeur Node-RED intégré à l\'application avec protection d\'authentification');
+  console.log('[WORKFLOW] Éditeur Node-RED intégré directement à l\'application avec protection d\'authentification');
+  console.log('[WORKFLOW] Accessible via /node-red-editor');
 } else {
   console.warn('[WORKFLOW] Éditeur Node-RED non disponible');
 }
