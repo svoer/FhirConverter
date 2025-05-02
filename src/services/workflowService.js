@@ -124,7 +124,7 @@ async function initialize() {
         // Stocker une référence à l'éditeur Node-RED pour y accéder plus tard
         global.nodeRedInitialized = true;
         console.log(`[WORKFLOW] Node-RED démarré et intégré à l'application principale`);
-        console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED via /node-red-editor/`);
+        console.log(`[WORKFLOW] Vous pouvez accéder à Node-RED via /node-red/`);
         resolve();
       });
     });
