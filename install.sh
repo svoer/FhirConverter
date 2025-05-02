@@ -22,6 +22,54 @@ mkdir -p ./vendor
 # Vérification de l'environnement
 echo "[1/7] Vérification de l'environnement..."
 
+# Fonction pour désinstaller complètement Node.js du système
+uninstall_nodejs() {
+  echo "🧹 Désinstallation des versions existantes de Node.js..."
+  
+  # Désinstallation de Node.js selon le gestionnaire de paquets disponible
+  if command -v apt-get &> /dev/null; then
+    echo "   Utilisation d'apt-get pour désinstaller Node.js..."
+    sudo apt-get remove -y nodejs npm || true
+    sudo apt-get purge -y nodejs npm || true
+    sudo apt-get autoremove -y || true
+  elif command -v dnf &> /dev/null; then
+    echo "   Utilisation de dnf pour désinstaller Node.js..."
+    sudo dnf remove -y nodejs npm || true
+    sudo dnf autoremove -y || true
+  elif command -v yum &> /dev/null; then
+    echo "   Utilisation de yum pour désinstaller Node.js..."
+    sudo yum remove -y nodejs npm || true
+    sudo yum autoremove -y || true
+  fi
+
+  # Suppression des répertoires Node.js locaux
+  echo "   Suppression des répertoires Node.js locaux..."
+  rm -rf ~/.npm
+  rm -rf ~/.node-gyp
+  rm -rf ./vendor/nodejs
+  
+  # Suppression des liens symboliques
+  if [ -L "/usr/bin/node" ]; then
+    sudo rm -f /usr/bin/node
+  fi
+  if [ -L "/usr/bin/npm" ]; then
+    sudo rm -f /usr/bin/npm
+  fi
+  
+  # Vérification de la désinstallation
+  if command -v node &> /dev/null; then
+    echo "⚠️ Impossible de désinstaller Node.js complètement du système."
+    echo "   Certains chemins de Node.js restent accessibles : $(which node)"
+    echo "   L'installation locale sera quand même utilisée."
+  else
+    echo "✅ Node.js a été complètement désinstallé du système."
+  fi
+}
+
+# Désinstallation automatique de Node.js
+echo "🧹 Désinstallation automatique des versions existantes de Node.js..."
+uninstall_nodejs
+
 # Vérifier et installer les mises à jour système sur AlmaLinux/RHEL
 if command -v dnf &> /dev/null; then
   echo "Vérification et installation des mises à jour système avec dnf..."
@@ -94,36 +142,9 @@ install_local_nodejs() {
 use_system_nodejs=false
 use_local_nodejs=true
 
-if command -v node &> /dev/null; then
-  INSTALLED_NODE_VERSION=$(node -v | cut -d 'v' -f 2)
-  MAJOR_VERSION=$(echo $INSTALLED_NODE_VERSION | cut -d '.' -f 1)
-  
-  if [ "$MAJOR_VERSION" -ge 18 ] && [ "$MAJOR_VERSION" -le 20 ]; then
-    echo "✅ Node.js v${INSTALLED_NODE_VERSION} trouvé et compatible."
-    echo "   Options disponibles :"
-    echo "   1) Utiliser Node.js ${INSTALLED_NODE_VERSION} du système"
-    echo "   2) Installer Node.js v${NODE_VERSION} localement (recommandé pour la compatibilité)"
-    echo "   Votre choix (1 ou 2) ? "
-    read -r choice
-    
-    if [ "$choice" = "1" ]; then
-      use_system_nodejs=true
-      use_local_nodejs=false
-      echo "   ✓ Utilisation de Node.js $(node -v) du système."
-    else
-      echo "   ✓ Installation et utilisation de Node.js v${NODE_VERSION} localement..."
-      install_local_nodejs
-    fi
-  else
-    echo "⚠️ Node.js v${INSTALLED_NODE_VERSION} détecté, mais non optimal pour FHIRHub."
-    echo "   Installation de Node.js v${NODE_VERSION} localement pour assurer la compatibilité..."
-    install_local_nodejs
-  fi
-else
-  echo "❓ Node.js non détecté sur le système."
-  echo "   Installation de Node.js v${NODE_VERSION} localement..."
-  install_local_nodejs
-fi
+# Installation automatique de Node.js local pour une meilleure portabilité
+echo "📦 Installation automatique de Node.js v${NODE_VERSION} localement..."
+install_local_nodejs
 
 # Modification du script de démarrage pour utiliser le Node.js local
 if [ "$use_local_nodejs" = true ]; then
