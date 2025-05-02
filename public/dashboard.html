@@ -121,9 +121,9 @@
             </div>
           </div>
           
-          <!-- Bouton de réinitialisation de l'environnement -->
+          <!-- Bouton de réinitialisation des statistiques -->
           <button id="resetEnvironmentBtn" class="btn-reset-env">
-            <i class="fas fa-sync-alt"></i> Réinitialiser l'environnement
+            <i class="fas fa-sync-alt"></i> Réinitialiser les statistiques
           </button>
         </div>
       </div>
@@ -163,14 +163,14 @@
   <!-- Boîte de dialogue modale pour confirmation -->
   <div id="resetConfirmModal" class="modal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
     <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 5px; width: 80%; max-width: 500px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-      <h3 style="color: #e74c3c; margin-top: 0;">⚠️ Attention: Réinitialisation de l'environnement</h3>
-      <p>Vous êtes sur le point de réinitialiser complètement l'environnement FHIRHub.</p>
+      <h3 style="color: #e74c3c; margin-top: 0;">⚠️ Attention: Réinitialisation des statistiques</h3>
+      <p>Vous êtes sur le point de réinitialiser les statistiques de FHIRHub.</p>
       <p>Cette action va:</p>
       <ul style="margin-bottom: 20px;">
-        <li>Supprimer toutes les données de la base de données</li>
-        <li>Nettoyer les logs et fichiers temporaires</li>
         <li>Effacer l'historique des conversions</li>
-        <li>Vider le cache des terminologies</li>
+        <li>Réinitialiser les compteurs de performances</li>
+        <li>Remettre à zéro les indicateurs de bénéfices</li>
+        <li>Nettoyer les logs d'utilisation</li>
       </ul>
       <p style="font-weight: bold; color: #e74c3c;">Cette action est irréversible !</p>
       <div style="text-align: right; margin-top: 20px;">
@@ -274,7 +274,7 @@
           modal.style.display = 'none';
           
           // Afficher un message de confirmation
-          alert('L\'environnement a été réinitialisé avec succès. L\'application va redémarrer.');
+          alert('Les statistiques ont été réinitialisées avec succès. L\'application va redémarrer.');
           
           // Rediriger vers la page d'accueil après réinitialisation
           // Délai plus long pour laisser le temps au serveur de traiter la réinitialisation
