@@ -25,7 +25,7 @@ function adminOnly(req, res, next) {
 }
 
 // Réinitialisation de l'environnement
-router.post('/reset-environment', (req, res) => {
+router.post('/reset-environment', authMiddleware.authenticatedOrApiKey, (req, res) => {
   // Vérifier que nous sommes dans l'environnement de production
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({
@@ -63,16 +63,8 @@ router.post('/reset-environment', (req, res) => {
     logger.info('[ADMIN] Réinitialisation de l\'environnement terminée avec succès');
     logger.debug(`[ADMIN] Sortie du script: ${stdout}`);
     
-    // Enregistrer l'événement dans la base de données (si disponible)
-    try {
-      dbService.query(
-        'INSERT INTO system_logs (event_type, message, severity) VALUES (?, ?, ?)',
-        ['ENVIRONMENT_RESET', 'Environnement réinitialisé via le tableau de bord', 'INFO']
-      );
-    } catch (dbError) {
-      // Ne pas bloquer la réponse si l'enregistrement en base échoue
-      logger.warn(`[ADMIN] Impossible d'enregistrer l'événement de réinitialisation: ${dbError.message}`);
-    }
+    // L'enregistrement en base de données n'est pas possible car la base est remise à zéro
+    // Nous enregistrons uniquement dans les logs
     
     return res.status(200).json({
       success: true,

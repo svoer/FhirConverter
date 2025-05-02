@@ -102,17 +102,8 @@ async function createTables() {
   const schema = require('../db/schema');
   
   // Création des tables principales dans un ordre spécifique pour respecter les contraintes de clés étrangères
-  const orderedSchemas = [
-    schema.USERS_SCHEMA,
-    schema.APPLICATIONS_SCHEMA,
-    schema.API_KEYS_SCHEMA,
-    schema.CONVERSION_LOGS_SCHEMA,
-    schema.SYSTEM_METRICS_SCHEMA,
-    schema.NOTIFICATIONS_SCHEMA,
-    schema.API_ACTIVITY_LOGS_SCHEMA,
-    schema.API_USAGE_LIMITS_SCHEMA,
-    schema.AI_PROVIDERS_SCHEMA
-  ];
+  // Utiliser ALL_SCHEMAS pour garantir que toutes les tables sont créées
+  const orderedSchemas = schema.ALL_SCHEMAS;
   
   const tables = orderedSchemas.map(schema => 
     `CREATE TABLE IF NOT EXISTS ${schema.tableName} (${schema.columns})`
