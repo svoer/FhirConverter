@@ -1408,87 +1408,502 @@ class WorkflowEditor {
     configTitle.textContent = 'Configuration';
     configGroup.appendChild(configTitle);
     
-    // Configuration spécifique selon le type de noeud
-    switch (node.type) {
-      case 'hl7-input':
-        // Exemple pour HL7-input
-        const sourceRow = document.createElement('div');
-        sourceRow.className = 'property-row';
+    // Initialiser les données du nœud si elles n'existent pas
+    if (!node.data) {
+      node.data = {};
+    }
+    
+    // Récupérer les champs de configuration pour ce type de nœud
+    const configFields = this.getNodeConfigFields(node.type);
+    
+    // Si aucun champ de configuration n'est défini, afficher un message
+    if (configFields.length === 0) {
+      const messageRow = document.createElement('div');
+      messageRow.className = 'property-row';
+      messageRow.style.fontStyle = 'italic';
+      messageRow.style.color = '#888';
+      messageRow.textContent = 'Aucune configuration spécifique pour ce type de nœud.';
+      configGroup.appendChild(messageRow);
+    } else {
+      // Créer un champ de configuration pour chaque propriété
+      configFields.forEach(field => {
+        const fieldRow = document.createElement('div');
+        fieldRow.className = 'property-row';
         
-        const sourceLabel = document.createElement('label');
-        sourceLabel.className = 'property-label';
-        sourceLabel.textContent = 'Source';
+        const fieldLabel = document.createElement('label');
+        fieldLabel.className = 'property-label';
+        fieldLabel.textContent = field.label;
         
-        const sourceSelect = document.createElement('select');
-        sourceSelect.className = 'property-input';
+        let fieldInput;
         
-        const sources = [
-          { value: 'direct', label: 'Saisie directe' },
-          { value: 'file', label: 'Fichier' },
-          { value: 'api', label: 'API' }
-        ];
+        // Créer le contrôle approprié selon le type de champ
+        switch (field.type) {
+          case 'select':
+            fieldInput = document.createElement('select');
+            fieldInput.className = 'property-input';
+            
+            // Ajouter les options au select
+            field.options.forEach(option => {
+              const optionElement = document.createElement('option');
+              optionElement.value = option.value;
+              optionElement.textContent = option.label;
+              
+              // Sélectionner l'option si elle correspond à la valeur actuelle
+              if (node.data[field.name] === option.value) {
+                optionElement.selected = true;
+              }
+              
+              fieldInput.appendChild(optionElement);
+            });
+            
+            // Si aucune valeur n'est définie, utiliser la valeur par défaut
+            if (node.data[field.name] === undefined && field.default !== undefined) {
+              node.data[field.name] = field.default;
+              fieldInput.value = field.default;
+            }
+            break;
+            
+          case 'textarea':
+            fieldInput = document.createElement('textarea');
+            fieldInput.className = 'property-input';
+            fieldInput.style.minHeight = '80px';
+            fieldInput.value = node.data[field.name] !== undefined ? node.data[field.name] : (field.default || '');
+            break;
+            
+          case 'checkbox':
+            fieldInput = document.createElement('input');
+            fieldInput.type = 'checkbox';
+            fieldInput.className = 'property-checkbox';
+            fieldInput.checked = node.data[field.name] !== undefined ? node.data[field.name] : (field.default || false);
+            break;
+            
+          default: // text par défaut
+            fieldInput = document.createElement('input');
+            fieldInput.type = 'text';
+            fieldInput.className = 'property-input';
+            fieldInput.value = node.data[field.name] !== undefined ? node.data[field.name] : (field.default || '');
+        }
         
-        sources.forEach(source => {
-          const option = document.createElement('option');
-          option.value = source.value;
-          option.textContent = source.label;
-          option.selected = (node.data.source === source.value);
-          sourceSelect.appendChild(option);
-        });
+        // Ajouter une infobulle si une description est fournie
+        if (field.description) {
+          fieldInput.title = field.description;
+          
+          // Ajouter un icône d'information
+          const infoIcon = document.createElement('span');
+          infoIcon.textContent = ' ℹ️';
+          infoIcon.title = field.description;
+          infoIcon.style.cursor = 'help';
+          fieldLabel.appendChild(infoIcon);
+        }
         
-        sourceSelect.addEventListener('change', () => {
-          node.data.source = sourceSelect.value;
+        // Ajouter l'événement de changement
+        fieldInput.addEventListener('change', () => {
+          // Récupérer la valeur appropriée selon le type de champ
+          let value;
+          
+          if (field.type === 'checkbox') {
+            value = fieldInput.checked;
+          } else if (field.type === 'select') {
+            value = fieldInput.value;
+          } else {
+            value = fieldInput.value;
+          }
+          
+          // Mettre à jour les données du nœud
+          node.data[field.name] = value;
+          
+          // Émettre l'événement de changement
           this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
         });
         
-        sourceRow.appendChild(sourceLabel);
-        sourceRow.appendChild(sourceSelect);
-        configGroup.appendChild(sourceRow);
-        break;
+        fieldRow.appendChild(fieldLabel);
+        fieldRow.appendChild(fieldInput);
+        configGroup.appendChild(fieldRow);
+      });
+    }
+    
+    // Boutons d'action spécifiques au type de nœud
+    const actionButtons = this.getNodeActionButtons(node.type);
+    if (actionButtons.length > 0) {
+      const actionGroup = document.createElement('div');
+      actionGroup.className = 'property-group';
+      
+      const actionTitle = document.createElement('h4');
+      actionTitle.textContent = 'Actions';
+      actionGroup.appendChild(actionTitle);
+      
+      actionButtons.forEach(button => {
+        const actionBtn = document.createElement('button');
+        actionBtn.className = 'action-btn';
+        actionBtn.textContent = button.label;
+        actionBtn.title = button.description || '';
+        actionBtn.style.margin = '5px';
+        actionBtn.style.padding = '8px 12px';
         
-      case 'fhir-converter':
-        // Exemple pour FHIR-converter
-        const templateRow = document.createElement('div');
-        templateRow.className = 'property-row';
+        // Appliquer des styles spécifiques selon le type de bouton
+        if (button.type === 'primary') {
+          actionBtn.style.backgroundColor = '#4CAF50';
+          actionBtn.style.color = 'white';
+        } else if (button.type === 'danger') {
+          actionBtn.style.backgroundColor = '#f44336';
+          actionBtn.style.color = 'white';
+        }
         
-        const templateLabel = document.createElement('label');
-        templateLabel.className = 'property-label';
-        templateLabel.textContent = 'Template';
-        
-        const templateSelect = document.createElement('select');
-        templateSelect.className = 'property-input';
-        
-        const templates = [
-          { value: 'default', label: 'Template par défaut' },
-          { value: 'france', label: 'Template français' },
-          { value: 'custom', label: 'Template personnalisé' }
-        ];
-        
-        templates.forEach(template => {
-          const option = document.createElement('option');
-          option.value = template.value;
-          option.textContent = template.label;
-          option.selected = (node.data.template === template.value);
-          templateSelect.appendChild(option);
+        actionBtn.addEventListener('click', () => {
+          if (typeof button.action === 'function') {
+            button.action(node);
+          }
         });
         
-        templateSelect.addEventListener('change', () => {
-          node.data.template = templateSelect.value;
-          this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
-        });
-        
-        templateRow.appendChild(templateLabel);
-        templateRow.appendChild(templateSelect);
-        configGroup.appendChild(templateRow);
-        break;
-        
-      // Ajouter d'autres types de noeuds ici
+        actionGroup.appendChild(actionBtn);
+      });
+      
+      this.propertiesContent.appendChild(actionGroup);
     }
     
     this.propertiesContent.appendChild(configGroup);
     
     // Afficher le panneau
     this.propertiesPanel.classList.add('open');
+  }
+  
+  /**
+   * Obtient les champs de configuration pour un type de nœud spécifique
+   * @param {string} nodeType - Type de nœud
+   * @returns {Array} Tableau de champs de configuration
+   */
+  getNodeConfigFields(nodeType) {
+    // Configuration par défaut pour les différents types de nœuds
+    const configs = {
+      'hl7-input': [
+        {
+          name: 'source',
+          label: 'Source',
+          type: 'select',
+          options: [
+            { value: 'manual', label: 'Saisie manuelle' },
+            { value: 'file', label: 'Fichier' },
+            { value: 'api', label: 'API' }
+          ],
+          default: 'manual',
+          description: 'Source des messages HL7'
+        },
+        {
+          name: 'exampleMessage',
+          label: 'Message exemple',
+          type: 'textarea',
+          default: 'MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230101000000||ADT^A01|MSG00001|P|2.5|',
+          description: 'Message HL7 d\'exemple pour les tests'
+        }
+      ],
+      'json-input': [
+        {
+          name: 'source',
+          label: 'Source',
+          type: 'select',
+          options: [
+            { value: 'manual', label: 'Saisie manuelle' },
+            { value: 'file', label: 'Fichier' },
+            { value: 'api', label: 'API' }
+          ],
+          default: 'manual'
+        },
+        {
+          name: 'exampleData',
+          label: 'Données exemple',
+          type: 'textarea',
+          default: '{\n  "patient": {\n    "id": "123",\n    "name": "Doe, John"\n  }\n}',
+          description: 'Données JSON d\'exemple pour les tests'
+        }
+      ],
+      'file-input': [
+        {
+          name: 'filePath',
+          label: 'Chemin du fichier',
+          type: 'text',
+          default: './data/input.txt',
+          description: 'Chemin relatif du fichier d\'entrée'
+        },
+        {
+          name: 'format',
+          label: 'Format',
+          type: 'select',
+          options: [
+            { value: 'text', label: 'Texte' },
+            { value: 'json', label: 'JSON' },
+            { value: 'hl7', label: 'HL7' },
+            { value: 'xml', label: 'XML' }
+          ],
+          default: 'text'
+        }
+      ],
+      'segment-extractor': [
+        {
+          name: 'segmentType',
+          label: 'Type de segment',
+          type: 'text',
+          default: 'PID',
+          description: 'Code du segment HL7 à extraire (ex: MSH, PID, PV1)'
+        },
+        {
+          name: 'extractAll',
+          label: 'Extraire tous',
+          type: 'checkbox',
+          default: true,
+          description: 'Extraire toutes les occurrences du segment'
+        }
+      ],
+      'field-mapper': [
+        {
+          name: 'mappings',
+          label: 'Mappings',
+          type: 'textarea',
+          default: '{\n  "PID-3": "Patient.identifier",\n  "PID-5": "Patient.name"\n}',
+          description: 'Mappings au format JSON'
+        },
+        {
+          name: 'keepUnmapped',
+          label: 'Garder non mappés',
+          type: 'checkbox',
+          default: false,
+          description: 'Conserver les champs non mappés dans le résultat'
+        }
+      ],
+      'condition': [
+        {
+          name: 'expression',
+          label: 'Expression',
+          type: 'text',
+          default: 'data.value === "test"',
+          description: 'Expression JavaScript qui doit retourner true/false'
+        }
+      ],
+      'transform': [
+        {
+          name: 'code',
+          label: 'Code',
+          type: 'textarea',
+          default: 'return input.toUpperCase();',
+          description: 'Code JavaScript de transformation'
+        }
+      ],
+      'fhir-converter': [
+        {
+          name: 'targetFormat',
+          label: 'Format cible',
+          type: 'select',
+          options: [
+            { value: 'R4', label: 'FHIR R4' },
+            { value: 'R5', label: 'FHIR R5' },
+            { value: 'STU3', label: 'FHIR STU3' },
+            { value: 'DSTU2', label: 'FHIR DSTU2' }
+          ],
+          default: 'R4'
+        },
+        {
+          name: 'profile',
+          label: 'Profil',
+          type: 'text',
+          default: '',
+          description: 'URI du profil FHIR à utiliser (optionnel)'
+        }
+      ],
+      'template': [
+        {
+          name: 'template',
+          label: 'Template',
+          type: 'textarea',
+          default: '{\n  "resourceType": "Patient",\n  "id": "{{id}}",\n  "name": [{\n    "family": "{{familyName}}",\n    "given": ["{{givenName}}"]\n  }]\n}',
+          description: 'Template JSON avec variables entre {{moustaches}}'
+        }
+      ],
+      'custom-script': [
+        {
+          name: 'code',
+          label: 'Code JavaScript',
+          type: 'textarea',
+          default: 'function processData(input) {\n  // Traitement personnalisé\n  return input;\n}\n\nreturn processData(input);',
+          description: 'Code JavaScript personnalisé pour le traitement des données'
+        }
+      ],
+      'fhir-output': [
+        {
+          name: 'destination',
+          label: 'Destination',
+          type: 'select',
+          options: [
+            { value: 'return', label: 'Retour API' },
+            { value: 'file', label: 'Fichier' },
+            { value: 'server', label: 'Serveur FHIR' }
+          ],
+          default: 'return'
+        },
+        {
+          name: 'serverUrl',
+          label: 'URL Serveur',
+          type: 'text',
+          default: 'https://hapi.fhir.org/baseR4',
+          description: 'URL du serveur FHIR (si destination = server)'
+        }
+      ],
+      'api-call': [
+        {
+          name: 'url',
+          label: 'URL',
+          type: 'text',
+          default: 'https://api.example.com/endpoint',
+          description: 'URL de l\'API à appeler'
+        },
+        {
+          name: 'method',
+          label: 'Méthode',
+          type: 'select',
+          options: [
+            { value: 'GET', label: 'GET' },
+            { value: 'POST', label: 'POST' },
+            { value: 'PUT', label: 'PUT' },
+            { value: 'DELETE', label: 'DELETE' }
+          ],
+          default: 'POST'
+        },
+        {
+          name: 'headers',
+          label: 'En-têtes',
+          type: 'textarea',
+          default: '{\n  "Content-Type": "application/json"\n}',
+          description: 'En-têtes HTTP au format JSON'
+        }
+      ],
+      'file-output': [
+        {
+          name: 'filePath',
+          label: 'Chemin du fichier',
+          type: 'text',
+          default: './data/output.json',
+          description: 'Chemin relatif où enregistrer le fichier'
+        },
+        {
+          name: 'format',
+          label: 'Format',
+          type: 'select',
+          options: [
+            { value: 'json', label: 'JSON' },
+            { value: 'xml', label: 'XML' },
+            { value: 'text', label: 'Texte' }
+          ],
+          default: 'json'
+        },
+        {
+          name: 'formatPretty',
+          label: 'Formater',
+          type: 'checkbox',
+          default: true,
+          description: 'Formater le fichier pour une meilleure lisibilité'
+        }
+      ]
+    };
+    
+    return configs[nodeType] || [];
+  }
+  
+  /**
+   * Obtient les boutons d'action pour un type de nœud spécifique
+   * @param {string} nodeType - Type de nœud
+   * @returns {Array} Tableau de boutons d'action
+   */
+  getNodeActionButtons(nodeType) {
+    // Actions par défaut pour les différents types de nœuds
+    const actions = {
+      'hl7-input': [
+        {
+          label: 'Tester la syntaxe',
+          type: 'primary',
+          description: 'Vérifier la syntaxe du message HL7',
+          action: (node) => {
+            // Simuler la validation du message HL7
+            const message = node.data.exampleMessage || '';
+            if (message.includes('MSH|') && message.includes('|')) {
+              this.showNotification('Syntaxe valide', 'Le message HL7 a une syntaxe valide.', 'success');
+            } else {
+              this.showNotification('Erreur de syntaxe', 'Le message HL7 contient des erreurs de syntaxe.', 'error');
+            }
+          }
+        }
+      ],
+      'file-input': [
+        {
+          label: 'Explorer',
+          type: 'primary',
+          description: 'Parcourir les fichiers disponibles',
+          action: (node) => {
+            this.showNotification('Explorateur de fichiers', 'Cette fonctionnalité sera disponible dans la version finale.', 'info');
+          }
+        }
+      ],
+      'fhir-converter': [
+        {
+          label: 'Vérifier',
+          type: 'primary',
+          description: 'Valider la configuration de conversion',
+          action: (node) => {
+            this.showNotification('Validation', 'La configuration de conversion est valide.', 'success');
+          }
+        }
+      ],
+      'api-call': [
+        {
+          label: 'Tester la connexion',
+          type: 'primary',
+          description: 'Vérifier la connexion à l\'API',
+          action: (node) => {
+            this.showNotification('Test de connexion', 'Cette fonctionnalité sera disponible dans la version finale.', 'info');
+          }
+        }
+      ]
+    };
+    
+    return actions[nodeType] || [];
+  }
+  
+  /**
+   * Affiche une notification
+   * @param {string} title - Titre de la notification
+   * @param {string} message - Message de la notification
+   * @param {string} type - Type de la notification (info, success, warning, error)
+   */
+  showNotification(title, message, type = 'info') {
+    // Créer l'élément de notification
+    const notification = document.createElement('div');
+    notification.className = `editor-notification ${type}`;
+    
+    const notificationTitle = document.createElement('div');
+    notificationTitle.className = 'notification-title';
+    notificationTitle.textContent = title;
+    notificationTitle.style.fontWeight = 'bold';
+    notificationTitle.style.marginBottom = '5px';
+    
+    const notificationMessage = document.createElement('div');
+    notificationMessage.className = 'notification-message';
+    notificationMessage.textContent = message;
+    
+    notification.appendChild(notificationTitle);
+    notification.appendChild(notificationMessage);
+    
+    // Ajouter la notification au document
+    document.body.appendChild(notification);
+    
+    // Afficher la notification
+    setTimeout(() => {
+      notification.classList.add('show');
+    }, 10);
+    
+    // Supprimer la notification après un délai
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 5000);
   }
   
   /**
