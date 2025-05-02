@@ -923,9 +923,18 @@ class WorkflowEditor {
    * @param {string} targetId - ID du noeud cible
    * @param {number} sourceOutput - Index de la sortie du noeud source
    * @param {number} targetInput - Index de l'entrée du noeud cible
-   * @returns {Object} L'arête créée
+   * @returns {Object|null} L'arête créée ou null si l'arête ne peut pas être créée
    */
   createEdge(sourceId, targetId, sourceOutput = 0, targetInput = 0) {
+    // Vérifier que les nœuds source et cible existent
+    const sourceNode = this.getNodeById(sourceId);
+    const targetNode = this.getNodeById(targetId);
+    
+    if (!sourceNode || !targetNode) {
+      console.warn(`[Workflow] Impossible de créer l'arête: nœuds manquants (source: ${sourceId}, target: ${targetId})`);
+      return null;
+    }
+    
     // Vérifier si une arête similaire existe déjà
     const existingEdge = this.edges.find(
       edge => edge.source === sourceId && 
@@ -951,16 +960,16 @@ class WorkflowEditor {
     // Ajouter l'arête à la liste
     this.edges.push(edge);
     
-    // Créer l'élément DOM
-    this.createEdgeElement(edge);
+    // Vérifier que les éléments DOM des nœuds existent
+    const sourceElement = document.getElementById(sourceId);
+    const targetElement = document.getElementById(targetId);
     
-    // Mettre à jour les ports pour ajouter la classe connected
-    const sourceNode = document.getElementById(sourceId);
-    const targetNode = document.getElementById(targetId);
-    
-    if (sourceNode && targetNode) {
-      const sourcePort = sourceNode.querySelector(`.node-output[data-port-index="${sourceOutput}"] .port-handle`);
-      const targetPort = targetNode.querySelector(`.node-input[data-port-index="${targetInput}"] .port-handle`);
+    if (!sourceElement || !targetElement) {
+      console.warn(`[Workflow] Les éléments DOM des nœuds n'existent pas encore, l'arête sera créée mais sans mise à jour visuelle immédiate`);
+    } else {
+      // Mettre à jour les ports pour ajouter la classe connected
+      const sourcePort = sourceElement.querySelector(`.node-output[data-port-index="${sourceOutput}"] .port-handle`);
+      const targetPort = targetElement.querySelector(`.node-input[data-port-index="${targetInput}"] .port-handle`);
       
       if (sourcePort && targetPort) {
         sourcePort.classList.add('connected');
@@ -968,9 +977,14 @@ class WorkflowEditor {
       }
     }
     
-    // Émettre l'événement
-    this.emit('edgeAdded', edge);
-    this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+    // Créer l'élément DOM
+    const edgeElement = this.createEdgeElement(edge);
+    
+    // Si l'élément DOM a été créé avec succès, émettre l'événement
+    if (edgeElement) {
+      this.emit('edgeAdded', edge);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+    }
     
     return edge;
   }
@@ -978,13 +992,37 @@ class WorkflowEditor {
   /**
    * Crée l'élément DOM pour une arête
    * @param {Object} edge - Arête à créer
+   * @returns {HTMLElement|null} L'élément créé ou null si l'arête ne peut pas être créée
    */
   createEdgeElement(edge) {
+    // Vérifier que les nœuds source et cible existent avant de créer l'arête
+    const sourceNode = this.getNodeById(edge.source);
+    const targetNode = this.getNodeById(edge.target);
+    
+    if (!sourceNode || !targetNode) {
+      console.warn(`[Workflow] Impossible de créer l'arête ${edge.id}: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
+      return null;
+    }
+    
+    // Vérifier que les éléments DOM des nœuds existent
+    const sourceElement = document.getElementById(sourceNode.id);
+    const targetElement = document.getElementById(targetNode.id);
+    
+    if (!sourceElement || !targetElement) {
+      console.warn(`[Workflow] Impossible de créer l'arête ${edge.id}: éléments DOM des nœuds non trouvés`);
+      return null;
+    }
+    
+    // Créer l'élément d'arête
     const edgeElement = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     edgeElement.id = edge.id;
     edgeElement.setAttribute('class', 'edge');
     
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke', '#666');
+    path.setAttribute('stroke-width', '2.5');
+    path.setAttribute('fill', 'none');
+    path.style.pointerEvents = 'auto';
     edgeElement.appendChild(path);
     
     // Ajouter l'événement pour la sélection
@@ -997,6 +1035,8 @@ class WorkflowEditor {
     
     // Positionner l'arête
     this.updateEdgePath(edge);
+    
+    return edgeElement;
   }
   
   /**
@@ -2141,7 +2181,7 @@ class WorkflowEditor {
         });
       }
       
-      // Créer les arêtes
+      // Créer les arêtes après un court délai pour permettre au DOM de se mettre à jour
       if (flowData.edges && Array.isArray(flowData.edges)) {
         // Trouver le prochain ID à utiliser
         const edgeIds = flowData.edges.map(edge => {
@@ -2150,14 +2190,29 @@ class WorkflowEditor {
         });
         this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
         
-        flowData.edges.forEach(edge => {
-          this.createEdge(
-            edge.source,
-            edge.target,
-            edge.sourceOutput,
-            edge.targetInput
-          );
-        });
+        // Stockons les arêtes à créer
+        const edgesToCreate = [...flowData.edges];
+        
+        // Utilisation d'un délai pour s'assurer que les nœuds sont bien rendus
+        setTimeout(() => {
+          // Vérifier que chaque arête a ses nœuds correspondants avant de la créer
+          edgesToCreate.forEach(edge => {
+            const sourceNode = this.getNodeById(edge.source);
+            const targetNode = this.getNodeById(edge.target);
+            
+            if (sourceNode && targetNode) {
+              // Les nœuds existent, on peut créer l'arête
+              this.createEdge(
+                edge.source,
+                edge.target,
+                edge.sourceOutput,
+                edge.targetInput
+              );
+            } else {
+              console.warn(`Impossible de créer l'arête: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
+            }
+          });
+        }, 300); // Délai de 300ms pour laisser le temps au DOM de se mettre à jour
       }
       
       this.showNotification(`Workflow "${this.workflowName}" chargé avec succès`, 'success');
