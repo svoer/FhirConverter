@@ -66,6 +66,21 @@
         
         .workflow-footer button {
             margin-right: 10px;
+            background: linear-gradient(135deg, #e63946, #f4a261);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .workflow-footer button:hover {
+            background: linear-gradient(135deg, #f4a261, #e63946);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
         }
         
         .workflow-actions {
@@ -73,23 +88,26 @@
         }
         
         .add-workflow {
-            background: linear-gradient(135deg, #457b9d, #1d3557);
+            background: linear-gradient(135deg, #e63946, #f4a261);
             color: white;
             border: none;
             padding: 15px 25px;
             border-radius: 5px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 20px;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(230, 57, 70, 0.3);
         }
         
         .add-workflow:hover {
-            background: linear-gradient(135deg, #1d3557, #457b9d);
+            background: linear-gradient(135deg, #f4a261, #e63946);
             transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(230, 57, 70, 0.4);
         }
         
         .add-workflow i {
@@ -146,6 +164,34 @@
         
         .modal-footer button {
             margin-left: 10px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        
+        .cancel-btn {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #e63946, #f4a261);
+            color: white;
+            box-shadow: 0 2px 4px rgba(230, 57, 70, 0.2);
+        }
+        
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #f4a261, #e63946);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(230, 57, 70, 0.3);
         }
         
         .form-group {
@@ -209,12 +255,22 @@
             margin-right: 5px;
             border-radius: 5px 5px 0 0;
             cursor: pointer;
+            transition: all 0.2s ease;
+            color: #4b5563;
+        }
+        
+        .tab-buttons li:hover {
+            background-color: #e9ecef;
         }
         
         .tab-buttons li.active {
-            background-color: white;
-            border-bottom: 1px solid white;
-            margin-bottom: -1px;
+            background: linear-gradient(135deg, #e63946, #f4a261);
+            background-clip: padding-box;
+            color: white;
+            border: 1px solid transparent;
+            border-bottom: none;
+            font-weight: 500;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
         }
         
         .tab-content {
