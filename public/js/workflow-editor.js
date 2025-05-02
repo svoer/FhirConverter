@@ -101,7 +101,14 @@ class WorkflowEditor {
     
     // Ajouter un SVG pour les liaisons
     this.edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    this.edgesLayer.setAttribute('class', 'edge');
+    this.edgesLayer.setAttribute('class', 'edges-layer');
+    this.edgesLayer.setAttribute('width', '100%');
+    this.edgesLayer.setAttribute('height', '100%');
+    this.edgesLayer.style.position = 'absolute';
+    this.edgesLayer.style.top = '0';
+    this.edgesLayer.style.left = '0';
+    this.edgesLayer.style.pointerEvents = 'none';
+    this.edgesLayer.style.overflow = 'visible';
     this.canvas.appendChild(this.edgesLayer);
     
     // Ajouter la couche des noeuds
@@ -1018,32 +1025,28 @@ class WorkflowEditor {
       return;
     }
     
-    // Calculer directement la position des ports en fonction de la position des nœuds
-    // plutôt que d'utiliser getBoundingClientRect qui peut causer des décalages
-    const sourcePortOffset = {
-      x: sourceNode.position.x + sourceElement.offsetWidth, // Port de sortie à droite du nœud
-      y: sourceNode.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
-    };
+    // Obtenir la position des ports par rapport à leur nœud parent
+    const sourcePortRect = sourcePort.getBoundingClientRect();
+    const targetPortRect = targetPort.getBoundingClientRect();
+    const sourceNodeRect = sourceElement.getBoundingClientRect();
+    const targetNodeRect = targetElement.getBoundingClientRect();
     
-    const targetPortOffset = {
-      x: targetNode.position.x, // Port d'entrée à gauche du nœud
-      y: targetNode.position.y + targetPort.offsetTop + targetPort.offsetHeight / 2
-    };
-    
+    // Calculer le centre des ports par rapport au canvas
     const start = {
-      x: sourcePortOffset.x,
-      y: sourcePortOffset.y
+      x: sourceNode.position.x + (sourcePortRect.left - sourceNodeRect.left) + sourcePortRect.width / 2,
+      y: sourceNode.position.y + (sourcePortRect.top - sourceNodeRect.top) + sourcePortRect.height / 2
     };
     
     const end = {
-      x: targetPortOffset.x,
-      y: targetPortOffset.y
+      x: targetNode.position.x + (targetPortRect.left - targetNodeRect.left) + targetPortRect.width / 2,
+      y: targetNode.position.y + (targetPortRect.top - targetNodeRect.top) + targetPortRect.height / 2
     };
     
     // Calculer les points de contrôle pour une courbe de Bézier
     const dx = Math.abs(end.x - start.x);
-    const controlDistance = Math.min(dx * 0.5, 80);
+    const controlDistance = Math.min(dx * 0.5, 100);
     
+    // Créer un chemin Bézier avec des points de contrôle qui assurent une courbure élégante
     const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
     
     // Mettre à jour le chemin
@@ -1052,6 +1055,12 @@ class WorkflowEditor {
       const path = edgeElement.querySelector('path');
       if (path) {
         path.setAttribute('d', d);
+        // S'assurer que le chemin a des attributs de style pour être bien visible
+        path.setAttribute('stroke', '#666');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        // S'assurer que le path a un pointer-events pour être cliquable
+        path.style.pointerEvents = 'auto';
       }
     }
   }
@@ -1186,20 +1195,15 @@ class WorkflowEditor {
     // Obtenir les données du nœud source
     const sourceNodeData = this.getNodeById(this.sourceNodeId);
     
-    let start;
-    if (this.isInputPortSource) {
-      // Si on commence par une entrée, la position initiale est à gauche du nœud
-      start = {
-        x: sourceNodeData.position.x,
-        y: sourceNodeData.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
-      };
-    } else {
-      // Si on commence par une sortie, la position initiale est à droite du nœud
-      start = {
-        x: sourceNodeData.position.x + sourceNode.offsetWidth,
-        y: sourceNodeData.position.y + sourcePort.offsetTop + sourcePort.offsetHeight / 2
-      };
-    }
+    // Obtenir les rectangles de délimitation pour calculer des positions précises
+    const sourcePortRect = sourcePort.getBoundingClientRect();
+    const sourceNodeRect = sourceNode.getBoundingClientRect();
+    
+    // Calculer le centre du port par rapport à son nœud parent
+    const start = {
+      x: sourceNodeData.position.x + (sourcePortRect.left - sourceNodeRect.left) + sourcePortRect.width / 2,
+      y: sourceNodeData.position.y + (sourcePortRect.top - sourceNodeRect.top) + sourcePortRect.height / 2
+    };
     
     // Position de la souris dans les coordonnées du canvas
     const canvasRect = this.canvas.getBoundingClientRect();
@@ -1210,7 +1214,7 @@ class WorkflowEditor {
     
     // Calculer les points de contrôle pour une courbe de Bézier
     const dx = Math.abs(end.x - start.x);
-    const controlDistance = Math.min(dx * 0.5, 80);
+    const controlDistance = Math.min(dx * 0.5, 100);
     
     const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
     
@@ -1218,6 +1222,11 @@ class WorkflowEditor {
     const path = this.tempEdge.querySelector('path');
     if (path) {
       path.setAttribute('d', d);
+      // S'assurer que le chemin temporaire est bien visible
+      path.setAttribute('stroke', '#999');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-dasharray', '5,5');
+      path.setAttribute('fill', 'none');
     }
     
     // Désactiver la mise en évidence sur tous les ports
