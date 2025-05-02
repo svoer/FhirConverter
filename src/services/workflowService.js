@@ -48,8 +48,8 @@ async function initialize() {
     
     // Configuration de Node-RED
     redSettings = {
-      httpAdminRoot: '/',         // L'interface d'édition sera accessible sous /node-red/
-      httpNodeRoot: '/api',       // Les API du flow seront sous /node-red/api/
+      httpAdminRoot: '/node-red-editor',  // L'interface d'édition sera accessible sous /node-red-editor/
+      httpNodeRoot: '/node-red-api',     // Les API du flow seront sous /node-red-api/
       userDir: userDir,
       functionGlobalContext: {
         // On peut ajouter ici des objets accessibles dans les fonctions Node-RED
@@ -405,9 +405,9 @@ function getEditorUrl(workflowId) {
     throw new Error('Le service de workflow n\'est pas initialisé');
   }
   
-  // Dans Replit, nous devons utiliser le port 5000 et une route spécifique
-  // qui sera configurée dans app.js pour accéder à Node-RED
-  const editorUrl = `/node-red-editor/?workflowId=${workflowId}`;
+  // Utiliser le chemin configuré pour Node-RED dans redSettings
+  // Notez que dans notre configuration, httpAdminRoot est '/node-red-editor'
+  const editorUrl = `${redSettings.httpAdminRoot}/?workflowId=${workflowId}`;
   console.log(`[WORKFLOW] URL de l'éditeur Node-RED: ${editorUrl}`);
   
   return editorUrl;
