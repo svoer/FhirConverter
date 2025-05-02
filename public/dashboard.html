@@ -168,7 +168,102 @@
       
       // Initialiser les graphiques de métriques système
       initCharts();
+      
+      // Initialisation du chatbot de support
+      initChatbot();
     });
+    
+    // Fonction d'initialisation du chatbot
+    function initChatbot() {
+      const supportButton = document.getElementById('supportButton');
+      const chatbotContainer = document.querySelector('.chatbot-container');
+      const chatbotHeader = document.getElementById('chatbotHeader');
+      const chatbotToggle = document.getElementById('chatbotToggle');
+      const chatbotInput = document.getElementById('chatbotInput');
+      const chatbotSend = document.getElementById('chatbotSend');
+      const chatbotMessages = document.getElementById('chatbotMessages');
+      
+      // Ajouter un message initial
+      if (chatbotMessages && !chatbotMessages.hasChildNodes()) {
+        const initialMessage = document.createElement('div');
+        initialMessage.className = 'message system';
+        initialMessage.textContent = 'Bienvenue dans le support FHIRHub. Comment puis-je vous aider aujourd\'hui ?';
+        chatbotMessages.appendChild(initialMessage);
+      }
+      
+      // Gérer le bouton de support
+      if (supportButton) {
+        supportButton.addEventListener('click', function() {
+          chatbotContainer.classList.add('open');
+          setTimeout(() => chatbotInput.focus(), 300);
+        });
+      }
+      
+      // Gérer l'en-tête du chatbot (ouverture/fermeture)
+      if (chatbotHeader) {
+        chatbotHeader.addEventListener('click', function() {
+          chatbotContainer.classList.toggle('open');
+          
+          if (chatbotContainer.classList.contains('open')) {
+            setTimeout(() => chatbotInput.focus(), 300);
+          }
+        });
+      }
+      
+      // Gérer l'envoi de message
+      function handleSendMessage() {
+        const message = chatbotInput.value.trim();
+        if (message) {
+          // Ajouter le message de l'utilisateur
+          const userMessage = document.createElement('div');
+          userMessage.className = 'message user';
+          userMessage.textContent = message;
+          chatbotMessages.appendChild(userMessage);
+          
+          // Vider l'input
+          chatbotInput.value = '';
+          
+          // Faire défiler vers le bas
+          chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+          
+          // Ajouter l'indicateur de "typing"
+          const typingIndicator = document.createElement('div');
+          typingIndicator.className = 'message system typing';
+          typingIndicator.innerHTML = '<span>...</span>';
+          chatbotMessages.appendChild(typingIndicator);
+          
+          // Simuler une réponse du support (dans un cas réel, cela appellerait une API)
+          setTimeout(() => {
+            // Supprimer l'indicateur de typing
+            chatbotMessages.removeChild(typingIndicator);
+            
+            // Ajouter la réponse du support
+            const supportMessage = document.createElement('div');
+            supportMessage.className = 'message system';
+            supportMessage.textContent = 'Merci pour votre message. Un membre de l\'équipe vous répondra dès que possible.';
+            chatbotMessages.appendChild(supportMessage);
+            
+            // Faire défiler vers le bas
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+          }, 1000);
+        }
+      }
+      
+      // Gérer l'envoi par clic sur le bouton
+      if (chatbotSend) {
+        chatbotSend.addEventListener('click', handleSendMessage);
+      }
+      
+      // Gérer l'envoi par la touche Entrée
+      if (chatbotInput) {
+        chatbotInput.addEventListener('keypress', function(event) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            handleSendMessage();
+          }
+        });
+      }
+    }
     
     function fetchStats() {
       fetch('/api/stats', {
