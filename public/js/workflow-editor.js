@@ -151,9 +151,10 @@ class WorkflowEditor {
       this.offset.x = containerRect.width / 2 - point.x * this.scale;
       this.offset.y = containerRect.height / 2 - point.y * this.scale;
     } else {
-      // Centrer le canvas - placer le centre du canvas au milieu du viewport
-      const targetX = this.canvasSize.width / 2;  // Point au milieu du grand canvas
-      const targetY = this.canvasSize.height / 2;
+      // Centrer le canvas sur le point 2000,2000 (le milieu que nous utilisons pour le placement des nœuds)
+      // Plutôt que d'utiliser la taille complète du canvas (4000,4000)
+      const targetX = 2000;
+      const targetY = 2000;
       
       this.offset.x = containerRect.width / 2 - targetX * this.scale;
       this.offset.y = containerRect.height / 2 - targetY * this.scale;
@@ -444,14 +445,13 @@ class WorkflowEditor {
           dropEvent.clientX > rect.left && dropEvent.clientX < rect.right &&
           dropEvent.clientY > rect.top && dropEvent.clientY < rect.bottom
         ) {
-          // Utiliser les coordonnées actuelles de la souris pour calculer le point central
-          // de la vue visible actuelle
-          const viewportCenterX = rect.width / 2;
-          const viewportCenterY = rect.height / 2;
+          // Calculer le centre de la vue visible du canvas
+          // On ne veut pas utiliser des coordonnées du grand canvas de 4000x4000
+          // mais plutôt des coordonnées centrées sur la vue visible actuelle
           
-          // Calculer le point central du canvas en coordonnées canvas
-          const centerCanvasX = (viewportCenterX - this.offset.x) / this.scale;
-          const centerCanvasY = (viewportCenterY - this.offset.y) / this.scale;
+          // Centre fixe (coordonnées du canvas visibles)
+          const centerCanvasX = 2000;
+          const centerCanvasY = 2000;
           
           console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} au centre (${centerCanvasX}, ${centerCanvasY})`);
           
@@ -2895,9 +2895,10 @@ class WorkflowEditor {
     if (!sourceNode) return;
     
     // Calculer une position à droite du nœud source
+    // Mais en restant dans le centre de la zone visible
     const position = {
-      x: sourceNode.position.x + sourceNode.width + 100,
-      y: sourceNode.position.y
+      x: 2000 + 200, // 200px à droite du centre
+      y: 2000
     };
     
     // Ajouter le nouveau nœud
