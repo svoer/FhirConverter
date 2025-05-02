@@ -212,6 +212,25 @@ const WORKFLOWS_SCHEMA = {
 };
 
 // Liste de tous les schémas
+/**
+ * Schéma de la table des logs système
+ * @type {Object}
+ */
+const SYSTEM_LOGS_SCHEMA = {
+  tableName: 'system_logs',
+  columns: `
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    details TEXT,
+    severity TEXT NOT NULL DEFAULT 'INFO',
+    user_id INTEGER,
+    ip_address TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  `
+};
+
 const ALL_SCHEMAS = [
   USERS_SCHEMA,
   APPLICATIONS_SCHEMA,
@@ -222,7 +241,8 @@ const ALL_SCHEMAS = [
   API_ACTIVITY_LOGS_SCHEMA,
   API_USAGE_LIMITS_SCHEMA,
   AI_PROVIDERS_SCHEMA,
-  WORKFLOWS_SCHEMA
+  WORKFLOWS_SCHEMA,
+  SYSTEM_LOGS_SCHEMA
 ];
 
 module.exports = {

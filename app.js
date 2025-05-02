@@ -738,6 +738,7 @@ const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
 const aiChatRoutes = require('./routes/ai-chat');
 const workflowsRoutes = require('./routes/workflows');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
@@ -750,6 +751,7 @@ app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
 app.use('/api/workflows', workflowsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // L'application utilise maintenant l'éditeur de workflow visuel personnalisé
 // La fonctionnalité Node-RED a été remplacée par notre propre implémentation
