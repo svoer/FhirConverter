@@ -944,6 +944,11 @@
       async function loadApiKeys(appId) {
         try {
           const keysList = document.getElementById(`keys-list-${appId}`);
+          if (!keysList) {
+            console.error("Élément keys-list-" + appId + " introuvable");
+            return;
+          }
+          
           keysList.innerHTML = '<p class="loading-keys">Chargement des clés API...</p>';
           
           const response = await fetch('/api/api-keys', {
@@ -958,12 +963,15 @@
           
           const data = await response.json();
           
-          if (data.success) {
-            // Filtrer les clés pour cette application
-            const appKeys = data.data.filter(key => key.application_id === appId);
-            
-            if (appKeys.length > 0) {
-              let keysHtml = '';
+          // La structure de réponse peut varier - vérifier si les données sont directement accessibles ou dans une propriété data
+          const keys = Array.isArray(data) ? data : (data.data ? data.data : []);
+          
+          // Filtrer les clés pour cette application en convertissant les IDs en nombre
+          const intAppId = parseInt(appId);
+          const appKeys = keys.filter(key => parseInt(key.application_id) === intAppId);
+          
+          if (appKeys.length > 0) {
+            let keysHtml = '';
               
               appKeys.forEach(key => {
                 const status = key.is_active ? 
@@ -1018,9 +1026,7 @@
                 </div>
               `;
             }
-          } else {
-            throw new Error('Erreur lors de la récupération des clés API');
-          }
+          // Il n'y a pas de propriété success dans la réponse directe des API keys
         } catch (error) {
           console.error('Erreur:', error);
           const keysList = document.getElementById(`keys-list-${appId}`);
@@ -1195,18 +1201,18 @@
           
           const data = await response.json();
           
-          if (data.success) {
-            closeModal(keyModal);
-            
-            // Afficher la clé à l'utilisateur
-            document.getElementById('actualKeyValue').textContent = data.data.key;
-            openModal(newKeyModal);
-            
-            // Recharger les clés API pour l'application
-            loadApiKeys(appId);
-          } else {
-            throw new Error(data.message || 'Erreur lors de la création de la clé API');
-          }
+          // Fermer le modal de création de clé
+          closeModal(keyModal);
+          
+          // Afficher la clé à l'utilisateur
+          document.getElementById('actualKeyValue').textContent = data.key;
+          openModal(newKeyModal);
+          
+          // Recharger toutes les applications pour mettre à jour les listes de clés API
+          await loadApplications();
+          
+          // Recharger aussi spécifiquement les clés de cette application
+          loadApiKeys(appId);
         } catch (error) {
           console.error('Erreur:', error);
           alert('Erreur lors de la création de la clé API: ' + error.message);
