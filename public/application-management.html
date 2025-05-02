@@ -1042,37 +1042,59 @@
       // Fonction pour charger les statistiques d'utilisation d'une application
       async function loadUsageStats(appId) {
         try {
+          // Vérifier si les éléments existent
+          const totalElement = document.getElementById(`total-conversions-${appId}`);
+          const dailyElement = document.getElementById(`daily-usage-${appId}`);
+          const monthlyElement = document.getElementById(`monthly-usage-${appId}`);
+          
+          if (!totalElement || !dailyElement || !monthlyElement) {
+            console.warn(`Les éléments de statistiques pour l'application ${appId} n'existent pas`);
+            return;
+          }
+          
           // Mettre à jour les éléments d'interface
-          document.getElementById(`total-conversions-${appId}`).textContent = '...';
-          document.getElementById(`daily-usage-${appId}`).textContent = '...';
-          document.getElementById(`monthly-usage-${appId}`).textContent = '...';
+          totalElement.textContent = '...';
+          dailyElement.textContent = '...';
+          monthlyElement.textContent = '...';
           
           // Récupérer les statistiques d'utilisation
-          const response = await fetch(`/api/applications/${appId}/usage`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
+          try {
+            const response = await fetch(`/api/applications/${appId}/usage`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (!response.ok) {
+              // Si l'endpoint n'existe pas ou renvoie une erreur, utiliser des valeurs par défaut
+              console.log(`API /applications/${appId}/usage non disponible (${response.status}). Utilisation de valeurs par défaut.`);
+              totalElement.textContent = '0';
+              dailyElement.textContent = '0';
+              monthlyElement.textContent = '0';
+              return;
             }
-          });
-          
-          if (!response.ok) {
-            throw new Error('Erreur lors de la récupération des statistiques');
-          }
-          
-          const data = await response.json();
-          
-          if (data.success) {
-            document.getElementById(`total-conversions-${appId}`).textContent = data.data.total || '0';
-            document.getElementById(`daily-usage-${appId}`).textContent = data.data.today || '0';
-            document.getElementById(`monthly-usage-${appId}`).textContent = data.data.month || '0';
-          } else {
-            throw new Error('Erreur lors de la récupération des statistiques');
+            
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+              totalElement.textContent = data.data.total || '0';
+              dailyElement.textContent = data.data.today || '0';
+              monthlyElement.textContent = data.data.month || '0';
+            } else {
+              // Structure de réponse alternative possible
+              totalElement.textContent = data.total || '0';
+              dailyElement.textContent = data.today || '0';
+              monthlyElement.textContent = data.month || '0';
+            }
+          } catch (fetchError) {
+            console.warn(`Erreur lors de la récupération des statistiques pour l'application ${appId}:`, fetchError);
+            // Afficher des valeurs par défaut en cas d'erreur
+            totalElement.textContent = '0';
+            dailyElement.textContent = '0';
+            monthlyElement.textContent = '0';
           }
         } catch (error) {
-          console.error('Erreur:', error);
-          // Afficher des valeurs par défaut en cas d'erreur
-          document.getElementById(`total-conversions-${appId}`).textContent = '--';
-          document.getElementById(`daily-usage-${appId}`).textContent = '--';
-          document.getElementById(`monthly-usage-${appId}`).textContent = '--';
+          console.error('Erreur dans loadUsageStats:', error);
         }
       }
       
@@ -1205,8 +1227,27 @@
           closeModal(keyModal);
           
           // Afficher la clé à l'utilisateur
-          document.getElementById('actualKeyValue').textContent = data.key;
-          openModal(newKeyModal);
+          console.log("Réponse de création de clé API:", data);
+          // Déterminer où se trouve la valeur de la clé dans la réponse
+          let keyValue = '';
+          if (data.key) {
+            keyValue = data.key;
+          } else if (data.data && data.data.key) {
+            keyValue = data.data.key;
+          } else {
+            // Si on ne trouve pas la clé dans la structure habituelle, chercher plus en profondeur
+            const keyProp = Object.keys(data).find(key => typeof data[key] === 'string' && data[key].length > 20);
+            if (keyProp) {
+              keyValue = data[keyProp];
+            }
+          }
+          
+          if (keyValue) {
+            document.getElementById('actualKeyValue').textContent = keyValue;
+            openModal(newKeyModal);
+          } else {
+            alert("La clé API a été créée avec succès, mais n'a pas pu être affichée. Vous pouvez la trouver dans la liste des clés API.")
+          }
           
           // Recharger toutes les applications pour mettre à jour les listes de clés API
           await loadApplications();
