@@ -96,29 +96,26 @@
     overflow: hidden;
 }
 
-.workflow-editor-container {
+.workflow-editor-container,
+.workflow-canvas {
     width: 100%;
     height: 100%;
-    background-color: #ffffff;
     position: relative;
     overflow: hidden;
     color: #333;
     font-family: 'Roboto', sans-serif;
     border: none;
-    /* Fond avec grille de points encore plus discrète */
-    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-    background-size: 20px 20px;
+    /* Trois calques : une grille de 100px, une grille de 100px perpendiculaire, et un « pointillé » fin */
+    background-image:
+        linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px),
+        radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px;
+    background-color: #ffffff;
 }
 
 /* Canva principal où les noeuds sont placés */
 .workflow-canvas {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background-color: #ffffff;
-    /* Points au lieu de lignes - plus visible mais pas trop */
-    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
     transition: transform 0.2s;
     transform-origin: 0 0;
 }
@@ -403,8 +400,8 @@
 
 .edge path {
     fill: none;
-    stroke: #555;
-    stroke-width: 2.5;
+    stroke: rgba(0,0,0,0.7);
+    stroke-width: 3;
     stroke-linecap: round;
     pointer-events: auto;
     cursor: pointer;
@@ -415,13 +412,18 @@
 
 .edge path:hover {
     stroke: #333;
-    stroke-width: 3.5;
+    stroke-width: 4;
 }
 
 .edge.selected path {
     stroke: #333;
-    stroke-width: 3.5;
+    stroke-width: 4;
     stroke-dasharray: 5, 3;
+}
+
+/* Arêtes connectées en vert */
+.edge.connected path {
+    stroke: #4caf50;
 }
 
 /* Temporary edge while dragging */

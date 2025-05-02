@@ -1018,9 +1018,13 @@ class WorkflowEditor {
     edgeElement.id = edge.id;
     edgeElement.setAttribute('class', 'edge');
     
+    // Marquer l'arête comme "connectée" pour appliquer la couleur verte
+    edgeElement.classList.add('connected');
+    
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('stroke', '#666');
-    path.setAttribute('stroke-width', '2.5');
+    // Initialiser avec la couleur verte et l'épaisseur cohérente avec le CSS
+    path.setAttribute('stroke', '#4caf50');
+    path.setAttribute('stroke-width', '3');
     path.setAttribute('fill', 'none');
     path.style.pointerEvents = 'auto';
     edgeElement.appendChild(path);
@@ -1117,9 +1121,8 @@ class WorkflowEditor {
         const path = edgeElement.querySelector("path");
         if (path) {
           path.setAttribute("d", d);
-          // S'assurer que le chemin a des attributs de style pour être bien visible
-          path.setAttribute("stroke", "#666");
-          path.setAttribute("stroke-width", "2.5");
+          // Conserver le style et les attributs sans forcer la couleur
+          // Cela permettra d'utiliser la couleur verte définie par la classe CSS
           path.setAttribute("fill", "none");
           // S'assurer que le path a un pointer-events pour être cliquable
           path.style.pointerEvents = "auto";
