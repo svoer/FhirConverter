@@ -68,6 +68,15 @@ setupSwagger(app);
 // Servir les fichiers statiques
 app.use(express.static('public'));
 
+// Redirection des anciennes pages vers la nouvelle page unifiée
+app.get('/applications.html', (req, res) => {
+  res.redirect('/application-management.html');
+});
+
+app.get('/api-keys.html', (req, res) => {
+  res.redirect('/application-management.html');
+});
+
 // Routes pour la documentation markdown des types de messages
 app.use('/docs', documentationRoutes);
 
