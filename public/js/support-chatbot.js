@@ -43,14 +43,14 @@ N'oublie pas:
  * Initialise le chatbot
  */
 async function initChatbot() {
-  // Créer les éléments du chatbot
-  createChatbotElements();
+  // Les éléments du chatbot existent déjà dans le HTML
+  // createChatbotElements();
   
   // Ajouter les écouteurs d'événements
   addEventListeners();
   
-  // Ajouter un message de bienvenue
-  addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
+  // Ne pas ajouter de message de bienvenue car il existe déjà dans le HTML
+  // addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
   
   // Charger le fournisseur d'IA configuré
   await loadAIProvider();
@@ -116,7 +116,7 @@ function addEventListeners() {
     if (header || toggle) {
       event.preventDefault();
       
-      const chatbot = document.getElementById('fhirhub-chatbot');
+      const chatbot = document.querySelector('.chatbot-container');
       if (!chatbot) {
         console.error("ERREUR: Chatbot non trouvé dans le DOM!");
         return;
@@ -129,35 +129,19 @@ function addEventListeners() {
       console.log('- Toggle trouvé:', !!toggle);
       
       // État avant le basculement
-      const wasExpanded = chatbot.classList.contains('expanded');
+      const wasExpanded = chatbot.classList.contains('open');
       console.log('- État avant clic:', wasExpanded ? 'Ouvert' : 'Fermé');
       
-      // Forcer directement le basculement
-      if (wasExpanded) {
-        chatbot.classList.remove('expanded');
-        console.log('- Action: Fermeture du chatbot');
-      } else {
-        chatbot.classList.add('expanded');
-        console.log('- Action: Ouverture du chatbot');
-      }
+      // Basculer la classe open pour l'animation CSS
+      chatbot.classList.toggle('open');
       
       // État après le basculement
-      console.log('- État après clic:', chatbot.classList.contains('expanded') ? 'Ouvert' : 'Fermé');
+      console.log('- État après clic:', chatbot.classList.contains('open') ? 'Ouvert' : 'Fermé');
       
-      // Mettre à jour l'icône
-      const icon = document.getElementById('chatbot-toggle-icon');
-      if (icon) {
-        if (chatbot.classList.contains('expanded')) {
-          icon.classList.remove('fa-chevron-up');
-          icon.classList.add('fa-chevron-down');
-          
-          // Focus sur l'input quand ouvert
-          const input = document.getElementById('chatbot-input');
-          if (input) setTimeout(() => input.focus(), 300);
-        } else {
-          icon.classList.remove('fa-chevron-down');
-          icon.classList.add('fa-chevron-up');
-        }
+      // Focus sur l'input quand ouvert
+      if (chatbot.classList.contains('open')) {
+        const input = document.getElementById('chatbot-input');
+        if (input) setTimeout(() => input.focus(), 300);
       }
     }
     
@@ -209,15 +193,26 @@ async function loadAIProvider() {
 
 /**
  * Ajoute un message au chatbot
- * @param {string} role - Le rôle ('user' ou 'assistant')
+ * @param {string} role - Le rôle ('user' ou 'assistant' ou 'system')
  * @param {string} content - Le contenu du message
  */
 function addMessage(role, content) {
-  const messagesContainer = document.getElementById('chatbot-messages');
-  if (!messagesContainer) return;
+  const messagesContainer = document.querySelector('.chatbot-messages');
+  if (!messagesContainer) {
+    console.error("Container de messages du chatbot non trouvé");
+    return;
+  }
   
   const messageElement = document.createElement('div');
-  messageElement.className = `chatbot-message ${role}`;
+  // Adapter les classes pour qu'elles correspondent au HTML existant
+  if (role === 'assistant') {
+    messageElement.className = 'message system';
+  } else if (role === 'user') {
+    messageElement.className = 'message user';
+  } else {
+    messageElement.className = `message ${role}`;
+  }
+  
   messageElement.textContent = content;
   
   messagesContainer.appendChild(messageElement);
@@ -233,18 +228,16 @@ function addMessage(role, content) {
  * Ajoute un indicateur de chargement pendant la réponse de l'IA
  */
 function addLoadingIndicator() {
-  const messagesContainer = document.getElementById('chatbot-messages');
-  if (!messagesContainer) return;
+  const messagesContainer = document.querySelector('.chatbot-messages');
+  if (!messagesContainer) {
+    console.error("Container de messages du chatbot non trouvé");
+    return;
+  }
   
   const loadingElement = document.createElement('div');
-  loadingElement.className = 'chatbot-typing';
+  loadingElement.className = 'message typing';
   loadingElement.id = 'chatbot-typing';
-  
-  for (let i = 0; i < 3; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'chatbot-typing-dot';
-    loadingElement.appendChild(dot);
-  }
+  loadingElement.innerHTML = '<span>...</span>';
   
   messagesContainer.appendChild(loadingElement);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
