@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utilisateurs - Contenu</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+    
+    .users-container {
+      margin-top: 0;
+    }
+    
+    .page-header {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="users-container">
+    <div class="users-list" id="usersList">
+      <!-- Les utilisateurs seront chargés ici -->
+      <div class="loading">
+        <i class="fas fa-spinner fa-spin"></i> Chargement des utilisateurs...
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal d'ajout/modification d'utilisateur -->
+  <div id="userModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Nouvel utilisateur</h2>
+      </div>
+      
+      <div class="modal-body">
+        <form id="userForm">
+          <input type="hidden" id="userId">
+          
+          <div class="form-group">
+            <label for="username" class="form-label">Nom d'utilisateur</label>
+            <input type="text" id="username" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password" class="form-label">Mot de passe</label>
+            <input type="password" id="password" class="form-input">
+            <small id="passwordHelp" class="form-text">Laissez vide pour conserver le mot de passe actuel</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="role" class="form-label">Rôle</label>
+            <select id="role" class="form-select" required>
+              <option value="user">Utilisateur</option>
+              <option value="admin">Administrateur</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelUserBtn">Annuler</button>
+        <button type="button" class="btn btn-primary" id="saveUserBtn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal de confirmation de suppression -->
+  <div id="deleteUserModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Confirmer la suppression</h2>
+      </div>
+      
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Variable pour stocker l'ID de l'utilisateur à supprimer
+    let userToDelete = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Charger la liste des utilisateurs
+      fetchUsers();
+      
+      // Gestion des événements pour les boutons
+      document.getElementById('cancelUserBtn').addEventListener('click', closeUserModal);
+      document.getElementById('saveUserBtn').addEventListener('click', saveUser);
+      document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+      document.getElementById('confirmDeleteBtn').addEventListener('click', deleteUser);
+      
+      // Exposer la fonction openAddUserModal pour qu'elle puisse être appelée depuis la page parent
+      window.openAddUserModal = openAddUserModal;
+    });
+    
+    function openAddUserModal() {
+      // Réinitialiser le formulaire
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('modalTitle').textContent = 'Nouvel utilisateur';
+      document.getElementById('password').required = true;
+      document.getElementById('passwordHelp').style.display = 'none';
+      
+      // Afficher la modale
+      document.getElementById('userModal').style.display = 'block';
+    }
+    
+    function openEditUserModal(userId, username, role) {
+      // Remplir le formulaire avec les données de l'utilisateur
+      document.getElementById('userId').value = userId;
+      document.getElementById('username').value = username;
+      document.getElementById('role').value = role;
+      document.getElementById('password').required = false;
+      document.getElementById('passwordHelp').style.display = 'block';
+      
+      // Changer le titre de la modale
+      document.getElementById('modalTitle').textContent = 'Modifier l\'utilisateur';
+      
+      // Afficher la modale
+      document.getElementById('userModal').style.display = 'block';
+    }
+    
+    function openDeleteModal(userId, username) {
+      // Stocker l'ID de l'utilisateur à supprimer
+      userToDelete = userId;
+      
+      // Personnaliser le message de confirmation
+      const message = document.querySelector('#deleteUserModal .modal-body p');
+      message.textContent = `Êtes-vous sûr de vouloir supprimer l'utilisateur "${username}" ? Cette action est irréversible.`;
+      
+      // Afficher la modale
+      document.getElementById('deleteUserModal').style.display = 'block';
+    }
+    
+    function closeUserModal() {
+      document.getElementById('userModal').style.display = 'none';
+    }
+    
+    function closeDeleteModal() {
+      document.getElementById('deleteUserModal').style.display = 'none';
+      userToDelete = null;
+    }
+    
+    function fetchUsers() {
+      fetch('/api/users', {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': 'dev-key'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          renderUsers(data.data);
+        } else {
+          showError('Erreur lors du chargement des utilisateurs.');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur:', error);
+        showError('Une erreur est survenue lors de la récupération des utilisateurs.');
+      });
+    }
+    
+    function renderUsers(users) {
+      const usersList = document.getElementById('usersList');
+      
+      // Vider la liste
+      usersList.innerHTML = '';
+      
+      if (users.length === 0) {
+        usersList.innerHTML = '<div class="no-data">Aucun utilisateur trouvé.</div>';
+        return;
+      }
+      
+      // Créer une ligne d'en-tête
+      const headerRow = document.createElement('div');
+      headerRow.className = 'user-header';
+      headerRow.innerHTML = `
+        <div class="user-id">ID</div>
+        <div class="user-name">Nom d'utilisateur</div>
+        <div class="user-role">Rôle</div>
+        <div class="user-created">Date de création</div>
+        <div class="user-actions">Actions</div>
+      `;
+      usersList.appendChild(headerRow);
+      
+      // Ajouter chaque utilisateur
+      users.forEach(user => {
+        const userRow = document.createElement('div');
+        userRow.className = 'user-row';
+        
+        // Formater la date de création
+        const createdDate = new Date(user.created_at);
+        const formattedDate = createdDate.toLocaleDateString('fr-FR') + ' ' + createdDate.toLocaleTimeString('fr-FR');
+        
+        // Déterminer l'affichage du rôle
+        const roleDisplay = user.role === 'admin' ? 'Administrateur' : 'Utilisateur';
+        const roleBadgeClass = user.role === 'admin' ? 'admin-badge' : 'user-badge';
+        
+        userRow.innerHTML = `
+          <div class="user-id">${user.id}</div>
+          <div class="user-name">${user.username}</div>
+          <div class="user-role"><span class="role-badge ${roleBadgeClass}">${roleDisplay}</span></div>
+          <div class="user-created">${formattedDate}</div>
+          <div class="user-actions">
+            <button class="action-btn edit-btn" data-id="${user.id}" data-username="${user.username}" data-role="${user.role}">
+              <i class="fas fa-edit"></i> Modifier
+            </button>
+            <button class="action-btn delete-btn" data-id="${user.id}" data-username="${user.username}">
+              <i class="fas fa-trash-alt"></i> Supprimer
+            </button>
+          </div>
+        `;
+        
+        usersList.appendChild(userRow);
+      });
+      
+      // Ajouter les gestionnaires d'événements pour les boutons
+      document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const { id, username, role } = this.dataset;
+          openEditUserModal(id, username, role);
+        });
+      });
+      
+      document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const { id, username } = this.dataset;
+          openDeleteModal(id, username);
+        });
+      });
+    }
+    
+    function saveUser() {
+      // Récupérer les données du formulaire
+      const userId = document.getElementById('userId').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+      
+      // Valider les données
+      if (!username) {
+        alert('Le nom d\'utilisateur est obligatoire.');
+        return;
+      }
+      
+      if (userId === '' && !password) {
+        alert('Le mot de passe est obligatoire pour un nouvel utilisateur.');
+        return;
+      }
+      
+      // Construire l'objet utilisateur
+      const userData = {
+        username,
+        role
+      };
+      
+      // Ajouter le mot de passe seulement s'il est fourni
+      if (password) {
+        userData.password = password;
+      }
+      
+      // Déterminer l'URL et la méthode en fonction de s'il s'agit d'une création ou d'une mise à jour
+      const url = userId ? `/api/users/${userId}` : '/api/users';
+      const method = userId ? 'PUT' : 'POST';
+      
+      // Envoyer la requête
+      fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': 'dev-key'
+        },
+        body: JSON.stringify(userData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Fermer la modale
+          closeUserModal();
+          
+          // Rafraîchir la liste des utilisateurs
+          fetchUsers();
+          
+          // Afficher un message de succès
+          alert(userId ? 'Utilisateur mis à jour avec succès.' : 'Utilisateur créé avec succès.');
+        } else {
+          alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+        }
+      })
+      .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue lors de l\'enregistrement de l\'utilisateur.');
+      });
+    }
+    
+    function deleteUser() {
+      if (!userToDelete) return;
+      
+      fetch(`/api/users/${userToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'X-API-KEY': 'dev-key'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Fermer la modale
+          closeDeleteModal();
+          
+          // Rafraîchir la liste des utilisateurs
+          fetchUsers();
+          
+          // Afficher un message de succès
+          alert('Utilisateur supprimé avec succès.');
+        } else {
+          alert(`Erreur: ${data.message || 'Une erreur est survenue.'}`);
+        }
+      })
+      .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue lors de la suppression de l\'utilisateur.');
+      });
+    }
+    
+    function showError(message) {
+      const usersList = document.getElementById('usersList');
+      usersList.innerHTML = `<div class="error-message">${message}</div>`;
+    }
+  </script>
+</body>
+</html>
