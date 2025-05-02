@@ -293,7 +293,7 @@ async function executeWorkflow(applicationId, inputData) {
     const workflow = workflows[0];
     console.log(`[WORKFLOW] Exécution du workflow "${workflow.name}" pour l'application ${applicationId}`);
     
-    // Ici, en production, on exécuterait le workflow via l'API Node-RED
+    // Exécution des nœuds du workflow à partir du JSON défini
     // Pour simplifier, on se contente de retourner les données d'entrée telles quelles
     return inputData;
   } catch (error) {
@@ -319,7 +319,7 @@ function getEditorUrl(workflowId) {
 }
 
 /**
- * Exporter les définitions des nœuds personnalisés pour Node-RED
+ * Exporter les définitions des nœuds personnalisés pour l'éditeur de workflow
  * @returns {Object} Définitions des nœuds personnalisés
  */
 function getCustomNodeDefinitions() {

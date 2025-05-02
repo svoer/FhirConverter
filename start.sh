@@ -224,7 +224,7 @@ echo -e "${BLUE}[4/6] Vérification des dépendances...${NC}"
 
 # Vérification des modules Node.js essentiels
 MISSING_MODULES=""
-for module in typescript ts-node node-red; do
+for module in typescript ts-node; do
   if ! $NPM_CMD list $module > /dev/null 2>&1; then
     MISSING_MODULES="$MISSING_MODULES $module"
   fi
@@ -239,13 +239,13 @@ else
   echo -e "${GREEN}✅ Tous les modules Node.js requis sont présents${NC}"
 fi
 
-# Vérification de Node-RED
-if [ -d "./data/node-red" ]; then
-  echo -e "${GREEN}✅ Configuration Node-RED détectée${NC}"
+# Vérification du dossier workflows
+if [ ! -d "./data/workflows" ]; then
+  echo -e "${YELLOW}⚠️ Dossier workflows non trouvé, création...${NC}"
+  mkdir -p ./data/workflows
+  echo -e "${GREEN}✅ Dossier workflows créé${NC}"
 else
-  echo -e "${YELLOW}⚠️ Dossier Node-RED non trouvé, il sera créé au premier démarrage${NC}"
-  # Créer le dossier pour éviter des erreurs
-  mkdir -p ./data/node-red
+  echo -e "${GREEN}✅ Dossier workflows détecté${NC}"
 fi
 
 # Vérification de l'installation Python pour les scripts auxiliaires
