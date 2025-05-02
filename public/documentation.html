@@ -227,6 +227,8 @@
         <a href="#message-types">Types de Messages</a>
         <a href="#converter">Convertisseur</a>
         <a href="#terminology">Nomenclatures et Terminologies</a>
+        <a href="#workflows">Workflows</a>
+        <a href="#ai-integration">IA & Assistance</a>
         <a href="#api">APIs</a>
         <a href="#cache">Système de Cache</a>
         <a href="#database">Base de Données</a>
@@ -677,6 +679,117 @@ function parseHL7Message(hl7Message) {
         <p>Cette interface est accessible uniquement aux administrateurs et permet une gestion centralisée des terminologies françaises utilisées lors de la conversion des messages HL7 vers FHIR.</p>
       </div>
       
+      <div id="workflows" class="documentation-section">
+        <h2>Système de Workflows</h2>
+        <p>FHIRHub intègre un système de workflows visuels permettant de créer des processus personnalisés pour le traitement des messages HL7 et des ressources FHIR, adapté à chaque application.</p>
+        
+        <h3>Présentation de l'éditeur de workflow</h3>
+        <p>L'éditeur de workflow est un outil visuel intégré qui permet de créer des flux de traitement complexes sans écrire de code. Il offre une interface intuitive avec des nœuds interconnectables représentant différentes actions et conditions.</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Éditeur visuel intuitif</div>
+            <div class="step-description">Interface en glisser-déposer pour créer et connecter des nœuds sur une grille, avec redimensionnement des éléments à la souris.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Nœuds spécialisés</div>
+            <div class="step-description">Une bibliothèque de nœuds personnalisés pour l'analyse HL7, la conversion FHIR, les notifications, les transformations de données, etc.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Configuration par application</div>
+            <div class="step-description">Possibilité de créer des workflows distincts pour chaque application enregistrée dans FHIRHub.</div>
+          </div>
+        </div>
+        
+        <h3>Types de nœuds disponibles</h3>
+        <p>Le système de workflows propose plusieurs catégories de nœuds pour construire des processus complets :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Catégories de nœuds</div>
+          <ul>
+            <li><strong>Entrées/Sorties :</strong> Réception de messages HL7, envoi de ressources FHIR, génération de fichiers, etc.</li>
+            <li><strong>Transformation :</strong> Conversion HL7 vers FHIR, filtrage de données, agrégation, etc.</li>
+            <li><strong>Logique :</strong> Conditions, branches, jonctions, boucles, etc.</li>
+            <li><strong>Intégration :</strong> Appels API REST, messagerie, notifications, etc.</li>
+            <li><strong>Analyse :</strong> Validation de messages, extraction de métriques, journalisation, etc.</li>
+          </ul>
+        </div>
+        
+        <h3>Configuration et déploiement</h3>
+        <p>Les workflows sont sauvegardés dans la base de données et associés à une application spécifique. Lorsqu'un message est reçu via l'API de cette application, le workflow correspondant est automatiquement exécuté pour traiter le message selon les règles définies.</p>
+        
+        <div class="info-box">
+          <p><strong>Note :</strong> Pour accéder à l'éditeur de workflow, cliquez sur "Workflows" dans le menu principal, puis sélectionnez l'application pour laquelle vous souhaitez créer ou modifier un workflow.</p>
+        </div>
+      </div>
+      
+      <div id="ai-integration" class="documentation-section">
+        <h2>IA & Assistance intelligente</h2>
+        <p>FHIRHub intègre des fonctionnalités d'intelligence artificielle pour faciliter l'utilisation du système et aider à résoudre les problèmes.</p>
+        
+        <h3>Chatbot de support</h3>
+        <p>Un chatbot intelligent est disponible sur le tableau de bord pour répondre aux questions sur l'utilisation de FHIRHub, la conversion HL7-FHIR et les problèmes courants. Ce chatbot utilise les modèles d'IA configurés dans les paramètres et n'accède jamais aux données de santé réelles.</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Assistance contextuelle</div>
+            <div class="step-description">Le chatbot comprend le contexte de votre demande et peut fournir des explications spécifiques sur les fonctionnalités de FHIRHub.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Documentation intelligente</div>
+            <div class="step-description">Accès à toute la documentation technique à travers une interface conversationnelle simple.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Diagnostic assisté</div>
+            <div class="step-description">Aide à identifier et résoudre les problèmes de conversion ou de configuration.</div>
+          </div>
+        </div>
+        
+        <h3>Configuration des fournisseurs d'IA</h3>
+        <p>FHIRHub prend en charge plusieurs fournisseurs d'IA pour alimenter ses fonctionnalités d'assistance :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Fournisseurs d'IA pris en charge</div>
+          <ul>
+            <li><strong>Mistral AI :</strong> Service d'IA français avec des modèles performants et compatibles RGPD</li>
+            <li><strong>Google AI :</strong> Services d'IA de Google Cloud (nécessite une clé API)</li>
+            <li><strong>DeepSeek :</strong> Modèles avancés pour le traitement du langage</li>
+            <li><strong>Ollama :</strong> Modèles locaux (installation locale requise, idéal pour les environnements isolés)</li>
+          </ul>
+        </div>
+        
+        <div class="warning-box">
+          <p><strong>Important :</strong> Les fonctionnalités d'IA ne traitent jamais directement les données de santé issues des messages HL7 ou des ressources FHIR. Elles sont utilisées uniquement pour l'assistance et la documentation.</p>
+        </div>
+        
+        <h3>Paramétrage de l'IA</h3>
+        <p>Les administrateurs peuvent configurer les services d'IA dans la section "Paramètres IA" accessible depuis le menu principal. Cette configuration inclut :</p>
+        <ul>
+          <li>Sélection du fournisseur d'IA préféré</li>
+          <li>Gestion des clés API (stockées de manière sécurisée dans la base de données)</li>
+          <li>Configuration des paramètres de modèle (température, longueur maximale, etc.)</li>
+          <li>Options de confidentialité et restrictions d'accès</li>
+        </ul>
+      </div>
+      
       <div id="api" class="documentation-section">
         <h2>APIs disponibles</h2>
         <p>FHIRHub expose plusieurs API RESTful pour permettre l'intégration et l'automatisation. Cette documentation complète liste toutes les APIs disponibles dans le système, groupées par catégorie.</p>
@@ -754,6 +867,32 @@ function parseHL7Message(hl7Message) {
           <ul>
             <li><strong>GET /api/stats</strong> - Récupère les statistiques du système (conversions, temps de traitement, etc.)</li>
             <li><strong>GET /api/cache/status</strong> - Récupère les informations sur l'état du cache de conversion</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API de Workflows</div>
+          <ul>
+            <li><strong>GET /api/workflows</strong> - Liste tous les workflows</li>
+            <li><strong>POST /api/workflows</strong> - Crée un nouveau workflow</li>
+            <li><strong>GET /api/workflows/:id</strong> - Récupère un workflow spécifique</li>
+            <li><strong>PUT /api/workflows/:id</strong> - Met à jour un workflow existant</li>
+            <li><strong>DELETE /api/workflows/:id</strong> - Supprime un workflow</li>
+            <li><strong>GET /api/workflows/application/:applicationId</strong> - Récupère les workflows associés à une application</li>
+            <li><strong>POST /api/workflows/execute/:id</strong> - Exécute manuellement un workflow</li>
+          </ul>
+        </div>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">API d'IA et d'Assistance</div>
+          <ul>
+            <li><strong>GET /api/ai-providers</strong> - Liste tous les fournisseurs d'IA configurés</li>
+            <li><strong>POST /api/ai-providers</strong> - Configure un nouveau fournisseur d'IA</li>
+            <li><strong>GET /api/ai-providers/:id</strong> - Récupère les détails d'un fournisseur d'IA</li>
+            <li><strong>PUT /api/ai-providers/:id</strong> - Met à jour la configuration d'un fournisseur d'IA</li>
+            <li><strong>DELETE /api/ai-providers/:id</strong> - Supprime un fournisseur d'IA</li>
+            <li><strong>POST /api/ai-chat/message</strong> - Envoie un message au chatbot de support</li>
+            <li><strong>GET /api/ai-chat/history</strong> - Récupère l'historique des conversations avec le chatbot</li>
           </ul>
         </div>
         
@@ -1168,7 +1307,7 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
           <p><strong>Important :</strong> Les fichiers système (ans_oids.json, ans_common_codes.json, ans_terminology_systems.json) sont protégés et ne peuvent pas être supprimés car ils contiennent les mappings fondamentaux pour la conversion.</p>
         </div>
         
-        <p>Pour en savoir plus sur l'intégration avec les terminologies françaises, consultez la <a href="/docs/french_terminology_scripts">documentation détaillée des terminologies françaises</a>.</p>
+        <p>Pour en savoir plus sur l'intégration avec les terminologies françaises, consultez la documentation dans le dossier <code>/docs/</code> du projet et les fichiers de configuration dans le dossier <code>/french_terminology/</code>.</p>
       </div>
       
       <div id="prerequites" class="documentation-section">
@@ -1177,7 +1316,7 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
         
         <h3>Configuration requise</h3>
         <ul>
-          <li><strong>Node.js</strong> version 16.x ou supérieure</li>
+          <li><strong>Node.js</strong> version 18.x ou 20.x (v20.15.1 recommandée) - attention, problèmes connus avec Node.js v22</li>
           <li><strong>SQLite3</strong> (inclus, ne nécessite pas d'installation séparée)</li>
           <li><strong>OS :</strong> Windows, macOS ou Linux</li>
           <li><strong>RAM :</strong> 2 Go minimum, 4 Go recommandé</li>
