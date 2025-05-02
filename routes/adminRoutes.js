@@ -52,13 +52,24 @@ router.post('/reset-environment', (req, res) => {
     details: 'Le processus de réinitialisation a été lancé en arrière-plan. Les statistiques seront mises à jour.'
   });
   
-  // Réinitialisation des statistiques en conservant les autres données
+  // Réinitialisation complète des statistiques et du compteur de conversions
   setTimeout(async () => {
     try {
-      // Réinitialiser uniquement la table des logs de conversion
+      // Réinitialiser complètement la table des logs de conversion
       await dbService.query('DELETE FROM conversion_logs');
       
-      // Nettoyer les fichiers de logs
+      // Réinitialiser aussi les compteurs dans d'autres tables
+      await dbService.query('UPDATE api_usage_limits SET current_daily_usage = 0, current_monthly_usage = 0');
+      
+      // Réinitialiser les compteurs de conversion dans la table des workflows si elle existe
+      try {
+        await dbService.query('UPDATE workflows SET conversions_count = 0 WHERE conversions_count IS NOT NULL');
+      } catch (e) {
+        // Ignorer si la colonne n'existe pas
+        logger.debug(`[ADMIN] Note: La colonne conversions_count n'existe pas dans la table workflows: ${e.message}`);
+      }
+      
+      // Nettoyer tous les fichiers de logs et d'historiques
       const logsPath = path.join(__dirname, '..', 'logs');
       fs.readdir(logsPath, (err, files) => {
         if (err) {
@@ -66,9 +77,9 @@ router.post('/reset-environment', (req, res) => {
           return;
         }
         
-        // Supprimer uniquement les fichiers de logs de conversion
+        // Supprimer tous les fichiers de logs liés aux conversions et aux stats
         files.forEach(file => {
-          if (file.includes('conversion') || file.includes('stats')) {
+          if (file.includes('conversion') || file.includes('stats') || file.includes('performance')) {
             fs.unlink(path.join(logsPath, file), err => {
               if (err) {
                 logger.error(`[ADMIN] Erreur lors de la suppression du fichier de logs: ${err.message}`);
@@ -78,10 +89,42 @@ router.post('/reset-environment', (req, res) => {
         });
       });
       
+      // Vider également les dossiers d'historique des conversions
+      const historyPaths = [
+        path.join(__dirname, '..', 'data', 'conversions'),
+        path.join(__dirname, '..', 'data', 'history'),
+        path.join(__dirname, '..', 'data', 'outputs')
+      ];
+      
+      historyPaths.forEach(dirPath => {
+        if (fs.existsSync(dirPath)) {
+          fs.readdir(dirPath, (err, files) => {
+            if (err) {
+              logger.error(`[ADMIN] Erreur lors de la lecture du dossier ${dirPath}: ${err.message}`);
+              return;
+            }
+            
+            files.forEach(file => {
+              // Ne pas supprimer les fichiers .gitkeep ou les dossiers
+              if (file !== '.gitkeep') {
+                const filePath = path.join(dirPath, file);
+                if (fs.lstatSync(filePath).isFile()) {
+                  fs.unlink(filePath, err => {
+                    if (err) {
+                      logger.error(`[ADMIN] Erreur lors de la suppression du fichier ${filePath}: ${err.message}`);
+                    }
+                  });
+                }
+              }
+            });
+          });
+        }
+      });
+      
       // Journaliser la réinitialisation dans les logs système
       await dbService.query(
         'INSERT INTO system_logs (event_type, message, severity) VALUES (?, ?, ?)',
-        ['RESET_STATS', 'Réinitialisation des statistiques effectuée', 'INFO']
+        ['RESET_STATS', 'Réinitialisation complète des statistiques et compteurs effectuée', 'INFO']
       );
       
       logger.info('[ADMIN] Réinitialisation des statistiques terminée avec succès');
