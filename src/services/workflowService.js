@@ -36,11 +36,20 @@ async function initialize() {
     
     console.log('[WORKFLOW] Initialisation de l\'éditeur de workflow visuel personnalisé');
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.warn('[WORKFLOW] Impossible de créer/vérifier la table workflows, certaines fonctionnalités pourraient être limitées');
+    } else {
+      console.log('[WORKFLOW] Table workflows vérifiée avec succès');
+    }
+    
     initialized = true;
     console.log('[WORKFLOW] Service de workflow initialisé avec succès');
   } catch (error) {
     console.error('[WORKFLOW] Erreur lors de l\'initialisation du service de workflow:', error);
-    throw error;
+    // Ne pas propager l'erreur pour permettre au service de démarrer malgré l'erreur
+    initialized = true; // Considérer le service comme initialisé même en cas d'erreur
   }
 }
 
@@ -52,6 +61,24 @@ async function getAllWorkflows() {
   try {
     await initialize();
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.warn('[WORKFLOW] La table workflows n\'a pas pu être vérifiée/créée, retour d\'une liste vide');
+      return [];
+    }
+    
+    // Débuter avec une requête sécurisée pour vérifier si la table existe bien
+    try {
+      const countCheck = await db.get('SELECT COUNT(*) as count FROM workflows');
+      console.log(`[WORKFLOW] Nombre de workflows dans la base: ${countCheck ? countCheck.count : 0}`);
+    } catch (checkError) {
+      console.error('[WORKFLOW] Erreur lors de la vérification du contenu de la table:', checkError);
+      // Si l'erreur persiste malgré ensureWorkflowsTable, retourner un tableau vide
+      return [];
+    }
+    
+    // Si tout est OK, continuer avec la requête originale
     const workflows = await db.query(`
       SELECT w.*, a.name as application_name
       FROM workflows w
@@ -62,7 +89,8 @@ async function getAllWorkflows() {
     return workflows;
   } catch (error) {
     console.error('[WORKFLOW] Erreur lors de la récupération des workflows:', error);
-    throw error;
+    // Retourner une liste vide en cas d'erreur plutôt que de faire planter l'application
+    return [];
   }
 }
 
@@ -75,6 +103,13 @@ async function getWorkflowsByApplicationId(applicationId) {
   try {
     await initialize();
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.warn('[WORKFLOW] La table workflows n\'a pas pu être vérifiée/créée, retour d\'une liste vide');
+      return [];
+    }
+    
     const workflows = await db.query(`
       SELECT w.*, a.name as application_name
       FROM workflows w
@@ -86,7 +121,8 @@ async function getWorkflowsByApplicationId(applicationId) {
     return workflows;
   } catch (error) {
     console.error(`[WORKFLOW] Erreur lors de la récupération des workflows pour l'application ${applicationId}:`, error);
-    throw error;
+    // Retourner une liste vide en cas d'erreur plutôt que de faire planter l'application
+    return [];
   }
 }
 
@@ -99,6 +135,13 @@ async function getWorkflowById(id) {
   try {
     await initialize();
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.warn(`[WORKFLOW] La table workflows n'a pas pu être vérifiée/créée, impossible de récupérer le workflow ${id}`);
+      return null;
+    }
+    
     const workflow = await db.get(`
       SELECT w.*, a.name as application_name
       FROM workflows w
@@ -109,7 +152,7 @@ async function getWorkflowById(id) {
     return workflow;
   } catch (error) {
     console.error(`[WORKFLOW] Erreur lors de la récupération du workflow ${id}:`, error);
-    throw error;
+    return null;
   }
 }
 
@@ -122,6 +165,13 @@ async function createWorkflow(workflowData) {
   try {
     await initialize();
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.error('[WORKFLOW] La table workflows n\'a pas pu être vérifiée/créée, impossible de créer un workflow');
+      throw new Error('Table workflows non disponible');
+    }
+    
     // Validation des données obligatoires
     if (!workflowData.application_id || !workflowData.name) {
       throw new Error('L\'ID de l\'application et le nom du workflow sont obligatoires');
@@ -130,6 +180,12 @@ async function createWorkflow(workflowData) {
     // Créer un flow JSON vide par défaut si non fourni
     if (!workflowData.flow_json) {
       workflowData.flow_json = JSON.stringify([]);
+    }
+    
+    // Vérifier que l'application existe
+    const appExists = await db.get('SELECT id FROM applications WHERE id = ?', [workflowData.application_id]);
+    if (!appExists) {
+      throw new Error(`L'application avec l'ID ${workflowData.application_id} n'existe pas`);
     }
     
     // Insertion en base de données
@@ -245,6 +301,13 @@ async function deleteWorkflow(id) {
   try {
     await initialize();
     
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.error(`[WORKFLOW] La table workflows n'a pas pu être vérifiée/créée, impossible de supprimer le workflow ${id}`);
+      throw new Error('Table workflows non disponible');
+    }
+    
     // Vérifier si le workflow existe
     const existingWorkflow = await getWorkflowById(id);
     if (!existingWorkflow) {
@@ -277,27 +340,39 @@ async function executeWorkflowForApplication(applicationId, inputData) {
   try {
     await initialize();
     
-    // Récupérer les workflows actifs pour cette application
-    const workflows = await db.query(`
-      SELECT * FROM workflows
-      WHERE application_id = ? AND is_active = 1
-      ORDER BY updated_at DESC
-      LIMIT 1
-    `, [applicationId]);
-    
-    if (!workflows || workflows.length === 0) {
-      console.log(`[WORKFLOW] Aucun workflow actif trouvé pour l'application ${applicationId}`);
+    // Vérifier et réparer la table workflows si nécessaire
+    const tableOK = await db.ensureWorkflowsTable();
+    if (!tableOK) {
+      console.warn(`[WORKFLOW] La table workflows n'a pas pu être vérifiée/créée, impossible d'exécuter un workflow pour l'application ${applicationId}`);
       return null;
     }
     
-    const workflow = workflows[0];
-    console.log(`[WORKFLOW] Exécution du workflow "${workflow.name}" pour l'application ${applicationId}`);
-    
-    // Utiliser la fonction executeWorkflow avec le workflow trouvé
-    return await executeWorkflow(workflow.id, inputData);
+    // Récupérer les workflows actifs pour cette application
+    try {
+      const workflows = await db.query(`
+        SELECT * FROM workflows
+        WHERE application_id = ? AND is_active = 1
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `, [applicationId]);
+      
+      if (!workflows || workflows.length === 0) {
+        console.log(`[WORKFLOW] Aucun workflow actif trouvé pour l'application ${applicationId}`);
+        return null;
+      }
+      
+      const workflow = workflows[0];
+      console.log(`[WORKFLOW] Exécution du workflow "${workflow.name}" pour l'application ${applicationId}`);
+      
+      // Utiliser la fonction executeWorkflow avec le workflow trouvé
+      return await executeWorkflow(workflow.id, inputData);
+    } catch (queryError) {
+      console.error(`[WORKFLOW] Erreur lors de la récupération des workflows pour l'application ${applicationId}:`, queryError);
+      return null;
+    }
   } catch (error) {
     console.error(`[WORKFLOW] Erreur lors de l'exécution du workflow pour l'application ${applicationId}:`, error);
-    throw error;
+    return null;
   }
 }
 

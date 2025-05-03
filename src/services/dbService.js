@@ -335,5 +335,6 @@ module.exports = {
   close,
   run,
   get,
-  query
+  query,
+  ensureWorkflowsTable
 };
