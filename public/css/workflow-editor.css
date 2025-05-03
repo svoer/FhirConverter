@@ -96,15 +96,21 @@
     overflow: hidden;
 }
 
-.workflow-editor-container,
-.workflow-canvas {
-    width: 100%;
-    height: 100%;
+.workflow-editor-container {
+    width: 100vw; /* Utiliser toute la largeur de la fenêtre */
+    height: 100vh; /* Utiliser toute la hauteur de la fenêtre */
     position: relative;
     overflow: hidden;
     color: #333;
     font-family: 'Roboto', sans-serif;
     border: none;
+}
+
+.workflow-canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
     /* Trois calques : une grille de 100px, une grille de 100px perpendiculaire, et un « pointillé » fin */
     background-image:
         linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
@@ -116,11 +122,12 @@
 
 /* Canva principal où les noeuds sont placés */
 .workflow-canvas {
-    transition: transform 0.2s;
+    transition: transform 0.2s ease-out;
     transform-origin: 0 0;
     min-width: 4000px;  /* Taille minimale large pour supporter les workflows complexes */
     min-height: 4000px; /* Taille minimale haute pour supporter les workflows complexes */
     position: absolute; /* Position absolue pour permettre un débordement contrôlé */
+    will-change: transform; /* Permet l'accélération GPU pour les transformations */
 }
 
 /* Palette de noeuds avec style neutre */
@@ -408,7 +415,7 @@
     stroke-linecap: round;
     pointer-events: auto;
     cursor: pointer;
-    transition: stroke 0.2s, stroke-width 0.2s;
+    transition: stroke 0.2s, stroke-width 0.2s, stroke-dashoffset 0.4s ease-out;
     /* Ajout d'une ombre légère pour plus de visibilité */
     filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.15));
 }
