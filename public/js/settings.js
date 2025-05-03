@@ -540,6 +540,89 @@ window.downloadAllTerminologyFiles = function() {
   }
 };
 
+// Fonction pour afficher les notifications
+function showNotification(message, type = 'success') {
+  // Utiliser une alerte simple si la fonction est appelée directement
+  if (typeof message === 'string') {
+    if (type === 'error') {
+      alert(`Erreur: ${message}`);
+    } else {
+      alert(message);
+    }
+  }
+}
+
+// Fonction pour afficher les erreurs
+function showError(message) {
+  showNotification(message, 'error');
+}
+
+// Fonction pour prévisualiser un fichier de terminologie
+window.viewTerminologyFile = async function(filename) {
+  try {
+    // Afficher le modal
+    const modal = document.getElementById('file-preview-modal');
+    const modalTitle = document.getElementById('file-preview-title');
+    const modalContent = document.getElementById('file-preview-content');
+    
+    if (!modal || !modalTitle || !modalContent) {
+      alert('Erreur: Éléments du modal introuvables');
+      return;
+    }
+    
+    // Mettre à jour le titre et montrer le modal
+    modalTitle.textContent = `Prévisualisation: ${filename}`;
+    modalContent.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Chargement du fichier...</div>';
+    modal.style.display = 'block';
+    
+    try {
+      // Récupérer le contenu du fichier
+      const response = await window.FHIRHubAuth.fetchWithAuth(`/api/terminology/files/${filename}`);
+      
+      if (!response) {
+        throw new Error('Réponse vide');
+      }
+      
+      // Formater et afficher le contenu JSON
+      let content = '';
+      if (typeof response === 'object') {
+        content = JSON.stringify(response, null, 2);
+      } else {
+        content = String(response);
+      }
+      
+      // Créer un élément pre pour afficher le JSON formaté
+      modalContent.innerHTML = `<pre class="json-content">${content}</pre>`;
+      
+    } catch (error) {
+      console.error(`Erreur fetch:`, error);
+      modalContent.innerHTML = `<div class="error-message">
+        <i class="fas fa-exclamation-circle"></i> 
+        Erreur lors du chargement: ${error.message || 'Erreur inconnue'}
+      </div>`;
+    }
+    
+    // Ajouter les gestionnaires d'événements pour fermer le modal
+    const closeButtons = modal.querySelectorAll('.close, .close-modal');
+    closeButtons.forEach(button => {
+      button.onclick = function() {
+        modal.style.display = 'none';
+      }
+    });
+    
+    // Fermer le modal en cliquant à l'extérieur
+    window.onclick = function(event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+    
+  } catch (error) {
+    console.error(`Erreur lors de l'affichage du fichier ${filename}:`, error);
+    alert(`Erreur lors de l'affichage du fichier: ${error.message}`);
+  }
+};
+
 // Fonction pour supprimer un fichier de terminologie
 window.deleteTerminologyFile = function(filename) {
   if (!confirm(`Êtes-vous sûr de vouloir supprimer le fichier ${filename} ? Cette action est irréversible.`)) {
@@ -556,18 +639,18 @@ window.deleteTerminologyFile = function(filename) {
         loadTerminologyFiles();
         // Recharger les statistiques
         loadTerminologyStats();
-        alert(`Le fichier ${filename} a été supprimé avec succès.`);
+        showNotification(`Le fichier ${filename} a été supprimé avec succès.`);
       } else {
-        alert(`Erreur lors de la suppression: ${response.message || 'Réponse invalide'}`);
+        showError(`Erreur lors de la suppression: ${response.message || 'Réponse invalide'}`);
       }
     })
     .catch(error => {
       console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
-      alert(`Erreur lors de la suppression: ${error.message}`);
+      showError(`Erreur lors de la suppression: ${error.message}`);
     });
   } catch (error) {
     console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
-    alert(`Erreur lors de la suppression: ${error.message}`);
+    showError(`Erreur lors de la suppression: ${error.message}`);
   }
 };
 
