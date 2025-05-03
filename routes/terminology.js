@@ -13,29 +13,69 @@ const logger = require('../src/utils/logger');
 const TERMINOLOGY_DIR = path.join(__dirname, '..', 'french_terminology');
 
 // Route pour obtenir la liste des fichiers de terminologie
-router.get('/files', authMiddleware.authenticatedOrApiKey, async (req, res) => {
+router.get('/files', authMiddleware.authenticatedOrApiKey, (req, res) => {
   try {
+    console.log('[TERMINOLOGY] Récupération de la liste des fichiers de terminologie');
+    
+    // Vérifier si l'utilisateur est authentifié ou si une clé API est utilisée
+    const userInfo = req.user 
+      ? `utilisateur ${req.user.username}` 
+      : (req.apiKey ? `clé API ${req.apiKey.id}` : 'non authentifié');
+    console.log(`[TERMINOLOGY] Requête par: ${userInfo}`);
+    
+    // Créer le dossier s'il n'existe pas
     if (!fs.existsSync(TERMINOLOGY_DIR)) {
-      fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
-      logger.info(`[TERMINOLOGY] Dossier de terminologie créé: ${TERMINOLOGY_DIR}`);
+      try {
+        fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
+        logger.info(`[TERMINOLOGY] Dossier de terminologie créé: ${TERMINOLOGY_DIR}`);
+      } catch (dirError) {
+        logger.error(`[TERMINOLOGY] Erreur lors de la création du dossier: ${dirError.message}`);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la création du dossier de terminologie',
+          error: dirError.message
+        });
+      }
     }
 
     // Lire le contenu du dossier
-    const files = fs.readdirSync(TERMINOLOGY_DIR)
-      .filter(file => file.endsWith('.json') && !file.startsWith('.'))
-      .map(file => {
-        const filePath = path.join(TERMINOLOGY_DIR, file);
-        const stats = fs.statSync(filePath);
-        
-        // Récupérer des informations de base sur le fichier
-        return {
-          name: file,
-          size: stats.size,
-          lastModified: stats.mtime
-        };
+    let files = [];
+    try {
+      const dirContents = fs.readdirSync(TERMINOLOGY_DIR);
+      files = dirContents
+        .filter(file => file.endsWith('.json') && !file.startsWith('.'))
+        .map(file => {
+          try {
+            const filePath = path.join(TERMINOLOGY_DIR, file);
+            const stats = fs.statSync(filePath);
+            
+            // Récupérer des informations de base sur le fichier
+            return {
+              name: file,
+              size: stats.size,
+              lastModified: stats.mtime
+            };
+          } catch (fileError) {
+            logger.warn(`[TERMINOLOGY] Erreur lors de l'accès au fichier ${file}: ${fileError.message}`);
+            return {
+              name: file,
+              size: 0,
+              lastModified: new Date(),
+              error: 'Erreur d\'accès au fichier'
+            };
+          }
+        });
+    } catch (readError) {
+      logger.error(`[TERMINOLOGY] Erreur lors de la lecture du dossier: ${readError.message}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la lecture du dossier de terminologie',
+        error: readError.message
       });
+    }
 
     // Renvoyer la liste des fichiers
+    console.log(`[TERMINOLOGY] ${files.length} fichiers de terminologie trouvés`);
     return res.status(200).json({
       success: true,
       data: files
@@ -51,16 +91,45 @@ router.get('/files', authMiddleware.authenticatedOrApiKey, async (req, res) => {
 });
 
 // Route pour obtenir les statistiques de terminologie
-router.get('/stats', authMiddleware.authenticatedOrApiKey, async (req, res) => {
+router.get('/stats', authMiddleware.authenticatedOrApiKey, (req, res) => {
   try {
+    console.log('[TERMINOLOGY] Récupération des statistiques de terminologie');
+    
+    // Vérifier si l'utilisateur est authentifié ou si une clé API est utilisée
+    const userInfo = req.user 
+      ? `utilisateur ${req.user.username}` 
+      : (req.apiKey ? `clé API ${req.apiKey.id}` : 'non authentifié');
+    console.log(`[TERMINOLOGY] Requête stats par: ${userInfo}`);
+    
+    // Créer le dossier s'il n'existe pas
     if (!fs.existsSync(TERMINOLOGY_DIR)) {
-      fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
-      logger.info(`[TERMINOLOGY] Dossier de terminologie créé: ${TERMINOLOGY_DIR}`);
+      try {
+        fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
+        logger.info(`[TERMINOLOGY] Dossier de terminologie créé: ${TERMINOLOGY_DIR}`);
+      } catch (dirError) {
+        logger.error(`[TERMINOLOGY] Erreur lors de la création du dossier: ${dirError.message}`);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la création du dossier de terminologie',
+          error: dirError.message
+        });
+      }
     }
 
     // Compter les fichiers
-    const files = fs.readdirSync(TERMINOLOGY_DIR)
-      .filter(file => file.endsWith('.json') && !file.startsWith('.'));
+    let files = [];
+    try {
+      files = fs.readdirSync(TERMINOLOGY_DIR)
+        .filter(file => file.endsWith('.json') && !file.startsWith('.'));
+      console.log(`[TERMINOLOGY] ${files.length} fichiers de terminologie trouvés`);
+    } catch (readError) {
+      logger.error(`[TERMINOLOGY] Erreur lors de la lecture du dossier: ${readError.message}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la lecture du dossier de terminologie',
+        error: readError.message
+      });
+    }
     
     // Vérifier si le fichier de configuration existe
     const configFile = path.join(TERMINOLOGY_DIR, 'config.json');
@@ -74,9 +143,13 @@ router.get('/stats', authMiddleware.authenticatedOrApiKey, async (req, res) => {
         const configData = fs.readFileSync(configFile, 'utf8');
         const parsedConfig = JSON.parse(configData);
         config = { ...config, ...parsedConfig };
+        console.log('[TERMINOLOGY] Fichier de configuration chargé avec succès');
       } catch (configError) {
         logger.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier de configuration: ${configError.message}`);
+        console.log('[TERMINOLOGY] Utilisation de la configuration par défaut');
       }
+    } else {
+      console.log('[TERMINOLOGY] Fichier de configuration non trouvé, utilisation des valeurs par défaut');
     }
 
     // Compter les systèmes et OIDs
@@ -91,10 +164,13 @@ router.get('/stats', authMiddleware.authenticatedOrApiKey, async (req, res) => {
         const parsedSystems = JSON.parse(systemsData);
         if (Array.isArray(parsedSystems)) {
           systemsCount = parsedSystems.length;
+          console.log(`[TERMINOLOGY] ${systemsCount} systèmes de terminologie trouvés`);
         }
       } catch (error) {
         logger.error(`[TERMINOLOGY] Erreur lors de la lecture des systèmes: ${error.message}`);
       }
+    } else {
+      console.log('[TERMINOLOGY] Fichier des systèmes de terminologie non trouvé');
     }
 
     // Si le fichier des OIDs existe, compter les entrées
@@ -105,13 +181,17 @@ router.get('/stats', authMiddleware.authenticatedOrApiKey, async (req, res) => {
         const parsedOids = JSON.parse(oidsData);
         if (Array.isArray(parsedOids)) {
           oidsCount = parsedOids.length;
+          console.log(`[TERMINOLOGY] ${oidsCount} OIDs trouvés`);
         }
       } catch (error) {
         logger.error(`[TERMINOLOGY] Erreur lors de la lecture des OIDs: ${error.message}`);
       }
+    } else {
+      console.log('[TERMINOLOGY] Fichier des OIDs non trouvé');
     }
 
     // Renvoyer les statistiques
+    console.log('[TERMINOLOGY] Statistiques récupérées avec succès');
     return res.status(200).json({
       success: true,
       data: {

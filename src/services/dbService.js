@@ -329,6 +329,86 @@ function ensureConnection() {
   }
 }
 
+/**
+ * Vérifie et répare les tables si nécessaire
+ * @param {Array<string>} tableNames - Liste des noms de tables à vérifier
+ * @returns {Promise<Object>} Résultat de la vérification avec les tables manquantes et créées
+ */
+async function ensureTables(tableNames = []) {
+  if (!tableNames || !Array.isArray(tableNames) || tableNames.length === 0) {
+    // Par défaut, vérifier toutes les tables principales
+    tableNames = [
+      'users', 'applications', 'api_keys', 'workflows', 
+      'conversion_logs', 'system_logs', 'ai_providers'
+    ];
+  }
+  
+  try {
+    console.log(`[DB] Vérification de ${tableNames.length} tables...`);
+    
+    // Vérifier si les tables existent
+    const existingTables = new Set();
+    try {
+      const tables = await query('SELECT name FROM sqlite_master WHERE type="table"');
+      tables.forEach(table => existingTables.add(table.name));
+      console.log(`[DB] Tables existantes: ${Array.from(existingTables).join(', ')}`);
+    } catch (error) {
+      console.error('[DB] Erreur lors de la vérification des tables existantes:', error);
+    }
+    
+    // Importer le schéma
+    const schema = require('../db/schema');
+    
+    // Résultats
+    const result = {
+      verified: tableNames.length,
+      missing: [],
+      created: [],
+      failed: []
+    };
+    
+    // Vérifier et créer les tables manquantes
+    for (const tableName of tableNames) {
+      if (!existingTables.has(tableName)) {
+        console.log(`[DB] Table manquante: ${tableName}`);
+        result.missing.push(tableName);
+        
+        try {
+          const schemaConst = `${tableName.toUpperCase()}_SCHEMA`;
+          if (schema[schemaConst]) {
+            const tableSchema = schema[schemaConst];
+            const createTableQuery = `CREATE TABLE IF NOT EXISTS ${tableSchema.tableName} (${tableSchema.columns})`;
+            
+            console.log(`[DB] Création de la table ${tableName}...`);
+            await run(createTableQuery);
+            
+            // Vérifier que la table a été créée
+            const checkTable = await get(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, [tableName]);
+            if (checkTable) {
+              console.log(`[DB] Table ${tableName} créée avec succès`);
+              result.created.push(tableName);
+            } else {
+              console.error(`[DB] Échec de la création de la table ${tableName}`);
+              result.failed.push(tableName);
+            }
+          } else {
+            console.error(`[DB] Schéma pour la table ${tableName} non trouvé`);
+            result.failed.push(tableName);
+          }
+        } catch (createError) {
+          console.error(`[DB] Erreur lors de la création de la table ${tableName}:`, createError);
+          result.failed.push(tableName);
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[DB] Erreur lors de la vérification des tables:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   initialize,
   isInitialized,
@@ -336,5 +416,6 @@ module.exports = {
   run,
   get,
   query,
-  ensureWorkflowsTable
+  ensureWorkflowsTable,
+  ensureTables
 };
