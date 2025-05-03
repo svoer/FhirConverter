@@ -388,18 +388,18 @@ function parseHL7Message(hl7Message) {
         <h2>Types de Messages HL7 supportés</h2>
         <p>FHIRHub est conçu pour prendre en charge différents types de messages HL7, avec une prise en charge complète des messages ADT et une extension progressive vers d'autres types.</p>
         
-        <h3>Documentation détaillée par type de message</h3>
-        <p>Une documentation technique détaillée est disponible pour chaque type de message, accessible dans le dossier <code>docs/message_types</code> du projet :</p>
+        <h3>Implémentation des types de messages</h3>
+        <p>L'implémentation des types de messages est modularisée à travers le système de mappeurs spécialisés qui sont automatiquement sélectionnés selon le type de message détecté.</p>
         
         <div class="tech-spec">
-          <div class="tech-spec-title">Types de messages documentés</div>
+          <div class="tech-spec-title">Types de messages pris en charge</div>
           <table class="terminology-mapping">
             <thead>
               <tr>
                 <th>Type</th>
                 <th>Description</th>
                 <th>Statut</th>
-                <th>Documentation</th>
+                <th>Ressources FHIR générées</th>
               </tr>
             </thead>
             <tbody>
@@ -407,39 +407,76 @@ function parseHL7Message(hl7Message) {
                 <td><strong>ADT</strong></td>
                 <td>Admission, Discharge, Transfer</td>
                 <td><span style="color: #28a745;">Implémenté</span></td>
-                <td><a href="/docs/message_types/ADT" target="_blank">Documentation ADT</a></td>
+                <td>Patient, Encounter, Location, EpisodeOfCare</td>
               </tr>
               <tr>
                 <td><strong>ORU</strong></td>
                 <td>Observation Results Unsolicited</td>
                 <td><span style="color: #ffc107;">Documentation</span></td>
-                <td>
-                  <a href="/docs/message_types/ORU" target="_blank">README</a> | 
-                  <a href="/docs/message_types/ORU/MAPPING" target="_blank">Mapping</a> | 
-                  <a href="/docs/message_types/ORU/REQUIREMENTS" target="_blank">Requirements</a>
-                </td>
+                <td>Patient, Observation, DiagnosticReport, Specimen</td>
               </tr>
               <tr>
                 <td><strong>SIU</strong></td>
                 <td>Scheduling Information Unsolicited</td>
                 <td><span style="color: #ffc107;">Documentation</span></td>
-                <td><a href="/docs/message_types/SIU" target="_blank">Documentation SIU</a></td>
+                <td>Patient, Appointment, Schedule, Slot</td>
               </tr>
               <tr>
                 <td><strong>MDM</strong></td>
                 <td>Medical Document Management</td>
                 <td><span style="color: #ffc107;">Documentation</span></td>
-                <td><a href="/docs/message_types/MDM" target="_blank">Documentation MDM</a></td>
+                <td>Patient, DocumentReference, Binary</td>
               </tr>
               <tr>
                 <td><strong>ORM</strong></td>
                 <td>Order Message</td>
                 <td><span style="color: #ffc107;">Documentation</span></td>
-                <td><a href="/docs/message_types/ORM" target="_blank">Documentation ORM</a></td>
+                <td>Patient, ServiceRequest, Task</td>
               </tr>
             </tbody>
           </table>
         </div>
+        
+        <h3>Détails d'implémentation ADT</h3>
+        <p>Le type ADT (Admission, Discharge, Transfer) est entièrement implémenté avec prise en charge des événements suivants :</p>
+        <ul>
+          <li><strong>ADT^A01</strong> - Admission d'un patient</li>
+          <li><strong>ADT^A02</strong> - Transfert d'un patient</li>
+          <li><strong>ADT^A03</strong> - Sortie d'un patient</li>
+          <li><strong>ADT^A04</strong> - Inscription d'un patient en consultation externe</li>
+          <li><strong>ADT^A05</strong> - Pré-admission d'un patient</li>
+          <li><strong>ADT^A08</strong> - Mise à jour des informations patient</li>
+          <li><strong>ADT^A11</strong> - Annulation d'admission</li>
+          <li><strong>ADT^A13</strong> - Annulation de sortie</li>
+          <li><strong>ADT^A28</strong> - Création d'un nouveau patient</li>
+          <li><strong>ADT^A31</strong> - Mise à jour des informations patient</li>
+          <li><strong>ADT^A40</strong> - Fusion d'identités patient</li>
+        </ul>
+        
+        <h4>Architecture du mapper ADT</h4>
+        <pre class="code-block">// Traitement spécifique pour messages ADT
+function processADTMessage(parsedMessage, bundle) {
+  const eventType = parsedMessage.trigger;
+  
+  // Patient à partir de PID
+  if (parsedMessage.segments.PID && parsedMessage.segments.PID.length > 0) {
+    const patient = mapPIDToPatient(parsedMessage.segments.PID[0], parsedMessage);
+    addResourceToBundle(bundle, patient);
+    
+    // Encounter/EpisodeOfCare selon le type d'événement
+    if (['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A08', 'A13'].includes(eventType)) {
+      if (parsedMessage.segments.PV1 && parsedMessage.segments.PV1.length > 0) {
+        const encounter = mapPV1ToEncounter(parsedMessage.segments.PV1[0], patient, parsedMessage);
+        addResourceToBundle(bundle, encounter);
+      }
+    }
+    
+    // Cas particulier des fusions d'identité (A40)
+    if (eventType === 'A40') {
+      processMergePatient(parsedMessage, bundle, patient);
+    }
+  }
+}</pre>v>
         
         <div class="info-box">
           <p><strong>Comment contribuer :</strong> Pour ajouter la prise en charge d'un nouveau type de message, consultez la documentation dans le dossier correspondant. Chaque dossier contient des informations détaillées sur les mappings entre les segments HL7 et les ressources FHIR, ainsi que les exigences pour l'implémentation.</p>
@@ -1135,7 +1172,7 @@ PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19
           </ul>
         </div>
         
-        <p>Pour des détails complets sur le système de cache, consultez la <a href="/docs/cache_system">documentation dédiée</a>.</p>
+        <p>Le système de cache intelligent assure des performances optimales pour toutes les conversions.</p>
         
         <h3>API de gestion du cache</h3>
         <div class="tech-spec">
@@ -1168,7 +1205,7 @@ PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19
           </ul>
         </div>
         
-        <p>Pour une description détaillée du schéma de base de données, y compris les relations entre les tables et les champs spécifiques, consultez la <a href="/docs/database_schema">documentation complète du schéma</a>.</p>
+        <p>Le schéma est conçu pour optimiser les performances tout en maintenant la cohérence des données à travers l'application.</p>
         
         <h3>Gestion des données</h3>
         <p>La base de données est automatiquement initialisée lors du premier démarrage de l'application. Des sauvegardes automatiques sont effectuées quotidiennement dans le dossier <code>data/backups</code>.</p>
@@ -1227,7 +1264,7 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
           </ul>
         </div>
         
-        <p>Pour une documentation complète sur le déploiement Docker, consultez <a href="/docs/docker_deployment">le guide détaillé de déploiement</a>.</p>
+        <p>L'approche Docker garantit un déploiement cohérent et reproductible dans tous les environnements.</p>
       </div>
       
       <div id="terminology-page" class="documentation-section">
