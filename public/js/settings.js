@@ -402,10 +402,21 @@ async function populateAppDropdown(selectId, selectedAppId = null) {
 // Gestion de chargement des applications
 async function loadApplications() {
   try {
-    const applicationsTable = document.getElementById('applications-table-body');
-    if (!applicationsTable) return;
+    console.log("Chargement des applications...");
     
-    applicationsTable.innerHTML = '<tr><td colspan="5" class="loading-row">Chargement des applications...</td></tr>';
+    // Support pour l'ancien ID de tableau et le nouveau
+    const applicationsTable = document.getElementById('applications-table-body');
+    const applicationsList = document.getElementById('applicationsList');
+    
+    // Choisir le bon élément cible
+    const targetElement = applicationsList || applicationsTable;
+    
+    if (!targetElement) {
+      console.error("Aucun élément cible trouvé pour les applications");
+      return;
+    }
+    
+    targetElement.innerHTML = '<tr><td colspan="5" class="loading-row">Chargement des applications...</td></tr>';
     
     const response = await window.FHIRHubAuth.fetchWithAuth('/api/applications');
     
@@ -416,12 +427,12 @@ async function loadApplications() {
     const applications = response.data;
     
     if (applications.length === 0) {
-      applicationsTable.innerHTML = '<tr><td colspan="5" class="empty-row">Aucune application trouvée</td></tr>';
+      targetElement.innerHTML = '<tr><td colspan="5" class="empty-row">Aucune application trouvée</td></tr>';
       return;
     }
     
     // Vider le tableau avant d'ajouter les applications
-    applicationsTable.innerHTML = '';
+    targetElement.innerHTML = '';
     
     // Ajouter les applications au tableau
     applications.forEach(app => {
@@ -433,10 +444,10 @@ async function loadApplications() {
       const formattedDate = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
       
       row.innerHTML = `
-        <td>${app.id}</td>
         <td>${app.name}</td>
-        <td>${app.description || ''}</td>
+        <td>${app.description || '-'}</td>
         <td>${formattedDate}</td>
+        <td>${app.api_key_count || 0}</td>
         <td class="actions">
           <button class="btn-edit" title="Modifier" onclick="editApplication(${app.id})">
             <i class="fas fa-edit"></i>
@@ -444,13 +455,10 @@ async function loadApplications() {
           <button class="btn-delete" title="Supprimer" onclick="deleteApplication(${app.id})">
             <i class="fas fa-trash"></i>
           </button>
-          <button class="btn-api-keys" title="Gérer les clés API" onclick="manageApiKeys(${app.id})">
-            <i class="fas fa-key"></i>
-          </button>
         </td>
       `;
       
-      applicationsTable.appendChild(row);
+      targetElement.appendChild(row);
     });
     console.log("Applications chargées avec succès:", applications.length);
     
@@ -460,8 +468,12 @@ async function loadApplications() {
   } catch (error) {
     console.error('Erreur lors du chargement des applications:', error);
     const applicationsTable = document.getElementById('applications-table-body');
-    if (applicationsTable) {
-      applicationsTable.innerHTML = `<tr><td colspan="5" class="empty-row error">Erreur: ${error.message}</td></tr>`;
+    const applicationsList = document.getElementById('applicationsList');
+    
+    // Choisir le bon élément cible pour afficher l'erreur
+    const targetElement = applicationsList || applicationsTable;
+    if (targetElement) {
+      targetElement.innerHTML = `<tr><td colspan="5" class="empty-row error">Erreur: ${error.message}</td></tr>`;
     }
   }
 }
@@ -1138,40 +1150,15 @@ async function loadApiKeys() {
     });
     
     console.log("Clés API chargées avec succès:", apiKeys.length);
-        expiresAt = expiresDate.toLocaleDateString() + ' ' + expiresDate.toLocaleTimeString();
-      }
-      
-      row.innerHTML = `
-        <td>${key.id}</td>
-        <td>${key.application_name}</td>
-        <td>
-          <div class="api-key-display">
-            <pre>${key.key}</pre>
-            <button class="btn-copy" title="Copier" onclick="copyToClipboard('${key.key}')">
-              <i class="fas fa-copy"></i>
-            </button>
-          </div>
-        </td>
-        <td>${key.description || ''}</td>
-        <td>${formattedDate}</td>
-        <td class="actions">
-          <button class="btn-toggle ${key.is_active ? 'active' : 'inactive'}" title="${key.is_active ? 'Désactiver' : 'Activer'}" onclick="toggleApiKey(${key.id}, ${!key.is_active})">
-            <i class="fas fa-${key.is_active ? 'toggle-on' : 'toggle-off'}"></i>
-          </button>
-          <button class="btn-delete" title="Supprimer" onclick="deleteApiKey(${key.id})">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
-      `;
-      
-      apiKeysTable.appendChild(row);
-    });
-    console.log("Clés API chargées avec succès:", apiKeys.length);
   } catch (error) {
     console.error('Erreur lors du chargement des clés API:', error);
     const apiKeysTable = document.getElementById('api-keys-table-body');
-    if (apiKeysTable) {
-      apiKeysTable.innerHTML = `<tr><td colspan="6" class="empty-row error">Erreur: ${error.message}</td></tr>`;
+    const apiKeysList = document.getElementById('apiKeysList');
+    
+    // Choisir le bon élément cible pour afficher l'erreur
+    const targetElement = apiKeysList || apiKeysTable;
+    if (targetElement) {
+      targetElement.innerHTML = `<tr><td colspan="6" class="empty-row error">Erreur: ${error.message}</td></tr>`;
     }
   }
 }
