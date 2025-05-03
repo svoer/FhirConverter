@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const mobileToggle = document.getElementById('sidebar-toggle-mobile');
   const searchInput = document.getElementById('global-search');
   const searchResults = document.getElementById('search-results');
+  const favoritesList = document.getElementById('favorites-list');
+  const favoriteButtons = document.querySelectorAll('.favorite-btn');
   
   // Structure de navigation pour la recherche
   const navigationItems = [
@@ -190,9 +192,143 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Système de gestion des favoris
+  function initFavorites() {
+    // Charger les favoris depuis localStorage
+    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    
+    // Mettre à jour l'affichage des boutons favoris avec leur état actuel
+    favoriteButtons.forEach(btn => {
+      const url = btn.getAttribute('data-url');
+      if (favorites.includes(url)) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-star"></i>'; // Étoile pleine
+        btn.setAttribute('title', 'Retirer des favoris');
+      }
+    });
+    
+    // Mettre à jour la liste des favoris dans le menu
+    updateFavoritesList(favorites);
+    
+    // Ajouter les écouteurs d'événements aux boutons favoris
+    favoriteButtons.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const url = this.getAttribute('data-url');
+        toggleFavorite(url, this);
+      });
+    });
+  }
+  
+  // Mettre à jour la liste des favoris dans le menu
+  function updateFavoritesList(favorites) {
+    if (!favoritesList) return;
+    
+    if (favorites.length === 0) {
+      favoritesList.innerHTML = '<li><p class="no-favorites">Aucun favori</p></li>';
+      return;
+    }
+    
+    // Créer des éléments de menu pour chaque favori
+    const items = favorites.map(url => {
+      // Trouver les informations de navigation correspondantes
+      const navItem = navigationItems.find(item => item.url === url);
+      if (!navItem) return '';
+      
+      return `
+        <li>
+          <a href="${url}">
+            <i class="${getIconForUrl(url)}"></i> ${navItem.title}
+            <button class="favorite-btn remove-favorite" data-url="${url}" title="Retirer des favoris">
+              <i class="fas fa-times"></i>
+            </button>
+          </a>
+        </li>
+      `;
+    });
+    
+    favoritesList.innerHTML = items.join('');
+    
+    // Ajouter des écouteurs d'événements aux boutons de suppression
+    document.querySelectorAll('.remove-favorite').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const url = this.getAttribute('data-url');
+        toggleFavorite(url);
+      });
+    });
+  }
+  
+  // Ajouter ou supprimer un favori
+  function toggleFavorite(url, button) {
+    // Récupérer les favoris actuels
+    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    
+    // Vérifier si l'URL est déjà dans les favoris
+    const index = favorites.indexOf(url);
+    
+    if (index === -1) {
+      // Ajouter aux favoris
+      favorites.push(url);
+      if (button) {
+        button.classList.add('active');
+        button.innerHTML = '<i class="fas fa-star"></i>';
+        button.setAttribute('title', 'Retirer des favoris');
+      }
+    } else {
+      // Retirer des favoris
+      favorites.splice(index, 1);
+      if (button) {
+        button.classList.remove('active');
+        button.innerHTML = '<i class="far fa-star"></i>';
+        button.setAttribute('title', 'Ajouter aux favoris');
+      }
+      
+      // Mettre à jour tous les boutons correspondant à cette URL
+      document.querySelectorAll(`.favorite-btn[data-url="${url}"]`).forEach(btn => {
+        if (btn !== button) {
+          btn.classList.remove('active');
+          btn.innerHTML = '<i class="far fa-star"></i>';
+          btn.setAttribute('title', 'Ajouter aux favoris');
+        }
+      });
+    }
+    
+    // Enregistrer les favoris mis à jour
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+    
+    // Mettre à jour l'affichage de la liste des favoris
+    updateFavoritesList(favorites);
+  }
+  
+  // Obtenir l'icône appropriée pour une URL
+  function getIconForUrl(url) {
+    const iconMap = {
+      '/dashboard.html': 'fas fa-chart-line',
+      '/convert.html': 'fas fa-exchange-alt',
+      '/applications.html': 'fas fa-th',
+      '/api-keys.html': 'fas fa-key',
+      '/users.html': 'fas fa-users',
+      '/terminologies.html': 'fas fa-book-medical',
+      '/workflows.html': 'fas fa-project-diagram',
+      '/ai-settings.html': 'fas fa-robot',
+      '/documentation.html': 'fas fa-file-alt',
+      '/api-docs/': 'fas fa-code'
+    };
+    
+    return iconMap[url] || 'fas fa-link';
+  }
+
   // Initialiser l'état du menu
   initSidebarState();
   
   // Définir la page active
   setActivePage();
+  
+  // Initialiser le système de favoris
+  initFavorites();
 });

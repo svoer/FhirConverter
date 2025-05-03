@@ -270,6 +270,7 @@
   transition: var(--transition-quick);
   position: relative;
   border-left: 3px solid transparent;
+  justify-content: space-between; /* Permet de mettre l'icône étoile à droite */
 }
 
 .nav-menu a:hover {
@@ -287,6 +288,44 @@
   margin-right: 10px;
   font-size: 1.1rem;
   text-align: center;
+}
+
+/* Style pour le bouton d'ajout aux favoris */
+.favorite-btn {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px;
+  margin-left: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.favorite-btn:hover {
+  color: #f39c12;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.favorite-btn.active i {
+  color: #f39c12; /* Étoile jaune quand activée */
+  font-weight: 900; /* Étoile pleine (fa-star) au lieu de fa-star-o */
+}
+
+/* Structure parent-enfant dans le lien */
+.nav-menu a > span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.nav-menu a > span i {
+  margin-right: 10px;
 }
 
 /* Badge et compteurs */
@@ -317,6 +356,26 @@
 .favorites-divider i {
   color: #f39c12;
   margin-right: 5px;
+}
+
+/* Styles pour la liste des favoris */
+#favorites-list {
+  margin-bottom: 15px;
+}
+
+.no-favorites {
+  padding: 10px 20px;
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.remove-favorite {
+  color: #e74c3c !important;
+}
+
+.remove-favorite:hover {
+  background-color: rgba(231, 76, 60, 0.1);
 }
 
 /* Contenu principal */
