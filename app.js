@@ -156,6 +156,11 @@ function initDb() {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL,
+      email TEXT,
+      last_login TEXT,
+      preferences TEXT,
+      language TEXT DEFAULT 'fr',
+      updated_at TEXT,
       created_at TEXT NOT NULL
     )`);
     

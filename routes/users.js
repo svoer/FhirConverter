@@ -89,6 +89,83 @@ router.get('/', authCombined, async (req, res) => {
 
 /**
  * @swagger
+ * /api/users/stats:
+ *   get:
+ *     summary: Récupérer les statistiques de l'utilisateur connecté
+ *     description: Permet à un utilisateur de récupérer ses propres statistiques (conversions, date de création, etc.)
+ *     tags:
+ *       - Utilisateurs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     conversionCount:
+ *                       type: integer
+ *                       description: Nombre de conversions effectuées
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Date de création du compte
+ *                     lastLogin:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Date de dernière connexion
+ *       401:
+ *         description: Non autorisé
+ */
+router.get('/stats', authCombined, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise.'
+      });
+    }
+    
+    const userId = req.user.id;
+    const db = req.app.locals.db;
+    
+    // Récupérer le nombre de conversions
+    const conversionCountResult = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE user_id = ?').get(userId);
+    
+    // Récupérer les informations de l'utilisateur
+    const userDetails = db.prepare('SELECT created_at, last_login FROM users WHERE id = ?').get(userId);
+    
+    // Construire la réponse
+    const stats = {
+      conversionCount: conversionCountResult ? conversionCountResult.count : 0,
+      createdAt: userDetails ? userDetails.created_at : null,
+      lastLogin: userDetails ? userDetails.last_login : null
+    };
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('[USERS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des statistiques utilisateur'
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/users/{id}:
  *   get:
  *     summary: Récupérer un utilisateur par son ID
@@ -584,6 +661,243 @@ router.delete('/:id', authCombined, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression de l\'utilisateur'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/users/{id}/change-password:
+ *   post:
+ *     summary: Changer le mot de passe d'un utilisateur
+ *     description: Permet à un utilisateur de changer son propre mot de passe ou à un administrateur de changer celui d'un autre utilisateur
+ *     tags:
+ *       - Utilisateurs
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'utilisateur
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: Mot de passe actuel
+ *               newPassword:
+ *                 type: string
+ *                 description: Nouveau mot de passe
+ *     responses:
+ *       200:
+ *         description: Mot de passe mis à jour avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Mot de passe mis à jour avec succès
+ *       400:
+ *         description: Requête invalide ou mot de passe actuel incorrect
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Accès refusé
+ *       404:
+ *         description: Utilisateur non trouvé
+ */
+router.post('/:id/change-password', authCombined, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est authentifié
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise.'
+      });
+    }
+    
+    const userId = parseInt(req.params.id);
+    
+    // Vérifier les permissions (un utilisateur ne peut changer que son propre mot de passe, un admin peut changer n'importe lequel)
+    if (req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Vous ne pouvez modifier que votre propre mot de passe.'
+      });
+    }
+    
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validation des données
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe actuel et le nouveau mot de passe sont requis'
+      });
+    }
+    
+    const db = req.app.locals.db;
+    
+    // Vérifier si l'utilisateur existe
+    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+    
+    // Vérifier que le mot de passe actuel est correct (sauf pour les administrateurs qui changent un autre mot de passe)
+    if (req.user.id === userId) {
+      const isPasswordCorrect = verifyPassword(currentPassword, user.password);
+      if (!isPasswordCorrect) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mot de passe actuel incorrect'
+        });
+      }
+    }
+    
+    // Hachage du nouveau mot de passe
+    const hashedPassword = hashPassword(newPassword);
+    
+    // Mise à jour du mot de passe
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
+    
+    res.json({
+      success: true,
+      message: 'Mot de passe mis à jour avec succès'
+    });
+  } catch (error) {
+    console.error('[USERS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du mot de passe'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/users/{id}/preferences:
+ *   put:
+ *     summary: Mettre à jour les préférences d'un utilisateur
+ *     description: Permet à un utilisateur de mettre à jour ses préférences ou à un administrateur de mettre à jour celles d'un autre utilisateur
+ *     tags:
+ *       - Utilisateurs
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'utilisateur
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               emailNotifications:
+ *                 type: boolean
+ *                 description: Recevoir des notifications par email
+ *               systemNotifications:
+ *                 type: boolean
+ *                 description: Recevoir des notifications dans l'application
+ *     responses:
+ *       200:
+ *         description: Préférences mises à jour avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Préférences mises à jour avec succès
+ *       401:
+ *         description: Non autorisé
+ *       403:
+ *         description: Accès refusé
+ *       404:
+ *         description: Utilisateur non trouvé
+ */
+router.put('/:id/preferences', authCombined, async (req, res) => {
+  try {
+    // Vérifier si l'utilisateur est authentifié
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise.'
+      });
+    }
+    
+    const userId = parseInt(req.params.id);
+    
+    // Vérifier les permissions (un utilisateur ne peut modifier que ses propres préférences, un admin peut modifier n'importe lesquelles)
+    if (req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Vous ne pouvez modifier que vos propres préférences.'
+      });
+    }
+    
+    const { emailNotifications, systemNotifications } = req.body;
+    
+    const db = req.app.locals.db;
+    
+    // Vérifier si l'utilisateur existe
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+    
+    // Construire le JSON des préférences
+    const preferences = {
+      notifications: {
+        email: !!emailNotifications,
+        system: !!systemNotifications
+      }
+    };
+    
+    // Mettre à jour les préférences
+    db.prepare('UPDATE users SET preferences = ? WHERE id = ?').run(JSON.stringify(preferences), userId);
+    
+    res.json({
+      success: true,
+      message: 'Préférences mises à jour avec succès'
+    });
+  } catch (error) {
+    console.error('[USERS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour des préférences'
     });
   }
 });

@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Obtenir les statistiques d'un utilisateur
+// Obtenir les statistiques d'un utilisateur - IMPORTANT: cette route doit être placée AVANT la route /:id
 router.get('/stats', async (req, res) => {
   try {
     const userId = req.user.id;
