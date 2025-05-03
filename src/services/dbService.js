@@ -176,6 +176,48 @@ async function createTables() {
 }
 
 /**
+ * Vérifie et répare la table workflows si nécessaire
+ * @returns {Promise<boolean>} true si la table existe ou a été créée avec succès
+ */
+async function ensureWorkflowsTable() {
+  try {
+    // Vérifier si la table workflows existe
+    const tableExists = await get("SELECT name FROM sqlite_master WHERE type='table' AND name='workflows'");
+    
+    if (!tableExists) {
+      console.log('[DB] Table workflows manquante, création en cours...');
+      
+      // Importer le schéma de la table workflows
+      const schema = require('../db/schema');
+      const workflowsSchema = schema.WORKFLOWS_SCHEMA;
+      
+      // Créer la table
+      const createTableQuery = `CREATE TABLE IF NOT EXISTS ${workflowsSchema.tableName} (${workflowsSchema.columns})`;
+      console.log('[DB] Création de la table workflows:', createTableQuery.split('\n')[0]);
+      
+      await run(createTableQuery);
+      
+      // Vérifier que la table a été créée
+      const checkTable = await get("SELECT name FROM sqlite_master WHERE type='table' AND name='workflows'");
+      
+      if (checkTable) {
+        console.log('[DB] Table workflows créée avec succès');
+        return true;
+      } else {
+        console.error('[DB] Échec de la création de la table workflows');
+        return false;
+      }
+    } else {
+      console.log('[DB] Table workflows existe déjà');
+      return true;
+    }
+  } catch (error) {
+    console.error('[DB] Erreur lors de la vérification/création de la table workflows:', error);
+    return false;
+  }
+}
+
+/**
  * Fermer la connexion à la base de données
  * @returns {Promise<void>}
  */
