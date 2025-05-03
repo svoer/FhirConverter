@@ -1,5 +1,10 @@
 // Script pour inclure le menu latéral dans toutes les pages
 document.addEventListener('DOMContentLoaded', function() {
+  // Ne pas exécuter pour la page de login
+  if (window.location.pathname === '/login.html' || window.location.pathname === '/index.html') {
+    return;
+  }
+  
   // Variable pour éviter les boucles infinies
   if (window.sidebarLoaded) return;
   window.sidebarLoaded = true;
@@ -27,11 +32,16 @@ document.addEventListener('DOMContentLoaded', function() {
         targetElement.insertBefore(nodes[i], targetElement.firstChild);
       }
       
-      // Initialiser directement le menu latéral sans déclencher un nouvel événement DOMContentLoaded
-      if (typeof initSidebar === 'function') {
-        initSidebar();
+      // Initialiser le menu latéral
+      if (typeof window.initSidebar === 'function') {
+        setTimeout(() => {
+          window.initSidebar();
+          console.log('Menu latéral initialisé avec succès');
+        }, 100);
       } else {
-        // Fonction simplifiée d'initialisation du menu
+        console.warn('Fonction initSidebar non trouvée, utilisation du fallback');
+        
+        // Fonction simplifiée d'initialisation du menu (fallback)
         const menuToggle = document.getElementById('menu-toggle');
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('main-content');
@@ -50,6 +60,15 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
           });
+        });
+        
+        // Marquer la page active dans le menu
+        const currentPath = window.location.pathname;
+        const menuLinks = document.querySelectorAll('.nav-menu a');
+        menuLinks.forEach(link => {
+          if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+          }
         });
       }
     })

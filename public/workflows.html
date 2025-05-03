@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/workflow-editor.css">
     <!-- Style spécifique pour la page des workflows -->
     <link rel="stylesheet" href="/css/workflows.css">
+    <link rel="stylesheet" href="/css/sidebar-menu.css">
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -25,6 +26,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/lint/lint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/addon/lint/json-lint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
+    
+    <!-- Inclusion du menu latéral -->
+    <script src="/js/include-sidebar.js" defer></script>
+    <script src="/js/sidebar-menu-new.js" defer></script>
     <style>
         .workflow-grid {
             display: flex;
@@ -391,27 +396,7 @@
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <div class="logo">
-                <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
-                <span>FHIRHub</span>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Tableau de bord</a></li>
-                <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Conversion</a></li>
-                <li><a href="/applications.html"><i class="fas fa-th"></i> Applications</a></li>
-                <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
-                <li><a href="/users.html"><i class="fas fa-users"></i> Utilisateurs</a></li>
-                <li><a href="/terminologies.html"><i class="fas fa-book-medical"></i> Terminologies</a></li>
-                <li><a href="/workflows.html" class="active"><i class="fas fa-project-diagram"></i> Workflows</a></li>
-                <li><a href="/ai-settings.html"><i class="fas fa-robot"></i> Paramètres IA</a></li>
-                <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
-                <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
-                <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
-            </ul>
-        </div>
-    </header>
+    <!-- Le menu latéral sera chargé par include-sidebar.js -->
 
     <div class="main-content">
         <div class="container">
