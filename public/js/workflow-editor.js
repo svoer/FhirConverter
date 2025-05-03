@@ -141,29 +141,69 @@ class WorkflowEditor {
    * Centre le canvas pour que la vue soit au milieu du grand canvas
    * ou centre un point spécifique si des coordonnées sont fournies
    * @param {Object} point - Point à centrer { x, y }, optionnel
+   * @param {boolean} animate - Indique si le centrage doit être animé, par défaut à true
    */
-  centerCanvas(point = null) {
+  centerCanvas(point = null, animate = true) {
     // Obtenir les dimensions du conteneur
     const containerRect = this.container.getBoundingClientRect();
     
-    if (point) {
-      // Centrer sur le point spécifié
-      this.offset.x = containerRect.width / 2 - point.x * this.scale;
-      this.offset.y = containerRect.height / 2 - point.y * this.scale;
-    } else {
-      // Centrer le canvas sur le point 2000,2000 (le milieu que nous utilisons pour le placement des nœuds)
-      // Plutôt que d'utiliser la taille complète du canvas (4000,4000)
-      const targetX = 2000;
-      const targetY = 2000;
+    // Déterminer les coordonnées cibles
+    const targetX = point ? 
+      containerRect.width / 2 - point.x * this.scale : 
+      containerRect.width / 2 - 2000 * this.scale; // 2000 = milieu du canvas
       
-      this.offset.x = containerRect.width / 2 - targetX * this.scale;
-      this.offset.y = containerRect.height / 2 - targetY * this.scale;
-      
-      console.log(`[Workflow] Centrage du canvas: offset calculé (${this.offset.x}, ${this.offset.y})`);
-    }
+    const targetY = point ?
+      containerRect.height / 2 - point.y * this.scale :
+      containerRect.height / 2 - 2000 * this.scale; // 2000 = milieu du canvas
     
-    // Mettre à jour la transformation
-    this.updateTransform();
+    if (animate) {
+      // Animation douce du centrage avec requestAnimationFrame
+      const startX = this.offset.x;
+      const startY = this.offset.y;
+      const deltaX = targetX - startX;
+      const deltaY = targetY - startY;
+      const duration = 300; // durée en ms
+      const startTime = performance.now();
+      
+      const animateCenter = (currentTime) => {
+        const elapsedTime = currentTime - startTime;
+        const progress = Math.min(elapsedTime / duration, 1);
+        
+        // Fonction d'ease-out pour une animation plus naturelle
+        const easeOutProgress = 1 - Math.pow(1 - progress, 2);
+        
+        this.offset.x = startX + deltaX * easeOutProgress;
+        this.offset.y = startY + deltaY * easeOutProgress;
+        
+        this.updateTransform();
+        
+        if (progress < 1) {
+          requestAnimationFrame(animateCenter);
+        } else {
+          // Mise à jour des arêtes une fois l'animation terminée
+          this.updateEdges();
+          
+          if (point) {
+            console.log(`[Workflow] Canvas centré sur le point (${point.x}, ${point.y})`);
+          } else {
+            console.log(`[Workflow] Canvas centré sur le milieu du canvas`);
+          }
+        }
+      };
+      
+      requestAnimationFrame(animateCenter);
+    } else {
+      // Sans animation, mise à jour immédiate
+      this.offset.x = targetX;
+      this.offset.y = targetY;
+      this.updateTransform();
+      
+      if (point) {
+        console.log(`[Workflow] Canvas centré immédiatement sur le point (${point.x}, ${point.y})`);
+      } else {
+        console.log(`[Workflow] Canvas centré immédiatement sur le milieu du canvas`);
+      }
+    }
   }
   
   /**
@@ -2195,32 +2235,71 @@ class WorkflowEditor {
    * Effectue un zoom à une échelle donnée
    * @param {number} scale - Facteur de zoom
    * @param {Object} center - Point central du zoom { x, y }
+   * @param {boolean} animate - Indique si le zoom doit être animé, par défaut à true
    */
-  zoom(scale, center = { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 }) {
+  zoom(scale, center = { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 }, animate = true) {
     const oldScale = this.scale;
     
     // Calculer la nouvelle échelle
-    this.scale *= scale;
+    const targetScale = oldScale * scale;
     
     // Limiter l'échelle
-    this.scale = Math.max(this.options.minScale, Math.min(this.options.maxScale, this.scale));
+    const newScale = Math.max(this.options.minScale, Math.min(this.options.maxScale, targetScale));
     
     // Si l'échelle n'a pas changé, sortir
-    if (this.scale === oldScale) {
+    if (newScale === oldScale) {
       return;
     }
     
-    // Ajuster le décalage pour zoomer vers le point central
+    // Calculer les décalages cibles
     const { x: centerX, y: centerY } = center;
+    const targetOffsetX = centerX - (centerX - this.offset.x) * (newScale / oldScale);
+    const targetOffsetY = centerY - (centerY - this.offset.y) * (newScale / oldScale);
     
-    this.offset.x = centerX - (centerX - this.offset.x) * (this.scale / oldScale);
-    this.offset.y = centerY - (centerY - this.offset.y) * (this.scale / oldScale);
-    
-    // Mettre à jour la transformation
-    this.updateTransform();
-    
-    // Mettre à jour les arêtes
-    this.updateEdges();
+    if (animate) {
+      // Animation douce du zoom
+      const startScale = this.scale;
+      const startOffsetX = this.offset.x;
+      const startOffsetY = this.offset.y;
+      
+      const deltaScale = newScale - startScale;
+      const deltaOffsetX = targetOffsetX - startOffsetX;
+      const deltaOffsetY = targetOffsetY - startOffsetY;
+      
+      const duration = 200; // durée en ms
+      const startTime = performance.now();
+      
+      const animateZoom = (currentTime) => {
+        const elapsedTime = currentTime - startTime;
+        const progress = Math.min(elapsedTime / duration, 1);
+        
+        // Fonction d'ease-out pour une animation plus naturelle
+        const easeOutProgress = 1 - Math.pow(1 - progress, 2);
+        
+        this.scale = startScale + deltaScale * easeOutProgress;
+        this.offset.x = startOffsetX + deltaOffsetX * easeOutProgress;
+        this.offset.y = startOffsetY + deltaOffsetY * easeOutProgress;
+        
+        this.updateTransform();
+        
+        if (progress < 1) {
+          requestAnimationFrame(animateZoom);
+        } else {
+          // Mise à jour des arêtes une fois l'animation terminée
+          this.updateEdges();
+          console.log(`[Workflow] Zoom terminé: échelle ${this.scale.toFixed(2)}`);
+        }
+      };
+      
+      requestAnimationFrame(animateZoom);
+    } else {
+      // Sans animation, mise à jour immédiate
+      this.scale = newScale;
+      this.offset.x = targetOffsetX;
+      this.offset.y = targetOffsetY;
+      this.updateTransform();
+      this.updateEdges();
+    }
   }
   
   /**
