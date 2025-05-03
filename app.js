@@ -146,8 +146,10 @@ function initDb() {
       status TEXT NOT NULL,
       timestamp TEXT NOT NULL,
       api_key_id INTEGER,
+      user_id INTEGER,
       processing_time INTEGER DEFAULT 0,
-      resource_count INTEGER DEFAULT 0
+      resource_count INTEGER DEFAULT 0,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )`);
     
     // Table des utilisateurs
@@ -421,6 +423,7 @@ function processHL7Conversion(hl7Message, res) {
     console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées${fromCache ? ' (depuis le cache)' : ''}`);
     
     // Enregistrement de la conversion
+    const userId = req.user ? req.user.id : null;
     db.prepare(`
       INSERT INTO conversion_logs (
         input_message,
@@ -428,14 +431,16 @@ function processHL7Conversion(hl7Message, res) {
         status,
         timestamp,
         processing_time,
-        resource_count
-      ) VALUES (?, ?, ?, datetime('now'), ?, ?)
+        resource_count,
+        user_id
+      ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
     `).run(
       hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
       JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
       'success',
       conversionTime,
-      result.entry ? result.entry.length : 0
+      result.entry ? result.entry.length : 0,
+      userId
     );
     
     // Nettoyer les métadonnées internes avant de retourner le résultat

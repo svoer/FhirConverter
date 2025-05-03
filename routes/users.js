@@ -138,7 +138,14 @@ router.get('/stats', authCombined, async (req, res) => {
     const db = req.app.locals.db;
     
     // Récupérer le nombre de conversions
-    const conversionCountResult = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE user_id = ?').get(userId);
+    // Note: Si la colonne user_id n'existe pas encore dans conversion_logs, retourner 0
+    let conversionCountResult;
+    try {
+      conversionCountResult = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE user_id = ?').get(userId);
+    } catch (error) {
+      console.log('Impossible de compter les conversions, probable absence de colonne user_id:', error.message);
+      conversionCountResult = { count: 0 };
+    }
     
     // Récupérer les informations de l'utilisateur
     const userDetails = db.prepare('SELECT created_at, last_login FROM users WHERE id = ?').get(userId);
@@ -487,12 +494,20 @@ router.put('/:id', authCombined, async (req, res) => {
       });
     }
     
-    const { username, password, role } = req.body;
+    const { username, password, role, email, language } = req.body;
     
     if (!username) {
       return res.status(400).json({
         success: false,
         message: 'Le nom d\'utilisateur est requis'
+      });
+    }
+    
+    // Valider l'email si fourni
+    if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Adresse e-mail invalide'
       });
     }
     
@@ -531,6 +546,18 @@ router.put('/:id', authCombined, async (req, res) => {
     updateFields.push('username = ?');
     updateParams.push(username);
     
+    // Email (si fourni)
+    if (email !== undefined) {
+      updateFields.push('email = ?');
+      updateParams.push(email);
+    }
+    
+    // Langue (si fournie)
+    if (language !== undefined) {
+      updateFields.push('language = ?');
+      updateParams.push(language);
+    }
+    
     // Mot de passe (si fourni)
     if (password) {
       updateFields.push('password = ?');
@@ -543,6 +570,9 @@ router.put('/:id', authCombined, async (req, res) => {
       updateParams.push(role);
     }
     
+    // Mise à jour timestamp
+    updateFields.push('updated_at = datetime(\'now\')');
+    
     // Ajouter l'ID pour la clause WHERE
     updateParams.push(userId);
     
@@ -554,7 +584,7 @@ router.put('/:id', authCombined, async (req, res) => {
     `).run(...updateParams);
     
     // Récupérer l'utilisateur mis à jour
-    const updatedUser = db.prepare('SELECT id, username, role, created_at FROM users WHERE id = ?').get(userId);
+    const updatedUser = db.prepare('SELECT id, username, role, email, language, created_at, updated_at FROM users WHERE id = ?').get(userId);
     
     res.json({
       success: true,
