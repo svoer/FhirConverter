@@ -1451,23 +1451,42 @@
             dateStr = formatDate(file.updated_at);
           }
           
-          filesTable.innerHTML += `
-            <tr>
-              <td>${filename}</td>
-              <td>${file.type || 'Inconnu'}</td>
-              <td>${file.description || '-'}</td>
-              <td>${dateStr}</td>
-              <td>${file.items || file.count || '0'} éléments</td>
-              <td>
-                <button class="btn btn-icon view-file" data-id="${fileId}" data-filename="${safeFilename}">
-                  <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn btn-icon delete-file" data-id="${fileId}" data-filename="${safeFilename}">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>
+          // Créer un élément TR pour le fichier
+          const tr = document.createElement('tr');
+          
+          tr.innerHTML = `
+            <td>${filename}</td>
+            <td>${file.type || 'Inconnu'}</td>
+            <td>${file.description || '-'}</td>
+            <td>${dateStr}</td>
+            <td>${file.items || file.count || '0'} éléments</td>
+            <td>
+              <button class="btn btn-icon view-file" data-filename="${filename}">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn btn-icon delete-file" data-filename="${filename}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
           `;
+          
+          // Ajouter l'élément TR au tableau
+          filesTable.appendChild(tr);
+          
+          // Attacher les événements aux boutons
+          tr.querySelector('.view-file').addEventListener('click', function() {
+            const filename = this.getAttribute('data-filename');
+            viewTerminologyFile(filename);
+          });
+          
+          tr.querySelector('.delete-file').addEventListener('click', function() {
+            const filename = this.getAttribute('data-filename');
+            if (file.required) {
+              showError('Les fichiers obligatoires ne peuvent pas être supprimés.');
+            } else {
+              confirmDeleteTerminologyFile(filename);
+            }
+          });
         });
       } catch (error) {
         showError('Erreur lors du chargement des fichiers de terminologie: ' + error.message);
@@ -1834,6 +1853,101 @@
       }
     }
     
+    // Fonctions pour la gestion des fichiers de terminologie
+    
+    // Afficher le contenu d'un fichier de terminologie
+    async function viewTerminologyFile(filename) {
+      try {
+        console.log(`Demande d'affichage du fichier: ${filename}`);
+        
+        // Récupérer le contenu du fichier
+        const response = await fetchWithAuth(`/api/terminology/files/${encodeURIComponent(filename)}`);
+        
+        // Vérifier la réponse
+        if (!response || response.error) {
+          throw new Error(response.message || 'Erreur lors de la récupération du fichier');
+        }
+        
+        // Récupérer le contenu
+        const fileContent = response.data || response;
+        
+        // Préparer le contenu formaté pour l'affichage
+        let formattedContent = '';
+        
+        if (typeof fileContent === 'object') {
+          // Formater le JSON avec des retraits pour la lisibilité
+          formattedContent = JSON.stringify(fileContent, null, 2);
+        } else {
+          // Si ce n'est pas un objet JSON, afficher tel quel
+          formattedContent = String(fileContent);
+        }
+        
+        // Mettre à jour le modal de prévisualisation
+        const previewModal = document.getElementById('file-preview-modal');
+        const previewTitle = document.getElementById('file-preview-title');
+        const previewContent = document.getElementById('file-preview-content');
+        
+        previewTitle.textContent = `Fichier: ${filename}`;
+        previewContent.innerHTML = `<pre>${formattedContent}</pre>`;
+        
+        // Ouvrir le modal
+        openModal('file-preview-modal');
+        
+      } catch (error) {
+        console.error(`Erreur lors de l'affichage du fichier ${filename}:`, error);
+        showError(`Erreur lors de l'affichage du fichier: ${error.message}`);
+      }
+    }
+    
+    // Confirmer la suppression d'un fichier de terminologie
+    function confirmDeleteTerminologyFile(filename) {
+      // Vérifier si c'est un fichier obligatoire (à ne pas supprimer)
+      const isRequired = [
+        'config.json', 
+        'ans_terminology_systems.json', 
+        'ans_oids.json',
+        'fhir_valuesets.json',
+        'fhir_codesystems.json'
+      ].includes(filename);
+      
+      if (isRequired) {
+        showError('Les fichiers obligatoires ne peuvent pas être supprimés.');
+        return;
+      }
+      
+      // Demander confirmation
+      if (confirm(`Êtes-vous sûr de vouloir supprimer le fichier "${filename}" ? Cette action est irréversible.`)) {
+        deleteTerminologyFile(filename);
+      }
+    }
+    
+    // Supprimer un fichier de terminologie
+    async function deleteTerminologyFile(filename) {
+      try {
+        console.log(`Demande de suppression du fichier: ${filename}`);
+        
+        // Appeler l'API pour supprimer le fichier
+        const response = await fetchWithAuth(`/api/terminology/files/${encodeURIComponent(filename)}`, {
+          method: 'DELETE'
+        });
+        
+        // Vérifier la réponse
+        if (!response || response.error) {
+          throw new Error(response.message || 'Erreur lors de la suppression du fichier');
+        }
+        
+        // Afficher un message de succès
+        showNotification('Fichier supprimé avec succès.');
+        
+        // Recharger la liste des fichiers et les statistiques
+        await Promise.all([loadTerminologyFiles(), loadTerminologyStats()]);
+        
+      } catch (error) {
+        console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
+        showError(`Erreur lors de la suppression du fichier: ${error.message}`);
+      }
+    }
+    
     // Fonction utilitaire pour obtenir l'icône du fournisseur
     function getProviderIcon(providerName) {
       const icons = {
@@ -1852,5 +1966,25 @@
       return icons[name.toLowerCase()] || 'fas fa-cog';
     }
   </script>
+  
+  <!-- Modal de prévisualisation de fichier -->
+  <div class="modal" id="file-preview-modal">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h2 id="file-preview-title">Prévisualisation du fichier</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div id="file-preview-content" class="file-preview-container">
+          <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i> Chargement du fichier...
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary close-modal">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
