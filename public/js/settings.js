@@ -1219,6 +1219,23 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
   
+  // Écouteur pour le bouton d'ajout d'application 
+  const addAppBtn = document.getElementById('add-application-btn');
+  if (addAppBtn) {
+    addAppBtn.addEventListener('click', function() {
+      openModal('createAppModal');
+    });
+  }
+  
+  // Écouteur pour le bouton d'ajout de clé API
+  const addApiKeyBtn = document.getElementById('add-api-key-btn');
+  if (addApiKeyBtn) {
+    addApiKeyBtn.addEventListener('click', function() {
+      openModal('createKeyModal');
+      populateAppDropdown('keyApp');
+    });
+  }
+  
   // Initialiser le formulaire de création d'application
   const createAppForm = document.getElementById('createAppForm');
   if (createAppForm) {
