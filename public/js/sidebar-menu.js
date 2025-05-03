@@ -146,6 +146,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  // Forcer l'affichage du menu latéral
+  document.querySelectorAll('.nav-menu a').forEach(item => {
+    item.style.opacity = "1";
+  });
+  
   if (searchInput) {
     // Recherche en temps réel avec debounce
     let debounceTimer;

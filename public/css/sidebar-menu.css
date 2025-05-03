@@ -229,6 +229,8 @@
   overflow-y: auto;
   z-index: 900;
   transition: var(--transition-normal);
+  display: block !important;
+  visibility: visible !important;
 }
 
 .sidebar.collapsed {
@@ -250,10 +252,12 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  display: block !important;
 }
 
 .nav-menu li {
   margin: 2px 0;
+  display: block !important;
 }
 
 .nav-menu a {
@@ -396,5 +400,5 @@
 .nav-menu a {
   animation: slide-in 0.3s ease forwards;
   animation-delay: calc(var(--index) * 0.05s);
-  opacity: 0;
+  opacity: 1; /* Changé de 0 à 1 pour que les éléments soient toujours visibles */
 }
