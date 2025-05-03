@@ -1219,6 +1219,110 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
   
+  // Initialiser le formulaire de création d'application
+  const createAppForm = document.getElementById('createAppForm');
+  if (createAppForm) {
+    createAppForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const appName = document.getElementById('appName').value;
+      const appDescription = document.getElementById('appDescription').value;
+      const corsOrigins = document.getElementById('corsOrigins').value;
+      
+      if (!appName) {
+        showError('Le nom de l\'application est requis');
+        return;
+      }
+      
+      // Création de l'application
+      window.FHIRHubAuth.fetchWithAuth('/api/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: appName,
+          description: appDescription,
+          cors_origins: corsOrigins
+        })
+      })
+      .then(response => {
+        if (response && response.success) {
+          showNotification('Application créée avec succès');
+          closeModal('createAppModal');
+          
+          // Vider le formulaire
+          document.getElementById('appName').value = '';
+          document.getElementById('appDescription').value = '';
+          document.getElementById('corsOrigins').value = '';
+          
+          // Recharger les applications
+          loadApplications();
+        } else {
+          showError(response.message || 'Erreur lors de la création de l\'application');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la création de l\'application:', error);
+        showError(error.message || 'Erreur lors de la création de l\'application');
+      });
+    });
+  }
+  
+  // Initialiser le formulaire de création de clé API
+  const createKeyForm = document.getElementById('createKeyForm');
+  if (createKeyForm) {
+    createKeyForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const appId = document.getElementById('keyApp').value;
+      const keyDescription = document.getElementById('keyDescription').value;
+      
+      if (!appId) {
+        showError('Vous devez sélectionner une application');
+        return;
+      }
+      
+      // Création de la clé API
+      window.FHIRHubAuth.fetchWithAuth('/api/api-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          application_id: parseInt(appId),
+          description: keyDescription
+        })
+      })
+      .then(response => {
+        if (response && response.success) {
+          showNotification('Clé API créée avec succès');
+          closeModal('createKeyModal');
+          
+          // Vider le formulaire
+          document.getElementById('keyDescription').value = '';
+          
+          // Recharger les clés API
+          loadApiKeys();
+        } else {
+          showError(response.message || 'Erreur lors de la création de la clé API');
+        }
+      })
+      .catch(error => {
+        console.error('Erreur lors de la création de la clé API:', error);
+        showError(error.message || 'Erreur lors de la création de la clé API');
+      });
+    });
+  }
+  
+  // S'assurer que le menu déroulant des applications est initialisé lorsqu'on ouvre le modal de création de clé
+  const createApiKeyBtn = document.getElementById('create-api-key-btn');
+  if (createApiKeyBtn) {
+    createApiKeyBtn.addEventListener('click', function() {
+      populateAppDropdown('keyApp');
+    });
+  }
+  
   // Sélectionner tous les onglets
   const tabButtons = document.querySelectorAll('.tab-button');
   const tabContents = document.querySelectorAll('.tab-content');
