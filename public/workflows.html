@@ -767,9 +767,22 @@
                         return;
                     }
                     
+                    // Filtrer les doublons potentiels basés sur l'ID du workflow
+                    const uniqueWorkflows = [];
+                    const workflowIds = new Set();
+                    
                     workflows.forEach(workflow => {
+                        if (!workflowIds.has(workflow.id)) {
+                            workflowIds.add(workflow.id);
+                            uniqueWorkflows.push(workflow);
+                        }
+                    });
+                    
+                    console.log(`[Workflows] Affichage de ${uniqueWorkflows.length} workflows uniques`);
+                    
+                    uniqueWorkflows.forEach(workflow => {
                         const card = document.createElement('div');
-                        card.className = 'workflow-card';
+                        card.className = 'workflow-detail-card';
                         
                         card.innerHTML = `
                             <div class="workflow-header">
