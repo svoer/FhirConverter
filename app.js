@@ -402,7 +402,7 @@ const jwtAuth = require('./middleware/jwtAuth');
 const authCombined = require('./middleware/authCombined');
 
 // Fonction commune pour traiter les conversions HL7 vers FHIR
-function processHL7Conversion(hl7Message, res) {
+function processHL7Conversion(hl7Message, req, res) {
   if (!hl7Message) {
     return res.status(400).json({
       success: false,
@@ -424,6 +424,9 @@ function processHL7Conversion(hl7Message, res) {
     
     // Enregistrement de la conversion
     const userId = req.user ? req.user.id : null;
+    const db = req.app.locals.db;
+    
+    // Vérifier si la colonne user_id existe dans conversion_logs
     db.prepare(`
       INSERT INTO conversion_logs (
         input_message,
@@ -471,13 +474,13 @@ function processHL7Conversion(hl7Message, res) {
 // 1. Endpoint JSON qui accepte un message HL7 encapsulé dans un champ JSON
 app.post('/api/convert', authCombined, (req, res) => {
   const { hl7Message } = req.body;
-  return processHL7Conversion(hl7Message, res);
+  return processHL7Conversion(hl7Message, req, res);
 });
 
 // 2. Endpoint pour texte brut qui accepte directement le message HL7
 app.post('/api/convert/raw', authCombined, (req, res) => {
   const hl7Message = req.body; // req.body contient directement le texte (grâce à bodyParser.text())
-  return processHL7Conversion(hl7Message, res);
+  return processHL7Conversion(hl7Message, req, res);
 });
 
 // 3. Endpoint pour MLLP (Minimal Lower Layer Protocol)
@@ -490,7 +493,7 @@ app.post('/api/convert/mllp', authCombined, (req, res) => {
       message: 'Message MLLP invalide'
     });
   }
-  return processHL7Conversion(hl7Message, res);
+  return processHL7Conversion(hl7Message, req, res);
 });
 
 /**
