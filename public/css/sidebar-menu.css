@@ -69,6 +69,11 @@
   margin-right: 20px;
 }
 
+/* Spacer pour remplacer la barre de recherche */
+.logo-spacer {
+  flex: 1;
+}
+
 .logo img {
   height: 32px;
   margin-right: 10px;
