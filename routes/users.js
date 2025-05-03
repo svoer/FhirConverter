@@ -54,16 +54,20 @@ const { hashPassword, verifyPassword } = require('../utils/auth');
  */
 router.get('/', authCombined, async (req, res) => {
   try {
+    console.log("[DEBUG] Route /api/users - authCombined:", req.isAuthenticated(), req.user?.username);
+    
     // Vérifier si l'utilisateur est authentifié
     if (req.user) {
       // Vérifier si l'utilisateur est admin
       if (req.user.role !== 'admin') {
+        console.log("[DEBUG] Route /api/users - accès refusé, l'utilisateur n'est pas admin:", req.user.role);
         return res.status(403).json({
           success: false,
           message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
         });
       }
     } else {
+      console.log("[DEBUG] Route /api/users - utilisateur non authentifié");
       return res.status(401).json({
         success: false,
         message: 'Authentification requise.'
@@ -72,6 +76,7 @@ router.get('/', authCombined, async (req, res) => {
     
     const db = req.app.locals.db;
     const users = db.prepare('SELECT id, username, role, created_at FROM users').all();
+    console.log("[DEBUG] Route /api/users - utilisateurs récupérés:", users.length);
     
     res.json({
       success: true,

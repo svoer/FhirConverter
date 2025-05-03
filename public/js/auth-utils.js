@@ -67,7 +67,7 @@ function logout() {
  * @param {string} url - L'URL de la requête
  * @param {Object} options - Options de la requête fetch
  * @param {boolean} useApiKey - Utiliser la clé API par défaut au lieu du JWT
- * @returns {Promise<Response>} La réponse de la requête
+ * @returns {Promise<Object>} La réponse de la requête parsée en JSON
  */
 async function fetchWithAuth(url, options = {}, useApiKey = false) {
   // Copier les options pour ne pas modifier l'objet original
@@ -75,6 +75,7 @@ async function fetchWithAuth(url, options = {}, useApiKey = false) {
   
   // Initialiser les headers s'ils n'existent pas
   authOptions.headers = authOptions.headers || {};
+  authOptions.headers['Content-Type'] = 'application/json';
   
   if (useApiKey) {
     // Utiliser la clé API par défaut pour l'authentification
@@ -84,6 +85,9 @@ async function fetchWithAuth(url, options = {}, useApiKey = false) {
     const token = getAuthToken();
     
     if (!token) {
+      console.error('Erreur: Token d\'authentification manquant');
+      // Rediriger vers la page de login en cas d'absence de token
+      window.location.href = '/login.html';
       throw new Error('Utilisateur non authentifié');
     }
     
@@ -91,8 +95,32 @@ async function fetchWithAuth(url, options = {}, useApiKey = false) {
     authOptions.headers.Authorization = `Bearer ${token}`;
   }
   
-  // Effectuer la requête
-  return fetch(url, authOptions);
+  try {
+    // Effectuer la requête
+    const response = await fetch(url, authOptions);
+    
+    // Vérifier si la réponse est un succès (status 200-299)
+    if (!response.ok) {
+      // Gérer les erreurs d'authentification
+      if (response.status === 401 || response.status === 403) {
+        console.error(`Erreur d'authentification (${response.status}) lors de l'accès à ${url}`);
+        // Rediriger vers la page de login automatiquement
+        window.location.href = '/login.html';
+        throw new Error(`Erreur d'authentification: ${response.statusText}`);
+      }
+      
+      console.error(`Erreur ${response.status} lors de la requête à ${url}: ${response.statusText}`);
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+    }
+    
+    // Essayer de parser la réponse en JSON
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Erreur lors de la requête à ${url}:`, error);
+    // Relancer l'erreur pour la gestion par l'appelant
+    throw error;
+  }
 }
 
 /**
