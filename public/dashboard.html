@@ -51,7 +51,7 @@
           <div class="benefit-content">
             <div class="benefit-value" id="timeSaved"><span class="counter">3.5</span> h</div>
             <div class="benefit-label">Temps économisé</div>
-            <div class="benefit-detail">Par rapport à une conversion manuelle</div>
+            <div class="benefit-detail">Par rapport à une conversion traditionnelle</div>
           </div>
         </div>
         
@@ -328,9 +328,12 @@
       const avgProcessingTime = data.conversionStats?.avgTime || 0;
       const avgResources = data.conversionStats?.avgResources || 0;
       
-      // Calcul du temps économisé (estimé à 10 minutes par conversion manuelle)
-      const manualTimePerConversionMinutes = 10;
-      const timeSavedHours = (conversions * manualTimePerConversionMinutes / 60).toFixed(1);
+      // Calcul du temps économisé par rapport à une conversion traditionnelle d'un autre fournisseur
+      // Un fournisseur traditionnel prend environ 45 secondes par conversion contre notre moyenne de quelques millisecondes
+      const traditionalTimePerConversionSeconds = 45; // Temps moyen des autres fournisseurs (en secondes)
+      const ourTimePerConversionSeconds = avgProcessingTime / 1000 || 0.1; // Notre temps en secondes
+      const timeSavedPerConversion = traditionalTimePerConversionSeconds - ourTimePerConversionSeconds;
+      const timeSavedHours = ((timeSavedPerConversion * conversions) / 3600).toFixed(1); // Conversion en heures
       
       // Calcul du taux de succès (basé sur les statistiques réelles)
       // Pour cette démo, nous utilisons un pourcentage élevé mais réaliste
