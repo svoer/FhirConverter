@@ -1457,7 +1457,7 @@
               <td>${file.type || 'Inconnu'}</td>
               <td>${file.description || '-'}</td>
               <td>${dateStr}</td>
-              <td>${file.count || file.size ? (file.size + ' octets') : '0 éléments'}</td>
+              <td>${file.items || file.count || '0'} éléments</td>
               <td>
                 <button class="btn btn-icon view-file" data-id="${fileId}" data-filename="${safeFilename}">
                   <i class="fas fa-eye"></i>
