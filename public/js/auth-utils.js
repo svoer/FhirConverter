@@ -67,25 +67,47 @@ function logout() {
  * @param {string} url - L'URL de la requête
  * @param {Object} options - Options de la requête fetch
  * @param {boolean} useApiKey - Utiliser la clé API par défaut au lieu du JWT
+ * @param {boolean} retryOnError - Si true, réessaie la requête après rafraîchissement du token
  * @returns {Promise<Object>} La réponse de la requête parsée en JSON
  */
-async function fetchWithAuth(url, options = {}, useApiKey = false) {
+async function fetchWithAuth(url, options = {}, useApiKey = false, retryOnError = true) {
   // Copier les options pour ne pas modifier l'objet original
   const authOptions = { ...options };
   
   // Initialiser les headers s'ils n'existent pas
   authOptions.headers = authOptions.headers || {};
-  authOptions.headers['Content-Type'] = 'application/json';
+  
+  // Définir le type de contenu par défaut si pas déjà spécifié et si on a un body
+  if (authOptions.body && !authOptions.headers['Content-Type']) {
+    try {
+      // Vérifier si le body est déjà du JSON
+      JSON.parse(authOptions.body);
+      authOptions.headers['Content-Type'] = 'application/json';
+    } catch (e) {
+      // Si le body n'est pas du JSON valide, on ne force pas le Content-Type
+      // pour permettre l'envoi d'autres types (FormData, etc.)
+    }
+  } else if (!authOptions.headers['Content-Type'] && 
+             authOptions.method && 
+             ['POST', 'PUT', 'PATCH'].includes(authOptions.method.toUpperCase())) {
+    authOptions.headers['Content-Type'] = 'application/json';
+  }
   
   if (useApiKey) {
     // Utiliser la clé API par défaut pour l'authentification
     authOptions.headers['X-API-KEY'] = 'dev-key';
+    console.log('Authentification via clé API: dev-key');
   } else {
     // Utiliser le JWT pour l'authentification
     const token = getAuthToken();
     
     if (!token) {
       console.error('Erreur: Token d\'authentification manquant');
+      // Stocker l'URL courante pour redirection après login
+      if (window.location.pathname !== '/login.html') {
+        sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+      }
+      
       // Rediriger vers la page de login en cas d'absence de token
       window.location.href = '/login.html';
       throw new Error('Utilisateur non authentifié');
@@ -93,29 +115,103 @@ async function fetchWithAuth(url, options = {}, useApiKey = false) {
     
     // Ajouter le header d'autorisation JWT
     authOptions.headers.Authorization = `Bearer ${token}`;
+    console.log(`Authentification via JWT: ${token.substring(0, 15)}...`);
   }
   
   try {
+    console.log(`Requête à ${url} avec méthode ${authOptions.method || 'GET'}`);
+    
     // Effectuer la requête
     const response = await fetch(url, authOptions);
     
     // Vérifier si la réponse est un succès (status 200-299)
     if (!response.ok) {
+      console.warn(`Réponse non-OK (${response.status}) reçue de ${url}`);
+      
       // Gérer les erreurs d'authentification
       if (response.status === 401 || response.status === 403) {
         console.error(`Erreur d'authentification (${response.status}) lors de l'accès à ${url}`);
-        // Rediriger vers la page de login automatiquement
-        window.location.href = '/login.html';
-        throw new Error(`Erreur d'authentification: ${response.statusText}`);
+        
+        // Si token expiré et c'est le premier essai, tenter de rafraîchir le token
+        if (retryOnError && response.status === 401) {
+          console.log('Tentative de reconnexion automatique...');
+          
+          // Essayer de rafraîchir le token en appelant /api/auth/verify
+          try {
+            const verifyResponse = await fetch('/api/auth/verify', {
+              headers: {
+                Authorization: `Bearer ${getAuthToken()}`
+              }
+            });
+            
+            if (verifyResponse.ok) {
+              const verifyData = await verifyResponse.json();
+              
+              if (verifyData.success && verifyData.data.token) {
+                // Sauvegarder le nouveau token
+                localStorage.setItem('token', verifyData.data.token);
+                console.log('Token rafraîchi avec succès, réessai de la requête originale');
+                
+                // Réessayer la requête originale avec le nouveau token
+                return await fetchWithAuth(url, options, useApiKey, false);
+              }
+            }
+          } catch (verifyError) {
+            console.error('Échec du rafraîchissement du token:', verifyError);
+          }
+        }
+        
+        // Si on arrive ici, déconnexion et redirection vers login
+        console.error('Redirection vers la page de login suite à une erreur d\'authentification');
+        
+        // Stocker l'URL courante pour redirection après login
+        if (window.location.pathname !== '/login.html') {
+          sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+        }
+        
+        // Supprimer le token invalide
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Rediriger vers la page de login
+        window.location.href = `/login.html?error=${encodeURIComponent('Session expirée ou invalide')}&url=${encodeURIComponent(window.location.pathname)}`;
+        throw new Error(`Erreur d'authentification: ${response.status} - ${response.statusText}`);
       }
       
-      console.error(`Erreur ${response.status} lors de la requête à ${url}: ${response.statusText}`);
-      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      // Autres erreurs (non liées à l'authentification)
+      let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+      
+      try {
+        // Essayer de récupérer le message d'erreur dans la réponse JSON
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        // Si ce n'est pas du JSON valide, utiliser le message d'erreur par défaut
+      }
+      
+      console.error(`Erreur détaillée: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
     
-    // Essayer de parser la réponse en JSON
-    const data = await response.json();
-    return data;
+    // Si la réponse est vide, retourner un objet vide
+    if (response.headers.get('content-length') === '0') {
+      console.log('Réponse vide reçue');
+      return {};
+    }
+    
+    // Vérifier le type de contenu
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      // Parser la réponse en JSON
+      const data = await response.json();
+      console.log(`Réponse JSON reçue de ${url}:`, data);
+      return data;
+    } else {
+      // Si ce n'est pas du JSON, retourner le texte brut
+      const text = await response.text();
+      console.log(`Réponse texte reçue de ${url}: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
+      return { text };
+    }
   } catch (error) {
     console.error(`Erreur lors de la requête à ${url}:`, error);
     // Relancer l'erreur pour la gestion par l'appelant
