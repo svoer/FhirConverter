@@ -486,17 +486,34 @@ class WorkflowEditor {
           dropEvent.clientY > rect.top && dropEvent.clientY < rect.bottom
         ) {
           // Calculer le centre de la vue visible du canvas
-          // On ne veut pas utiliser des coordonnées du grand canvas de 4000x4000
-          // mais plutôt des coordonnées centrées sur la vue visible actuelle
+          // On ne veut pas utiliser des coordonnées fixes mais plutôt le centre réel de la vue actuelle
           
-          // Centre fixe (coordonnées du canvas visibles)
-          const centerCanvasX = 2000;
-          const centerCanvasY = 2000;
+          // Calculer le centre de la vue visible actuelle dans les coordonnées du canvas
+          const containerRect = this.container.getBoundingClientRect();
+          const containerCenterX = containerRect.width / 2;
+          const containerCenterY = containerRect.height / 2;
           
-          console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} au centre (${centerCanvasX}, ${centerCanvasY})`);
+          // Convertir les coordonnées du conteneur en coordonnées du canvas
+          // en tenant compte du zoom et de l'offset actuels
+          const canvasCenterX = (containerCenterX - this.offset.x) / this.scale;
+          const canvasCenterY = (containerCenterY - this.offset.y) / this.scale;
           
-          // Ajouter le nœud au centre de la vue
-          this.addNode(nodeType, { x: centerCanvasX, y: centerCanvasY });
+          // Arrondir à la grille si nécessaire
+          const nodeX = this.options.snapToGrid 
+            ? Math.round(canvasCenterX / this.options.gridSize) * this.options.gridSize
+            : canvasCenterX;
+            
+          const nodeY = this.options.snapToGrid
+            ? Math.round(canvasCenterY / this.options.gridSize) * this.options.gridSize
+            : canvasCenterY;
+          
+          console.log(`[Workflow] Ajout d'un nœud de type ${nodeType} au centre de la vue (${nodeX}, ${nodeY})`);
+          
+          // Ajouter le nœud au centre de la vue avec animation
+          const node = this.addNode(nodeType, { x: nodeX, y: nodeY }, true);
+          
+          // Centrer la vue sur le nouveau nœud pour s'assurer qu'il est bien visible
+          this.centerCanvas({ x: nodeX, y: nodeY }, true);
         }
         
         // Supprimer le fantôme
@@ -516,9 +533,10 @@ class WorkflowEditor {
    * Ajoute un noeud au workflow
    * @param {string} type - Type de noeud
    * @param {Object} position - Position du noeud { x, y }
+   * @param {boolean} animate - Indique si l'ajout doit être animé
    * @returns {Object} Le noeud créé
    */
-  addNode(type, position = { x: 100, y: 100 }) {
+  addNode(type, position = { x: 100, y: 100 }, animate = false) {
     // Convertir position à la grille si nécessaire
     if (this.options.snapToGrid) {
       position.x = Math.round(position.x / this.options.gridSize) * this.options.gridSize;
@@ -546,6 +564,28 @@ class WorkflowEditor {
     
     // Créer l'élément DOM
     this.createNodeElement(node);
+    
+    // Ajouter un effet visuel d'apparition si l'animation est activée
+    if (animate) {
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        // Appliquer un effet de fade in et de scale
+        nodeElement.style.opacity = '0';
+        nodeElement.style.transform = 'scale(0.8)';
+        
+        // Force un repaint avant de démarrer l'animation
+        requestAnimationFrame(() => {
+          nodeElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+          nodeElement.style.opacity = '1';
+          nodeElement.style.transform = 'scale(1)';
+          
+          // Nettoyer après l'animation
+          setTimeout(() => {
+            nodeElement.style.transition = '';
+          }, 300);
+        });
+      }
+    }
     
     // Émettre l'événement
     this.emit('nodeAdded', node);
@@ -2320,13 +2360,44 @@ class WorkflowEditor {
    * Réinitialise la vue
    */
   resetView() {
+    // Sauvegarder l'échelle actuelle pour l'animation
+    const oldScale = this.scale;
+    
+    // Réinitialiser l'échelle à la valeur initiale
     this.scale = this.options.initialScale;
     
-    // Au lieu de réinitialiser l'offset à {x: 0, y: 0}, centrer le canvas
-    // Ce qui offre une meilleure expérience utilisateur avec de grands workflows
-    this.centerCanvas();
+    // Centre du canvas (2000,2000)
+    const centerX = 2000;
+    const centerY = 2000;
     
-    this.updateEdges();
+    // Animer le centrage et le zoom
+    // Si des nœuds existent, essayer de centrer sur eux plutôt que sur un point fixe
+    if (this.nodes.length > 0) {
+      // Calculer le centre des nœuds existants
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      
+      this.nodes.forEach(node => {
+        minX = Math.min(minX, node.position.x);
+        maxX = Math.max(maxX, node.position.x + (node.width || 180));
+        minY = Math.min(minY, node.position.y);
+        maxY = Math.max(maxY, node.position.y + (node.height || 100));
+      });
+      
+      // Calculer le centre du groupe de nœuds
+      const centerNodesX = minX + (maxX - minX) / 2;
+      const centerNodesY = minY + (maxY - minY) / 2;
+      
+      console.log(`[Workflow] Réinitialisation de la vue centrée sur le groupe de nœuds (${centerNodesX}, ${centerNodesY})`);
+      
+      // Centrer sur le groupe de nœuds avec animation
+      this.centerCanvas({ x: centerNodesX, y: centerNodesY }, true);
+    } else {
+      // Pas de nœuds, centrer sur le milieu du canvas
+      console.log('[Workflow] Réinitialisation de la vue centrée sur le milieu du canvas');
+      this.centerCanvas(null, true);
+    }
+    
+    // Mettre à jour les arêtes (sera fait par centerCanvas)
   }
   
   /**
