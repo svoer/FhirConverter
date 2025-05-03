@@ -1210,15 +1210,55 @@ class WorkflowEditor {
       if (edgeElement) {
         const path = edgeElement.querySelector("path");
         if (path) {
+          // Animer le tracé du chemin
+          // 1. Calculer la longueur du chemin pour l'animation
           path.setAttribute("d", d);
-          // Conserver le style et les attributs sans forcer la couleur
-          // Cela permettra d'utiliser la couleur verte définie par la classe CSS
+          
+          // Calculer la longueur du chemin pour l'animation si pas déjà fait
+          if (!path.hasAttribute("data-length")) {
+            const length = path.getTotalLength();
+            path.setAttribute("stroke-dasharray", length);
+            path.setAttribute("stroke-dashoffset", length);
+            path.setAttribute("data-length", length);
+            
+            // Force un repaint avant de démarrer la transition
+            requestAnimationFrame(() => {
+              path.style.transition = "stroke-dashoffset 0.4s ease-out";
+              path.style.strokeDashoffset = "0";
+            });
+          } else if (edge.isAnimating) {
+            // Si l'arête est en cours d'animation et que le chemin change
+            const length = path.getTotalLength();
+            path.setAttribute("data-length", length);
+            path.setAttribute("stroke-dasharray", length);
+            // L'offset reste à 0 pour que l'arête reste visible
+          } else if (edge.isNew) {
+            // Nouvelle arête à animer
+            const length = path.getTotalLength();
+            path.setAttribute("data-length", length);
+            path.setAttribute("stroke-dasharray", length);
+            path.setAttribute("stroke-dashoffset", length);
+            
+            // Force un repaint avant de démarrer la transition
+            requestAnimationFrame(() => {
+              edge.isAnimating = true;
+              path.style.transition = "stroke-dashoffset 0.4s ease-out";
+              path.style.strokeDashoffset = "0";
+              
+              // Nettoyer les flags après l'animation
+              setTimeout(() => {
+                edge.isNew = false;
+                edge.isAnimating = false;
+              }, 400);
+            });
+          }
+          
           path.setAttribute("fill", "none");
-          // S'assurer que le path a un pointer-events pour être cliquable
           path.style.pointerEvents = "auto";
         }
       } else {
         // Si l'élément de l'arête n'existe pas, le créer
+        edge.isNew = true; // Marquer comme nouvelle arête pour l'animation
         this.createEdgeElement(edge);
       }
     } catch (err) {
@@ -1511,8 +1551,18 @@ class WorkflowEditor {
    * Met à jour toutes les arêtes du workflow
    */
   updateEdges() {
-    this.edges.forEach(edge => {
-      this.updateEdgePath(edge);
+    // Utiliser requestAnimationFrame pour améliorer la performance
+    if (this.edgesUpdateScheduled) {
+      return;
+    }
+    
+    this.edgesUpdateScheduled = true;
+    
+    requestAnimationFrame(() => {
+      this.edges.forEach(edge => {
+        this.updateEdgePath(edge);
+      });
+      this.edgesUpdateScheduled = false;
     });
   }
   
