@@ -293,10 +293,20 @@ router.get('/stats', terminologyAuth, (req, res) => {
       try {
         const systemsData = fs.readFileSync(systemsFile, 'utf8');
         const parsedSystems = JSON.parse(systemsData);
+        
+        // Compter les systèmes, qu'ils soient dans un tableau ou un objet
         if (Array.isArray(parsedSystems)) {
           systemsCount = parsedSystems.length;
-          console.log(`[TERMINOLOGY] ${systemsCount} systèmes de terminologie trouvés`);
+        } else if (typeof parsedSystems === 'object') {
+          // Si c'est un objet, compter les clés ou essayer d'extraire les systèmes
+          if (parsedSystems.systems && Array.isArray(parsedSystems.systems)) {
+            systemsCount = parsedSystems.systems.length;
+          } else {
+            systemsCount = Object.keys(parsedSystems).length;
+          }
         }
+        
+        console.log(`[TERMINOLOGY] ${systemsCount} systèmes de terminologie trouvés`);
       } catch (error) {
         logger.error(`[TERMINOLOGY] Erreur lors de la lecture des systèmes: ${error.message}`);
       }
@@ -310,10 +320,20 @@ router.get('/stats', terminologyAuth, (req, res) => {
       try {
         const oidsData = fs.readFileSync(oidsFile, 'utf8');
         const parsedOids = JSON.parse(oidsData);
+        
+        // Compter les OIDs, qu'ils soient dans un tableau ou un objet
         if (Array.isArray(parsedOids)) {
           oidsCount = parsedOids.length;
-          console.log(`[TERMINOLOGY] ${oidsCount} OIDs trouvés`);
+        } else if (typeof parsedOids === 'object') {
+          // Si c'est un objet, compter les clés ou essayer d'extraire les OIDs
+          if (parsedOids.oids && Array.isArray(parsedOids.oids)) {
+            oidsCount = parsedOids.oids.length;
+          } else {
+            oidsCount = Object.keys(parsedOids).length;
+          }
         }
+        
+        console.log(`[TERMINOLOGY] ${oidsCount} OIDs trouvés`);
       } catch (error) {
         logger.error(`[TERMINOLOGY] Erreur lors de la lecture des OIDs: ${error.message}`);
       }
