@@ -138,34 +138,11 @@ function setActivePage() {
   });
 }
 
-// Système de gestion des favoris
+// Système de gestion des favoris - désactivé car maintenant géré par include-sidebar.js
 function initFavorites() {
-  // Charger les favoris depuis localStorage
-  const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-  
-  // Mettre à jour l'affichage des boutons favoris avec leur état actuel
-  favoriteButtons.forEach(btn => {
-    const url = btn.getAttribute('data-url');
-    if (favorites.includes(url)) {
-      btn.classList.add('active');
-      btn.innerHTML = '<i class="fas fa-star"></i>'; // Étoile pleine
-      btn.setAttribute('title', 'Retirer des favoris');
-    }
-  });
-  
-  // Mettre à jour la liste des favoris dans le menu
-  updateFavoritesList(favorites);
-  
-  // Ajouter les écouteurs d'événements aux boutons favoris
-  favoriteButtons.forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const url = this.getAttribute('data-url');
-      toggleFavorite(url, this);
-    });
-  });
+  // Cette fonction est délibérément vide car la gestion des favoris
+  // est maintenant entièrement gérée par include-sidebar.js pour éviter les conflits
+  console.log("Gestion des favoris déléguée à include-sidebar.js");
 }
 
 // Mettre à jour la liste des favoris dans le menu
@@ -315,29 +292,40 @@ function attachEventListeners() {
 // Initialiser le menu latéral lorsque le DOM est chargé
 document.addEventListener('DOMContentLoaded', function() {
   // Ne s'exécute qu'une seule fois par chargement de page
-  if (window.sidebarInitialized) return;
-  window.sidebarInitialized = true;
+  if (window.sidebarMenuInitialized) return;
+  window.sidebarMenuInitialized = true;
   
-  // Définir les variables DOM
+  // Définir les variables DOM avec vérification
   menuToggle = document.getElementById('menu-toggle');
   sidebar = document.getElementById('sidebar');
-  mainContent = document.getElementById('main-content');
+  
+  // Vérifier que les éléments nécessaires existent
+  if (!sidebar) {
+    console.warn("Élément sidebar non trouvé. Le menu latéral pourrait ne pas fonctionner correctement.");
+    return; // Sortir si les éléments essentiels n'existent pas
+  }
+  
+  mainContent = document.querySelector('.main-content');
   footer = document.querySelector('.footer');
   mobileToggle = document.getElementById('sidebar-toggle-mobile');
   searchInput = document.getElementById('global-search');
   searchResults = document.getElementById('search-results');
   favoritesList = document.getElementById('favorites-list');
-  favoriteButtons = document.querySelectorAll('.favorite-btn');
   
-  // Initialiser l'état du menu
-  initSidebarState();
+  // Ne sélectionner les boutons favoris que s'ils existent
+  favoriteButtons = document.querySelectorAll('.favorite-btn') || [];
   
-  // Identifier la page active
-  setActivePage();
-  
-  // Initialiser le système de favoris
-  initFavorites();
-  
-  // Attacher les écouteurs d'événements
-  attachEventListeners();
+  // Initialiser l'état du menu seulement si le sidebar existe
+  if (sidebar) {
+    initSidebarState();
+    
+    // Identifier la page active
+    setActivePage();
+    
+    // Pas besoin d'initialiser les favoris ici, c'est fait dans include-sidebar.js
+    // pour éviter les conflits et les erreurs
+    
+    // Attacher les écouteurs d'événements
+    attachEventListeners();
+  }
 });

@@ -148,22 +148,133 @@
     // Gestion des favoris
     const favoriteButtons = document.querySelectorAll('.favorite-btn');
     if (favoriteButtons.length > 0) {
+      // Récupérer les favoris actuels depuis localStorage
+      let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+      
+      // Mettre à jour l'apparence des boutons en fonction des favoris enregistrés
       favoriteButtons.forEach(btn => {
+        const url = btn.getAttribute('data-url');
+        if (favorites.includes(url)) {
+          btn.classList.add('active');
+          btn.innerHTML = '<i class="fas fa-star"></i>';
+          btn.setAttribute('title', 'Retirer des favoris');
+        }
+        
+        // Ajouter l'écouteur d'événement pour gérer les clics
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
           
           const url = this.getAttribute('data-url');
-          this.classList.toggle('active');
           
-          if (this.classList.contains('active')) {
+          // Récupérer les favoris actuels
+          let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+          
+          // Vérifier si l'URL est déjà dans les favoris
+          const index = favorites.indexOf(url);
+          
+          if (index === -1) {
+            // Ajouter aux favoris
+            favorites.push(url);
+            this.classList.add('active');
             this.innerHTML = '<i class="fas fa-star"></i>';
+            this.setAttribute('title', 'Retirer des favoris');
           } else {
+            // Retirer des favoris
+            favorites.splice(index, 1);
+            this.classList.remove('active');
             this.innerHTML = '<i class="far fa-star"></i>';
+            this.setAttribute('title', 'Ajouter aux favoris');
+          }
+          
+          // Enregistrer les favoris mis à jour
+          localStorage.setItem('favorites', JSON.stringify(favorites));
+          
+          // Mettre à jour l'affichage de la liste des favoris
+          updateFavoritesList(favorites);
+        });
+      });
+      
+      // Initialiser la liste des favoris
+      updateFavoritesList(favorites);
+      
+      console.log('Événements de favoris configurés');
+    }
+    
+    // Fonction pour mettre à jour la liste des favoris dans le menu
+    function updateFavoritesList(favorites) {
+      const favoritesList = document.getElementById('favorites-list');
+      if (!favoritesList) return;
+      
+      if (favorites.length === 0) {
+        favoritesList.innerHTML = '<li><p class="no-favorites">Aucun favori</p></li>';
+        return;
+      }
+      
+      // Récupérer la structure de navigation pour les étiquettes
+      const navMap = {
+        '/dashboard.html': { title: 'Tableau de bord', icon: 'fas fa-chart-line' },
+        '/convert.html': { title: 'HL7 vers FHIR', icon: 'fas fa-exchange-alt' },
+        '/applications.html': { title: 'Applications', icon: 'fas fa-th' },
+        '/api-keys.html': { title: 'Clés API', icon: 'fas fa-key' },
+        '/users.html': { title: 'Utilisateurs', icon: 'fas fa-users' },
+        '/terminologies.html': { title: 'Terminologies', icon: 'fas fa-book-medical' },
+        '/workflows.html': { title: 'Workflows', icon: 'fas fa-project-diagram' },
+        '/ai-settings.html': { title: 'Paramètres IA', icon: 'fas fa-robot' },
+        '/documentation.html': { title: 'Documentation', icon: 'fas fa-file-alt' },
+        '/api-docs/': { title: 'API Reference', icon: 'fas fa-code' }
+      };
+      
+      // Créer des éléments de menu pour chaque favori
+      const items = favorites.map(url => {
+        const navItem = navMap[url];
+        if (!navItem) return '';
+        
+        return `
+          <li>
+            <a href="${url}">
+              <i class="${navItem.icon}"></i> ${navItem.title}
+              <button class="favorite-btn active remove-favorite" data-url="${url}" title="Retirer des favoris">
+                <i class="fas fa-times"></i>
+              </button>
+            </a>
+          </li>
+        `;
+      });
+      
+      favoritesList.innerHTML = items.join('');
+      
+      // Ajouter des écouteurs d'événements aux boutons de suppression dans la liste des favoris
+      const removeButtons = favoritesList.querySelectorAll('.remove-favorite');
+      removeButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const url = this.getAttribute('data-url');
+          
+          // Retirer des favoris
+          let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+          const index = favorites.indexOf(url);
+          if (index !== -1) {
+            favorites.splice(index, 1);
+          }
+          
+          // Enregistrer les favoris mis à jour
+          localStorage.setItem('favorites', JSON.stringify(favorites));
+          
+          // Mettre à jour l'affichage de la liste des favoris
+          updateFavoritesList(favorites);
+          
+          // Mettre à jour l'état du bouton correspondant dans le menu principal
+          const mainButton = document.querySelector(`.favorite-btn[data-url="${url}"]:not(.remove-favorite)`);
+          if (mainButton) {
+            mainButton.classList.remove('active');
+            mainButton.innerHTML = '<i class="far fa-star"></i>';
+            mainButton.setAttribute('title', 'Ajouter aux favoris');
           }
         });
       });
-      console.log('Événements de favoris configurés');
     }
     
     // Gestion de la déconnexion
