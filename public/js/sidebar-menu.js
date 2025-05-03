@@ -1,8 +1,5 @@
 // Menu latéral et recherche globale pour FHIRHub
 
-// Variables globales pour les éléments du DOM
-let menuToggle, sidebar, mainContent, footer, mobileToggle, searchInput, searchResults, favoritesList, favoriteButtons;
-
 // Structure de navigation globale
 const navigationItems = [
   { title: 'Tableau de bord', url: '/dashboard.html', category: 'Principal', keywords: ['accueil', 'statistiques', 'dashboard'] },
@@ -340,6 +337,18 @@ window.initSidebar = function() {
 
 // Initialiser le menu latéral lorsque le DOM est chargé
 document.addEventListener('DOMContentLoaded', function() {
+  // Définir les variables DOM globales
+  window.menuToggle = document.getElementById('menu-toggle');
+  window.sidebar = document.getElementById('sidebar');
+  window.mainContent = document.getElementById('main-content');
+  window.footer = document.querySelector('.footer');
+  window.mobileToggle = document.getElementById('sidebar-toggle-mobile');
+  window.searchInput = document.getElementById('global-search');
+  window.searchResults = document.getElementById('search-results');
+  window.favoritesList = document.getElementById('favorites-list');
+  window.favoriteButtons = document.querySelectorAll('.favorite-btn');
+  
+  // Initialiser le menu
   window.initSidebar();
 });
 
