@@ -545,19 +545,180 @@ window.downloadAllTerminologyFiles = function() {
 
 // Fonction pour afficher les notifications
 function showNotification(message, type = 'success') {
-  // Utiliser une alerte simple si la fonction est appelée directement
-  if (typeof message === 'string') {
-    if (type === 'error') {
-      alert(`Erreur: ${message}`);
-    } else {
-      alert(message);
-    }
+  // Créer un élément de notification
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  
+  // Ajouter l'icône appropriée
+  const icon = type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle';
+  
+  notification.innerHTML = `
+    <div class="notification-content">
+      <i class="fas ${icon}"></i>
+      <span>${message}</span>
+    </div>
+    <button class="notification-close">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  
+  // Ajouter au conteneur de notifications ou créer un nouveau
+  let container = document.querySelector('.notification-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'notification-container';
+    document.body.appendChild(container);
+  }
+  
+  container.appendChild(notification);
+  
+  // Ajouter le gestionnaire d'événements pour fermer la notification
+  const closeButton = notification.querySelector('.notification-close');
+  closeButton.addEventListener('click', () => {
+    notification.classList.add('notification-hiding');
+    setTimeout(() => {
+      notification.remove();
+      
+      // Supprimer le conteneur s'il est vide
+      if (container.children.length === 0) {
+        container.remove();
+      }
+    }, 300);
+  });
+  
+  // Masquer automatiquement après 5 secondes (sauf si c'est une erreur)
+  if (type !== 'error') {
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.classList.add('notification-hiding');
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.remove();
+            
+            // Supprimer le conteneur s'il est vide
+            if (container.children.length === 0) {
+              container.remove();
+            }
+          }
+        }, 300);
+      }
+    }, 5000);
+  }
+  
+  // Ajouter la classe pour déclencher l'animation d'entrée
+  setTimeout(() => {
+    notification.classList.add('notification-show');
+  }, 10);
+  
+  // Ajouter les styles CSS si nécessaire
+  if (!document.getElementById('notification-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'notification-styles';
+    styleElement.textContent = `
+      .notification-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 400px;
+      }
+      
+      .notification {
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin-bottom: 12px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+      }
+      
+      .notification-show {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      
+      .notification-hiding {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      
+      .notification-content {
+        display: flex;
+        align-items: center;
+      }
+      
+      .notification-content i {
+        margin-right: 12px;
+        font-size: 18px;
+      }
+      
+      .notification-success {
+        border-left: 4px solid #28a745;
+      }
+      
+      .notification-success i {
+        color: #28a745;
+      }
+      
+      .notification-error {
+        border-left: 4px solid #dc3545;
+      }
+      
+      .notification-error i {
+        color: #dc3545;
+      }
+      
+      .notification-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #888;
+        padding: 0;
+        margin-left: 15px;
+      }
+      
+      .notification-close:hover {
+        color: #333;
+      }
+    `;
+    document.head.appendChild(styleElement);
   }
 }
 
 // Fonction pour afficher les erreurs
 function showError(message) {
   showNotification(message, 'error');
+}
+
+// Fonction pour copier du texte dans le presse-papiers
+window.copyToClipboard = function(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';  // Évite de faire défiler la page
+  textArea.style.left = '-9999px';
+  textArea.style.top = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    
+    if (successful) {
+      showNotification('Texte copié dans le presse-papiers');
+    } else {
+      showError('Impossible de copier le texte');
+    }
+  } catch (err) {
+    document.body.removeChild(textArea);
+    showError('Erreur lors de la copie: ' + err.message);
+  }
 }
 
 // Fonction pour prévisualiser un fichier de terminologie
