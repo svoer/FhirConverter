@@ -6,14 +6,83 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../src/utils/logger');
+
+// Clé secrète pour vérifier les JWT (à déplacer dans une variable d'environnement en production)
+const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
+
+// Middleware personnalisé pour la terminologie qui permet l'accès sans authentification en développement
+const terminologyAuth = (req, res, next) => {
+  // En mode développement, autoriser l'accès sans authentification
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[AUTH] Accès aux terminologies autorisé en mode développement');
+    return next();
+  }
+  
+  // Vérifier d'abord le token JWT dans l'en-tête Authorization
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      console.log(`[AUTH] Utilisateur authentifié par JWT: ${decoded.username}`);
+      return next();
+    } catch (err) {
+      console.warn('[AUTH] JWT invalide:', err.message);
+      // Continuer pour vérifier la clé API
+    }
+  }
+  
+  // Vérifier ensuite si une clé API est présente
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey) {
+    console.log(`[AUTH] Tentative d'authentification par clé API: ${apiKey.substring(0, 8)}...`);
+    
+    // Vérifier la clé API
+    const db = req.app.locals.db;
+    if (db) {
+      try {
+        const keyData = db.prepare(`
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = ? AND ak.is_active = 1
+        `).get(apiKey);
+        
+        if (keyData) {
+          console.log(`[AUTH] Authentification terminologie réussie via clé API: ${apiKey.substring(0, 8)}...`);
+          req.apiKey = keyData;
+          return next();
+        }
+      } catch (error) {
+        console.error('[AUTH] Erreur lors de la vérification de la clé API pour les terminologies:', error);
+      }
+    }
+  }
+  
+  // En production, renvoyer une erreur 401 si aucune authentification n'est valide
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[AUTH] Authentification échouée pour les terminologies - Accès non autorisé');
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized',
+      message: 'Authentification ou clé API valide requise'
+    });
+  } else {
+    // En développement, autoriser l'accès même si l'authentification a échoué
+    console.log('[AUTH] Accès aux terminologies autorisé sans authentification (mode développement)');
+    return next();
+  }
+};
 
 // Dossier contenant les fichiers de terminologie
 const TERMINOLOGY_DIR = path.join(__dirname, '..', 'french_terminology');
 
 // Route pour obtenir la liste des fichiers de terminologie
-router.get('/files', authMiddleware.authenticatedOrApiKey, (req, res) => {
+router.get('/files', terminologyAuth, (req, res) => {
   try {
     console.log('[TERMINOLOGY] Récupération de la liste des fichiers de terminologie');
     
@@ -91,7 +160,7 @@ router.get('/files', authMiddleware.authenticatedOrApiKey, (req, res) => {
 });
 
 // Route pour obtenir les statistiques de terminologie
-router.get('/stats', authMiddleware.authenticatedOrApiKey, (req, res) => {
+router.get('/stats', terminologyAuth, (req, res) => {
   try {
     console.log('[TERMINOLOGY] Récupération des statistiques de terminologie');
     
