@@ -83,6 +83,22 @@ function createAuthCombinedMiddleware() {
         // Stocker les informations de l'application dans req pour utilisation ultérieure
         req.apiKeyData = keyData;
         req.isAuthenticated = function() { return true; };
+        
+        // Récupérer l'utilisateur associé à l'application pour les logs
+        // Utilise le créateur de l'application comme utilisateur par défaut
+        try {
+          const appCreator = db.prepare(`SELECT created_by FROM applications WHERE id = ?`).get(keyData.application_id);
+          if (appCreator && appCreator.created_by) {
+            const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(appCreator.created_by);
+            if (user) {
+              // Stocker l'utilisateur associé à l'application pour les logs
+              req.user = user;
+              console.log(`[AUTH] API Key associée à l'utilisateur ${user.username} (ID: ${user.id})`);
+            }
+          }
+        } catch (err) {
+          console.error("[AUTH] Erreur lors de la récupération de l'utilisateur associé à l'application:", err);
+        }
       }
       
       // Continuer avec la requête
