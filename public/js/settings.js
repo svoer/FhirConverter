@@ -1064,10 +1064,21 @@ window.refreshTerminologyData = function() {
 // Gestion de chargement des clés API
 async function loadApiKeys() {
   try {
-    const apiKeysTable = document.getElementById('api-keys-table-body');
-    if (!apiKeysTable) return;
+    console.log("Chargement des clés API...");
     
-    apiKeysTable.innerHTML = '<tr><td colspan="6" class="loading-row">Chargement des clés API...</td></tr>';
+    // Support pour l'ancien ID de tableau et le nouveau
+    const apiKeysTable = document.getElementById('api-keys-table-body');
+    const apiKeysList = document.getElementById('apiKeysList');
+    
+    // Choisir le bon élément cible
+    const targetElement = apiKeysList || apiKeysTable;
+    
+    if (!targetElement) {
+      console.error("Aucun élément cible trouvé pour les clés API");
+      return;
+    }
+    
+    targetElement.innerHTML = '<tr><td colspan="6" class="loading-row">Chargement des clés API...</td></tr>';
     
     const response = await window.FHIRHubAuth.fetchWithAuth('/api/api-keys');
     
@@ -1078,12 +1089,12 @@ async function loadApiKeys() {
     const apiKeys = response.data;
     
     if (apiKeys.length === 0) {
-      apiKeysTable.innerHTML = '<tr><td colspan="6" class="empty-row">Aucune clé API trouvée</td></tr>';
+      targetElement.innerHTML = '<tr><td colspan="6" class="empty-row">Aucune clé API trouvée</td></tr>';
       return;
     }
     
     // Vider le tableau avant d'ajouter les clés API
-    apiKeysTable.innerHTML = '';
+    targetElement.innerHTML = '';
     
     // Ajouter les clés API au tableau
     apiKeys.forEach(key => {
@@ -1094,10 +1105,39 @@ async function loadApiKeys() {
       const createdDate = new Date(key.created_at);
       const formattedDate = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
       
-      // Formater la date d'expiration
-      let expiresAt = 'Jamais';
-      if (key.expires_at) {
-        const expiresDate = new Date(key.expires_at);
+      // Masquer la clé API pour l'affichage
+      const maskedKey = key.key ? (key.key.substring(0, 8) + '...' + key.key.substring(key.key.length - 4)) : 'N/A';
+      
+      // Créer un badge pour le statut
+      const statusBadge = `<span class="badge badge-${key.status === 'active' ? 'success' : 'danger'}">${key.status === 'active' ? 'Actif' : 'Désactivé'}</span>`;
+      
+      row.innerHTML = `
+        <td>${key.application_name || 'N/A'}</td>
+        <td>
+          <div class="api-key-display">
+            <code>${maskedKey}</code>
+            <button class="btn-icon" title="Copier" onclick="copyToClipboard('${key.key || ''}')">
+              <i class="fas fa-copy"></i>
+            </button>
+          </div>
+        </td>
+        <td>${key.description || '-'}</td>
+        <td>${formattedDate}</td>
+        <td>${statusBadge}</td>
+        <td class="actions">
+          <button class="btn-status" title="${key.status === 'active' ? 'Désactiver' : 'Activer'}" onclick="toggleApiKeyStatus(${key.id}, '${key.status}')">
+            <i class="fas fa-${key.status === 'active' ? 'toggle-on' : 'toggle-off'}"></i>
+          </button>
+          <button class="btn-delete" title="Supprimer" onclick="deleteApiKey(${key.id})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      `;
+      
+      targetElement.appendChild(row);
+    });
+    
+    console.log("Clés API chargées avec succès:", apiKeys.length);
         expiresAt = expiresDate.toLocaleDateString() + ' ' + expiresDate.toLocaleTimeString();
       }
       
@@ -1199,6 +1239,122 @@ window.uploadTerminologyFile = function(file) {
     
     showError(`Erreur lors de l'upload: ${error.message || 'Erreur inconnue'}`);
   });
+};
+
+// Fonction pour copier du texte dans le presse-papiers
+function copyToClipboard(text) {
+  const tempInput = document.createElement('input');
+  tempInput.value = text;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  
+  try {
+    document.execCommand('copy');
+    showNotification('Texte copié dans le presse-papiers');
+  } catch (err) {
+    console.error('Erreur lors de la copie:', err);
+    showError('Impossible de copier le texte');
+  } finally {
+    document.body.removeChild(tempInput);
+  }
+}
+
+// Fonction pour activer/désactiver une clé API
+window.toggleApiKeyStatus = async function(keyId, currentStatus) {
+  try {
+    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+    
+    const response = await window.FHIRHubAuth.fetchWithAuth(`/api/api-keys/${keyId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        status: newStatus
+      })
+    });
+    
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Erreur lors de la mise à jour du statut');
+    }
+    
+    showNotification(`Clé API ${newStatus === 'active' ? 'activée' : 'désactivée'} avec succès`);
+    loadApiKeys(); // Recharger la liste
+  } catch (error) {
+    console.error('Erreur lors de la modification du statut de la clé API:', error);
+    showError(error.message || 'Erreur lors de la modification du statut');
+  }
+};
+
+// Fonction pour supprimer une clé API
+window.deleteApiKey = async function(keyId) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette clé API ? Cette action est irréversible.')) {
+    return;
+  }
+  
+  try {
+    const response = await window.FHIRHubAuth.fetchWithAuth(`/api/api-keys/${keyId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Erreur lors de la suppression');
+    }
+    
+    showNotification('Clé API supprimée avec succès');
+    loadApiKeys(); // Recharger la liste
+  } catch (error) {
+    console.error('Erreur lors de la suppression de la clé API:', error);
+    showError(error.message || 'Erreur lors de la suppression');
+  }
+};
+
+// Fonction pour éditer une application
+window.editApplication = async function(appId) {
+  try {
+    const response = await window.FHIRHubAuth.fetchWithAuth(`/api/applications/${appId}`);
+    
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Erreur lors de la récupération des informations');
+    }
+    
+    const app = response.data;
+    
+    // Remplir le formulaire d'édition
+    document.getElementById('editAppId').value = app.id;
+    document.getElementById('editAppName').value = app.name;
+    document.getElementById('editAppDescription').value = app.description || '';
+    document.getElementById('editCorsOrigins').value = app.cors_origins || '';
+    
+    // Ouvrir le modal
+    openModal('editAppModal');
+  } catch (error) {
+    console.error('Erreur lors de la récupération des informations de l\'application:', error);
+    showError(error.message || 'Erreur lors de la récupération des informations');
+  }
+};
+
+// Fonction pour supprimer une application
+window.deleteApplication = async function(appId) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette application et toutes ses clés API associées ? Cette action est irréversible.')) {
+    return;
+  }
+  
+  try {
+    const response = await window.FHIRHubAuth.fetchWithAuth(`/api/applications/${appId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response || !response.success) {
+      throw new Error(response?.message || 'Erreur lors de la suppression');
+    }
+    
+    showNotification('Application supprimée avec succès');
+    loadApplications(); // Recharger la liste
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'application:', error);
+    showError(error.message || 'Erreur lors de la suppression');
+  }
 };
 
 // Initialiser les onglets et charger les données appropriées
@@ -1337,6 +1493,17 @@ document.addEventListener('DOMContentLoaded', function() {
   if (createApiKeyBtn) {
     createApiKeyBtn.addEventListener('click', function() {
       populateAppDropdown('keyApp');
+    });
+  }
+  
+  // Initialiser la fonctionnalité de copie de clé API
+  const copyKeyBtn = document.getElementById('copyKeyBtn');
+  if (copyKeyBtn) {
+    copyKeyBtn.addEventListener('click', function() {
+      const apiKeyElement = document.getElementById('newApiKey');
+      if (apiKeyElement) {
+        copyToClipboard(apiKeyElement.textContent);
+      }
     });
   }
   

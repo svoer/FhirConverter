@@ -599,6 +599,42 @@
     </div>
   </div>
   
+  <!-- Modal d'édition d'application -->
+  <div class="modal" id="editAppModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Modifier l'application</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="editAppForm">
+          <input type="hidden" id="editAppId" name="editAppId">
+          
+          <div class="form-group">
+            <label for="editAppName">Nom de l'application</label>
+            <input type="text" id="editAppName" name="editAppName" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="editAppDescription">Description</label>
+            <textarea id="editAppDescription" name="editAppDescription" class="form-control" rows="3"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="editCorsOrigins">Origines CORS (facultatif)</label>
+            <input type="text" id="editCorsOrigins" name="editCorsOrigins" class="form-control" placeholder="http://example.com, https://app.example.com">
+            <small class="form-text">Séparez les multiples origines par des virgules</small>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Mettre à jour</button>
+            <button type="button" class="btn btn-secondary close-modal">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
   <!-- Modaux Terminologies -->
   <div class="modal" id="file-upload-modal">
     <div class="modal-content">
