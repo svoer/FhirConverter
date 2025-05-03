@@ -94,23 +94,35 @@ document.addEventListener('DOMContentLoaded', function() {
         const footer = document.querySelector('.footer');
         const mobileToggle = document.getElementById('sidebar-toggle-mobile');
         
-        // Bascule du menu latéral
-        if (menuToggle && sidebar) {
-          menuToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('collapsed');
-            if (mainContent) mainContent.classList.toggle('expanded');
-            if (footer) footer.classList.toggle('expanded');
-          });
-        }
+        // Bascule du menu latéral - ajout d'une vérification supplémentaire
+        setTimeout(() => {
+          const menuToggle = document.getElementById('menu-toggle');
+          const sidebar = document.getElementById('sidebar');
+          const mainContent = document.querySelector('.main-content');
+          const footer = document.querySelector('.footer');
+          
+          if (menuToggle && sidebar) {
+            menuToggle.addEventListener('click', function() {
+              sidebar.classList.toggle('collapsed');
+              if (mainContent) mainContent.classList.toggle('expanded');
+              if (footer) footer.classList.toggle('expanded');
+            });
+          }
+        }, 200);
         
-        // Menu mobile
-        if (mobileToggle && sidebar) {
-          mobileToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('mobile-open');
-            this.innerHTML = sidebar.classList.contains('mobile-open') ? 
-              '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-          });
-        }
+        // Menu mobile - ajout d'une vérification supplémentaire
+        setTimeout(() => {
+          const mobileToggle = document.getElementById('sidebar-toggle-mobile');
+          const sidebar = document.getElementById('sidebar');
+          
+          if (mobileToggle && sidebar) {
+            mobileToggle.addEventListener('click', function() {
+              sidebar.classList.toggle('mobile-open');
+              this.innerHTML = sidebar.classList.contains('mobile-open') ? 
+                '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+            });
+          }
+        }, 200);
         
         // Marquer la page active dans le menu
         const currentPath = window.location.pathname;
@@ -140,17 +152,19 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         });
         
-        // Gestion de la déconnexion
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Normalement on déconnecterait l'utilisateur ici
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login.html';
-          });
-        }
+        // Gestion de la déconnexion - on attendra que le DOM soit complètement chargé
+        setTimeout(() => {
+          const logoutBtn = document.getElementById('logoutBtn');
+          if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              // Normalement on déconnecterait l'utilisateur ici
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/login.html';
+            });
+          }
+        }, 200);
       };
       
       // Exécuter l'initialisation

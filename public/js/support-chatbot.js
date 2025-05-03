@@ -11,15 +11,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   
+  // Vérifier si nous sommes sur la page du tableau de bord (le chatbot ne doit être chargé que sur certaines pages)
+  const currentPath = window.location.pathname;
+  if (currentPath !== '/dashboard.html' && currentPath !== '/') {
+    console.log('Page non dashboard, le chatbot ne sera pas chargé.');
+    return;
+  }
+  
   // Initialiser le chatbot (sans créer les éléments, car ils existent déjà dans le HTML)
   initChatbot();
   
   // Attendre vraiment que le DOM soit complètement chargé, y compris tous les éléments imbriqués
   // Utiliser un petit délai pour s'assurer que tout est bien chargé
   setTimeout(() => {
-    // S'assurer que les événements sont correctement attachés
-    attachChatbotEvents();
-  }, 500);
+    // Vérifier à nouveau que les éléments existent avant d'attacher les événements
+    const chatbotHeader = document.getElementById('chatbotHeader');
+    const chatbotInput = document.getElementById('chatbotInput');
+    const chatbotSendButton = document.getElementById('chatbotSend');
+    
+    if (chatbotHeader && chatbotInput && chatbotSendButton) {
+      // S'assurer que les événements sont correctement attachés
+      attachChatbotEvents();
+    } else {
+      console.log('Éléments du chatbot manquants dans le DOM');
+    }
+  }, 800);
 });
 
 // Variables globales
@@ -50,24 +66,22 @@ N'oublie pas:
  * Initialise le chatbot
  */
 async function initChatbot() {
-  // Vérifier si nous sommes sur la page dashboard
-  if (window.location.pathname.includes('dashboard')) {
-    // Créer les éléments du chatbot si nécessaire
-    createChatbotElements();
-    
-    // Ajouter les écouteurs d'événements
-    attachChatbotEvents();
-    
-    // Ne pas ajouter de message de bienvenue car il existe déjà dans le HTML
-    // addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
-    
-    // Charger le fournisseur d'IA configuré
-    await loadAIProvider();
-    
-    console.log('Chatbot FHIRHub initialisé avec succès.');
-  } else {
-    console.log('Page non dashboard, le chatbot ne sera pas chargé.');
-  }
+  // La vérification des pages est déjà effectuée dans l'écouteur DOMContentLoaded
+  // Nous arrivons ici uniquement si nous sommes sur une page compatible
+  
+  // Créer les éléments du chatbot si nécessaire
+  createChatbotElements();
+  
+  // Ne pas ajouter les écouteurs d'événements ici (ils sont ajoutés dans DOMContentLoaded)
+  // pour éviter les doublons et permettre une vérification préalable
+  
+  // Ne pas ajouter de message de bienvenue car il existe déjà dans le HTML
+  // addMessage('assistant', 'Bonjour ! Je suis votre assistant FHIRHub. Comment puis-je vous aider aujourd\'hui ?');
+  
+  // Charger le fournisseur d'IA configuré
+  await loadAIProvider();
+  
+  console.log('Chatbot FHIRHub initialisé avec succès.');
 }
 
 /**
