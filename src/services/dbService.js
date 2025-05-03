@@ -4,6 +4,7 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 const Database = require('better-sqlite3');
 
 /**
@@ -60,27 +61,129 @@ async function initialize() {
     
     // Ouvrir la connexion à la base de données
     try {
-      db = new Database(DB_PATH, { verbose: console.log });
+      console.log('[DB] Tentative d\'ouverture de la connexion...');
+      db = new Database(DB_PATH, { verbose: process.env.NODE_ENV === 'development' ? console.log : null });
       
       console.log('[DB] Connexion à la base de données établie');
       
-      // Activer les clés étrangères
-      db.pragma('foreign_keys = ON');
+      // Activer les clés étrangères et s'assurer que la base de données fonctionne correctement
+      try {
+        db.pragma('foreign_keys = ON');
+        console.log('[DB] Contraintes de clés étrangères activées');
+        
+        // Exécuter une requête simple pour vérifier que la base de données fonctionne
+        const testQuery = db.prepare('SELECT 1 AS test').get();
+        console.log('[DB] Test de la base de données réussi:', testQuery);
+      } catch (pragmaError) {
+        console.error('[DB] Erreur lors de la configuration de la base de données:', pragmaError);
+        // Continuer malgré l'erreur de configuration
+      }
+      
+      // Vérification préliminaire des tables essentielles
+      console.log('[DB] Vérification préliminaire des tables essentielles...');
+      try {
+        // Vérifier si les tables principales existent
+        const tables = db.prepare('SELECT name FROM sqlite_master WHERE type="table"').all();
+        const tableSet = new Set(tables.map(t => t.name));
+        console.log(`[DB] Tables existantes: ${Array.from(tableSet).join(', ')}`);
+        
+        // Vérifier les tables principales
+        const essentialTables = ['users', 'applications', 'api_keys', 'workflows'];
+        const missingTables = essentialTables.filter(t => !tableSet.has(t));
+        
+        if (missingTables.length > 0) {
+          console.warn(`[DB] Tables essentielles manquantes: ${missingTables.join(', ')}`);
+        } else {
+          console.log('[DB] Toutes les tables essentielles sont présentes');
+        }
+      } catch (checkError) {
+        console.error('[DB] Erreur lors de la vérification préliminaire des tables:', checkError);
+      }
       
       // Créer les tables si elles n'existent pas
+      console.log('[DB] Début de la création/vérification complète des tables...');
       createTables()
         .then(() => {
-          console.log('[DB] Structure de la base de données vérifiée');
+          console.log('[DB] Structure de la base de données vérifiée avec succès');
+          
+          // Effectuer une vérification supplémentaire de l'intégrité après la création des tables
+          try {
+            const integrityCheck = db.pragma('integrity_check');
+            if (integrityCheck === 'ok') {
+              console.log('[DB] Vérification d\'intégrité réussie');
+            } else {
+              console.warn('[DB] Vérification d\'intégrité échouée:', integrityCheck);
+            }
+          } catch (integrityError) {
+            console.error('[DB] Erreur lors de la vérification d\'intégrité:', integrityError);
+          }
+          
+          // Marquer comme initialisé
           initialized = true;
           resolve();
         })
         .catch(err => {
           console.error('[DB] Erreur lors de la création des tables:', err);
-          reject(err);
+          
+          // Tentative de récupération en cas d'erreur
+          console.log('[DB] Tentative de récupération en exécutant ensureTables directement...');
+          
+          ensureTables()
+            .then(result => {
+              console.log('[DB] Récupération réussie, tables vérifiées:', result);
+              
+              if (result.failed.length === 0) {
+                console.log('[DB] Toutes les tables essentielles ont été créées/vérifiées');
+                initialized = true;
+                resolve();
+              } else {
+                console.error('[DB] Certaines tables n\'ont pas pu être créées:', result.failed);
+                reject(new Error(`Tables non créées: ${result.failed.join(', ')}`));
+              }
+            })
+            .catch(recoveryErr => {
+              console.error('[DB] Échec de la récupération:', recoveryErr);
+              reject(recoveryErr);
+            });
         });
     } catch (err) {
-      console.error('[DB] Erreur lors de la connexion à la base de données:', err);
-      reject(err);
+      console.error('[DB] Erreur critique lors de la connexion à la base de données:', err);
+      
+      // Tentative de récupération en cas d'erreur de connexion
+      console.log('[DB] Tentative de récupération en recréant la base de données...');
+      
+      try {
+        // Si la base de données existe déjà et est corrompue, la renommer
+        const fs = require('fs');
+        if (fs.existsSync(DB_PATH)) {
+          const backupPath = `${DB_PATH}.backup-${Date.now()}`;
+          console.log(`[DB] Renommage de la base de données corrompue: ${DB_PATH} -> ${backupPath}`);
+          fs.renameSync(DB_PATH, backupPath);
+        }
+        
+        // Créer une nouvelle connexion
+        db = new Database(DB_PATH, { verbose: process.env.NODE_ENV === 'development' ? console.log : null });
+        console.log('[DB] Nouvelle connexion à la base de données établie');
+        
+        // Activer les clés étrangères
+        db.pragma('foreign_keys = ON');
+        
+        // Créer les tables essentielles
+        console.log('[DB] Création des tables essentielles...');
+        createTables()
+          .then(() => {
+            console.log('[DB] Structure de la base de données recréée avec succès');
+            initialized = true;
+            resolve();
+          })
+          .catch(tableErr => {
+            console.error('[DB] Échec de la recréation des tables:', tableErr);
+            reject(tableErr);
+          });
+      } catch (recoveryErr) {
+        console.error('[DB] Échec complet de la récupération:', recoveryErr);
+        reject(recoveryErr);
+      }
     }
   });
 }
@@ -98,76 +201,102 @@ function isInitialized() {
  * @returns {Promise<void>}
  */
 async function createTables() {
-  // Importer les schémas
-  const schema = require('../db/schema');
-  
-  // Création des tables principales dans un ordre spécifique pour respecter les contraintes de clés étrangères
-  // Utiliser ALL_SCHEMAS pour garantir que toutes les tables sont créées
-  const orderedSchemas = schema.ALL_SCHEMAS;
-  
-  const tables = orderedSchemas.map(schema => 
-    `CREATE TABLE IF NOT EXISTS ${schema.tableName} (${schema.columns})`
-  );
+  console.log('[DB] Début de la création/vérification des tables...');
   
   try {
-    // Exécuter chaque requête de création de table
-    for (const tableQuery of tables) {
-      console.log('[DB] Création de table:', tableQuery.split('\n')[0]);
-      await run(tableQuery);
+    // Importer les schémas
+    const schema = require('../db/schema');
+    
+    // Création des tables principales dans un ordre spécifique pour respecter les contraintes de clés étrangères
+    // Utiliser ALL_SCHEMAS pour garantir que toutes les tables sont créées
+    const orderedSchemas = schema.ALL_SCHEMAS;
+    
+    console.log(`[DB] Schéma chargé, ${orderedSchemas.length} tables à vérifier`);
+    
+    // Créer une liste des noms de tables pour la vérification
+    const tableNames = orderedSchemas.map(schema => schema.tableName);
+    console.log(`[DB] Tables à vérifier: ${tableNames.join(', ')}`);
+    
+    // Utiliser ensureTables pour vérifier et créer les tables si nécessaire
+    // Cette fonction sera plus robuste et tolérante aux erreurs
+    const result = await ensureTables(tableNames);
+    
+    if (result.created.length > 0) {
+      console.log(`[DB] Tables créées: ${result.created.join(', ')}`);
     }
-
-    // Vérifier si les tables existent réellement en exécutant une requête directe
-    const tableCheck = await run("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
-    console.log('[DB] Vérification des tables créées:', tableCheck);
+    
+    if (result.failed.length > 0) {
+      console.warn(`[DB] Tables non créées: ${result.failed.join(', ')}`);
+    }
+    
+    // Pour la compatibilité avec le code existant, créer également les tables avec la méthode originale
+    const tables = orderedSchemas.map(schema => 
+      `CREATE TABLE IF NOT EXISTS ${schema.tableName} (${schema.columns})`
+    );
     
     try {
-      // Vérifier si l'utilisateur admin existe, sinon le créer
-      const adminCheck = await get('SELECT id FROM users WHERE username = ?', ['admin']);
+      // Exécuter chaque requête de création de table
+      for (const tableQuery of tables) {
+        console.log('[DB] Création de table:', tableQuery.split('\n')[0]);
+        await run(tableQuery);
+      }
+
+      // Vérifier si les tables existent réellement en exécutant une requête directe
+      const tableCheck = await run("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+      console.log('[DB] Vérification des tables créées:', tableCheck);
       
-      if (!adminCheck) {
-        console.log('[DB] Création de l\'utilisateur administrateur par défaut');
+      try {
+        // Vérifier si l'utilisateur admin existe, sinon le créer
+        const adminCheck = await get('SELECT id FROM users WHERE username = ?', ['admin']);
         
-        // Hasher le mot de passe avec bcrypt
+        if (!adminCheck) {
+          console.log('[DB] Création de l\'utilisateur administrateur par défaut');
+          
+          // Hasher le mot de passe avec bcrypt
+          const bcrypt = require('bcrypt');
+          const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+          
+          await run(
+            'INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
+            ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
+          );
+        }
+      } catch (err) {
+        console.error('[DB] Erreur lors de la vérification/création de l\'utilisateur admin:', err);
+        
+        // Création d'urgence de l'utilisateur admin sans vérification préalable
+        console.log('[DB] Tentative de création directe de l\'utilisateur admin');
         const bcrypt = require('bcrypt');
         const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
         
-        await run(
-          'INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
-          ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
-        );
+        try {
+          await run(
+            'INSERT OR IGNORE INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
+            ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
+          );
+        } catch (insertErr) {
+          console.error('[DB] Erreur lors de la création directe de l\'utilisateur admin:', insertErr);
+        }
       }
-    } catch (err) {
-      console.error('[DB] Erreur lors de la vérification/création de l\'utilisateur admin:', err);
       
-      // Création d'urgence de l'utilisateur admin sans vérification préalable
-      console.log('[DB] Tentative de création directe de l\'utilisateur admin');
-      const bcrypt = require('bcrypt');
-      const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
-      
+      // Création de l'application par défaut et de la clé API de développement
+      console.log('[DB] Création de l\'application par défaut et de la clé API de développement');
       try {
         await run(
-          'INSERT OR IGNORE INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
-          ['admin', hashedPassword, 'admin@fhirhub.local', 'admin']
+          'INSERT OR IGNORE INTO applications (name, description, created_by) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
+          ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
         );
-      } catch (insertErr) {
-        console.error('[DB] Erreur lors de la création directe de l\'utilisateur admin:', insertErr);
+        
+        await run(
+          'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?',
+          ['Application par défaut', 'dev-key', 'dev-key', 'Clé de développement']
+        );
+      } catch (appErr) {
+        console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
       }
-    }
-    
-    // Création de l'application par défaut et de la clé API de développement
-    console.log('[DB] Création de l\'application par défaut et de la clé API de développement');
-    try {
-      await run(
-        'INSERT OR IGNORE INTO applications (name, description, created_by) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
-        ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
-      );
-      
-      await run(
-        'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?',
-        ['Application par défaut', 'dev-key', 'dev-key', 'Clé de développement']
-      );
-    } catch (appErr) {
-      console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
+    } catch (error) {
+      console.error('[DB] Erreur lors de l\'exécution des requêtes de création de tables:', error);
+      throw error;
     }
   } catch (error) {
     console.error('[DB] Erreur lors de la création des tables:', error);

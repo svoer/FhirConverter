@@ -14,6 +14,7 @@ const tmpRouter = require('./src/routes/tmpRouter');
 const dbService = require('./src/services/dbService');
 const terminologyService = require('./src/services/terminologyService');
 const aiProviderService = require('./src/services/aiProviderService');
+const dbMaintenanceService = require('./src/services/dbMaintenanceService');
 
 // Configuration de l'environnement
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
@@ -51,20 +52,64 @@ app.use((err, req, res, next) => {
 // Démarrage du serveur
 async function startServer() {
   try {
+    console.log('==========================================================');
+    console.log('   FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4');
+    console.log('   Version 1.2.0 - Compatible ANS');
+    console.log(`   ${new Date().toISOString().slice(0, 10)} ${new Date().toLocaleTimeString()}`);
+    console.log('==========================================================');
+    
     // Initialisation des services
     await dbService.initialize();
+    console.log('[SERVER] Base de données initialisée avec succès');
+    
+    // Vérification initiale de l'intégrité de la base de données
+    try {
+      console.log('[SERVER] Vérification initiale de l\'intégrité de la base de données...');
+      const dbCheckResult = await dbMaintenanceService.checkDatabaseIntegrity();
+      
+      if (dbCheckResult.status === 'repaired') {
+        console.log('[SERVER] Base de données réparée avec succès:', dbCheckResult.tablesCreated);
+      } else if (dbCheckResult.status === 'error') {
+        console.error('[SERVER] Erreurs lors de la vérification de la base de données:', dbCheckResult.errors);
+      } else {
+        console.log('[SERVER] Vérification de la base de données terminée sans problème');
+      }
+      
+      // Démarrer la maintenance périodique de la base de données
+      // Vérifier toutes les 6 heures (360 minutes)
+      const stopDbMaintenance = dbMaintenanceService.startPeriodicMaintenance(360);
+      
+      // Permettre l'arrêt propre de la maintenance lors de l'arrêt du serveur
+      process.on('SIGINT', () => {
+        console.log('[SERVER] Arrêt de la maintenance de la base de données...');
+        stopDbMaintenance();
+        process.exit(0);
+      });
+      
+      process.on('SIGTERM', () => {
+        console.log('[SERVER] Arrêt de la maintenance de la base de données...');
+        stopDbMaintenance();
+        process.exit(0);
+      });
+    } catch (dbCheckError) {
+      console.error('[SERVER] Erreur lors de la vérification initiale de la base de données:', dbCheckError);
+      // Continuer malgré l'erreur
+    }
+    
+    // Initialiser les autres services
     await terminologyService.initialize();
+    console.log('[SERVER] Service de terminologie initialisé avec succès');
+    
     await aiProviderService.initialize();
+    console.log('[SERVER] Service d\'IA initialisé avec succès');
     
     // Démarrage du serveur
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Serveur FHIRHub démarré sur le port ${PORT}`);
-      console.log(`API accessible à l'adresse http://localhost:${PORT}/api`);
-      console.log(`Interface web accessible à l'adresse http://localhost:${PORT}`);
-      console.log(`Mode: ${process.env.NODE_ENV}`);
+      console.log('[SERVER] FHIRHub démarré sur le port ' + PORT + ' (0.0.0.0)');
+      console.log('[SERVER] Accessible sur http://localhost:' + PORT + ' et http://<ip-serveur>:' + PORT);
     });
   } catch (error) {
-    console.error('Erreur lors du démarrage du serveur:', error);
+    console.error('[SERVER] Erreur critique lors du démarrage du serveur:', error);
     process.exit(1);
   }
 }
