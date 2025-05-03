@@ -23,9 +23,12 @@
       <ul class="nav-menu">
         <li><a href="/dashboard.html" class="active"><i class="fas fa-chart-line"></i> Tableau de bord</a></li>
         <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Conversion</a></li>
-        <li><a href="/application-management.html"><i class="fas fa-th"></i> Applications</a></li>
+        <li><a href="/applications.html"><i class="fas fa-th"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="/users.html"><i class="fas fa-users"></i> Utilisateurs</a></li>
+        <li><a href="/terminologies.html"><i class="fas fa-book-medical"></i> Terminologies</a></li>
         <li><a href="/workflows.html"><i class="fas fa-project-diagram"></i> Workflows</a></li>
-        <li><a href="/settings.html"><i class="fas fa-cog"></i> Paramètres</a></li>
+        <li><a href="/ai-settings.html"><i class="fas fa-robot"></i> Paramètres IA</a></li>
         <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
         <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
         <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
@@ -61,7 +64,7 @@
           <div class="benefit-content">
             <div class="benefit-value" id="timeSaved"><span class="counter">3.5</span> h</div>
             <div class="benefit-label">Temps économisé</div>
-            <div class="benefit-detail">Par rapport à une conversion traditionnelle (30-60 sec)</div>
+            <div class="benefit-detail">Par rapport à une conversion manuelle</div>
           </div>
         </div>
         
@@ -333,10 +336,9 @@
       const avgProcessingTime = data.conversionStats?.avgTime || 0;
       const avgResources = data.conversionStats?.avgResources || 0;
       
-      // Calcul du temps économisé (estimé à 45 secondes par conversion manuelle)
-      // 45 secondes représente la moyenne entre 30 et 60 secondes
-      const manualTimePerConversionSeconds = 45;
-      const timeSavedHours = (conversions * manualTimePerConversionSeconds / 3600).toFixed(1);
+      // Calcul du temps économisé (estimé à 10 minutes par conversion manuelle)
+      const manualTimePerConversionMinutes = 10;
+      const timeSavedHours = (conversions * manualTimePerConversionMinutes / 60).toFixed(1);
       
       // Calcul du taux de succès (basé sur les statistiques réelles)
       // Pour cette démo, nous utilisons un pourcentage élevé mais réaliste
@@ -498,53 +500,6 @@
         options: options
       });
     }
-  </script>
-  
-  <!-- Script pour la gestion du menu déroulant -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Gestion du clic et du survol sur les menus déroulants
-      const dropdowns = document.querySelectorAll('.dropdown');
-      
-      // Fonction pour fermer tous les menus déroulants
-      function closeAllDropdowns() {
-        dropdowns.forEach(dropdown => {
-          dropdown.classList.remove('active');
-        });
-      }
-      
-      // Événement pour fermer les menus déroulants lors d'un clic en dehors
-      document.addEventListener('click', function(event) {
-        const target = event.target;
-        // Si le clic n'est pas dans un menu déroulant, fermer tous les menus
-        if (!target.closest('.dropdown')) {
-          closeAllDropdowns();
-        }
-      });
-      
-      // Pour chaque menu déroulant
-      dropdowns.forEach(dropdown => {
-        const toggle = dropdown.querySelector('.dropdown-toggle');
-        
-        // Gestion du clic sur le bouton du menu déroulant
-        toggle.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation(); // Empêche la propagation de l'événement
-          
-          // Si le menu est déjà actif, le fermer
-          if (dropdown.classList.contains('active')) {
-            dropdown.classList.remove('active');
-          } else {
-            // Sinon, fermer tous les autres et ouvrir celui-ci
-            closeAllDropdowns();
-            dropdown.classList.add('active');
-            
-            // Log pour déboguer
-            console.log('Menu déroulant ouvert');
-          }
-        });
-      });
-    });
   </script>
 </body>
 </html>

@@ -54,32 +54,24 @@ const { hashPassword, verifyPassword } = require('../utils/auth');
  */
 router.get('/', authCombined, async (req, res) => {
   try {
-    console.log("[DEBUG] Route /api/users - accès par:", req.user ? `utilisateur ${req.user.username}` : (req.apiKey ? `clé API ${req.apiKey.key.substring(0, 8)}...` : "non authentifié"));
-    
-    // Vérifier l'authentification (notre middleware authCombined garantit que req.user ou req.apiKey doit être présent)
-    if (!req.user && !req.apiKey) {
-      console.error("[DEBUG] Route /api/users - Erreur critique: ni req.user ni req.apiKey n'est présent malgré authCombined");
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
+        });
+      }
+    } else {
       return res.status(401).json({
         success: false,
         message: 'Authentification requise.'
       });
     }
     
-    // Si utilisateur authentifié, vérifier s'il est admin
-    if (req.user && req.user.role !== 'admin') {
-      console.log("[DEBUG] Route /api/users - accès refusé, l'utilisateur n'est pas admin:", req.user.role);
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
-      });
-    }
-    
-    // À ce point, l'accès est autorisé (soit admin, soit via API key)
-    console.log("[DEBUG] Route /api/users - accès autorisé");
-    
     const db = req.app.locals.db;
     const users = db.prepare('SELECT id, username, role, created_at FROM users').all();
-    console.log("[DEBUG] Route /api/users - utilisateurs récupérés:", users.length);
     
     res.json({
       success: true,
@@ -145,27 +137,19 @@ router.get('/', authCombined, async (req, res) => {
  */
 router.get('/:id', authCombined, async (req, res) => {
   try {
-    console.log("[DEBUG] Route /api/users/:id - accès par:", req.user ? `utilisateur ${req.user.username}` : (req.apiKey ? `clé API ${req.apiKey.key.substring(0, 8)}...` : "non authentifié"));
-    
-    // Vérifier l'authentification (notre middleware authCombined garantit que req.user ou req.apiKey doit être présent)
-    if (!req.user && !req.apiKey) {
-      console.error("[DEBUG] Route /api/users/:id - Erreur critique: ni req.user ni req.apiKey n'est présent malgré authCombined");
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin ou c'est son propre profil
+      if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Vous ne pouvez accéder qu\'à votre propre profil.'
+        });
+      }
+    } else {
       return res.status(401).json({
         success: false,
         message: 'Authentification requise.'
-      });
-    }
-    
-    // Si clé API, autoriser l'accès complet (même comportement que pour un admin)
-    if (req.apiKey) {
-      console.log("[DEBUG] Route /api/users/:id - accès via API key autorisé");
-    } 
-    // Si utilisateur, vérifier s'il est admin ou si c'est son propre profil
-    else if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
-      console.log("[DEBUG] Route /api/users/:id - accès refusé, l'utilisateur n'est ni admin ni le propriétaire du profil");
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Vous ne pouvez accéder qu\'à votre propre profil ou vous devez être administrateur.'
       });
     }
     
@@ -259,27 +243,19 @@ router.get('/:id', authCombined, async (req, res) => {
  */
 router.post('/', authCombined, async (req, res) => {
   try {
-    console.log("[DEBUG] Route POST /api/users - accès par:", req.user ? `utilisateur ${req.user.username}` : (req.apiKey ? `clé API ${req.apiKey.key.substring(0, 8)}...` : "non authentifié"));
-    
-    // Vérifier l'authentification (notre middleware authCombined garantit que req.user ou req.apiKey doit être présent)
-    if (!req.user && !req.apiKey) {
-      console.error("[DEBUG] Route POST /api/users - Erreur critique: ni req.user ni req.apiKey n'est présent malgré authCombined");
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
+        });
+      }
+    } else {
       return res.status(401).json({
         success: false,
         message: 'Authentification requise.'
-      });
-    }
-    
-    // Si clé API, autoriser l'accès complet
-    if (req.apiKey) {
-      console.log("[DEBUG] Route POST /api/users - accès via API key autorisé");
-    } 
-    // Si utilisateur, vérifier s'il est admin
-    else if (req.user.role !== 'admin') {
-      console.log("[DEBUG] Route POST /api/users - accès refusé, l'utilisateur n'est pas admin:", req.user.role);
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
       });
     }
     
@@ -409,39 +385,28 @@ router.post('/', authCombined, async (req, res) => {
 router.put('/:id', authCombined, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
-    console.log("[DEBUG] Route PUT /api/users/:id - accès par:", req.user ? `utilisateur ${req.user.username}` : (req.apiKey ? `clé API ${req.apiKey.key.substring(0, 8)}...` : "non authentifié"));
     
-    // Vérifier l'authentification (notre middleware authCombined garantit que req.user ou req.apiKey doit être présent)
-    if (!req.user && !req.apiKey) {
-      console.error("[DEBUG] Route PUT /api/users/:id - Erreur critique: ni req.user ni req.apiKey n'est présent malgré authCombined");
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin ou c'est son propre profil
+      if (req.user.role !== 'admin' && req.user.id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Vous ne pouvez modifier que votre propre profil.'
+        });
+      }
+      
+      // Si non-admin, empêcher la modification du rôle
+      if (req.user.role !== 'admin' && req.body.role) {
+        return res.status(403).json({
+          success: false,
+          message: 'Accès refusé. Seul un administrateur peut modifier les rôles.'
+        });
+      }
+    } else {
       return res.status(401).json({
         success: false,
         message: 'Authentification requise.'
-      });
-    }
-    
-    // Si clé API, autoriser l'accès complet
-    let isAdmin = req.apiKey ? true : (req.user && req.user.role === 'admin');
-    let isOwnProfile = req.user && req.user.id === userId;
-    
-    if (req.apiKey) {
-      console.log("[DEBUG] Route PUT /api/users/:id - accès via API key autorisé");
-    } 
-    // Si utilisateur, vérifier les droits d'accès
-    else if (!isAdmin && !isOwnProfile) {
-      console.log("[DEBUG] Route PUT /api/users/:id - accès refusé, l'utilisateur n'est ni admin ni le propriétaire du profil");
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Vous ne pouvez modifier que votre propre profil.'
-      });
-    }
-    
-    // Si non-admin, empêcher la modification du rôle
-    if (!isAdmin && req.body.role) {
-      console.log("[DEBUG] Route PUT /api/users/:id - tentative non autorisée de modification du rôle");
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Seul un administrateur peut modifier les rôles.'
       });
     }
     
@@ -495,8 +460,8 @@ router.put('/:id', authCombined, async (req, res) => {
       updateParams.push(hashPassword(password));
     }
     
-    // Rôle (si admin ou API key)
-    if (role && isAdmin) {
+    // Rôle (si admin)
+    if (role && req.user.role === 'admin') {
       updateFields.push('role = ?');
       updateParams.push(role);
     }
@@ -570,34 +535,11 @@ router.put('/:id', authCombined, async (req, res) => {
 router.delete('/:id', authCombined, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
-    console.log("[DEBUG] Route DELETE /api/users/:id - accès par:", req.user ? `utilisateur ${req.user.username}` : (req.apiKey ? `clé API ${req.apiKey.key.substring(0, 8)}...` : "non authentifié"));
     
-    // Vérifier l'authentification (notre middleware authCombined garantit que req.user ou req.apiKey doit être présent)
-    if (!req.user && !req.apiKey) {
-      console.error("[DEBUG] Route DELETE /api/users/:id - Erreur critique: ni req.user ni req.apiKey n'est présent malgré authCombined");
-      return res.status(401).json({
-        success: false,
-        message: 'Authentification requise.'
-      });
-    }
-    
-    // Si API key, autoriser l'accès complet sauf pour l'utilisateur admin par défaut
-    if (req.apiKey) {
-      console.log("[DEBUG] Route DELETE /api/users/:id - accès via API key");
-      
-      // Vérifier si l'utilisateur est l'admin principal (ID 1)
-      if (userId === 1) {
-        console.error("[DEBUG] Route DELETE /api/users/:id - tentative de suppression de l'admin principal via API key");
-        return res.status(403).json({
-          success: false,
-          message: 'Accès refusé. L\'utilisateur administrateur principal ne peut pas être supprimé, même via API.'
-        });
-      }
-    } 
-    // Si utilisateur, vérifier qu'il est admin et n'essaie pas de se supprimer lui-même
-    else if (req.user) {
+    // Vérifier si l'utilisateur est authentifié
+    if (req.user) {
+      // Vérifier si l'utilisateur est admin
       if (req.user.role !== 'admin') {
-        console.error("[DEBUG] Route DELETE /api/users/:id - tentative de suppression par un non-admin");
         return res.status(403).json({
           success: false,
           message: 'Accès refusé. Vous devez être administrateur pour effectuer cette action.'
@@ -606,12 +548,16 @@ router.delete('/:id', authCombined, async (req, res) => {
       
       // Empêcher la suppression de son propre compte
       if (req.user.id === userId) {
-        console.error("[DEBUG] Route DELETE /api/users/:id - tentative de suppression de son propre compte");
         return res.status(403).json({
           success: false,
           message: 'Vous ne pouvez pas supprimer votre propre compte.'
         });
       }
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise.'
+      });
     }
     
     const db = req.app.locals.db;

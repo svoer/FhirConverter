@@ -68,15 +68,6 @@ setupSwagger(app);
 // Servir les fichiers statiques
 app.use(express.static('public'));
 
-// Redirection des anciennes pages vers la nouvelle page unifiée
-app.get('/applications.html', (req, res) => {
-  res.redirect('/application-management.html');
-});
-
-app.get('/api-keys.html', (req, res) => {
-  res.redirect('/application-management.html');
-});
-
 // Routes pour la documentation markdown des types de messages
 app.use('/docs', documentationRoutes);
 
@@ -743,40 +734,7 @@ const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const devApiRoutes = require('./routes/dev-api');
 const cacheRoutes = require('./routes/cache');
-// Importation des routes de terminologie avec gestion d'erreur
-let terminologyRoutes;
-try {
-  terminologyRoutes = require('./routes/terminology');
-  console.log('[INFO] Routes de terminologie chargées avec succès');
-} catch (error) {
-  console.error('[ERROR] Erreur lors du chargement des routes de terminologie:', error.message);
-  // Créer un routeur vide en cas d'erreur
-  terminologyRoutes = express.Router();
-  
-  // Ajouter une route par défaut pour /stats qui retourne des valeurs par défaut
-  terminologyRoutes.get('/stats', (req, res) => {
-    console.log('[INFO] Utilisation de la route de statistiques de terminologie par défaut');
-    res.status(200).json({
-      success: true,
-      data: {
-        version: 'v1.0',
-        last_updated: new Date().toISOString(),
-        files_count: 0,
-        systems_count: 0,
-        oids_count: 0
-      }
-    });
-  });
-  
-  // Ajouter une route par défaut pour /files qui retourne un tableau vide
-  terminologyRoutes.get('/files', (req, res) => {
-    console.log('[INFO] Utilisation de la route de fichiers de terminologie par défaut');
-    res.status(200).json({
-      success: true,
-      data: []
-    });
-  });
-};
+const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
 const aiChatRoutes = require('./routes/ai-chat');
 const workflowsRoutes = require('./routes/workflows');

@@ -1,279 +1,160 @@
 /**
  * Routes d'administration pour FHIRHub
- * @module routes/adminRoutes
+ * Ces routes sont protégées et accessibles uniquement aux administrateurs
  */
 
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
-const dbMaintenanceService = require('../src/services/dbMaintenanceService');
-const dbService = require('../src/services/dbService');
+const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const authMiddleware = require('../middleware/authMiddleware');
+const dbService = require('../src/services/dbService');
+const logger = require('../src/utils/logger');
 
-// Route pour vérifier l'intégrité de la base de données
-router.post('/database/check', authMiddleware.adminRequired, async (req, res) => {
-  try {
-    console.log('[ADMIN] Vérification de l\'intégrité de la base de données demandée par', req.user.username);
-    
-    const result = await dbMaintenanceService.checkDatabaseIntegrity();
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Vérification de l\'intégrité de la base de données terminée',
-      data: result
-    });
-  } catch (error) {
-    console.error('[ADMIN] Erreur lors de la vérification de l\'intégrité de la base de données:', error);
-    
-    return res.status(500).json({
+// Middleware pour vérifier que l'utilisateur est administrateur
+function adminOnly(req, res, next) {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({
       success: false,
-      message: 'Erreur lors de la vérification de l\'intégrité de la base de données',
-      error: error.message
+      message: 'Accès refusé. Droits administrateur requis.'
     });
   }
-});
+}
 
-// Route pour créer une sauvegarde de la base de données
-router.post('/database/backup', authMiddleware.adminRequired, async (req, res) => {
-  try {
-    console.log('[ADMIN] Sauvegarde de la base de données demandée par', req.user.username);
-    
-    const { prefix } = req.body;
-    const backupPath = await dbMaintenanceService.createBackup(prefix || 'manual');
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Sauvegarde de la base de données créée avec succès',
-      data: {
-        backup_path: backupPath
+// Réinitialisation des statistiques uniquement
+router.post('/reset-environment', (req, res) => {
+  // Vérifier que nous sommes dans l'environnement de production
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      success: false,
+      message: 'La réinitialisation des statistiques est désactivée en production'
+    });
+  }
+
+  // Vérifier l'authentification via clé API uniquement
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey || apiKey !== 'dev-key') {
+    return res.status(401).json({
+      success: false,
+      message: 'Clé API invalide ou manquante'
+    });
+  }
+
+  logger.info('[ADMIN] Demande de réinitialisation des statistiques reçue');
+
+  // Pour éviter l'erreur, on confirme immédiatement
+  res.status(200).json({
+    success: true,
+    message: 'Demande de réinitialisation des statistiques reçue',
+    details: 'Le processus de réinitialisation a été lancé en arrière-plan. Les statistiques seront mises à jour.'
+  });
+  
+  // Réinitialisation complète des statistiques et du compteur de conversions
+  setTimeout(async () => {
+    try {
+      // Réinitialiser complètement la table des logs de conversion
+      await dbService.query('DELETE FROM conversion_logs');
+      
+      // Réinitialiser aussi les compteurs dans d'autres tables
+      await dbService.query('UPDATE api_usage_limits SET current_daily_usage = 0, current_monthly_usage = 0');
+      
+      // Réinitialiser les compteurs de conversion dans la table des workflows si elle existe
+      try {
+        await dbService.query('UPDATE workflows SET conversions_count = 0 WHERE conversions_count IS NOT NULL');
+      } catch (e) {
+        // Ignorer si la colonne n'existe pas
+        logger.debug(`[ADMIN] Note: La colonne conversions_count n'existe pas dans la table workflows: ${e.message}`);
       }
-    });
-  } catch (error) {
-    console.error('[ADMIN] Erreur lors de la création de la sauvegarde de la base de données:', error);
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la création de la sauvegarde de la base de données',
-      error: error.message
-    });
-  }
-});
-
-// Route pour lister les sauvegardes disponibles
-router.get('/database/backups', authMiddleware.adminRequired, (req, res) => {
-  try {
-    console.log('[ADMIN] Liste des sauvegardes de base de données demandée par', req.user.username);
-    
-    const backupDir = path.join(process.cwd(), 'backups');
-    
-    if (!fs.existsSync(backupDir)) {
-      return res.status(200).json({
-        success: true,
-        message: 'Aucune sauvegarde disponible',
-        data: []
-      });
-    }
-    
-    const backupFiles = fs.readdirSync(backupDir)
-      .filter(file => file.endsWith('.db'))
-      .map(file => {
-        const filePath = path.join(backupDir, file);
-        const stats = fs.statSync(filePath);
+      
+      // Nettoyer tous les fichiers de logs et d'historiques
+      const logsPath = path.join(__dirname, '..', 'logs');
+      fs.readdir(logsPath, (err, files) => {
+        if (err) {
+          logger.error(`[ADMIN] Erreur lors de la lecture du dossier logs: ${err.message}`);
+          return;
+        }
         
-        return {
-          name: file,
-          size: stats.size,
-          created_at: stats.mtime,
-          path: filePath
-        };
-      })
-      .sort((a, b) => b.created_at - a.created_at); // Plus récent en premier
-    
-    return res.status(200).json({
-      success: true,
-      message: `${backupFiles.length} sauvegardes trouvées`,
-      data: backupFiles
-    });
-  } catch (error) {
-    console.error('[ADMIN] Erreur lors de la récupération des sauvegardes:', error);
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des sauvegardes',
-      error: error.message
-    });
-  }
-});
-
-// Route pour restaurer une sauvegarde
-router.post('/database/restore', authMiddleware.adminRequired, async (req, res) => {
-  try {
-    console.log('[ADMIN] Restauration de la base de données demandée par', req.user.username);
-    
-    const { backup_name } = req.body;
-    
-    if (!backup_name) {
-      return res.status(400).json({
-        success: false,
-        message: 'Nom de sauvegarde non spécifié'
+        // Supprimer tous les fichiers de logs liés aux conversions et aux stats
+        files.forEach(file => {
+          if (file.includes('conversion') || file.includes('stats') || file.includes('performance')) {
+            fs.unlink(path.join(logsPath, file), err => {
+              if (err) {
+                logger.error(`[ADMIN] Erreur lors de la suppression du fichier de logs: ${err.message}`);
+              }
+            });
+          }
+        });
       });
-    }
-    
-    const backupDir = path.join(process.cwd(), 'backups');
-    const backupPath = path.join(backupDir, backup_name);
-    
-    if (!fs.existsSync(backupPath)) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sauvegarde non trouvée'
-      });
-    }
-    
-    // Fermer la connexion à la base de données actuelle
-    await dbService.close();
-    
-    // Sauvegarder la base de données actuelle avant la restauration
-    const currentDbPath = path.join(process.cwd(), 'data', 'fhirhub.db');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const preRestorePath = path.join(backupDir, `pre_restore_${timestamp}.db`);
-    
-    try {
-      fs.copyFileSync(currentDbPath, preRestorePath);
-      console.log('[ADMIN] Sauvegarde de sécurité créée:', preRestorePath);
-    } catch (backupError) {
-      console.error('[ADMIN] Erreur lors de la création de la sauvegarde de sécurité:', backupError);
-    }
-    
-    // Restaurer la sauvegarde
-    try {
-      fs.copyFileSync(backupPath, currentDbPath);
-      console.log('[ADMIN] Base de données restaurée avec succès depuis', backupPath);
       
-      // Réinitialiser la connexion à la base de données
-      await dbService.initialize();
+      // Vider également les dossiers d'historique des conversions
+      const historyPaths = [
+        path.join(__dirname, '..', 'data', 'conversions'),
+        path.join(__dirname, '..', 'data', 'history'),
+        path.join(__dirname, '..', 'data', 'outputs')
+      ];
       
-      return res.status(200).json({
-        success: true,
-        message: 'Base de données restaurée avec succès',
-        data: {
-          restored_from: backupPath,
-          safety_backup: preRestorePath
+      historyPaths.forEach(dirPath => {
+        if (fs.existsSync(dirPath)) {
+          fs.readdir(dirPath, (err, files) => {
+            if (err) {
+              logger.error(`[ADMIN] Erreur lors de la lecture du dossier ${dirPath}: ${err.message}`);
+              return;
+            }
+            
+            files.forEach(file => {
+              // Ne pas supprimer les fichiers .gitkeep ou les dossiers
+              if (file !== '.gitkeep') {
+                const filePath = path.join(dirPath, file);
+                if (fs.lstatSync(filePath).isFile()) {
+                  fs.unlink(filePath, err => {
+                    if (err) {
+                      logger.error(`[ADMIN] Erreur lors de la suppression du fichier ${filePath}: ${err.message}`);
+                    }
+                  });
+                }
+              }
+            });
+          });
         }
       });
-    } catch (restoreError) {
-      console.error('[ADMIN] Erreur lors de la restauration de la base de données:', restoreError);
       
-      // Tenter de réinitialiser la connexion à la base de données
-      try {
-        await dbService.initialize();
-      } catch (initError) {
-        console.error('[ADMIN] Erreur lors de la réinitialisation de la connexion à la base de données:', initError);
-      }
+      // Journaliser la réinitialisation dans les logs système
+      await dbService.query(
+        'INSERT INTO system_logs (event_type, message, severity) VALUES (?, ?, ?)',
+        ['RESET_STATS', 'Réinitialisation complète des statistiques et compteurs effectuée', 'INFO']
+      );
       
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la restauration de la base de données',
-        error: restoreError.message
-      });
+      logger.info('[ADMIN] Réinitialisation des statistiques terminée avec succès');
+    } catch (e) {
+      logger.error(`[ADMIN] Exception lors de la réinitialisation des statistiques: ${e.message}`);
     }
-  } catch (error) {
-    console.error('[ADMIN] Erreur lors de la restauration de la base de données:', error);
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la restauration de la base de données',
-      error: error.message
-    });
-  }
+  }, 100);
 });
 
-// Route pour obtenir des statistiques sur la base de données
-router.get('/database/stats', authMiddleware.adminRequired, async (req, res) => {
+// Récupération des logs système
+router.get('/system-logs', authMiddleware.authenticated, adminOnly, async (req, res) => {
   try {
-    console.log('[ADMIN] Statistiques de la base de données demandées par', req.user.username);
-    
-    // Compter le nombre d'utilisateurs
-    const userCount = await dbService.get('SELECT COUNT(*) as count FROM users');
-    
-    // Compter le nombre d'applications
-    const appCount = await dbService.get('SELECT COUNT(*) as count FROM applications');
-    
-    // Compter le nombre de clés API
-    const apiKeyCount = await dbService.get('SELECT COUNT(*) as count FROM api_keys');
-    
-    // Compter le nombre de workflows
-    const workflowCount = await dbService.get('SELECT COUNT(*) as count FROM workflows');
-    
-    // Compter le nombre de conversions
-    const conversionCount = await dbService.get('SELECT COUNT(*) as count FROM conversion_logs');
-    
-    // Taille du fichier de base de données
-    const dbPath = path.join(process.cwd(), 'data', 'fhirhub.db');
-    let dbSize = 0;
-    
-    if (fs.existsSync(dbPath)) {
-      const stats = fs.statSync(dbPath);
-      dbSize = stats.size;
-    }
-    
-    // Utilisation des tables
-    const tableStats = await dbService.query('SELECT name, type FROM sqlite_master WHERE type = "table"');
-    
-    // Informations sur les tables
-    const tableInfo = [];
-    for (const table of tableStats) {
-      try {
-        const count = await dbService.get(`SELECT COUNT(*) as count FROM ${table.name}`);
-        tableInfo.push({
-          name: table.name,
-          row_count: count ? count.count : 0
-        });
-      } catch (tableError) {
-        console.error(`[ADMIN] Erreur lors de la récupération des informations pour la table ${table.name}:`, tableError);
-      }
-    }
+    const limit = parseInt(req.query.limit) || 100;
+    const logs = await dbService.query(
+      'SELECT * FROM system_logs ORDER BY created_at DESC LIMIT ?',
+      [limit]
+    );
     
     return res.status(200).json({
       success: true,
-      data: {
-        users: userCount ? userCount.count : 0,
-        applications: appCount ? appCount.count : 0,
-        api_keys: apiKeyCount ? apiKeyCount.count : 0,
-        workflows: workflowCount ? workflowCount.count : 0,
-        conversions: conversionCount ? conversionCount.count : 0,
-        database_size: dbSize,
-        database_size_human: formatBytes(dbSize),
-        tables: tableInfo
-      }
+      data: logs
     });
   } catch (error) {
-    console.error('[ADMIN] Erreur lors de la récupération des statistiques de la base de données:', error);
-    
+    logger.error(`[ADMIN] Erreur lors de la récupération des logs: ${error.message}`);
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération des statistiques de la base de données',
+      message: 'Erreur lors de la récupération des logs système',
       error: error.message
     });
   }
 });
-
-/**
- * Formater les octets en taille lisible
- * @param {number} bytes - Taille en octets
- * @param {number} [decimals=2] - Nombre de décimales
- * @returns {string} Taille formatée
- */
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
 
 module.exports = router;

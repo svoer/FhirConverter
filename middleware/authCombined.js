@@ -1,95 +1,103 @@
 /**
- * Middleware combinant authentification par jeton JWT et clé API
- * Ce middleware unifié gère toutes les méthodes d'authentification pour FHIRHub
+ * Middleware combinant l'authentification JWT et API Key
+ * Permet notamment aux administrateurs d'accéder aux routes protégées via Swagger
+ * sans avoir à spécifier manuellement une clé API.
+ * 
+ * @module middleware/authCombined
  */
 
 const jwt = require('jsonwebtoken');
 
-// Clé secrète pour vérifier les JWT (à déplacer dans une variable d'environnement en production)
-const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
-
 /**
- * Middleware qui accepte soit l'authentification utilisateur par token JWT, 
- * soit l'authentification par clé API
- * @param {Object} req - Requête Express
- * @param {Object} res - Réponse Express
- * @param {Function} next - Fonction suivante dans la chaîne de middleware
+ * Vérifie si l'utilisateur est authentifié, quelle que soit sa méthode d'authentification
+ * @returns {Function} Middleware Express
  */
-function authCombined(req, res, next) {
-  // Vérifier en priorité si une clé API est fournie dans les headers
-  const apiKey = req.headers['x-api-key'];
-  
-  if (apiKey) {
+function createAuthCombinedMiddleware() {
+  // Renvoyer le middleware
+  return function authCombinedMiddleware(req, res, next) {
+    const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
+    
     try {
-      // Vérifier si la clé API est valide
+      // S'assurer que req.app et req.app.locals existent
+      if (!req.app || !req.app.locals || !req.app.locals.db) {
+        return res.status(500).json({
+          success: false, 
+          error: 'Server Configuration Error',
+          message: 'Base de données non initialisée'
+        });
+      }
+      
       const db = req.app.locals.db;
-      const keyData = db.prepare(`
+      
+      // 1. Vérifier d'abord la présence d'un token JWT
+      const authHeader = req.headers.authorization;
+      let isJwtAuthenticated = false;
+      
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        
+        try {
+          // Vérifier et décoder le token
+          const decoded = jwt.verify(token, JWT_SECRET);
+          
+          // Vérifier si l'utilisateur existe
+          const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(decoded.id);
+          
+          if (user) {
+            // Stocker les informations utilisateur
+            req.user = user;
+            req.isAuthenticated = function() { return true; };
+            isJwtAuthenticated = true;
+          }
+        } catch (error) {
+          // Erreur avec le JWT - on continue avec la vérification de l'API Key
+          console.log('[AUTH] JWT invalide ou expiré, vérification de la clé API');
+        }
+      }
+      
+      // 2. Vérifier ensuite la présence d'une clé API si JWT non authentifié
+      if (!isJwtAuthenticated) {
+        const apiKey = req.headers['x-api-key'];
+        
+        if (!apiKey) {
+          // Définir isAuthenticated à false, mais ne pas bloquer
+          // la requête ici pour permettre aux routes de gérer 
+          // elles-mêmes leur logique d'authentification
+          req.isAuthenticated = function() { return false; };
+          return next();
+        }
+        
+        // Vérifier si la clé API existe dans la base de données
+        const keyData = db.prepare(`
           SELECT ak.*, a.name as app_name
           FROM api_keys ak
           JOIN applications a ON ak.application_id = a.id
           WHERE ak.key = ? AND ak.is_active = 1
-      `).get(apiKey);
-      
-      if (keyData) {
-        console.log(`[AUTH] Authentification réussie via clé API: ${apiKey.substring(0, 8)}...`);
-        // Clé API valide, ajouter les informations à la requête et continuer
-        req.apiKey = keyData;
-        req.isApiAuthenticated = true;
+        `).get(apiKey);
         
-        // Mettre à jour la date de dernière utilisation de la clé API
-        db.prepare(`
-          UPDATE api_keys
-          SET last_used_at = datetime('now')
-          WHERE id = ?
-        `).run(keyData.id);
+        if (!keyData) {
+          req.isAuthenticated = function() { return false; };
+          return next();
+        }
         
-        return next();
-      }
-    } catch (error) {
-      console.error('[AUTH] Erreur lors de la vérification de la clé API:', error);
-    }
-  }
-  
-  // Si pas de clé API valide, vérifier le token JWT
-  const authHeader = req.headers.authorization;
-  
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    
-    try {
-      // Vérifier et décoder le token
-      const decoded = jwt.verify(token, JWT_SECRET);
-      
-      // Récupérer l'utilisateur depuis la base de données
-      const db = req.app.locals.db;
-      const user = db.prepare(`
-        SELECT id, username, role, created_at 
-        FROM users 
-        WHERE id = ?
-      `).get(decoded.id);
-      
-      if (user) {
-        console.log(`[AUTH] Authentification JWT réussie pour l'utilisateur: ${user.username}`);
-        // Ajouter l'utilisateur et le flag d'authentification à la requête
-        req.user = user;
+        // Stocker les informations de l'application dans req pour utilisation ultérieure
+        req.apiKeyData = keyData;
         req.isAuthenticated = function() { return true; };
-        
-        return next();
-      } else {
-        console.log(`[AUTH] Utilisateur non trouvé pour le token JWT (id: ${decoded.id})`);
       }
+      
+      // Continuer avec la requête
+      next();
     } catch (error) {
-      console.error('[AUTH] Erreur lors de la vérification du token JWT:', error.message);
+      console.error('[AUTH COMBINED]', error);
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Server Error',
+        message: 'Erreur lors de l\'authentification'
+      });
     }
-  }
-  
-  // Si aucune méthode d'authentification n'a réussi
-  console.log('[AUTH] Authentification échouée - Accès non autorisé');
-  return res.status(401).json({
-    success: false,
-    error: 'Unauthorized',
-    message: 'Authentification requise. Veuillez fournir un token JWT valide ou une clé API.'
-  });
+  };
 }
 
-module.exports = authCombined;
+// Exporter directement une instance du middleware pour simplifier l'importation
+module.exports = createAuthCombinedMiddleware();

@@ -7,18 +7,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
-  <style>
-    /* Style pour éviter le double scrollbar lorsque chargé dans une iframe */
-    body.in-iframe {
-      overflow: visible;
-      height: auto;
-    }
-    
-    /* Ajuster l'affichage dans l'iframe */
-    body.in-iframe .main-content {
-      padding-top: 0;
-    }
-  </style>
 </head>
 <body>
   <header class="header">
@@ -31,16 +19,12 @@
       <ul class="nav-menu">
         <li><a href="/dashboard.html"><i class="fas fa-chart-line"></i> Tableau de bord</a></li>
         <li><a href="/convert.html"><i class="fas fa-exchange-alt"></i> Conversion</a></li>
-        <li><a href="/application-management.html"><i class="fas fa-th"></i> Applications</a></li>
+        <li><a href="/applications.html"><i class="fas fa-th"></i> Applications</a></li>
+        <li><a href="/api-keys.html"><i class="fas fa-key"></i> Clés API</a></li>
+        <li><a href="/users.html" class="active"><i class="fas fa-users"></i> Utilisateurs</a></li>
+        <li><a href="/terminologies.html"><i class="fas fa-book-medical"></i> Terminologies</a></li>
         <li><a href="/workflows.html"><i class="fas fa-project-diagram"></i> Workflows</a></li>
-        <li class="dropdown">
-          <a href="#" class="dropdown-toggle active"><i class="fas fa-cog"></i> Paramètres <i class="fas fa-caret-down"></i></a>
-          <ul class="dropdown-menu">
-            <li><a href="/users.html" class="active"><i class="fas fa-users"></i> Utilisateurs</a></li>
-            <li><a href="/terminologies.html"><i class="fas fa-book-medical"></i> Terminologies</a></li>
-            <li><a href="/ai-settings.html"><i class="fas fa-robot"></i> Paramètres IA</a></li>
-          </ul>
-        </li>
+        <li><a href="/ai-settings.html"><i class="fas fa-robot"></i> Paramètres IA</a></li>
         <li><a href="/documentation.html"><i class="fas fa-file-alt"></i> Documentation</a></li>
         <li><a href="/api-docs/"><i class="fas fa-code"></i> API</a></li>
         <li><a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
@@ -284,28 +268,8 @@
   </footer>
 
   <script>
-    // Fonction pour ouvrir le modal d'ajout utilisateur accessible depuis l'extérieur
-    function openAddUserModal() {
-      const modal = document.getElementById('createUserModal');
-      if (modal) {
-        modal.style.display = 'flex';
-        document.getElementById('createUserForm').reset();
-      }
-    }
-    
-    // Exposer la fonction globalement pour qu'elle soit accessible depuis la page parent
-    window.openAddUserModal = openAddUserModal;
-    
     document.addEventListener('DOMContentLoaded', function() {
       // Vérifier l'authentification
-      if (!FHIRHubAuth) {
-        console.error('FHIRHubAuth n\'est pas défini - Authentification impossible');
-        return;
-      }
-      
-      // Configuration pour l'intégration iframe
-      FHIRHubAuth.setupIframeAuth();
-      
       const token = localStorage.getItem('token');
       if (!token) {
         window.location.href = '/login.html';
@@ -771,53 +735,6 @@
         }, 2000);
       });
     }
-  </script>
-  
-  <!-- Script pour la gestion du menu déroulant -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Gestion du clic et du survol sur les menus déroulants
-      const dropdowns = document.querySelectorAll('.dropdown');
-      
-      // Fonction pour fermer tous les menus déroulants
-      function closeAllDropdowns() {
-        dropdowns.forEach(dropdown => {
-          dropdown.classList.remove('active');
-        });
-      }
-      
-      // Événement pour fermer les menus déroulants lors d'un clic en dehors
-      document.addEventListener('click', function(event) {
-        const target = event.target;
-        // Si le clic n'est pas dans un menu déroulant, fermer tous les menus
-        if (!target.closest('.dropdown')) {
-          closeAllDropdowns();
-        }
-      });
-      
-      // Pour chaque menu déroulant
-      dropdowns.forEach(dropdown => {
-        const toggle = dropdown.querySelector('.dropdown-toggle');
-        
-        // Gestion du clic sur le bouton du menu déroulant
-        toggle.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation(); // Empêche la propagation de l'événement
-          
-          // Si le menu est déjà actif, le fermer
-          if (dropdown.classList.contains('active')) {
-            dropdown.classList.remove('active');
-          } else {
-            // Sinon, fermer tous les autres et ouvrir celui-ci
-            closeAllDropdowns();
-            dropdown.classList.add('active');
-            
-            // Log pour déboguer
-            console.log('Menu déroulant ouvert');
-          }
-        });
-      });
-    });
   </script>
 </body>
 </html>
