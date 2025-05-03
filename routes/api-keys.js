@@ -344,6 +344,49 @@ router.post('/:id/activate', authCombined, (req, res) => {
 /**
  * @swagger
  * /api/api-keys/{id}:
+ *   put:
+ *     summary: Mettre à jour une clé API
+ *     description: Met à jour les détails d'une clé API existante
+ *     tags: [API Keys]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de la clé API
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               application_id:
+ *                 type: integer
+ *               description:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *               expires_at:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Clé API mise à jour avec succès
+ *       400:
+ *         description: Requête invalide
+ *       404:
+ *         description: Clé API non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+
+/**
+ * @swagger
+ * /api/api-keys/{id}:
  *   delete:
  *     summary: Supprimer une clé API
  *     description: Supprime définitivement une clé API
@@ -395,6 +438,103 @@ router.delete('/:id', authCombined, (req, res) => {
       success: false,
       error: 'Server Error',
       message: error.message || 'Erreur lors de la suppression de la clé API'
+    });
+  }
+});
+
+/**
+ * Mettre à jour une clé API
+ */
+router.put('/:id', authCombined, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { application_id, description, is_active, expires_at } = req.body;
+    const db = req.app.locals.db;
+    
+    // Vérifier si la clé API existe
+    const apiKey = db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id);
+    
+    if (!apiKey) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Clé API non trouvée'
+      });
+    }
+    
+    // Préparer les champs à mettre à jour
+    const updates = [];
+    const params = [];
+    
+    if (application_id !== undefined) {
+      // Vérifier si l'application existe
+      const application = db.prepare('SELECT id FROM applications WHERE id = ?').get(application_id);
+      
+      if (!application) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bad Request',
+          message: 'Application non trouvée'
+        });
+      }
+      
+      updates.push('application_id = ?');
+      params.push(application_id);
+    }
+    
+    if (description !== undefined) {
+      updates.push('description = ?');
+      params.push(description || null);
+    }
+    
+    if (is_active !== undefined) {
+      updates.push('is_active = ?');
+      params.push(is_active ? 1 : 0);
+    }
+    
+    if (expires_at !== undefined) {
+      updates.push('expires_at = ?');
+      params.push(expires_at || null);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Aucun champ à mettre à jour'
+      });
+    }
+    
+    // Ajouter l'ID pour la clause WHERE
+    params.push(id);
+    
+    // Mettre à jour la clé API
+    db.prepare(`
+      UPDATE api_keys
+      SET ${updates.join(', ')}
+      WHERE id = ?
+    `).run(...params);
+    
+    // Récupérer la clé API mise à jour
+    const updatedApiKey = db.prepare(`
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      WHERE ak.id = ?
+    `).get(id);
+    
+    res.json({
+      success: true,
+      data: updatedApiKey,
+      message: 'Clé API mise à jour avec succès'
+    });
+  } catch (error) {
+    console.error('[API KEYS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: error.message || 'Erreur lors de la mise à jour de la clé API'
     });
   }
 });
