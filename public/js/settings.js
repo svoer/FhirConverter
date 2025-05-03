@@ -471,15 +471,18 @@ async function loadTerminologyFiles() {
         <td>${formattedSize}</td>
         <td>${formattedDate}</td>
         <td class="actions">
-          <button class="btn-download" title="Télécharger" onclick="downloadTerminologyFile('${file.name}')">
+          <button class="btn-action btn-view" title="Voir" onclick="viewTerminologyFile('${file.name}')">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="btn-action btn-download" title="Télécharger" onclick="downloadTerminologyFile('${file.name}')">
             <i class="fas fa-download"></i>
           </button>
           ${!file.required ? `
-            <button class="btn-delete" title="Supprimer" onclick="deleteTerminologyFile('${file.name}')">
+            <button class="btn-action btn-delete" title="Supprimer" onclick="deleteTerminologyFile('${file.name}')">
               <i class="fas fa-trash"></i>
             </button>
           ` : `
-            <button class="btn-delete disabled" title="Fichier obligatoire" disabled>
+            <button class="btn-action btn-delete disabled" title="Fichier obligatoire" disabled>
               <i class="fas fa-lock"></i>
             </button>
           `}
