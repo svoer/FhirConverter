@@ -410,6 +410,236 @@ async function loadApplications() {
   }
 }
 
+// Fonction pour charger les fichiers de terminologie
+async function loadTerminologyFiles() {
+  try {
+    const filesTable = document.getElementById('terminology-files-table-body');
+    if (!filesTable) return;
+    
+    filesTable.innerHTML = '<tr><td colspan="6" class="loading-row">Chargement des fichiers de terminologie...</td></tr>';
+    
+    const response = await window.FHIRHubAuth.fetchWithAuth('/api/terminology/files');
+    console.log("Terminology files response:", response);
+    
+    if (!response || !response.success || !response.data) {
+      throw new Error('Réponse vide ou invalide');
+    }
+    
+    const files = response.data;
+    
+    if (files.length === 0) {
+      filesTable.innerHTML = '<tr><td colspan="6" class="empty-row">Aucun fichier de terminologie trouvé</td></tr>';
+      return 0;
+    }
+    
+    // Vider le tableau avant d'ajouter les fichiers
+    filesTable.innerHTML = '';
+    
+    // Ajouter les fichiers au tableau
+    files.forEach(file => {
+      const row = document.createElement('tr');
+      row.setAttribute('data-file', file.name);
+      
+      // Formater la date de dernière modification
+      const modifiedDate = new Date(file.lastModified);
+      const formattedDate = modifiedDate.toLocaleDateString() + ' ' + modifiedDate.toLocaleTimeString();
+      
+      // Formater la taille du fichier
+      const sizeKB = Math.round(file.size / 1024);
+      const formattedSize = sizeKB > 1024 ? Math.round(sizeKB / 1024 * 10) / 10 + ' MB' : sizeKB + ' KB';
+      
+      // Déterminer le type de fichier pour affichage
+      let fileType = file.type;
+      if (fileType === 'object') fileType = 'Objet JSON';
+      else if (fileType === 'array') fileType = 'Tableau JSON';
+      else if (fileType === 'systems') fileType = 'Systèmes';
+      else if (fileType === 'oids') fileType = 'OIDs';
+      else if (fileType === 'valuesets') fileType = 'Jeux de valeurs';
+      else if (fileType === 'codesystems') fileType = 'Systèmes de codes';
+      else if (fileType === 'terminology') fileType = 'Terminologie';
+      else if (fileType === 'config') fileType = 'Configuration';
+      else if (fileType === 'report') fileType = 'Rapport';
+      else if (fileType === 'invalid') fileType = 'JSON Invalide';
+      else fileType = 'Autre';
+      
+      console.log("Processing file:", file);
+      
+      row.innerHTML = `
+        <td>${file.name}</td>
+        <td>${fileType}</td>
+        <td>${file.items} éléments</td>
+        <td>${formattedSize}</td>
+        <td>${formattedDate}</td>
+        <td class="actions">
+          <button class="btn-download" title="Télécharger" onclick="downloadTerminologyFile('${file.name}')">
+            <i class="fas fa-download"></i>
+          </button>
+          ${!file.required ? `
+            <button class="btn-delete" title="Supprimer" onclick="deleteTerminologyFile('${file.name}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          ` : `
+            <button class="btn-delete disabled" title="Fichier obligatoire" disabled>
+              <i class="fas fa-lock"></i>
+            </button>
+          `}
+        </td>
+      `;
+      
+      filesTable.appendChild(row);
+    });
+    
+    return files.length;
+  } catch (error) {
+    console.error('Erreur lors du chargement des fichiers de terminologie:', error);
+    const filesTable = document.getElementById('terminology-files-table-body');
+    if (filesTable) {
+      filesTable.innerHTML = `<tr><td colspan="6" class="empty-row error">Erreur: ${error.message}</td></tr>`;
+    }
+    return 0;
+  }
+}
+
+// Fonction pour télécharger un fichier de terminologie
+window.downloadTerminologyFile = function(filename) {
+  try {
+    const downloadUrl = `/api/terminology/download/${filename}`;
+    
+    // Créer un lien temporaire et simuler un clic
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    console.log(`Téléchargement du fichier ${filename} initié`);
+  } catch (error) {
+    console.error(`Erreur lors du téléchargement du fichier ${filename}:`, error);
+    alert(`Erreur lors du téléchargement: ${error.message}`);
+  }
+};
+
+// Fonction pour télécharger tous les fichiers de terminologie
+window.downloadAllTerminologyFiles = function() {
+  try {
+    const downloadUrl = `/api/terminology/download-all`;
+    
+    // Créer un lien temporaire et simuler un clic
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'fhirhub-terminologies.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    console.log(`Téléchargement de tous les fichiers initié`);
+  } catch (error) {
+    console.error(`Erreur lors du téléchargement de tous les fichiers:`, error);
+    alert(`Erreur lors du téléchargement: ${error.message}`);
+  }
+};
+
+// Fonction pour supprimer un fichier de terminologie
+window.deleteTerminologyFile = function(filename) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer le fichier ${filename} ? Cette action est irréversible.`)) {
+    return;
+  }
+  
+  try {
+    window.FHIRHubAuth.fetchWithAuth(`/api/terminology/files/${filename}`, {
+      method: 'DELETE'
+    })
+    .then(response => {
+      if (response && response.success) {
+        // Recharger les fichiers
+        loadTerminologyFiles();
+        // Recharger les statistiques
+        loadTerminologyStats();
+        alert(`Le fichier ${filename} a été supprimé avec succès.`);
+      } else {
+        alert(`Erreur lors de la suppression: ${response.message || 'Réponse invalide'}`);
+      }
+    })
+    .catch(error => {
+      console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
+      alert(`Erreur lors de la suppression: ${error.message}`);
+    });
+  } catch (error) {
+    console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
+    alert(`Erreur lors de la suppression: ${error.message}`);
+  }
+};
+
+// Fonction pour charger et afficher les statistiques de terminologie
+async function loadTerminologyStats() {
+  try {
+    const statsContainer = document.getElementById('terminology-stats-container');
+    if (!statsContainer) return;
+    
+    const response = await window.FHIRHubAuth.fetchWithAuth('/api/terminology/stats');
+    console.log("Terminology stats response:", response);
+    
+    if (!response || !response.success || !response.data) {
+      throw new Error('Réponse vide ou invalide');
+    }
+    
+    const stats = response.data;
+    
+    // Mettre à jour les statistiques
+    document.getElementById('terminology-files-count').textContent = stats.files_count || 0;
+    document.getElementById('terminology-systems-count').textContent = stats.systems_count || 0;
+    document.getElementById('terminology-oids-count').textContent = stats.oids_count || 0;
+    document.getElementById('terminology-total-items').textContent = stats.total_items || 0;
+    
+    // Charger les fichiers de terminologie
+    const filesCount = await loadTerminologyFiles();
+    
+    // Activer le bouton de téléchargement global si des fichiers sont disponibles
+    const downloadAllBtn = document.getElementById('download-all-terminology-btn');
+    if (downloadAllBtn) {
+      downloadAllBtn.disabled = filesCount === 0;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erreur lors du chargement des statistiques de terminologie:', error);
+    const statsContainer = document.getElementById('terminology-stats-container');
+    if (statsContainer) {
+      statsContainer.innerHTML = `<div class="alert alert-danger">Erreur lors du chargement des statistiques: ${error.message}</div>`;
+    }
+    return false;
+  }
+}
+
+// Ajouter un rafraîchissement des données de terminologie
+window.refreshTerminologyData = function() {
+  // Afficher un indicateur de chargement
+  const refreshButton = document.getElementById('refresh-terminology-btn');
+  if (refreshButton) {
+    refreshButton.innerHTML = '<i class="fas fa-sync fa-spin"></i> Rafraîchissement...';
+    refreshButton.disabled = true;
+  }
+  
+  // Recharger les statistiques et les fichiers
+  loadTerminologyStats()
+    .then(() => {
+      // Rétablir le bouton après le chargement
+      if (refreshButton) {
+        refreshButton.innerHTML = '<i class="fas fa-sync"></i> Rafraîchir';
+        refreshButton.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Erreur lors du rafraîchissement des données:', error);
+      // Rétablir le bouton en cas d'erreur
+      if (refreshButton) {
+        refreshButton.innerHTML = '<i class="fas fa-sync"></i> Rafraîchir';
+        refreshButton.disabled = false;
+      }
+    });
+};
+
 // Gestion de chargement des clés API
 async function loadApiKeys() {
   try {
