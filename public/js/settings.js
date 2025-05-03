@@ -657,6 +657,66 @@ window.deleteTerminologyFile = function(filename) {
   }
 };
 
+// Fonction pour activer/désactiver une clé API
+window.toggleApiKey = function(id, active) {
+  try {
+    window.FHIRHubAuth.fetchWithAuth(`/api/api-keys/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        is_active: active
+      })
+    })
+    .then(response => {
+      if (response && response.success) {
+        // Recharger les clés API
+        loadApiKeys();
+        showNotification(`Clé API ${active ? 'activée' : 'désactivée'} avec succès.`);
+      } else {
+        showError(`Erreur lors de la modification: ${response.message || 'Réponse invalide'}`);
+      }
+    })
+    .catch(error => {
+      console.error('Erreur lors de la modification de la clé API:', error);
+      showError(`Erreur lors de la modification: ${error.message}`);
+    });
+  } catch (error) {
+    console.error('Erreur lors de la modification de la clé API:', error);
+    showError(`Erreur lors de la modification: ${error.message}`);
+  }
+};
+
+// Fonction pour supprimer une clé API
+window.deleteApiKey = function(id) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette clé API ? Cette action est irréversible.')) {
+    return;
+  }
+  
+  try {
+    window.FHIRHubAuth.fetchWithAuth(`/api/api-keys/${id}`, {
+      method: 'DELETE'
+    })
+    .then(response => {
+      if (response && response.success) {
+        // Recharger les clés API
+        loadApiKeys();
+        showNotification('Clé API supprimée avec succès.');
+      } else {
+        showError(`Erreur lors de la suppression: ${response.message || 'Réponse invalide'}`);
+      }
+    })
+    .catch(error => {
+      console.error('Erreur lors de la suppression de la clé API:', error);
+      showError(`Erreur lors de la suppression: ${error.message}`);
+    });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de la clé API:', error);
+    showError(`Erreur lors de la suppression: ${error.message}`);
+  }
+};
+
 // Fonction pour charger et afficher les statistiques de terminologie
 async function loadTerminologyStats() {
   try {
