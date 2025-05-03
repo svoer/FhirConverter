@@ -315,6 +315,15 @@
                   <p id="terminology-oids-count">Chargement...</p>
                 </div>
               </div>
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-list-ul"></i>
+                </div>
+                <div class="stat-info">
+                  <h3>Éléments totaux</h3>
+                  <p id="terminology-total-items">Chargement...</p>
+                </div>
+              </div>
             </div>
             
             <!-- Liste des fichiers de terminologie -->
@@ -1346,7 +1355,40 @@
       
       // Rafraîchir les terminologies
       document.getElementById('refresh-terminology-btn').addEventListener('click', function() {
-        refreshTerminologyData();
+        try {
+          // Afficher un indicateur de chargement
+          const btn = document.getElementById('refresh-terminology-btn');
+          const originalContent = btn.innerHTML;
+          btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Rafraîchissement...';
+          btn.disabled = true;
+          
+          // Recharger les statistiques et les fichiers
+          Promise.all([loadTerminologyStats(), loadTerminologyFiles()])
+            .then(() => {
+              console.log('Rafraîchissement terminé avec succès');
+              // Rétablir le bouton
+              btn.innerHTML = originalContent;
+              btn.disabled = false;
+            })
+            .catch(error => {
+              console.error('Erreur lors du rafraîchissement:', error);
+              // Rétablir le bouton en cas d'erreur
+              btn.innerHTML = originalContent;
+              btn.disabled = false;
+              showError('Erreur lors du rafraîchissement: ' + error.message);
+            });
+        } catch (error) {
+          console.error('Erreur lors du rafraîchissement:', error);
+          const btn = document.getElementById('refresh-terminology-btn');
+          btn.innerHTML = '<i class="fas fa-sync-alt"></i> Rafraîchir';
+          btn.disabled = false;
+          showError('Erreur lors du rafraîchissement: ' + error.message);
+        }
+      });
+      
+      // Ajouter également un événement pour le bouton de rafraîchissement des fichiers
+      document.getElementById('refresh-terminology-files').addEventListener('click', function() {
+        loadTerminologyFiles();
       });
       
       // Sélectionner des fichiers à importer
@@ -1447,6 +1489,7 @@
         document.getElementById('terminology-files-count').textContent = stats.files_count || '0';
         document.getElementById('terminology-systems-count').textContent = stats.systems_count || '0';
         document.getElementById('terminology-oids-count').textContent = stats.oids_count || '0';
+        document.getElementById('terminology-total-items').textContent = stats.total_items || '0';
       } catch (error) {
         console.error('Erreur lors du chargement des statistiques de terminologie:', error);
         
@@ -1456,6 +1499,7 @@
         document.getElementById('terminology-files-count').textContent = '0';
         document.getElementById('terminology-systems-count').textContent = '0';
         document.getElementById('terminology-oids-count').textContent = '0';
+        document.getElementById('terminology-total-items').textContent = '0';
       }
     }
     
