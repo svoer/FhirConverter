@@ -340,15 +340,15 @@
           
           <div class="profile-stats-grid">
             <div class="stat-card">
-              <div class="stat-value" id="conversion-count">215</div>
+              <div class="stat-value" id="conversion-count">0</div>
               <div class="stat-label">Conversions réalisées</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value" id="last-connection">05/03/2025</div>
+              <div class="stat-value" id="last-connection">-</div>
               <div class="stat-label">Dernière connexion</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value" id="account-created">01/01/2025</div>
+              <div class="stat-value" id="account-created">-</div>
               <div class="stat-label">Création du compte</div>
             </div>
           </div>
@@ -730,7 +730,7 @@
     
     // Fonction pour formater une date
     function formatDate(date) {
-      if (!(date instanceof Date) || isNaN(date)) return 'Date inconnue';
+      if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'Date inconnue';
       
       return new Intl.DateTimeFormat('fr-FR', {
         day: '2-digit',
