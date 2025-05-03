@@ -1,5 +1,9 @@
 // Script pour inclure le menu latéral dans toutes les pages
 document.addEventListener('DOMContentLoaded', function() {
+  // Variable pour éviter les boucles infinies
+  if (window.sidebarLoaded) return;
+  window.sidebarLoaded = true;
+  
   // Récupérer l'élément où insérer le sidebar (inséré au début du body)
   const targetElement = document.body;
   
@@ -23,12 +27,31 @@ document.addEventListener('DOMContentLoaded', function() {
         targetElement.insertBefore(nodes[i], targetElement.firstChild);
       }
       
-      // Maintenant que le menu est ajouté, initialiser son comportement
-      // en déclenchant l'événement DOMContentLoaded pour sidebar-menu.js
-      setTimeout(() => {
-        const event = new Event('DOMContentLoaded');
-        document.dispatchEvent(event);
-      }, 100);
+      // Initialiser directement le menu latéral sans déclencher un nouvel événement DOMContentLoaded
+      if (typeof initSidebar === 'function') {
+        initSidebar();
+      } else {
+        // Fonction simplifiée d'initialisation du menu
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const favoriteButtons = document.querySelectorAll('.favorite-btn');
+
+        if (menuToggle && sidebar) {
+          menuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            if (mainContent) mainContent.classList.toggle('expanded');
+          });
+        }
+        
+        // Initialiser les boutons favoris
+        favoriteButtons.forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+        });
+      }
     })
     .catch(error => {
       console.error('Erreur lors du chargement du menu latéral:', error);
