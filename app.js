@@ -193,9 +193,9 @@ function initDb() {
     
     // Créer l'utilisateur admin avec le mot de passe par défaut
     db.prepare(`
-      INSERT INTO users (username, password, role, created_at)
-      VALUES (?, ?, ?, datetime('now'))
-    `).run('admin', hashPassword('adminfhirhub'), 'admin');
+      INSERT INTO users (username, password, role, email, last_login, preferences, updated_at, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'), ?, datetime('now'), datetime('now'))
+    `).run('admin', hashPassword('adminfhirhub'), 'admin', 'admin@firhub.fr', JSON.stringify({ notifications: { email: true, system: true } }));
     
     console.log('[DB] Utilisateur admin créé avec le mot de passe par défaut');
     
