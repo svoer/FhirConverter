@@ -850,6 +850,20 @@ window.deleteTerminologyFile = function(filename) {
   }
   
   try {
+    // Afficher un indicateur de chargement
+    const filesTable = document.getElementById('terminology-files-table-body');
+    if (filesTable) {
+      const row = filesTable.querySelector(`tr[data-file="${filename}"]`);
+      if (row) {
+        row.classList.add('deleting');
+        const actionsCell = row.querySelector('td.actions');
+        if (actionsCell) {
+          actionsCell.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Suppression...';
+        }
+      }
+    }
+    
+    // Effectuer la suppression
     window.FHIRHubAuth.fetchWithAuth(`/api/terminology/files/${filename}`, {
       method: 'DELETE'
     })
@@ -861,11 +875,55 @@ window.deleteTerminologyFile = function(filename) {
         loadTerminologyStats();
         showNotification(`Le fichier ${filename} a été supprimé avec succès.`);
       } else {
+        // Annuler l'indicateur de chargement en cas d'erreur
+        if (filesTable) {
+          const row = filesTable.querySelector(`tr[data-file="${filename}"]`);
+          if (row) {
+            row.classList.remove('deleting');
+            // Recréer les boutons d'action
+            const actionsCell = row.querySelector('td.actions');
+            if (actionsCell) {
+              actionsCell.innerHTML = `
+                <button class="btn-action btn-view" title="Voir" onclick="viewTerminologyFile('${filename}')">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-action btn-download" title="Télécharger" onclick="downloadTerminologyFile('${filename}')">
+                  <i class="fas fa-download"></i>
+                </button>
+                <button class="btn-action btn-delete" title="Supprimer" onclick="deleteTerminologyFile('${filename}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              `;
+            }
+          }
+        }
         showError(`Erreur lors de la suppression: ${response.message || 'Réponse invalide'}`);
       }
     })
     .catch(error => {
       console.error(`Erreur lors de la suppression du fichier ${filename}:`, error);
+      // Annuler l'indicateur de chargement en cas d'erreur
+      if (filesTable) {
+        const row = filesTable.querySelector(`tr[data-file="${filename}"]`);
+        if (row) {
+          row.classList.remove('deleting');
+          // Recréer les boutons d'action
+          const actionsCell = row.querySelector('td.actions');
+          if (actionsCell) {
+            actionsCell.innerHTML = `
+              <button class="btn-action btn-view" title="Voir" onclick="viewTerminologyFile('${filename}')">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-action btn-download" title="Télécharger" onclick="downloadTerminologyFile('${filename}')">
+                <i class="fas fa-download"></i>
+              </button>
+              <button class="btn-action btn-delete" title="Supprimer" onclick="deleteTerminologyFile('${filename}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            `;
+          }
+        }
+      }
       showError(`Erreur lors de la suppression: ${error.message}`);
     });
   } catch (error) {
@@ -1077,6 +1135,71 @@ async function loadApiKeys() {
     }
   }
 }
+
+// Fonction pour uploader un fichier de terminologie
+window.uploadTerminologyFile = function(file) {
+  if (!file) {
+    showError('Aucun fichier sélectionné');
+    return;
+  }
+  
+  // Vérifier le type de fichier (doit être un JSON)
+  if (!file.name.endsWith('.json')) {
+    showError('Le fichier doit être au format JSON');
+    return;
+  }
+  
+  // Créer un FormData pour l'upload
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Afficher un indicateur de chargement
+  showNotification(`Upload du fichier ${file.name} en cours...`, 'info');
+  
+  // Désactiver le bouton d'import
+  const importBtn = document.getElementById('import-terminology-btn');
+  if (importBtn) {
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importation...';
+  }
+  
+  // Effectuer l'upload
+  fetch('/api/terminology/upload', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'Authorization': `Bearer ${window.FHIRHubAuth.getToken()}`
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    // Réactiver le bouton d'import
+    if (importBtn) {
+      importBtn.disabled = false;
+      importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importer';
+    }
+    
+    if (data && data.success) {
+      showNotification(`Le fichier ${file.name} a été uploadé avec succès.`);
+      
+      // Recharger les statistiques et les fichiers
+      loadTerminologyStats();
+    } else {
+      showError(`Erreur lors de l'upload: ${data.message || 'Erreur inconnue'}`);
+    }
+  })
+  .catch(error => {
+    console.error('Erreur lors de l\'upload du fichier:', error);
+    
+    // Réactiver le bouton d'import
+    if (importBtn) {
+      importBtn.disabled = false;
+      importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importer';
+    }
+    
+    showError(`Erreur lors de l'upload: ${error.message || 'Erreur inconnue'}`);
+  });
+};
 
 // Initialiser les onglets et charger les données appropriées
 document.addEventListener('DOMContentLoaded', function() {

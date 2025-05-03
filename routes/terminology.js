@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const archiver = require('archiver');
+const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../src/utils/logger');
 
@@ -81,6 +82,43 @@ const terminologyAuth = (req, res, next) => {
 
 // Dossier contenant les fichiers de terminologie
 const TERMINOLOGY_DIR = path.join(__dirname, '..', 'french_terminology');
+
+// Configuration de multer pour la gestion des uploads de fichiers
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    // Vérifier que le dossier existe, le créer si nécessaire
+    if (!fs.existsSync(TERMINOLOGY_DIR)) {
+      try {
+        fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
+        logger.info(`[TERMINOLOGY] Dossier de terminologie créé: ${TERMINOLOGY_DIR}`);
+      } catch (err) {
+        logger.error(`[TERMINOLOGY] Erreur lors de la création du dossier: ${err.message}`);
+      }
+    }
+    cb(null, TERMINOLOGY_DIR);
+  },
+  filename: function(req, file, cb) {
+    // Utiliser le nom original du fichier
+    cb(null, file.originalname);
+  }
+});
+
+// Limiter les uploads aux fichiers JSON uniquement
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Seuls les fichiers JSON sont acceptés'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // Limite de 10MB
+  }
+});
 
 // Route pour obtenir la liste des fichiers de terminologie
 router.get('/files', terminologyAuth, (req, res) => {
@@ -638,6 +676,130 @@ router.get('/download-all', terminologyAuth, (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'archive',
+      error: error.message
+    });
+  }
+});
+
+// Route pour uploader un fichier de terminologie
+router.post('/upload', terminologyAuth, upload.single('file'), (req, res) => {
+  try {
+    console.log('[TERMINOLOGY] Tentative d\'upload d\'un fichier de terminologie');
+    
+    // Vérifier si l'utilisateur est authentifié
+    const userInfo = req.user 
+      ? `utilisateur ${req.user.username}` 
+      : (req.apiKey ? `clé API ${req.apiKey.id}` : 'non authentifié');
+    console.log(`[TERMINOLOGY] Upload par: ${userInfo}`);
+    
+    // Vérifier si un fichier a été uploadé
+    if (!req.file) {
+      console.error('[TERMINOLOGY] Aucun fichier n\'a été uploadé');
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier n\'a été uploadé'
+      });
+    }
+    
+    const file = req.file;
+    console.log(`[TERMINOLOGY] Fichier uploadé: ${file.originalname} (${file.size} octets)`);
+    
+    // Vérifier que le fichier est un JSON valide
+    try {
+      const filePath = path.join(TERMINOLOGY_DIR, file.filename);
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      JSON.parse(fileContent); // Tente de parser le JSON pour vérifier qu'il est valide
+      
+      logger.info(`[TERMINOLOGY] Fichier JSON valide uploadé: ${file.originalname}`);
+      
+      // Mettre à jour la configuration avec la date de dernière mise à jour
+      const configFile = path.join(TERMINOLOGY_DIR, 'config.json');
+      let config = {
+        version: 'v1.0',
+        last_updated: new Date().toISOString()
+      };
+      
+      if (fs.existsSync(configFile)) {
+        try {
+          const configData = fs.readFileSync(configFile, 'utf8');
+          config = { ...JSON.parse(configData), last_updated: new Date().toISOString() };
+        } catch (configError) {
+          logger.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier de configuration: ${configError.message}`);
+        }
+      }
+      
+      // Écrire la configuration mise à jour
+      fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf8');
+      
+      // Journaliser l'opération dans la base de données si disponible
+      const db = req.app.locals.db;
+      if (db) {
+        try {
+          const userId = req.user ? req.user.id : null;
+          const apiKeyId = req.apiKey ? req.apiKey.id : null;
+          
+          db.prepare(`
+            INSERT INTO system_logs (
+              type, 
+              action, 
+              details, 
+              user_id, 
+              api_key_id, 
+              timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?)
+          `).run(
+            'terminology',
+            'upload',
+            JSON.stringify({
+              filename: file.originalname,
+              size: file.size,
+              type: 'json'
+            }),
+            userId,
+            apiKeyId,
+            new Date().toISOString()
+          );
+          
+          logger.info(`[TERMINOLOGY] Opération d'upload journalisée avec succès`);
+        } catch (dbError) {
+          logger.error(`[TERMINOLOGY] Erreur lors de la journalisation de l'upload: ${dbError.message}`);
+        }
+      }
+      
+      // Renvoyer une réponse de succès
+      return res.status(201).json({
+        success: true,
+        message: `Le fichier ${file.originalname} a été uploadé avec succès`,
+        data: {
+          filename: file.originalname,
+          size: file.size,
+          path: file.path
+        }
+      });
+      
+    } catch (jsonError) {
+      logger.error(`[TERMINOLOGY] Le fichier uploadé n'est pas un JSON valide: ${jsonError.message}`);
+      
+      // Supprimer le fichier invalide
+      try {
+        fs.unlinkSync(path.join(TERMINOLOGY_DIR, file.filename));
+        logger.info(`[TERMINOLOGY] Fichier invalide supprimé: ${file.originalname}`);
+      } catch (unlinkError) {
+        logger.error(`[TERMINOLOGY] Erreur lors de la suppression du fichier invalide: ${unlinkError.message}`);
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Le fichier n\'est pas un JSON valide',
+        error: jsonError.message
+      });
+    }
+    
+  } catch (error) {
+    logger.error(`[TERMINOLOGY] Erreur lors de l'upload: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'upload du fichier',
       error: error.message
     });
   }
