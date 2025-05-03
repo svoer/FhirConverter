@@ -347,6 +347,58 @@ async function loadUsers() {
   }
 }
 
+// Fonction pour charger les applications dans un select
+async function populateAppDropdown(selectId, selectedAppId = null) {
+  try {
+    const selectElement = document.getElementById(selectId);
+    if (!selectElement) return;
+    
+    // Effacer les options existantes
+    selectElement.innerHTML = '<option value="" disabled selected>Chargement des applications...</option>';
+    
+    // Récupérer les applications
+    const response = await window.FHIRHubAuth.fetchWithAuth('/api/applications');
+    
+    if (!response || !response.success || !response.data) {
+      throw new Error('Réponse vide ou invalide');
+    }
+    
+    const applications = response.data;
+    
+    // Effacer le message de chargement
+    selectElement.innerHTML = '';
+    
+    // Ajouter une option par défaut
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Sélectionner une application';
+    defaultOption.disabled = true;
+    defaultOption.selected = !selectedAppId;
+    selectElement.appendChild(defaultOption);
+    
+    // Ajouter les options pour chaque application
+    applications.forEach(app => {
+      const option = document.createElement('option');
+      option.value = app.id;
+      option.textContent = app.name;
+      if (selectedAppId && app.id === selectedAppId) {
+        option.selected = true;
+      }
+      selectElement.appendChild(option);
+    });
+    
+    console.log(`Dropdown '${selectId}' rempli avec ${applications.length} applications`);
+    return applications;
+  } catch (error) {
+    console.error(`Erreur lors du remplissage du dropdown '${selectId}':`, error);
+    const selectElement = document.getElementById(selectId);
+    if (selectElement) {
+      selectElement.innerHTML = '<option value="" disabled selected>Erreur lors du chargement</option>';
+    }
+    return [];
+  }
+}
+
 // Gestion de chargement des applications
 async function loadApplications() {
   try {
@@ -401,6 +453,10 @@ async function loadApplications() {
       applicationsTable.appendChild(row);
     });
     console.log("Applications chargées avec succès:", applications.length);
+    
+    // Actualiser les dropdowns d'applications
+    populateAppDropdown('keyApp');
+    
   } catch (error) {
     console.error('Erreur lors du chargement des applications:', error);
     const applicationsTable = document.getElementById('applications-table-body');
