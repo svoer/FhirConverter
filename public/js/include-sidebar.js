@@ -1,6 +1,6 @@
 // Script pour inclure le menu latéral dans toutes les pages
 document.addEventListener('DOMContentLoaded', function() {
-  // Ne pas exécuter pour la page de login
+  // Ne pas exécuter pour la page de login ou index
   if (window.location.pathname === '/login.html' || window.location.pathname === '/index.html') {
     return;
   }
@@ -11,6 +11,24 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Récupérer l'élément où insérer le sidebar (inséré au début du body)
   const targetElement = document.body;
+  
+  // Supprimer d'abord tout header existant
+  const existingHeader = document.querySelector('header.header');
+  if (existingHeader) {
+    existingHeader.parentNode.removeChild(existingHeader);
+  }
+  
+  // Supprimer tout sidebar existant
+  const existingSidebar = document.querySelector('aside.sidebar');
+  if (existingSidebar) {
+    existingSidebar.parentNode.removeChild(existingSidebar);
+  }
+  
+  // Supprimer tout bouton mobile existant
+  const existingMobileToggle = document.querySelector('#sidebar-toggle-mobile');
+  if (existingMobileToggle) {
+    existingMobileToggle.parentNode.removeChild(existingMobileToggle);
+  }
   
   // Charger le contenu du fichier sidebar.html
   fetch('/includes/sidebar.html')
@@ -26,41 +44,73 @@ document.addEventListener('DOMContentLoaded', function() {
       tempContainer.innerHTML = html;
       
       // Insérer les éléments du sidebar au début du body
-      // On le fait à l'envers pour conserver l'ordre
       const nodes = Array.from(tempContainer.childNodes);
       for (let i = nodes.length - 1; i >= 0; i--) {
-        targetElement.insertBefore(nodes[i], targetElement.firstChild);
+        if (nodes[i].nodeType === 1) { // Seulement les éléments, pas les nœuds texte
+          targetElement.insertBefore(nodes[i], targetElement.firstChild);
+        }
+      }
+      
+      // Référence au contenu principal
+      const mainContent = document.querySelector('.main-content');
+      if (!mainContent) {
+        // Créer un élément main-content s'il n'existe pas
+        const newMainContent = document.createElement('div');
+        newMainContent.className = 'main-content';
+        
+        // Déplacer tous les éléments existants sauf le header et le sidebar dans main-content
+        const elementsToMove = [];
+        for (let i = 0; i < targetElement.children.length; i++) {
+          const child = targetElement.children[i];
+          if (child.tagName !== 'HEADER' && 
+              child.tagName !== 'ASIDE' && 
+              child !== existingMobileToggle &&
+              !child.classList.contains('main-content') &&
+              !child.classList.contains('footer')) {
+            elementsToMove.push(child);
+          }
+        }
+        
+        for (const element of elementsToMove) {
+          newMainContent.appendChild(element);
+        }
+        
+        // Insérer le nouveau main-content après le sidebar
+        const sidebar = document.querySelector('aside.sidebar');
+        if (sidebar && sidebar.nextSibling) {
+          targetElement.insertBefore(newMainContent, sidebar.nextSibling);
+        } else {
+          targetElement.appendChild(newMainContent);
+        }
       }
       
       // Initialiser le menu latéral
-      if (typeof window.initSidebar === 'function') {
-        setTimeout(() => {
-          window.initSidebar();
-          console.log('Menu latéral initialisé avec succès');
-        }, 100);
-      } else {
-        console.warn('Fonction initSidebar non trouvée, utilisation du fallback');
-        
-        // Fonction simplifiée d'initialisation du menu (fallback)
+      // Assurer que l'exposition est globale
+      window.initSidebar = function() {
+        // Initialiser les variables globales
         const menuToggle = document.getElementById('menu-toggle');
         const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('main-content');
-        const favoriteButtons = document.querySelectorAll('.favorite-btn');
-
+        const mainContent = document.querySelector('.main-content');
+        const footer = document.querySelector('.footer');
+        const mobileToggle = document.getElementById('sidebar-toggle-mobile');
+        
+        // Bascule du menu latéral
         if (menuToggle && sidebar) {
           menuToggle.addEventListener('click', function() {
             sidebar.classList.toggle('collapsed');
             if (mainContent) mainContent.classList.toggle('expanded');
+            if (footer) footer.classList.toggle('expanded');
           });
         }
         
-        // Initialiser les boutons favoris
-        favoriteButtons.forEach(btn => {
-          btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+        // Menu mobile
+        if (mobileToggle && sidebar) {
+          mobileToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('mobile-open');
+            this.innerHTML = sidebar.classList.contains('mobile-open') ? 
+              '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
           });
-        });
+        }
         
         // Marquer la page active dans le menu
         const currentPath = window.location.pathname;
@@ -70,7 +120,43 @@ document.addEventListener('DOMContentLoaded', function() {
             link.classList.add('active');
           }
         });
-      }
+        
+        // Gestion des favoris
+        const favoriteButtons = document.querySelectorAll('.favorite-btn');
+        favoriteButtons.forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const url = this.getAttribute('data-url');
+            // Simple toggle de classe pour cette démo
+            this.classList.toggle('active');
+            
+            if (this.classList.contains('active')) {
+              this.innerHTML = '<i class="fas fa-star"></i>';
+            } else {
+              this.innerHTML = '<i class="far fa-star"></i>';
+            }
+          });
+        });
+        
+        // Gestion de la déconnexion
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Normalement on déconnecterait l'utilisateur ici
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+          });
+        }
+      };
+      
+      // Exécuter l'initialisation
+      setTimeout(() => {
+        window.initSidebar();
+      }, 100);
     })
     .catch(error => {
       console.error('Erreur lors du chargement du menu latéral:', error);
