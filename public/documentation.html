@@ -1399,92 +1399,115 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
       }
       
       // Gestion du bouton de déconnexion
-      document.getElementById('logoutBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login.html';
-      });
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        });
+      }
       
       // Navigation fluide
-      document.querySelectorAll('.section-nav a').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-          e.preventDefault();
-          
-          // Mise à jour des classes actives
-          document.querySelectorAll('.section-nav a').forEach(a => a.classList.remove('active'));
-          this.classList.add('active');
-          
-          const targetId = this.getAttribute('href').substring(1);
-          const targetElement = document.getElementById(targetId);
-          
-          window.scrollTo({
-            top: targetElement.offsetTop - 100,
-            behavior: 'smooth'
+      const sectionNavLinks = document.querySelectorAll('.section-nav a');
+      if (sectionNavLinks.length > 0) {
+        sectionNavLinks.forEach(anchor => {
+          anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Mise à jour des classes actives
+            document.querySelectorAll('.section-nav a').forEach(a => a.classList.remove('active'));
+            this.classList.add('active');
+            
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+            
+            if (targetElement) {
+              window.scrollTo({
+                top: targetElement.offsetTop - 100,
+                behavior: 'smooth'
+              });
+            }
           });
         });
-      });
+      }
       
       // Bouton retour en haut
       const backToTopButton = document.querySelector('.back-to-top');
       
-      window.addEventListener('scroll', () => {
-        if (window.pageYOffset > 300) {
-          backToTopButton.classList.add('visible');
-        } else {
-          backToTopButton.classList.remove('visible');
-        }
-      });
-      
-      backToTopButton.addEventListener('click', e => {
-        e.preventDefault();
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth'
+      if (backToTopButton) {
+        window.addEventListener('scroll', () => {
+          if (window.pageYOffset > 300) {
+            backToTopButton.classList.add('visible');
+          } else {
+            backToTopButton.classList.remove('visible');
+          }
         });
-      });
+        
+        backToTopButton.addEventListener('click', e => {
+          e.preventDefault();
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        });
+      }
       
       // Détecter la section active pendant le défilement
       const sections = document.querySelectorAll('.documentation-section');
       const navLinks = document.querySelectorAll('.section-nav a');
       
-      window.addEventListener('scroll', () => {
-        let current = '';
-        
-        sections.forEach(section => {
-          const sectionTop = section.offsetTop - 150;
-          const sectionHeight = section.clientHeight;
+      // N'ajouter l'événement de défilement que si les sections et liens existent
+      if (sections.length > 0 && navLinks.length > 0) {
+        window.addEventListener('scroll', () => {
+          let current = '';
           
-          if (window.pageYOffset >= sectionTop) {
-            current = section.getAttribute('id');
-          }
+          sections.forEach(section => {
+            const sectionTop = section.offsetTop - 150;
+            const sectionHeight = section.clientHeight;
+            
+            if (window.pageYOffset >= sectionTop) {
+              current = section.getAttribute('id');
+            }
+          });
+          
+          navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') && link.getAttribute('href').substring(1) === current) {
+              link.classList.add('active');
+            }
+          });
         });
-        
-        navLinks.forEach(link => {
-          link.classList.remove('active');
-          if (link.getAttribute('href').substring(1) === current) {
-            link.classList.add('active');
-          }
-        });
-      });
+      }
       
       // Gestionnaire pour les boîtes dépliables
       const collapsibles = document.querySelectorAll('.collapsible');
       
-      collapsibles.forEach(coll => {
-        coll.addEventListener('click', function() {
-          this.classList.toggle('active');
-          const content = this.nextElementSibling;
-          
-          if (content.style.maxHeight) {
-            content.style.maxHeight = null;
-            this.querySelector('i').className = 'fas fa-chevron-down';
-          } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            this.querySelector('i').className = 'fas fa-chevron-up';
-          }
+      if (collapsibles.length > 0) {
+        collapsibles.forEach(coll => {
+          coll.addEventListener('click', function() {
+            this.classList.toggle('active');
+            const content = this.nextElementSibling;
+            
+            if (content) {
+              if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                const icon = this.querySelector('i');
+                if (icon) {
+                  icon.className = 'fas fa-chevron-down';
+                }
+              } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                const icon = this.querySelector('i');
+                if (icon) {
+                  icon.className = 'fas fa-chevron-up';
+                }
+              }
+            }
+          });
         });
-      });
+      }
     });
   </script>
 </body>
