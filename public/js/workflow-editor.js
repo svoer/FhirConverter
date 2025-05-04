@@ -216,10 +216,14 @@ class WorkflowEditor {
    * Crée la palette de noeuds
    */
   createNodePalette() {
-    // Si l'option suppressDuplicateMenu est activée, ne pas créer de palette
+    // Si l'option suppressDuplicateMenu est activée, chercher si une palette existe déjà
     if (this.options.suppressDuplicateMenu) {
-      console.log("[Workflow] Affichage de la palette de nœuds supprimé (évite duplication)");
-      return;
+      const existingPalette = document.querySelector('.node-palette');
+      if (existingPalette) {
+        console.log("[Workflow] Palette de nœuds existante détectée, utilisation de celle-ci");
+        this.nodePalette = existingPalette;
+        return;
+      }
     }
     
     this.nodePalette = document.createElement('div');
@@ -486,8 +490,38 @@ class WorkflowEditor {
       // Définir la catégorie comme repliée par défaut
       categoryTitle.setAttribute('data-collapsed', 'true');
       categoryTitle.style.opacity = '0.7';
+      categoryTitle.style.cursor = 'pointer';
+      
+      // Ajouter un indicateur visuel pour montrer que c'est cliquable
+      categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▶</span>`;
+      
+      // Ajouter l'événement de clic pour replier/déplier
+      categoryTitle.addEventListener('click', () => {
+        const isCollapsed = categoryTitle.getAttribute('data-collapsed') === 'true';
+        const itemsContainer = categoryTitle.nextElementSibling;
+        
+        if (isCollapsed) {
+          // Déplier
+          categoryTitle.setAttribute('data-collapsed', 'false');
+          categoryTitle.style.opacity = '1';
+          categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▼</span>`;
+          itemsContainer.style.display = 'block';
+        } else {
+          // Replier
+          categoryTitle.setAttribute('data-collapsed', 'true');
+          categoryTitle.style.opacity = '0.7';
+          categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▶</span>`;
+          itemsContainer.style.display = 'none';
+        }
+      });
       
       categoryDiv.appendChild(categoryTitle);
+      
+      // Créer un conteneur pour les éléments de nœuds
+      const nodesContainer = document.createElement('div');
+      nodesContainer.className = 'node-palette-items-container';
+      nodesContainer.style.display = 'none'; // Masquer par défaut
+      categoryDiv.appendChild(nodesContainer);
       
       // Créer les éléments de noeuds
       category.nodes.forEach(node => {
@@ -541,7 +575,7 @@ class WorkflowEditor {
         
         nodeItem.appendChild(nodeIcon);
         nodeItem.appendChild(nodeLabel);
-        categoryDiv.appendChild(nodeItem);
+        nodesContainer.appendChild(nodeItem); // Ajouter au conteneur de nœuds et non directement à la catégorie
         
         // Ajouter l'événement de drag & drop
         this.handleNodeDragStart(nodeItem, node.type);
