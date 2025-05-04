@@ -346,10 +346,14 @@ async function initializeDatabase() {
   console.log("[DB] Démarrage de l'initialisation de la base de données...");
   
   try {
+    // Initialiser le service de base de données
+    await dbService.initialize();
+    
     // Créer toutes les tables définies dans le schéma
     for (const table of schema.ALL_SCHEMAS) {
       console.log(`[DB] Création de la table ${table.tableName}...`);
-      await dbService.createTable(table.tableName, table.columns);
+      // Utiliser la méthode run directement puisque createTable n'existe pas
+      await dbService.run(`CREATE TABLE IF NOT EXISTS ${table.tableName} (${table.columns})`);
     }
     
     // Vérifier si l'utilisateur admin existe déjà
