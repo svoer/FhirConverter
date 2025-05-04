@@ -4233,22 +4233,45 @@ class WorkflowEditor {
   async loadWorkflow(workflowId) {
     try {
       this.showLoading(true);
+      console.log('[DEBUG] Chargement du workflow:', workflowId);
+      
+      // Vérification défensive
+      if (!workflowId) {
+        console.error('[DEBUG] Aucun ID de workflow fourni');
+        this.showNotification('Impossible de charger: aucun ID de workflow', 'error');
+        this.showLoading(false);
+        return;
+      }
       
       // Récupérer les données du workflow depuis le serveur
       const response = await fetch(`/api/workflows/${workflowId}`, {
         headers: {
-          'Authorization': `Bearer ${getToken ? getToken() : ''}`,
+          'Authorization': `Bearer ${typeof getToken === 'function' ? getToken() : ''}`,
           'X-API-KEY': 'dev-key'
         }
       });
       
       if (!response.ok) {
-        throw new Error('Erreur lors du chargement du workflow');
+        console.error(`[DEBUG] Erreur HTTP ${response.status} lors du chargement du workflow`);
+        throw new Error(`Erreur lors du chargement du workflow: ${response.statusText}`);
       }
       
-      const result = await response.json();
-      console.log('Workflow chargé:', result);
+      // Lire la réponse au format texte pour pouvoir la logger
+      const responseText = await response.text();
+      console.log('[DEBUG] Réponse brute du serveur:', responseText);
       
+      // Parser la réponse JSON
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('[DEBUG] Erreur lors du parsing de la réponse JSON:', e);
+        throw new Error('Réponse invalide du serveur');
+      }
+      
+      console.log('[DEBUG] Workflow chargé (données brutes):', result);
+      
+      // Extraire les données du workflow selon la structure de la réponse
       let workflow;
       if (result.success && result.data) {
         workflow = result.data;
@@ -4256,15 +4279,29 @@ class WorkflowEditor {
         workflow = result;
       }
       
+      // Vérifier que nous avons bien un workflow avec un ID
+      if (!workflow || !workflow.id) {
+        console.error('[DEBUG] Données de workflow invalides:', workflow);
+        throw new Error('Workflow invalide');
+      }
+      
       // Stocker l'ID du workflow de manière robuste
       this.workflowId = workflow.id;
-      this.workflowName = workflow.name;
+      this.staticWorkflowId = workflow.id;
+      this.workflowName = workflow.name || 'Workflow sans nom';
       this.workflowDescription = workflow.description || '';
       
       // Stockage redondant pour garantir la persistance de l'ID
       window.currentWorkflowId = workflow.id;
       sessionStorage.setItem('currentWorkflowId', workflow.id);
-      console.log('[WorkflowEditor] ID du workflow chargé et enregistré:', workflow.id);
+      
+      // Si un élément DOM est présent pour stocker l'ID, le mettre à jour
+      const idField = document.getElementById('current-workflow-id-field');
+      if (idField) {
+        idField.value = workflow.id;
+      }
+      
+      console.log('[DEBUG] ID du workflow chargé et enregistré (multiple sources):', workflow.id);
       
       // Effacer les noeuds et arêtes existants
       this.clearWorkflow();
@@ -4272,25 +4309,22 @@ class WorkflowEditor {
       // Charger les noeuds et arêtes
       let flowData;
       try {
+        console.log('[DEBUG] Type de flow_json:', typeof workflow.flow_json);
+        console.log('[DEBUG] Valeur brute de flow_json:', workflow.flow_json);
+        
         // Si flow_json est une chaîne, essayer de la parser
-        // Sinon, utiliser directement l'objet
         if (typeof workflow.flow_json === 'string') {
           try {
             flowData = JSON.parse(workflow.flow_json);
             console.log('[DEBUG] flow_json parsé depuis une chaîne:', flowData);
-            
-            // Corriger le format si nécessaire (gérer les cas où c'est un tableau au lieu d'un objet)
-            if (Array.isArray(flowData)) {
-              console.log('[DEBUG] flowData est un tableau, conversion en objet structuré');
-              flowData = {
-                nodes: flowData.filter(item => item.type || item.position || item.label),
-                edges: flowData.filter(item => item.source && item.target)
-              };
-            }
           } catch (parseError) {
             console.error('[DEBUG] Erreur de parsing du JSON:', parseError);
             flowData = { nodes: [], edges: [] };
           }
+        } else if (workflow.flow_json === null || workflow.flow_json === undefined) {
+          // Gérer le cas où flow_json est null ou undefined
+          console.warn('[DEBUG] flow_json est null ou undefined, création d\'un workflow vide');
+          flowData = { nodes: [], edges: [] };
         } else if (Array.isArray(workflow.flow_json)) {
           // Si c'est un tableau, convertir en format { nodes, edges }
           console.log('[DEBUG] flow_json est un tableau, conversion en objet structuré');
@@ -4301,119 +4335,46 @@ class WorkflowEditor {
         } else if (typeof workflow.flow_json === 'object') {
           // Utiliser directement l'objet
           flowData = workflow.flow_json;
-          console.log('[DEBUG] flow_json utilisé directement comme objet:', flowData);
+          console.log('[DEBUG] flow_json utilisé directement comme objet');
         } else {
           // Cas par défaut
+          console.warn('[DEBUG] Format de flow_json non reconnu, création d\'un workflow vide');
           flowData = { nodes: [], edges: [] };
         }
         
-        // S'assurer que la structure est correcte
+        // Corriger le format si nécessaire (gérer les cas où c'est déjà un objet mais pas structuré)
+        if (flowData && !flowData.nodes && !flowData.edges && Object.keys(flowData).length > 0) {
+          console.log('[DEBUG] Conversion de l\'objet flow_json non structuré en format { nodes, edges }');
+          // Essayer d'identifier les nœuds et les arêtes par leurs propriétés
+          const nodesAndEdges = Object.values(flowData);
+          flowData = {
+            nodes: nodesAndEdges.filter(item => item && (item.type || item.position || item.label)),
+            edges: nodesAndEdges.filter(item => item && item.source && item.target)
+          };
+        }
+        
+        // S'assurer que la structure est correcte et qu'il y a des tableaux pour nodes et edges
+        if (!flowData) flowData = {};
         if (!flowData.nodes) flowData.nodes = [];
         if (!flowData.edges) flowData.edges = [];
         
+        console.log('[DEBUG] Structure finale flowData:', {
+          nodes: flowData.nodes.length,
+          edges: flowData.edges.length
+        });
+        
       } catch (e) {
-        console.error('Erreur lors du traitement du flow_json du workflow:', e);
+        console.error('[DEBUG] Erreur lors du traitement du flow_json du workflow:', e);
         flowData = { nodes: [], edges: [] };
       }
       
-      console.log('[DEBUG] Structure finale flowData:', flowData);
-      
-      // Créer les noeuds
-      if (flowData.nodes && Array.isArray(flowData.nodes)) {
-        // Trouver le prochain ID à utiliser
-        const nodeIds = flowData.nodes.map(node => {
-          const idMatch = node.id.match(/node_(\d+)/);
-          return idMatch ? parseInt(idMatch[1]) : 0;
-        });
-        this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
-        
-        flowData.nodes.forEach(node => {
-          const nodeElement = this.addNode(node.type, node.position);
-          
-          // Copier les propriétés
-          nodeElement.label = node.label || nodeElement.label;
-          nodeElement.data = node.data || {};
-          
-          // Mettre à jour l'affichage du noeud
-          const domNode = document.getElementById(nodeElement.id);
-          if (domNode) {
-            domNode.querySelector('.node-title').textContent = nodeElement.label;
-          }
-        });
-      }
-      
-      // Créer les arêtes après un délai suffisant pour permettre au DOM de se mettre à jour
-      if (flowData.edges && Array.isArray(flowData.edges)) {
-        // Trouver le prochain ID à utiliser
-        const edgeIds = flowData.edges.map(edge => {
-          const idMatch = edge.id.match(/edge_(\d+)/);
-          return idMatch ? parseInt(idMatch[1]) : 0;
-        });
-        this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
-        
-        // Stockons les arêtes à créer
-        const edgesToCreate = [...flowData.edges];
-        
-        // Log d'information pour le débogage
-        console.log(`[Workflow] Création de ${edgesToCreate.length} arêtes après initialisation des nœuds...`);
-        
-        // Fonction pour vérifier si tous les éléments DOM des nœuds sont prêts
-        const areNodesReady = () => {
-          const allNodesExist = this.nodes.every(node => {
-            const nodeElement = document.getElementById(node.id);
-            return !!nodeElement;
-          });
-          
-          if (allNodesExist) {
-            console.log('[Workflow] Tous les nœuds sont prêts, création des arêtes...');
-            return true;
-          }
-          return false;
-        };
-        
-        // Fonction récursive qui tente de créer les arêtes jusqu'à ce que les nœuds soient prêts
-        const tryCreateEdges = (attempts = 0) => {
-          if (attempts >= 10) {
-            console.warn('[Workflow] Nombre maximal de tentatives pour créer les arêtes atteint');
-            return;
-          }
-          
-          if (areNodesReady()) {
-            // Tous les nœuds sont prêts, on peut créer les arêtes
-            edgesToCreate.forEach(edge => {
-              const sourceNode = this.getNodeById(edge.source);
-              const targetNode = this.getNodeById(edge.target);
-              
-              // Vérifions que les éléments DOM existent aussi
-              const sourceElement = document.getElementById(edge.source);
-              const targetElement = document.getElementById(edge.target);
-              
-              if (sourceNode && targetNode && sourceElement && targetElement) {
-                // Les nœuds existent et sont rendus dans le DOM, on peut créer l'arête
-                this.createEdge(
-                  edge.source,
-                  edge.target,
-                  edge.sourceOutput,
-                  edge.targetInput
-                );
-              } else {
-                console.warn(`[Workflow] Impossible de créer l'arête: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
-              }
-            });
-          } else {
-            // Attendre un peu plus longtemps et réessayer
-            setTimeout(() => tryCreateEdges(attempts + 1), 200);
-          }
-        };
-        
-        // Premier appel à la fonction récursive après un délai initial
-        setTimeout(() => tryCreateEdges(), 500); // Délai initial de 500ms pour laisser le temps au DOM de se mettre à jour
-      }
+      // IMPORTANT: Utiliser loadInitialData pour charger les données correctement
+      this.loadInitialData(flowData);
       
       this.showNotification(`Workflow "${this.workflowName}" chargé avec succès`, 'success');
       this.showLoading(false);
     } catch (error) {
-      console.error('Erreur lors du chargement du workflow:', error);
+      console.error('[DEBUG] Erreur lors du chargement du workflow:', error);
       this.showNotification(`Erreur: ${error.message}`, 'error');
       this.showLoading(false);
     }
@@ -5524,8 +5485,30 @@ class WorkflowEditor {
         flowData = JSON.parse(templateData);
       }
       
+      // S'assurer que la structure est correcte
+      let normalizedData;
+      
+      if (Array.isArray(flowData)) {
+        console.log('[DEBUG] Template est un tableau, conversion en objet structuré');
+        normalizedData = {
+          nodes: flowData.filter(item => item.type || item.position || item.label),
+          edges: flowData.filter(item => item.source && item.target)
+        };
+      } else if (flowData && typeof flowData === 'object') {
+        normalizedData = flowData;
+        // S'assurer que nodes et edges sont des tableaux
+        if (!normalizedData.nodes) normalizedData.nodes = [];
+        if (!normalizedData.edges) normalizedData.edges = [];
+      } else {
+        console.error('[Workflow] Format de template invalide:', flowData);
+        throw new Error('Format de template invalide: structure incorrecte');
+      }
+      
       // Vider l'éditeur actuel
       this.clearAllNodes();
+      
+      // Utiliser la fonction loadInitialData pour charger le template
+      this.loadInitialData(normalizedData);
       
       // Plusieurs formats possibles
       // 1. Tableau d'objets {type: 'node'} ou {type: 'edge'}
