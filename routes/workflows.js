@@ -875,8 +875,17 @@ router.get('/templates/:templateId', jwtAuth({ roles: ['admin', 'user'] }), asyn
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+router.put('/:id', require('../middleware/authCombined'), async (req, res) => {
   try {
+    // Vérifier si l'utilisateur est authentifié par token JWT ou API key
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Unauthorized', 
+        message: 'Authentification requise' 
+      });
+    }
+    
     const id = parseInt(req.params.id);
     
     if (isNaN(id)) {
