@@ -966,40 +966,87 @@ class WorkflowEditor {
         // Dragging du noeud
         e.stopPropagation();
         
+        // Ajouter une classe pour indiquer le déplacement en cours
+        nodeElement.classList.add('dragging');
+        
+        // Mémoriser les positions initiales
         const startX = e.clientX;
         const startY = e.clientY;
         const startLeft = node.position.x;
         const startTop = node.position.y;
         
+        // Collecter les arêtes connectées à ce nœud pour optimiser les mises à jour
+        const connectedEdges = this.edges.filter(edge => 
+          edge.source === node.id || edge.target === node.id
+        );
+        
+        // Utiliser requestAnimationFrame pour limiter les mises à jour
+        let animationFrameId = null;
+        let lastX = startLeft;
+        let lastY = startTop;
+        
         const mousemove = (moveEvent) => {
+          // Calculer la nouvelle position
           const dx = (moveEvent.clientX - startX) / this.scale;
           const dy = (moveEvent.clientY - startY) / this.scale;
           
           let newX = startLeft + dx;
           let newY = startTop + dy;
           
-          // Snap to grid
+          // Snap to grid si nécessaire
           if (this.options.snapToGrid) {
             newX = Math.round(newX / this.options.gridSize) * this.options.gridSize;
             newY = Math.round(newY / this.options.gridSize) * this.options.gridSize;
           }
           
-          // Mettre à jour la position du noeud
-          node.position.x = newX;
-          node.position.y = newY;
-          nodeElement.style.left = `${newX}px`;
-          nodeElement.style.top = `${newY}px`;
+          // Annuler la dernière animation si elle est encore en attente
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
           
-          // Mettre à jour les arêtes
-          this.updateEdges();
-          
-          // Émettre l'événement
-          this.emit('nodePositionChanged', node);
+          // Utiliser requestAnimationFrame pour optimiser les performances
+          animationFrameId = requestAnimationFrame(() => {
+            // Mettre à jour la position du noeud
+            node.position.x = newX;
+            node.position.y = newY;
+            nodeElement.style.left = `${newX}px`;
+            nodeElement.style.top = `${newY}px`;
+            
+            // Mettre à jour uniquement les arêtes connectées à ce nœud
+            connectedEdges.forEach(edge => {
+              // Marquer l'arête comme étant en cours de déplacement
+              edge.pathChanged = (Math.abs(lastX - newX) > 5 || Math.abs(lastY - newY) > 5);
+              this.updateEdgePath(edge);
+            });
+            
+            lastX = newX;
+            lastY = newY;
+            
+            // Émettre l'événement
+            this.emit('nodePositionChanged', node);
+            
+            // Réinitialiser l'ID d'animation
+            animationFrameId = null;
+          });
         };
         
         const mouseup = () => {
+          // Retirer l'indication de déplacement
+          nodeElement.classList.remove('dragging');
+          
+          // Nettoyer les écouteurs d'événements
           document.removeEventListener('mousemove', mousemove);
           document.removeEventListener('mouseup', mouseup);
+          
+          // Annuler toute animation en cours
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+          
+          // Mettre à jour toutes les arêtes une fois à la fin du déplacement
+          this.updateEdges();
+          
+          // Émettre l'événement de changement
           this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
         };
         
