@@ -94,6 +94,9 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    background-color: #ffffff; /* Arrière-plan blanc uniforme */
+    border: none; /* Aucune bordure */
+    outline: none; /* Aucun contour */
 }
 
 .workflow-editor-container {
@@ -106,24 +109,21 @@
     border: none;
 }
 
+/* Canva principal où les noeuds sont placés - Agrandi pour créer l'effet infini */
 .workflow-canvas {
     width: 100%;
     height: 100%;
-    position: relative;
-    overflow: hidden;
-    /* Suppression complète de la grille pour un espace totalement uniforme */
-    background-color: #ffffff;
-}
-
-/* Canva principal où les noeuds sont placés - Agrandi pour créer l'effet infini */
-.workflow-canvas {
-    transition: transform 0.05s linear; /* Transition plus rapide et linéaire */
+    position: absolute; /* Position absolue pour permettre un débordement contrôlé */
+    overflow: visible; /* Changé de hidden à visible pour éviter les lignes de coupure */
     transform-origin: 0 0;
     min-width: 20000px;  /* Taille très grande pour l'effet "infini" */
     min-height: 20000px; /* Taille très grande pour l'effet "infini" */
-    position: absolute; /* Position absolue pour permettre un débordement contrôlé */
     will-change: transform; /* Permet l'accélération GPU pour les transformations */
     background-color: #ffffff; /* Arrière-plan blanc uniforme */
+    border: none; /* Aucune bordure */
+    outline: none; /* Aucun contour */
+    box-shadow: none; /* Aucune ombre */
+    transition: none; /* Suppression de toute transition pour éviter les artefacts visuels */
 }
 
 /* Palette de noeuds avec style neutre */
