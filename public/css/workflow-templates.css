@@ -20,6 +20,13 @@
     pointer-events: none;
 }
 
+/* Utilisé par templateManager.js */
+.template-dialog.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Utilisé par workflow-integration.js */
 .template-dialog.show {
     opacity: 1;
     pointer-events: auto;

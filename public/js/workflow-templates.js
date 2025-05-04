@@ -15,16 +15,23 @@ window.templateManager = (function() {
     let templates = [];
     // Catégorie actuellement sélectionnée
     let currentCategory = 'all';
+    // Indique si le gestionnaire est initialisé
+    let isInitialized = false;
 
     /**
      * Initialise le gestionnaire de templates
      * @param {Object} editor - Instance de l'éditeur de workflow
      */
     function initialize(editor) {
+        console.log('[TemplateManager] Initialisation avec l\'éditeur:', editor);
         workflowEditor = editor;
-        createTemplateDialog();
         loadTemplateData();
+        isInitialized = true;
+        return true;
     }
+    
+    // Initialiser les templates de base au démarrage (même sans éditeur)
+    loadTemplateData();
 
     /**
      * Crée la boîte de dialogue de sélection des templates
@@ -475,7 +482,13 @@ window.templateManager = (function() {
      */
     function closeTemplateDialog() {
         if (templateDialog) {
-            templateDialog.style.display = 'none';
+            // Enlever d'abord la classe de visibilité pour l'animation
+            templateDialog.classList.remove('visible');
+            
+            // Puis après un délai, cacher complètement
+            setTimeout(() => {
+                templateDialog.style.display = 'none';
+            }, 300); // Délai correspondant à la durée de l'animation CSS
         }
     }
 
@@ -611,14 +624,27 @@ window.templateManager = (function() {
      * Ouvre la boîte de dialogue des templates
      */
     function openTemplateDialog() {
+        console.log('[TemplateManager] Ouverture de la boîte de dialogue des templates');
+        
+        // Si la boîte de dialogue n'existe pas encore, la créer
         if (!templateDialog) {
-            console.error('[TemplateManager] Boîte de dialogue de templates non initialisée');
-            return;
+            console.log('[TemplateManager] Création de la boîte de dialogue des templates (auto)');
+            createTemplateDialog();
+            
+            // Si la création a échoué, sortir
+            if (!templateDialog) {
+                console.error('[TemplateManager] Impossible de créer la boîte de dialogue des templates');
+                return;
+            }
         }
 
-        // Réinitialiser les filtres
-        document.getElementById('template-category-filter').value = 'all';
-        document.getElementById('template-search').value = '';
+        // Réinitialiser les filtres s'ils existent
+        const categoryFilter = document.getElementById('template-category-filter');
+        const searchInput = document.getElementById('template-search');
+        
+        if (categoryFilter) categoryFilter.value = 'all';
+        if (searchInput) searchInput.value = '';
+        
         currentCategory = 'all';
 
         // Rendre les templates
@@ -626,6 +652,11 @@ window.templateManager = (function() {
 
         // Afficher la boîte de dialogue
         templateDialog.style.display = 'block';
+        
+        // Ajouter une animation d'apparition
+        setTimeout(() => {
+            templateDialog.classList.add('visible');
+        }, 50);
     }
 
     // Exposer les fonctions publiques
