@@ -428,24 +428,60 @@ function processHL7Conversion(hl7Message, req, res) {
     
     // Adapter l'insertion au schéma existant dans la base de données
     try {
-      db.prepare(`
-        INSERT INTO conversion_logs (
-          input_message,
-          output_message,
-          status,
-          timestamp,
-          processing_time,
-          resource_count,
-          user_id
-        ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
-      `).run(
-        hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
-        JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
-        'success',
-        conversionTime,
-        result.entry ? result.entry.length : 0,
-        userId
-      );
+      // Récupérer les colonnes disponibles dans conversion_logs
+      const tableInfo = db.prepare(`PRAGMA table_info(conversion_logs)`).all();
+      const columns = tableInfo.map(col => col.name);
+      
+      const inputMsg = hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message;
+      const outputMsg = JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result);
+      const resourceCount = result.entry ? result.entry.length : 0;
+      
+      if (columns.includes('input_message')) {
+        // Schéma avec input_message (celui que nous utilisons actuellement)
+        db.prepare(`
+          INSERT INTO conversion_logs (
+            input_message,
+            output_message,
+            status,
+            timestamp,
+            processing_time,
+            resource_count,
+            user_id
+          ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
+        `).run(
+          inputMsg,
+          outputMsg,
+          'success',
+          conversionTime,
+          resourceCount,
+          userId
+        );
+      } else if (columns.includes('hl7_content')) {
+        // Schéma avec hl7_content (celui défini dans schema.js)
+        db.prepare(`
+          INSERT INTO conversion_logs (
+            api_key_id,
+            application_id,
+            source_type,
+            hl7_content,
+            fhir_content,
+            status,
+            processing_time,
+            error_message,
+            ip_address
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          null,
+          1, // Application par défaut
+          'api',
+          inputMsg,
+          outputMsg,
+          'success',
+          conversionTime,
+          null,
+          req.ip || null
+        );
+      }
     } catch (err) {
       console.error('[CONVERSION LOG ERROR]', err.message);
       // Continue sans interrompre le processus de conversion
@@ -684,27 +720,44 @@ app.post('/api/convert/validate', authCombined, (req, res) => {
  */
 app.get('/api/stats', (req, res) => {
   try {
-    const conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
+    let conversionCount = { count: 0 };
+    let conversionStats = null;
+    let lastConversion = null;
+
+    try {
+      conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
+    } catch (err) {
+      console.warn('[STATS] Erreur lors du comptage des conversions:', err.message);
+    }
     
-    // Récupérer les statistiques de temps de conversion
-    const conversionStats = db.prepare(`
-      SELECT 
-        AVG(processing_time) as avg_time,
-        MIN(processing_time) as min_time,
-        MAX(processing_time) as max_time,
-        AVG(resource_count) as avg_resources
-      FROM conversion_logs
-      WHERE processing_time > 0
-    `).get();
+    // Vérifier la présence des colonnes requises avant d'exécuter les requêtes
+    try {
+      // Récupérer les statistiques de temps de conversion
+      conversionStats = db.prepare(`
+        SELECT 
+          AVG(processing_time) as avg_time,
+          MIN(processing_time) as min_time,
+          MAX(processing_time) as max_time,
+          AVG(resource_count) as avg_resources
+        FROM conversion_logs
+        WHERE processing_time > 0
+      `).get();
+    } catch (err) {
+      console.warn('[STATS] Erreur lors de la récupération des statistiques:', err.message);
+    }
     
-    // Récupérer le dernier temps de conversion
-    const lastConversion = db.prepare(`
-      SELECT processing_time, resource_count
-      FROM conversion_logs
-      WHERE processing_time > 0
-      ORDER BY timestamp DESC
-      LIMIT 1
-    `).get();
+    try {
+      // Récupérer le dernier temps de conversion
+      lastConversion = db.prepare(`
+        SELECT processing_time, resource_count
+        FROM conversion_logs
+        WHERE processing_time > 0
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `).get();
+    } catch (err) {
+      console.warn('[STATS] Erreur lors de la récupération de la dernière conversion:', err.message);
+    }
     
     res.json({
       success: true,
