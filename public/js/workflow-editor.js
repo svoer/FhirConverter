@@ -50,6 +50,12 @@ class WorkflowEditor {
     this.workflowName = '';
     this.workflowDescription = '';
     
+    // État pour la sélection multiple
+    this.selectionRect = null;
+    this.selectionStartPoint = null;
+    this.isSelecting = false;
+    this.selectedNodes = [];
+    
     // Propriétés pour les événements
     this.eventListeners = {
       'nodeAdded': [],
