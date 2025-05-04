@@ -4135,19 +4135,45 @@ class WorkflowEditor {
           try {
             flowData = JSON.parse(workflow.flow_json);
             console.log('[DEBUG] flow_json parsé depuis une chaîne:', flowData);
+            
+            // Corriger le format si nécessaire (gérer les cas où c'est un tableau au lieu d'un objet)
+            if (Array.isArray(flowData)) {
+              console.log('[DEBUG] flowData est un tableau, conversion en objet structuré');
+              flowData = {
+                nodes: flowData.filter(item => item.type || item.position || item.label),
+                edges: flowData.filter(item => item.source && item.target)
+              };
+            }
           } catch (parseError) {
             console.error('[DEBUG] Erreur de parsing du JSON:', parseError);
             flowData = { nodes: [], edges: [] };
           }
-        } else {
+        } else if (Array.isArray(workflow.flow_json)) {
+          // Si c'est un tableau, convertir en format { nodes, edges }
+          console.log('[DEBUG] flow_json est un tableau, conversion en objet structuré');
+          flowData = {
+            nodes: workflow.flow_json.filter(item => item.type || item.position || item.label),
+            edges: workflow.flow_json.filter(item => item.source && item.target)
+          };
+        } else if (typeof workflow.flow_json === 'object') {
           // Utiliser directement l'objet
           flowData = workflow.flow_json;
           console.log('[DEBUG] flow_json utilisé directement comme objet:', flowData);
+        } else {
+          // Cas par défaut
+          flowData = { nodes: [], edges: [] };
         }
+        
+        // S'assurer que la structure est correcte
+        if (!flowData.nodes) flowData.nodes = [];
+        if (!flowData.edges) flowData.edges = [];
+        
       } catch (e) {
         console.error('Erreur lors du traitement du flow_json du workflow:', e);
         flowData = { nodes: [], edges: [] };
       }
+      
+      console.log('[DEBUG] Structure finale flowData:', flowData);
       
       // Créer les noeuds
       if (flowData.nodes && Array.isArray(flowData.nodes)) {

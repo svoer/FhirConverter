@@ -1456,10 +1456,35 @@
                     editorModal.style.display = 'block';
                     
                     // Initialiser l'éditeur visuel
-                    const workflowData = workflow.flow_json;
-                    const parsedData = typeof workflowData === 'string' && workflowData.trim() !== '' 
-                        ? JSON.parse(workflowData) 
-                        : [];
+                    // Assurer que les données du flux sont dans le format approprié
+                    let parsedData;
+                    
+                    try {
+                        // Si flow_json est une chaîne, essayer de la parser
+                        if (typeof workflow.flow_json === 'string' && workflow.flow_json.trim() !== '') {
+                            parsedData = JSON.parse(workflow.flow_json);
+                            
+                            // S'assurer que la structure contient nodes et edges
+                            if (!parsedData.nodes) parsedData.nodes = [];
+                            if (!parsedData.edges) parsedData.edges = [];
+                        } else if (typeof workflow.flow_json === 'object') {
+                            // Si c'est déjà un objet, l'utiliser directement
+                            parsedData = workflow.flow_json;
+                            
+                            // S'assurer que la structure contient nodes et edges
+                            if (!parsedData.nodes) parsedData.nodes = [];
+                            if (!parsedData.edges) parsedData.edges = [];
+                        } else {
+                            // Sinon, créer un objet vide mais structuré
+                            parsedData = { nodes: [], edges: [] };
+                        }
+                    } catch (e) {
+                        console.error('[WorkflowEditor] Erreur de parsing JSON:', e);
+                        // En cas d'erreur, créer un objet vide mais structuré
+                        parsedData = { nodes: [], edges: [] };
+                    }
+                    
+                    console.log('[WorkflowEditor] Données du workflow parsées:', parsedData);
                     
                     const editorContainer = document.getElementById('workflow-editor-container');
                     
