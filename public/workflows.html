@@ -1461,6 +1461,13 @@
                     
                     // Créer une nouvelle instance de l'éditeur avec suppressDuplicateMenu=true
                     console.log('Initialisation de l\'éditeur de workflow avec ID:', workflow.id);
+                    // Créer la balise cachée pour stocker l'ID du workflow
+                    const workflowIdInput = document.createElement('input');
+                    workflowIdInput.type = 'hidden';
+                    workflowIdInput.id = 'current-workflow-id-field';
+                    workflowIdInput.value = workflow.id;
+                    document.body.appendChild(workflowIdInput);
+                    
                     window.workflowEditor = new WorkflowEditor('workflow-editor-container', {
                         initialData: parsedData,
                         snapToGrid: true,
@@ -1472,12 +1479,21 @@
                         workflowDescription: workflow.description
                     });
                     
-                    // CORRECTION: Forçage explicite de l'ID de workflow directement sur l'instance
+                    // CORRECTION: Stockage multiple de l'ID pour une robustesse maximale
+                    // 1. Forçage explicite de l'ID sur l'instance
                     window.workflowEditor.workflowId = workflow.id;
-                    console.log('[DEBUG] ID du workflow forcé sur l\'instance:', workflow.id);
-                    
-                    // Enregistrer également dans sessionStorage pour plus de sécurité
+                    // 2. Propriété statique sur l'éditeur
+                    window.workflowEditor.staticWorkflowId = workflow.id;
+                    // 3. Variable globale 
+                    window.currentWorkflowId = workflow.id;
+                    // 4. Dans sessionStorage pour persistance
                     sessionStorage.setItem('currentWorkflowId', workflow.id);
+                    // 5. Dans la modal comme attribut
+                    editorModal.setAttribute('data-workflow-id', workflow.id);
+                    // 6. Également comme propriété directe sur la modal
+                    editorModal.workflowId = workflow.id;
+                    
+                    console.log('[DEBUG] ID du workflow stocké de multiples façons:', workflow.id);
                     
                     // Informer l'utilisateur
                     showNotification('Éditeur visuel de workflow ouvert.', 'info');

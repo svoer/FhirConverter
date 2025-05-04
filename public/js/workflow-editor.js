@@ -4109,10 +4109,15 @@ class WorkflowEditor {
         workflow = result;
       }
       
-      // Stocker l'ID du workflow
+      // Stocker l'ID du workflow de manière robuste
       this.workflowId = workflow.id;
       this.workflowName = workflow.name;
       this.workflowDescription = workflow.description || '';
+      
+      // Stockage redondant pour garantir la persistance de l'ID
+      window.currentWorkflowId = workflow.id;
+      sessionStorage.setItem('currentWorkflowId', workflow.id);
+      console.log('[WorkflowEditor] ID du workflow chargé et enregistré:', workflow.id);
       
       // Effacer les noeuds et arêtes existants
       this.clearWorkflow();
