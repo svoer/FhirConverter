@@ -4461,7 +4461,16 @@ class WorkflowEditor {
       });
       
       if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde du workflow');
+        let errorMessage = 'Erreur lors de la sauvegarde du workflow';
+        try {
+          // Tenter de lire le message d'erreur du serveur
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          console.error('Détails de l\'erreur:', errorData);
+        } catch (parseError) {
+          console.error('Impossible de lire les détails de l\'erreur', parseError);
+        }
+        throw new Error(errorMessage);
       }
       
       this.showNotification('Workflow sauvegardé avec succès', 'success');

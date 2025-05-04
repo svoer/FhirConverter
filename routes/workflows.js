@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const workflowService = require('../src/services/workflowService');
 const jwtAuth = require('../middleware/jwtAuth');
+const authCombined = require('../middleware/authCombined');
 
 /**
  * @swagger
@@ -875,7 +876,7 @@ router.get('/templates/:templateId', jwtAuth({ roles: ['admin', 'user'] }), asyn
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', require('../middleware/authCombined'), async (req, res) => {
+router.put('/:id', authCombined, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié par token JWT ou API key
     if (!req.isAuthenticated()) {
