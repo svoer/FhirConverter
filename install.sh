@@ -296,8 +296,17 @@ if [ ! -z "$PYTHON_CMD" ]; then
   # Installation des modules requis si pip est disponible
   if [ ! -z "$PIP_CMD" ]; then
     echo "   Installation des modules hl7 et requests..."
-    $PIP_CMD install hl7 requests --quiet
-    echo "   ✅ Modules Python installés avec $PIP_CMD"
+    # Tentative d'installation avec la nouvelle approche pour Python 3.12+
+    # --break-system-packages est nécessaire pour Python 3.12+ 
+    $PIP_CMD install hl7 requests --quiet --break-system-packages || $PIP_CMD install hl7 requests --quiet || true
+    
+    # Vérifier si l'installation a réussi
+    if $PYTHON_CMD -c "import hl7" &> /dev/null && $PYTHON_CMD -c "import requests" &> /dev/null; then
+      echo "   ✅ Modules Python installés avec succès"
+    else
+      echo "   ⚠️ Impossible d'installer les modules Python. Utilisez un environnement virtuel si nécessaire."
+      echo "   Commande: python3 -m venv .venv && source .venv/bin/activate && pip install hl7 requests"
+    fi
   else
     echo "   ⚠️ Impossible d'installer pip. Les modules Python requis n'ont pas été installés."
     echo "   Pour installer manuellement, exécutez: $PYTHON_CMD -m pip install hl7 requests"
@@ -357,45 +366,45 @@ async function initializeDatabase() {
     }
     
     // Vérifier si l'utilisateur admin existe déjà
-    const adminExists = await dbService.query(
+    const adminExists = await dbService.get(
       'SELECT COUNT(*) as count FROM users WHERE username = ?',
       ['admin']
     );
     
     // Créer l'utilisateur admin par défaut si nécessaire
-    if (adminExists[0].count === 0) {
+    if (adminExists && adminExists.count === 0) {
       console.log("[DB] Création de l'utilisateur admin par défaut...");
-      await dbService.query(
+      await dbService.run(
         'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
         ['admin', '$2b$10$PeXcZgN6w9SYJ0CsVr3zxeVGoSGgvDIGQWIWjJQBkeVKdQ0.CH95W', 'admin', 'admin@example.com']
       );
     }
     
     // Vérifier si l'application par défaut existe déjà
-    const defaultAppExists = await dbService.query(
+    const defaultAppExists = await dbService.get(
       'SELECT COUNT(*) as count FROM applications WHERE name = ?',
       ['Default']
     );
     
     // Créer l'application par défaut si nécessaire
-    if (defaultAppExists[0].count === 0) {
+    if (defaultAppExists && defaultAppExists.count === 0) {
       console.log("[DB] Création de l'application par défaut...");
-      await dbService.query(
+      await dbService.run(
         'INSERT INTO applications (name, description) VALUES (?, ?)',
         ['Default', 'Application par défaut pour le développement']
       );
     }
     
     // Vérifier si la clé API de développement existe déjà
-    const devKeyExists = await dbService.query(
+    const devKeyExists = await dbService.get(
       'SELECT COUNT(*) as count FROM api_keys WHERE key = ?',
       ['dev-key']
     );
     
     // Créer la clé API de développement si nécessaire
-    if (devKeyExists[0].count === 0) {
+    if (devKeyExists && devKeyExists.count === 0) {
       console.log("[DB] Création de la clé API de développement...");
-      await dbService.query(
+      await dbService.run(
         'INSERT INTO api_keys (application_id, key, name, environment) VALUES ((SELECT id FROM applications WHERE name = "Default"), ?, ?, ?)',
         ['dev-key', 'Clé de développement', 'development']
       );

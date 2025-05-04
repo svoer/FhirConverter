@@ -327,17 +327,23 @@ if [ ! -z "$PYTHON_CMD" ]; then
     # Vérifier si les modules sont déjà installés
     if ! $PYTHON_CMD -c "import hl7" &> /dev/null; then
       echo -e "${YELLOW}Module hl7 Python manquant, installation...${NC}"
-      $PIP_CMD install hl7 --quiet
+      # Utiliser --break-system-packages pour Python 3.12+
+      $PIP_CMD install hl7 --quiet --break-system-packages || $PIP_CMD install hl7 --quiet || true
       if $PYTHON_CMD -c "import hl7" &> /dev/null; then
         echo -e "${GREEN}✅ Module hl7 Python installé avec succès${NC}"
+      else
+        echo -e "${YELLOW}⚠️ L'installation du module hl7 a échoué, mais nous continuons...${NC}"
       fi
     fi
     
     if ! $PYTHON_CMD -c "import requests" &> /dev/null; then
       echo -e "${YELLOW}Module requests Python manquant, installation...${NC}"
-      $PIP_CMD install requests --quiet
+      # Utiliser --break-system-packages pour Python 3.12+
+      $PIP_CMD install requests --quiet --break-system-packages || $PIP_CMD install requests --quiet || true
       if $PYTHON_CMD -c "import requests" &> /dev/null; then
         echo -e "${GREEN}✅ Module requests Python installé avec succès${NC}"
+      else
+        echo -e "${YELLOW}⚠️ L'installation du module requests a échoué, mais nous continuons...${NC}"
       fi
     fi
   else
