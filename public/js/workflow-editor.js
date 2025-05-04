@@ -229,19 +229,23 @@ class WorkflowEditor {
     this.nodePalette.className = 'node-palette';
     this.nodePalette.id = 'unique-node-palette';
     
-    // Style pour un menu horizontal en haut
-    this.nodePalette.style.position = 'fixed'; // Fixed pour rester en haut lors du défilement
-    this.nodePalette.style.top = '60px'; // Juste en dessous du header principal
-    this.nodePalette.style.left = '0';
-    this.nodePalette.style.width = '100%'; // Pleine largeur
+    // Amélioration du style de la palette
+    this.nodePalette.style.position = 'absolute';
+    this.nodePalette.style.top = '10px';
+    this.nodePalette.style.left = '10px';
+    this.nodePalette.style.width = '250px';
     this.nodePalette.style.background = 'white';
-    this.nodePalette.style.padding = '10px 20px';
-    this.nodePalette.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+    this.nodePalette.style.borderRadius = '8px';
+    this.nodePalette.style.padding = '10px';
+    this.nodePalette.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.15)';
     this.nodePalette.style.zIndex = '100';
-    this.nodePalette.style.overflowX = 'auto'; // Défilement horizontal
-    this.nodePalette.style.overflowY = 'hidden'; // Pas de défilement vertical
-    this.nodePalette.style.borderBottom = '1px solid #e0e0e0';
-    this.nodePalette.style.whiteSpace = 'nowrap'; // Pour que les catégories restent sur une ligne
+    this.nodePalette.style.maxHeight = 'calc(100% - 20px)';
+    this.nodePalette.style.overflowY = 'auto';
+    this.nodePalette.style.border = '1px solid #e0e0e0';
+    this.nodePalette.style.resize = 'both';
+    this.nodePalette.style.overflow = 'auto';
+    this.nodePalette.style.minWidth = '200px';
+    this.nodePalette.style.minHeight = '150px';
     
     // Ajouter un dégradé rouge-orange pour s'aligner avec le design FHIRHub
     this.nodePalette.style.borderTop = '4px solid transparent';
@@ -250,16 +254,29 @@ class WorkflowEditor {
     
     this.container.appendChild(this.nodePalette);
     
-    // On retire le titre et la fonction de déplacement pour un menu horizontal fixe
+    // Titre de la palette
+    const paletteTitle = document.createElement('h3');
+    paletteTitle.textContent = 'Nœuds disponibles';
+    this.nodePalette.appendChild(paletteTitle);
+    
+    // Rendre la palette déplaçable
+    this.makeElementDraggable(this.nodePalette, paletteTitle);
     
     // Champ de recherche pour filtrer les nœuds
     const searchContainer = document.createElement('div');
     searchContainer.className = 'node-palette-search';
+    searchContainer.style.margin = '0 0 10px 0';
+    searchContainer.style.padding = '5px';
     
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.placeholder = 'Rechercher un nœud...';
     searchInput.className = 'node-palette-search-input';
+    searchInput.style.width = '100%';
+    searchInput.style.padding = '6px 8px';
+    searchInput.style.border = '1px solid #ddd';
+    searchInput.style.borderRadius = '4px';
+    searchInput.style.fontSize = '13px';
     
     // Ajouter la fonctionnalité de recherche
     searchInput.addEventListener('input', (e) => {
@@ -461,74 +478,35 @@ class WorkflowEditor {
       categoryTitle.style.opacity = '0.8';
       categoryTitle.style.cursor = 'pointer';
       
-      // Style pour menu horizontal
-      categoryTitle.style.display = 'inline-block';
-      categoryTitle.style.padding = '8px 12px';
-      categoryTitle.style.margin = '0 5px';
-      categoryTitle.style.borderRadius = '4px';
-      categoryTitle.style.background = 'linear-gradient(to right, #f5f5f5, #ffffff)';
-      categoryTitle.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-      
       // Ajouter un indicateur visuel pour montrer que c'est cliquable
       const arrowSpan = document.createElement('span');
-      arrowSpan.innerHTML = '▼';
-      arrowSpan.style.marginLeft = '5px';
-      arrowSpan.style.fontSize = '10px';
-      categoryTitle.appendChild(document.createTextNode(category.name));
+      arrowSpan.innerHTML = '▶';
+      arrowSpan.style.float = 'right';
+      arrowSpan.style.fontSize = '12px';
+      arrowSpan.style.marginRight = '5px';
+      categoryTitle.appendChild(document.createTextNode(category.name + ' '));
       categoryTitle.appendChild(arrowSpan);
       
       // Ajouter l'événement de clic pour replier/déplier
-      categoryTitle.onclick = function(e) {
+      categoryTitle.onclick = function() {
         const isCollapsed = this.getAttribute('data-collapsed') === 'true';
-        
-        // Fermer tous les autres conteneurs
-        document.querySelectorAll('.node-palette-items-container').forEach(container => {
-          if (container !== nodesContainer) {
-            container.style.display = 'none';
-            container.previousElementSibling.setAttribute('data-collapsed', 'true');
-            container.previousElementSibling.style.opacity = '0.8';
-          }
-        });
         
         if (isCollapsed) {
           // Déplier
           this.setAttribute('data-collapsed', 'false');
           this.style.opacity = '1';
-          this.style.backgroundColor = '#f0f0f0';
-          
-          // Positionner le conteneur sous la catégorie
-          const rect = this.getBoundingClientRect();
-          const containerTop = rect.bottom + window.scrollY;
-          const containerLeft = rect.left + window.scrollX;
-          
-          nodesContainer.style.position = 'absolute';
-          nodesContainer.style.top = containerTop + 'px';
-          nodesContainer.style.left = containerLeft + 'px';
+          arrowSpan.innerHTML = '▼';
           nodesContainer.style.display = 'block';
-          
           console.log(`[Workflow] Catégorie "${category.name}" dépliée`);
         } else {
           // Replier
           this.setAttribute('data-collapsed', 'true');
           this.style.opacity = '0.8';
-          this.style.backgroundColor = '#f5f5f5';
+          arrowSpan.innerHTML = '▶';
           nodesContainer.style.display = 'none';
           console.log(`[Workflow] Catégorie "${category.name}" repliée`);
         }
-        
-        // Empêcher la propagation de l'événement 
-        e.stopPropagation();
       };
-      
-      // Fermer le menu au clic en dehors
-      document.addEventListener('click', (e) => {
-        if (!categoryDiv.contains(e.target) && !nodesContainer.contains(e.target)) {
-          categoryTitle.setAttribute('data-collapsed', 'true');
-          categoryTitle.style.opacity = '0.8';
-          categoryTitle.style.backgroundColor = '#f5f5f5';
-          nodesContainer.style.display = 'none';
-        }
-      });
       
       categoryDiv.appendChild(categoryTitle);
       
