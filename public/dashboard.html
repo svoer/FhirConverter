@@ -332,6 +332,10 @@
       // Utiliser le temps économisé calculé côté serveur
       const timeSavedHours = data.timeSavedHours || 0;
       
+      // Ajouter des logs pour le débogage
+      console.log("Données reçues du serveur:", data);
+      console.log("Temps économisé en heures:", timeSavedHours);
+      
       // Calcul du taux de succès (basé sur les statistiques réelles)
       // Pour cette démo, nous utilisons un pourcentage élevé mais réaliste
       // Dans un environnement de production, cela viendrait de la DB
