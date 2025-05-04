@@ -804,37 +804,18 @@
                 editorModal.style.display = 'none';
             });
             
-            saveWorkflowEditor.addEventListener('click', async function() {
+            saveWorkflowEditor.addEventListener('click', function() {
                 try {
-                    // Récupérer l'ID du workflow actuel
-                    const workflowId = editorModal.getAttribute('data-workflow-id');
-                    if (!workflowId) {
-                        throw new Error('ID du workflow non trouvé');
+                    console.log('[DEBUG] Clic sur le bouton de sauvegarde de l\'éditeur');
+                    if (window.workflowEditor) {
+                        console.log('[DEBUG] Appel de la méthode saveWorkflow() de l\'éditeur');
+                        window.workflowEditor.saveWorkflow();
+                    } else {
+                        console.error('[DEBUG] Éditeur de workflow non initialisé');
+                        showNotification('Erreur: Éditeur de workflow non initialisé', 'error');
                     }
-                    
-                    // Récupérer la configuration du workflow depuis l'éditeur visuel
-                    const workflowConfig = window.workflowEditor ? window.workflowEditor.getConfig() : [];
-                    
-                    // Mise à jour du workflow
-                    const response = await fetch(`/api/workflows/${workflowId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getToken()}`,
-                            'X-API-KEY': 'dev-key'
-                        },
-                        body: JSON.stringify({
-                            flow_json: JSON.stringify(workflowConfig)
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Erreur lors de la sauvegarde du workflow');
-                    }
-                    
-                    showNotification('Workflow sauvegardé avec succès', 'success');
                 } catch (error) {
-                    console.error('Erreur lors de la sauvegarde:', error);
+                    console.error('[DEBUG] Erreur lors de la sauvegarde:', error);
                     showNotification('Erreur: ' + error.message, 'error');
                 }
             });

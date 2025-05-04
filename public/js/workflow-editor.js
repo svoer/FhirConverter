@@ -4613,6 +4613,17 @@ class WorkflowEditor {
       });
     }
   }
+  
+  /**
+   * Retourne la configuration courante du workflow (nœuds + arêtes)
+   * @returns {{nodes: Array, edges: Array}}
+   */
+  getConfig() {
+    return {
+      nodes: this.nodes,
+      edges: this.edges
+    };
+  }
 
   /**
    * Active l'assistant de connexion rapide de nœuds
