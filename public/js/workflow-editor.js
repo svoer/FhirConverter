@@ -477,6 +477,8 @@ class WorkflowEditor {
           }, 100);
         }
       });
+      
+
     }
     
     // Événement de la molette pour le zoom
@@ -497,14 +499,22 @@ class WorkflowEditor {
       });
     }
     
-    // Événement pour supprimer un noeud sélectionné avec Delete
+    // Événement pour supprimer des noeuds sélectionnés avec Delete
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Delete' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        if (this.selectedNodeId) {
-          this.deleteNode(this.selectedNodeId);
-        } else if (this.selectedEdgeId) {
-          this.deleteEdge(this.selectedEdgeId);
+      if ((e.key === 'Delete' || e.key === 'Del' || e.key === 'Suppr') && 
+          !e.target.matches('input, textarea, select, [contenteditable="true"]')) {
+        const deletedCount = this.deleteSelectedNodes();
+        if (deletedCount === 0) {
+          // Si on n'a supprimé aucun nœud et qu'une arête est sélectionnée, la supprimer
+          if (this.selectedEdgeId) {
+            this.deleteEdge(this.selectedEdgeId);
+            console.log(`[Workflow] Arête supprimée: ${this.selectedEdgeId}`);
+            this.showNotification('Arête supprimée', 'info');
+          }
         }
+        
+        // Empêcher le comportement par défaut de la touche Delete/Suppr
+        e.preventDefault();
       }
     });
   }
