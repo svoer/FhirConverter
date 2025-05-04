@@ -138,7 +138,13 @@
             margin-left: auto;
         }
         
-        .add-workflow {
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .add-workflow, .import-template {
             background: linear-gradient(135deg, #e63946, #f4a261);
             color: white;
             border: none;
@@ -150,19 +156,77 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(230, 57, 70, 0.3);
+            flex: 1;
         }
         
-        .add-workflow:hover {
+        .add-workflow:hover, .import-template:hover {
             background: linear-gradient(135deg, #f4a261, #e63946);
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(230, 57, 70, 0.4);
         }
         
-        .add-workflow i {
+        .add-workflow i, .import-template i {
             margin-right: 10px;
+        }
+        
+        .import-template {
+            background: linear-gradient(135deg, #2a9d8f, #e9c46a);
+        }
+        
+        .import-template:hover {
+            background: linear-gradient(135deg, #e9c46a, #2a9d8f);
+        }
+        
+        /* Styles pour l'upload de fichier */
+        .file-upload-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .file-upload-container input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload-label {
+            background: linear-gradient(135deg, #2a9d8f, #e9c46a);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload-label:hover {
+            background: linear-gradient(135deg, #e9c46a, #2a9d8f);
+        }
+        
+        .file-upload-label i {
+            margin-right: 8px;
+        }
+        
+        #selected-file {
+            font-size: 0.9em;
+            margin-top: 5px;
+            color: #555;
+        }
+        
+        /* Styles pour l'aperçu du template */
+        .template-preview {
+            background-color: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .template-preview p {
+            margin: 5px 0;
         }
         
         .workflow-modal {
@@ -405,7 +469,10 @@
             <h2>Workflows</h2>
             <p class="description">Créez et gérez des workflows de transformation pour personnaliser le traitement des messages HL7 et FHIR pour chaque application.</p>
             
-            <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
+            <div class="action-buttons">
+                <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
+                <button id="import-template-btn" class="import-template"><i class="fas fa-file-import"></i>Importer Template</button>
+            </div>
             
             <div class="filter-container">
                 <div class="workflow-search">
@@ -514,6 +581,55 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Modal pour l'import de template -->
+        <div id="import-template-modal" class="workflow-modal">
+            <div class="workflow-modal-content">
+                <span class="close-modal" id="close-import-modal">&times;</span>
+                <div class="modal-header">
+                    <h3>Importer un Template de Workflow</h3>
+                </div>
+                <div class="modal-body">
+                    <form id="import-template-form">
+                        <div class="form-group">
+                            <label for="template-application">Application cible:</label>
+                            <select id="template-application" required>
+                                <!-- Options ajoutées dynamiquement -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="template-name">Nom du nouveau workflow (optionnel):</label>
+                            <input type="text" id="template-name" placeholder="Laissez vide pour utiliser le nom du template">
+                        </div>
+                        <div class="form-group">
+                            <label for="template-description">Description (optionnel):</label>
+                            <textarea id="template-description" rows="2" placeholder="Laissez vide pour utiliser la description du template"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Fichier de template (JSON):</label>
+                            <div class="file-upload-container">
+                                <input type="file" id="template-file" accept=".json">
+                                <label for="template-file" class="file-upload-label"><i class="fas fa-upload"></i> Sélectionner un fichier</label>
+                                <span id="selected-file">Aucun fichier sélectionné</span>
+                            </div>
+                        </div>
+                        <div class="form-group" id="template-preview-container" style="display: none;">
+                            <label>Aperçu du template:</label>
+                            <div class="template-preview">
+                                <p id="template-preview-name"><strong>Nom:</strong> <span></span></p>
+                                <p id="template-preview-description"><strong>Description:</strong> <span></span></p>
+                                <p id="template-preview-nodes"><strong>Nœuds:</strong> <span></span></p>
+                                <p id="template-preview-edges"><strong>Connexions:</strong> <span></span></p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-import" class="cancel-btn">Annuler</button>
+                    <button id="import-template" class="submit-btn">Importer</button>
+                </div>
+            </div>
+        </div>
 
 
     </div>
@@ -569,6 +685,20 @@
             const applicationFilter = document.getElementById('application-filter');
             const workflowApplication = document.getElementById('workflow-application');
             const loadingSpinner = document.getElementById('loading-spinner');
+            
+            // Référence pour la modal d'import de template
+            const importTemplateModal = document.getElementById('import-template-modal');
+            const closeImportModal = document.getElementById('close-import-modal');
+            const cancelImport = document.getElementById('cancel-import');
+            const importTemplateBtn = document.getElementById('import-template-btn');
+            const importTemplate = document.getElementById('import-template');
+            const templateFile = document.getElementById('template-file');
+            const selectedFile = document.getElementById('selected-file');
+            const templatePreviewContainer = document.getElementById('template-preview-container');
+            const templateApplication = document.getElementById('template-application');
+            
+            // État pour stocker le template chargé
+            let loadedTemplate = null;
             
             // Références pour l'éditeur
             const editorModal = document.getElementById('editor-modal');
@@ -668,6 +798,176 @@
                 }
             });
             
+            // Gérer le bouton d'import de template
+            importTemplateBtn.addEventListener('click', function() {
+                // Réinitialiser l'état
+                loadedTemplate = null;
+                templateFile.value = '';
+                selectedFile.textContent = 'Aucun fichier sélectionné';
+                templatePreviewContainer.style.display = 'none';
+                document.getElementById('template-name').value = '';
+                document.getElementById('template-description').value = '';
+                
+                // Copier les options d'application depuis le selecteur de workflow
+                templateApplication.innerHTML = workflowApplication.innerHTML;
+                
+                // Afficher la modal
+                importTemplateModal.style.display = 'block';
+            });
+            
+            // Gérer la fermeture de la modal d'import
+            closeImportModal.addEventListener('click', function() {
+                importTemplateModal.style.display = 'none';
+            });
+            
+            cancelImport.addEventListener('click', function() {
+                importTemplateModal.style.display = 'none';
+            });
+            
+            // Gérer la sélection de fichier de template
+            templateFile.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    selectedFile.textContent = file.name;
+                    
+                    // Lire le fichier
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const template = JSON.parse(e.target.result);
+                            loadedTemplate = template;
+                            
+                            // Afficher l'aperçu
+                            document.querySelector('#template-preview-name span').textContent = template.name || 'Non spécifié';
+                            document.querySelector('#template-preview-description span').textContent = template.description || 'Non spécifié';
+                            
+                            if (template.flow && template.flow.nodes) {
+                                document.querySelector('#template-preview-nodes span').textContent = template.flow.nodes.length;
+                            } else {
+                                document.querySelector('#template-preview-nodes span').textContent = '0';
+                            }
+                            
+                            if (template.flow && template.flow.edges) {
+                                document.querySelector('#template-preview-edges span').textContent = template.flow.edges.length;
+                            } else {
+                                document.querySelector('#template-preview-edges span').textContent = '0';
+                            }
+                            
+                            templatePreviewContainer.style.display = 'block';
+                        } catch (error) {
+                            console.error('Erreur de parsing du JSON:', error);
+                            showNotification('Format de fichier invalide. Veuillez sélectionner un fichier JSON valide.', 'error');
+                            templateFile.value = '';
+                            selectedFile.textContent = 'Aucun fichier sélectionné';
+                            templatePreviewContainer.style.display = 'none';
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // Gérer l'import du template
+            importTemplate.addEventListener('click', async function() {
+                if (!loadedTemplate) {
+                    showNotification('Veuillez d\'abord sélectionner un fichier de template valide.', 'error');
+                    return;
+                }
+                
+                const applicationId = templateApplication.value;
+                if (!applicationId) {
+                    showNotification('Veuillez sélectionner une application cible.', 'error');
+                    return;
+                }
+                
+                try {
+                    // Préparer les données
+                    const importData = {
+                        application_id: parseInt(applicationId),
+                        template: loadedTemplate
+                    };
+                    
+                    // Ajouter le nom et la description s'ils sont fournis
+                    const name = document.getElementById('template-name').value.trim();
+                    if (name) {
+                        importData.name = name;
+                    }
+                    
+                    const description = document.getElementById('template-description').value.trim();
+                    if (description) {
+                        importData.description = description;
+                    }
+                    
+                    // Envoyer la requête
+                    const response = await fetch('/api/workflows/import-template', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        },
+                        body: JSON.stringify(importData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de l\'import du template');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    importTemplateModal.style.display = 'none';
+                    showNotification('Template importé avec succès', 'success');
+                    loadWorkflows(applicationFilter.value);
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            });
+            
+            // Fonction pour exporter un workflow comme template
+            async function exportWorkflowTemplate(id) {
+                try {
+                    // Récupérer l'URL du template
+                    const response = await fetch(`/api/workflows/${id}/export-template`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`,
+                            'X-API-KEY': 'dev-key'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Erreur lors de l\'export du template');
+                    }
+                    
+                    // Récupérer le workflow pour avoir son nom
+                    const workflow = await getWorkflow(id);
+                    const fileName = `${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_template.json`;
+                    
+                    // Récupérer les données du template
+                    const templateData = await response.json();
+                    
+                    // Créer un objet Blob
+                    const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
+                    
+                    // Créer un lien de téléchargement et cliquer dessus automatiquement
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Nettoyer
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showNotification('Template exporté avec succès', 'success');
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showNotification('Erreur: ' + error.message, 'error');
+                }
+            }
+            
             // Fermer la modal en cliquant en dehors
             window.addEventListener('click', function(event) {
                 if (event.target === workflowModal) {
@@ -675,6 +975,9 @@
                 }
                 if (event.target === editorModal) {
                     editorModal.style.display = 'none';
+                }
+                if (event.target === importTemplateModal) {
+                    importTemplateModal.style.display = 'none';
                 }
             });
             
