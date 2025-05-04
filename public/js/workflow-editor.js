@@ -4533,8 +4533,55 @@ class WorkflowEditor {
       this.showLoading(true);
       console.log('[DEBUG] Début de la sauvegarde du workflow ID:', this.workflowId);
       
-      // Préparer les données du workflow en utilisant getConfig() pour garantir la bonne structure
+      // CORRECTION CRITIQUE: Vérification et récupération forcée des nœuds depuis le DOM
+      
+      // 1. Utiliser getConfig() pour tenter de reconstruire depuis le DOM si nécessaire
       const flowData = this.getConfig();
+      
+      // 2. Si toujours aucun nœud, effectuer une recherche plus intensive directe dans le DOM
+      if (!flowData.nodes || flowData.nodes.length === 0) {
+        console.log('[DEBUG] Aucun nœud trouvé après getConfig(), recherche avancée dans le DOM...');
+        
+        // Récupérer tous les éléments qui pourraient être des nœuds dans tout le conteneur
+        const potentialNodes = this.container.querySelectorAll('[id^="node_"], .node');
+        if (potentialNodes && potentialNodes.length > 0) {
+          console.log('[DEBUG] Nœuds potentiels trouvés dans le DOM:', potentialNodes.length);
+          
+          // Créer un tableau temporaire pour stocker les nœuds récupérés
+          const recoveredNodes = [];
+          
+          potentialNodes.forEach(nodeEl => {
+            // Essayer différentes façons d'extraire l'ID et le type
+            const nodeId = nodeEl.id || nodeEl.getAttribute('data-node-id');
+            const nodeType = nodeEl.getAttribute('data-node-type') || 'unknown';
+            
+            if (nodeId) {
+              console.log('[DEBUG] Récupération forcée du nœud:', nodeId, nodeType);
+              
+              // Créer un objet de nœud minimal
+              recoveredNodes.push({
+                id: nodeId,
+                type: nodeType,
+                label: (nodeEl.querySelector('.node-title')?.textContent || nodeType),
+                position: {
+                  x: parseInt(nodeEl.style.left) || 0,
+                  y: parseInt(nodeEl.style.top) || 0
+                },
+                inputs: [{ name: 'input', label: 'Entrée' }],
+                outputs: [{ name: 'output', label: 'Sortie' }],
+                data: {}
+              });
+            }
+          });
+          
+          // Mettre à jour le tableau de nœuds si des nœuds ont été récupérés
+          if (recoveredNodes.length > 0) {
+            flowData.nodes = recoveredNodes;
+            // Mettre également à jour le tableau interne pour cohérence
+            this.nodes = [...recoveredNodes];
+          }
+        }
+      }
       
       // Afficher des logs détaillés pour diagnostiquer le problème
       console.log('[DEBUG] État actuel des nœuds dans l\'instance:', this.nodes);
@@ -4725,7 +4772,19 @@ class WorkflowEditor {
   getConfig() {
     // Collecte de tous les nœuds depuis le DOM si this.nodes est vide
     if (this.nodes.length === 0) {
-      const nodeDomElements = this.nodesLayer.querySelectorAll('.workflow-node');
+      // Essayer différents sélecteurs pour trouver les éléments de nœud
+      let nodeDomElements = this.nodesLayer.querySelectorAll('.workflow-node');
+      
+      // Si aucun nœud n'est trouvé, essayer d'autres sélecteurs possibles
+      if (nodeDomElements.length === 0) {
+        nodeDomElements = this.nodesLayer.querySelectorAll('.node');
+      }
+      
+      // Dernier recours: chercher dans tout le conteneur
+      if (nodeDomElements.length === 0) {
+        nodeDomElements = this.container.querySelectorAll('[data-node-id], [id^="node_"]');
+      }
+      
       console.log('[DEBUG] this.nodes est vide, collecte depuis le DOM:', nodeDomElements.length, 'éléments trouvés');
       
       // Reconstruction du tableau de nœuds à partir des éléments DOM
@@ -4736,14 +4795,60 @@ class WorkflowEditor {
           
           // S'assurer que le nœud n'est pas déjà dans la liste
           if (!this.nodes.some(n => n.id === nodeId)) {
-            // Créer un objet nœud minimal
+            // Essayer différentes façons d'obtenir les informations du nœud
+            // d'abord essayer d'extraire le titre avec divers sélecteurs
+            let nodeTitle = '';
+            const titleEl = nodeEl.querySelector('.node-title') || 
+                            nodeEl.querySelector('.node-header h3') || 
+                            nodeEl.querySelector('h3') ||
+                            nodeEl.querySelector('h4');
+            
+            if (titleEl) {
+              nodeTitle = titleEl.textContent;
+            } else {
+              // Si on ne peut pas trouver le titre, utiliser l'attribut data-label ou le type
+              nodeTitle = nodeEl.getAttribute('data-label') || 
+                         nodeEl.getAttribute('data-node-type') || 
+                         nodeType || 
+                         'Nœud sans titre';
+            }
+            
+            // Extraire la position - essayer plusieurs approches
+            let posX = 0, posY = 0;
+            
+            // D'abord essayer style.left/top directs
+            if (nodeEl.style.left && nodeEl.style.top) {
+              posX = parseInt(nodeEl.style.left) || 0;
+              posY = parseInt(nodeEl.style.top) || 0;
+            } 
+            // Ensuite essayer transform
+            else if (nodeEl.style.transform) {
+              const transformMatch = nodeEl.style.transform.match(/translate\((\d+)px,\s*(\d+)px\)/);
+              if (transformMatch) {
+                posX = parseInt(transformMatch[1]) || 0;
+                posY = parseInt(transformMatch[2]) || 0;
+              }
+            }
+            // Ensuite essayer dataset
+            else if (nodeEl.dataset.x && nodeEl.dataset.y) {
+              posX = parseInt(nodeEl.dataset.x) || 0;
+              posY = parseInt(nodeEl.dataset.y) || 0;
+            }
+            
+            // Logguer les attributs du nœud pour le débogage
+            console.log('[DEBUG] Attributs du nœud:', 
+                      'id:', nodeId, 
+                      'type:', nodeType, 
+                      'position:', posX, posY);
+            
+            // Créer un objet nœud avec toutes les informations récupérées
             const node = {
               id: nodeId,
-              type: nodeType,
-              label: nodeEl.querySelector('.node-title').textContent,
+              type: nodeType || 'unknown',
+              label: nodeTitle,
               position: { 
-                x: parseInt(nodeEl.style.left), 
-                y: parseInt(nodeEl.style.top) 
+                x: posX, 
+                y: posY 
               },
               width: parseInt(nodeEl.style.width) || 180,
               height: parseInt(nodeEl.style.height) || 100,
