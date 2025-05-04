@@ -149,66 +149,56 @@ class WorkflowEditor {
    * @param {Object} point - Point à centrer { x, y }, optionnel
    * @param {boolean} animate - Indique si le centrage doit être animé, par défaut à true
    */
-  centerCanvas(point = null, animate = true) {
-    // Obtenir les dimensions du conteneur
-    const containerRect = this.container.getBoundingClientRect();
-    
-    // Déterminer les coordonnées cibles
-    const targetX = point ? 
-      containerRect.width / 2 - point.x * this.scale : 
-      containerRect.width / 2 - 2000 * this.scale; // 2000 = milieu du canvas
+  centerCanvas(point = null, animate = false) {
+    try {
+      // Obtenir les dimensions du conteneur
+      const containerRect = this.container.getBoundingClientRect();
       
-    const targetY = point ?
-      containerRect.height / 2 - point.y * this.scale :
-      containerRect.height / 2 - 2000 * this.scale; // 2000 = milieu du canvas
-    
-    if (animate) {
-      // Animation douce du centrage avec requestAnimationFrame
-      const startX = this.offset.x;
-      const startY = this.offset.y;
-      const deltaX = targetX - startX;
-      const deltaY = targetY - startY;
-      const duration = 300; // durée en ms
-      const startTime = performance.now();
+      // Vérification préliminaire du point
+      const validPoint = (point && typeof point.x === 'number' && typeof point.y === 'number') 
+        ? point 
+        : null;
       
-      const animateCenter = (currentTime) => {
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        
-        // Fonction d'ease-out pour une animation plus naturelle
-        const easeOutProgress = 1 - Math.pow(1 - progress, 2);
-        
-        this.offset.x = startX + deltaX * easeOutProgress;
-        this.offset.y = startY + deltaY * easeOutProgress;
-        
-        this.updateTransform();
-        
-        if (progress < 1) {
-          requestAnimationFrame(animateCenter);
-        } else {
-          // Mise à jour des arêtes une fois l'animation terminée
-          this.updateEdges();
-          
-          if (point) {
-            console.log(`[Workflow] Canvas centré sur le point (${point.x}, ${point.y})`);
-          } else {
-            console.log(`[Workflow] Canvas centré sur le milieu du canvas`);
-          }
-        }
-      };
+      // Déterminer les coordonnées cibles
+      let targetX, targetY;
       
-      requestAnimationFrame(animateCenter);
-    } else {
-      // Sans animation, mise à jour immédiate
+      if (validPoint) {
+        targetX = containerRect.width / 2 - validPoint.x * this.scale;
+        targetY = containerRect.height / 2 - validPoint.y * this.scale;
+      } else {
+        targetX = containerRect.width / 2 - 2000 * this.scale; // 2000 = milieu du canvas
+        targetY = containerRect.height / 2 - 2000 * this.scale;
+      }
+      
+      // Vérification des valeurs calculées
+      if (isNaN(targetX) || isNaN(targetY)) {
+        console.warn("[Workflow] Coordonnées de centrage invalides, utilisation des valeurs par défaut");
+        targetX = 0;
+        targetY = 0;
+      }
+      
+      // Appliquer directement sans animation pour éviter les problèmes
       this.offset.x = targetX;
       this.offset.y = targetY;
       this.updateTransform();
       
-      if (point) {
-        console.log(`[Workflow] Canvas centré immédiatement sur le point (${point.x}, ${point.y})`);
-      } else {
-        console.log(`[Workflow] Canvas centré immédiatement sur le milieu du canvas`);
-      }
+      // Mise à jour différée des arêtes pour laisser le temps au DOM de s'actualiser
+      setTimeout(() => {
+        try {
+          this.updateEdges();
+        } catch (edgeError) {
+          console.warn("[Workflow] Erreur lors de la mise à jour des arêtes après centrage:", edgeError);
+        }
+      }, 50);
+      
+      // Log simplifié
+      console.log(`[Workflow] Canvas centré`);
+    } catch (error) {
+      console.error("[Workflow] Erreur lors du centrage du canvas:", error);
+      // En cas d'erreur, essayer de réinitialiser à l'origine
+      this.offset.x = 0;
+      this.offset.y = 0;
+      this.updateTransform();
     }
   }
   
@@ -2686,84 +2676,50 @@ class WorkflowEditor {
    * @param {Object} center - Point central du zoom { x, y }
    * @param {boolean} animate - Indique si le zoom doit être animé, par défaut à true
    */
-  zoom(scale, center = { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 }, animate = true) {
-    const oldScale = this.scale;
-    
-    // Calculer la nouvelle échelle
-    const targetScale = oldScale * scale;
-    
-    // Limiter l'échelle
-    const newScale = Math.max(this.options.minScale, Math.min(this.options.maxScale, targetScale));
-    
-    // Si l'échelle n'a pas changé, sortir
-    if (newScale === oldScale) {
-      return;
-    }
-    
-    // Calculer les décalages cibles
-    const { x: centerX, y: centerY } = center;
-    const targetOffsetX = centerX - (centerX - this.offset.x) * (newScale / oldScale);
-    const targetOffsetY = centerY - (centerY - this.offset.y) * (newScale / oldScale);
-    
-    if (animate) {
-      // Animation douce du zoom
-      const startScale = this.scale;
-      const startOffsetX = this.offset.x;
-      const startOffsetY = this.offset.y;
+  zoom(scale, center = { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 }, animate = false) {
+    // Désactivation complète de l'animation pour régler les problèmes de performance
+    // et éliminer les erreurs liées aux coordonnées
+
+    try {
+      const oldScale = this.scale;
       
-      const deltaScale = newScale - startScale;
-      const deltaOffsetX = targetOffsetX - startOffsetX;
-      const deltaOffsetY = targetOffsetY - startOffsetY;
+      // Calculer la nouvelle échelle
+      const targetScale = oldScale * scale;
       
-      // Réduire la durée d'animation pour un zoom plus rapide
-      const duration = 100; // réduit de 200ms à 100ms
+      // Limiter l'échelle
+      const newScale = Math.max(this.options.minScale, Math.min(this.options.maxScale, targetScale));
       
-      // Optimisation: pour les petits changements de zoom, pas d'animation
-      const isSmallChange = Math.abs(deltaScale) < 0.1 && 
-                          Math.abs(deltaOffsetX) < 10 && 
-                          Math.abs(deltaOffsetY) < 10;
-      
-      if (isSmallChange) {
-        // Application directe pour les petits changements
-        this.scale = newScale;
-        this.offset.x = targetOffsetX;
-        this.offset.y = targetOffsetY;
-        this.updateTransform();
-        this.updateEdges();
-      } else {
-        // Animation optimisée pour les changements plus importants
-        const startTime = performance.now();
-        
-        const animateZoom = (currentTime) => {
-          const elapsedTime = currentTime - startTime;
-          const progress = Math.min(elapsedTime / duration, 1);
-          
-          // Fonction d'ease-out simplifiée
-          const easeOutProgress = 1 - (1 - progress) * (1 - progress);
-          
-          this.scale = startScale + deltaScale * easeOutProgress;
-          this.offset.x = startOffsetX + deltaOffsetX * easeOutProgress;
-          this.offset.y = startOffsetY + deltaOffsetY * easeOutProgress;
-          
-          this.updateTransform();
-          
-          if (progress < 1) {
-            requestAnimationFrame(animateZoom);
-          } else {
-            // Mise à jour des arêtes une fois l'animation terminée
-            this.updateEdges();
-          }
-        };
-        
-        requestAnimationFrame(animateZoom);
+      // Si l'échelle n'a pas changé, sortir
+      if (newScale === oldScale) {
+        return;
       }
-    } else {
-      // Sans animation, mise à jour immédiate
+      
+      // Vérification défensive des coordonnées du centre
+      const centerX = typeof center.x === 'number' ? center.x : this.container.clientWidth / 2;
+      const centerY = typeof center.y === 'number' ? center.y : this.container.clientHeight / 2;
+      
+      // Calculer les décalages cibles avec vérification numérique
+      const targetOffsetX = centerX - (centerX - this.offset.x) * (newScale / oldScale);
+      const targetOffsetY = centerY - (centerY - this.offset.y) * (newScale / oldScale);
+      
+      // Appliquer immédiatement les changements sans animation
       this.scale = newScale;
-      this.offset.x = targetOffsetX;
-      this.offset.y = targetOffsetY;
+      this.offset.x = isNaN(targetOffsetX) ? this.offset.x : targetOffsetX;
+      this.offset.y = isNaN(targetOffsetY) ? this.offset.y : targetOffsetY;
+      
+      // Mettre à jour le canvas
       this.updateTransform();
-      this.updateEdges();
+      
+      // Mettre à jour les arêtes après un court délai pour laisser le temps au DOM de s'actualiser
+      setTimeout(() => {
+        try {
+          this.updateEdges();
+        } catch (edgeError) {
+          console.warn("[Workflow] Erreur lors de la mise à jour des arêtes après zoom:", edgeError);
+        }
+      }, 50);
+    } catch (error) {
+      console.error("[Workflow] Erreur de zoom:", error);
     }
   }
   
