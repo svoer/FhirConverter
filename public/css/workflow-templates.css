@@ -335,6 +335,17 @@
     }
 }
 
+/* Styles pour la classe template-card-inner */
+.template-card-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .template-dialog-content {
@@ -352,7 +363,7 @@
         max-width: none;
     }
     
-    .templates-container {
+    .template-grid {
         grid-template-columns: 1fr;
     }
 }

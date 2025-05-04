@@ -15,6 +15,8 @@ window.templateManager = (function() {
     let templates = [];
     // Catégorie actuellement sélectionnée
     let currentCategory = 'all';
+    // Template actuellement sélectionné
+    let selectedTemplateId = null;
     // Indique si le gestionnaire est initialisé
     let isInitialized = false;
 
@@ -131,6 +133,7 @@ window.templateManager = (function() {
                     const cancelButton = document.getElementById('cancel-template-selection');
                     const categoryFilter = document.getElementById('template-category-filter');
                     const searchInput = document.getElementById('template-search');
+                    const loadButton = document.getElementById('load-template-button');
                     
                     if (closeButton) {
                         closeButton.addEventListener('click', closeTemplateDialog);
@@ -154,6 +157,16 @@ window.templateManager = (function() {
                         searchInput.addEventListener('input', searchTemplates);
                     } else {
                         console.error('[TemplateManager] Champ de recherche non trouvé');
+                    }
+                    
+                    if (loadButton) {
+                        loadButton.addEventListener('click', function() {
+                            if (selectedTemplateId) {
+                                applyTemplate(selectedTemplateId);
+                            }
+                        });
+                    } else {
+                        console.error('[TemplateManager] Bouton de chargement non trouvé');
                     }
 
                     // Fermer la boîte de dialogue en cliquant en dehors
@@ -324,31 +337,252 @@ window.templateManager = (function() {
                 }
             },
             {
-                id: 'dicom-to-fhir',
-                name: 'Conversion DICOM vers FHIR',
-                description: 'Convertit des données DICOM en ressources FHIR ImagingStudy',
-                category: 'conversion',
-                imageUrl: '/img/templates/dicom-to-fhir.svg',
+                id: 'laboratory-results',
+                name: 'Résultats de laboratoire',
+                description: 'Traite les messages ORU^R01 des résultats de laboratoire',
+                category: 'integration',
+                imageUrl: '/img/templates/laboratory-results.svg',
                 flow: {
                     nodes: [
                         {
                             id: 'node-1',
-                            type: 'dicom-input',
-                            label: 'Entrée DICOM',
+                            type: 'hl7-input',
+                            label: 'Entrée HL7',
                             position: { x: 100, y: 200 },
                             data: {}
                         },
                         {
                             id: 'node-2',
-                            type: 'dicom-parser',
-                            label: 'Analyseur DICOM',
+                            type: 'message-filter',
+                            label: 'Filtre ORU^R01',
+                            position: { x: 400, y: 200 },
+                            data: { messageType: 'ORU^R01' }
+                        },
+                        {
+                            id: 'node-3',
+                            type: 'hl7-to-fhir-converter',
+                            label: 'Convertisseur FHIR',
+                            position: { x: 700, y: 200 },
+                            data: { resourceTypes: ['Observation', 'DiagnosticReport'] }
+                        },
+                        {
+                            id: 'node-4',
+                            type: 'fhir-validator',
+                            label: 'Validation FHIR',
+                            position: { x: 1000, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-5',
+                            type: 'fhir-server',
+                            label: 'Serveur FHIR',
+                            position: { x: 1300, y: 200 },
+                            data: {}
+                        }
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-1',
+                            source: 'node-1',
+                            target: 'node-2',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-2',
+                            source: 'node-2',
+                            target: 'node-3',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-3',
+                            source: 'node-3',
+                            target: 'node-4',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-4',
+                            source: 'node-4',
+                            target: 'node-5',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        }
+                    ]
+                }
+            },
+            {
+                id: 'patient-demographics-sync',
+                name: 'Synchronisation des données patients',
+                description: 'Intègre les mises à jour des informations patients (ADT) dans le FHIR Repository',
+                category: 'integration',
+                imageUrl: '/img/templates/patient-sync.svg',
+                flow: {
+                    nodes: [
+                        {
+                            id: 'node-1',
+                            type: 'hl7-input',
+                            label: 'Entrée HL7',
+                            position: { x: 100, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-2',
+                            type: 'message-filter',
+                            label: 'Filtre ADT',
+                            position: { x: 400, y: 200 },
+                            data: { messageType: 'ADT' }
+                        },
+                        {
+                            id: 'node-3',
+                            type: 'patient-mapper',
+                            label: 'Mapping Patient',
+                            position: { x: 700, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-4',
+                            type: 'fhir-server',
+                            label: 'Serveur FHIR',
+                            position: { x: 1000, y: 200 },
+                            data: {}
+                        }
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-1',
+                            source: 'node-1',
+                            target: 'node-2',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-2',
+                            source: 'node-2',
+                            target: 'node-3',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-3',
+                            source: 'node-3',
+                            target: 'node-4',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        }
+                    ]
+                }
+            },
+            {
+                id: 'ai-assisted-mapping',
+                name: 'Mapping assisté par IA',
+                description: 'Utilise l\'IA pour améliorer la conversion HL7 vers FHIR avec analyse de contexte',
+                category: 'ai',
+                imageUrl: '/img/templates/ai-mapping.svg',
+                flow: {
+                    nodes: [
+                        {
+                            id: 'node-1',
+                            type: 'hl7-input',
+                            label: 'Entrée HL7',
+                            position: { x: 100, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-2',
+                            type: 'hl7-parser',
+                            label: 'Analyseur HL7',
+                            position: { x: 400, y: 150 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-3',
+                            type: 'ai-context-analyzer',
+                            label: 'Analyse IA',
+                            position: { x: 400, y: 350 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-4',
+                            type: 'enhanced-converter',
+                            label: 'Convertisseur amélioré',
+                            position: { x: 700, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-5',
+                            type: 'fhir-output',
+                            label: 'Sortie FHIR',
+                            position: { x: 1000, y: 200 },
+                            data: {}
+                        }
+                    ],
+                    edges: [
+                        {
+                            id: 'edge-1',
+                            source: 'node-1',
+                            target: 'node-2',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-2',
+                            source: 'node-1',
+                            target: 'node-3',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-3',
+                            source: 'node-2',
+                            target: 'node-4',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        },
+                        {
+                            id: 'edge-4',
+                            source: 'node-3',
+                            target: 'node-4',
+                            sourceOutput: 0,
+                            targetInput: 1
+                        },
+                        {
+                            id: 'edge-5',
+                            source: 'node-4',
+                            target: 'node-5',
+                            sourceOutput: 0,
+                            targetInput: 0
+                        }
+                    ]
+                }
+            },
+            {
+                id: 'data-validation-enrichment',
+                name: 'Validation et enrichissement',
+                description: 'Valide et enrichit les données FHIR avec des terminologies standards',
+                category: 'interoperability',
+                imageUrl: '/img/templates/data-validation.svg',
+                flow: {
+                    nodes: [
+                        {
+                            id: 'node-1',
+                            type: 'fhir-input',
+                            label: 'Entrée FHIR',
+                            position: { x: 100, y: 200 },
+                            data: {}
+                        },
+                        {
+                            id: 'node-2',
+                            type: 'terminology-validator',
+                            label: 'Validation terminologique',
                             position: { x: 400, y: 200 },
                             data: {}
                         },
                         {
                             id: 'node-3',
-                            type: 'dicom-to-fhir-converter',
-                            label: 'Convertisseur FHIR',
+                            type: 'data-enrichment',
+                            label: 'Enrichissement',
                             position: { x: 700, y: 200 },
                             data: {}
                         },
@@ -384,170 +618,8 @@ window.templateManager = (function() {
                         }
                     ]
                 }
-            },
-            {
-                id: 'sftp-to-fhir',
-                name: 'SFTP vers FHIR API',
-                description: 'Récupère des fichiers HL7 depuis un serveur SFTP et les expose via une API FHIR',
-                category: 'integration',
-                imageUrl: '/img/templates/sftp-to-fhir.svg',
-                flow: {
-                    nodes: [
-                        {
-                            id: 'node-1',
-                            type: 'sftp-input',
-                            label: 'Source SFTP',
-                            position: { x: 100, y: 200 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-2',
-                            type: 'hl7-parser',
-                            label: 'Analyseur HL7',
-                            position: { x: 400, y: 200 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-3',
-                            type: 'hl7-to-fhir-converter',
-                            label: 'Convertisseur FHIR',
-                            position: { x: 700, y: 200 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-4',
-                            type: 'fhir-api-output',
-                            label: 'API FHIR',
-                            position: { x: 1000, y: 200 },
-                            data: {}
-                        }
-                    ],
-                    edges: [
-                        {
-                            id: 'edge-1',
-                            source: 'node-1',
-                            target: 'node-2',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-2',
-                            source: 'node-2',
-                            target: 'node-3',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-3',
-                            source: 'node-3',
-                            target: 'node-4',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        }
-                    ]
-                }
-            },
-            {
-                id: 'ehr-integration',
-                name: 'Intégration avec DPI',
-                description: 'Établit une connexion bidirectionnelle avec un DPI via HL7 et FHIR',
-                category: 'integration',
-                imageUrl: '/img/templates/ehr-integration.svg',
-                flow: {
-                    nodes: [
-                        {
-                            id: 'node-1',
-                            type: 'ehr-connector',
-                            label: 'Connecteur DPI',
-                            position: { x: 400, y: 100 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-2',
-                            type: 'message-router',
-                            label: 'Routeur de Messages',
-                            position: { x: 700, y: 100 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-3',
-                            type: 'hl7-parser',
-                            label: 'Analyseur HL7',
-                            position: { x: 400, y: 300 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-4',
-                            type: 'hl7-to-fhir-converter',
-                            label: 'HL7 → FHIR',
-                            position: { x: 700, y: 300 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-5',
-                            type: 'fhir-to-hl7-converter',
-                            label: 'FHIR → HL7',
-                            position: { x: 400, y: 500 },
-                            data: {}
-                        },
-                        {
-                            id: 'node-6',
-                            type: 'hl7-composer',
-                            label: 'Composeur HL7',
-                            position: { x: 700, y: 500 },
-                            data: {}
-                        }
-                    ],
-                    edges: [
-                        {
-                            id: 'edge-1',
-                            source: 'node-1',
-                            target: 'node-2',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-2',
-                            source: 'node-2',
-                            target: 'node-3',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-3',
-                            source: 'node-3',
-                            target: 'node-4',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-4',
-                            source: 'node-2',
-                            target: 'node-5',
-                            sourceOutput: 1,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-5',
-                            source: 'node-5',
-                            target: 'node-6',
-                            sourceOutput: 0,
-                            targetInput: 0
-                        },
-                        {
-                            id: 'edge-6',
-                            source: 'node-6',
-                            target: 'node-1',
-                            sourceOutput: 0,
-                            targetInput: 1
-                        }
-                    ]
-                }
             }
         ];
-
-        // Rendre les templates disponibles
-        renderTemplates();
     }
 
     /**
@@ -555,13 +627,13 @@ window.templateManager = (function() {
      */
     function closeTemplateDialog() {
         if (templateDialog) {
-            // Enlever d'abord la classe de visibilité pour l'animation
             templateDialog.classList.remove('visible');
+            templateDialog.classList.remove('show');
             
-            // Puis après un délai, cacher complètement
+            // Cacher complètement après l'animation
             setTimeout(() => {
                 templateDialog.style.display = 'none';
-            }, 300); // Délai correspondant à la durée de l'animation CSS
+            }, 300);
         }
     }
 
@@ -569,10 +641,12 @@ window.templateManager = (function() {
      * Filtre les templates par catégorie
      */
     function filterTemplatesByCategory() {
-        const categorySelect = document.getElementById('template-category-filter');
-        if (!categorySelect) return;
-
-        currentCategory = categorySelect.value;
+        const categoryFilter = document.getElementById('template-category-filter');
+        if (categoryFilter) {
+            currentCategory = categoryFilter.value;
+            console.log('[TemplateManager] Filtrage par catégorie:', currentCategory);
+        }
+        
         renderTemplates();
     }
 
@@ -580,9 +654,6 @@ window.templateManager = (function() {
      * Recherche des templates par texte
      */
     function searchTemplates() {
-        const searchInput = document.getElementById('template-search');
-        if (!searchInput) return;
-
         renderTemplates();
     }
 
@@ -591,10 +662,15 @@ window.templateManager = (function() {
      */
     function renderTemplates() {
         const container = document.getElementById('templates-container');
-        if (!container) return;
+        if (!container) {
+            console.error('[TemplateManager] Container de templates non trouvé');
+            return;
+        }
 
         const searchInput = document.getElementById('template-search');
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        
+        console.log('[TemplateManager] Rendu des templates avec catégorie:', currentCategory, 'et recherche:', searchTerm);
 
         // Filtrer les templates selon la catégorie et le terme de recherche
         const filteredTemplates = templates.filter(template => {
@@ -611,8 +687,16 @@ window.templateManager = (function() {
         // Afficher un message si aucun template ne correspond
         if (filteredTemplates.length === 0) {
             container.innerHTML = '<p class="no-templates">Aucun template ne correspond à votre recherche.</p>';
+            console.log('[TemplateManager] Aucun template ne correspond aux critères');
             return;
         }
+
+        // Créer la grille de templates
+        const templateGrid = document.createElement('div');
+        templateGrid.className = 'template-grid';
+        container.appendChild(templateGrid);
+        
+        console.log('[TemplateManager] Affichage de', filteredTemplates.length, 'templates');
 
         // Afficher les templates filtrés
         filteredTemplates.forEach(template => {
@@ -620,24 +704,21 @@ window.templateManager = (function() {
             templateCard.className = 'template-card';
             templateCard.setAttribute('data-template-id', template.id);
 
+            // Structure du card avec dégradé e-santé
+            const templateCardInner = document.createElement('div');
+            templateCardInner.className = 'template-card-inner';
+            
             const templatePreview = document.createElement('div');
             templatePreview.className = 'template-preview';
             
             // Image du template ou image par défaut
-            if (template.imageUrl) {
-                const img = document.createElement('img');
-                img.src = template.imageUrl;
-                img.alt = template.name;
-                img.onerror = function() {
-                    this.src = '/img/templates/default-template.svg';
-                };
-                templatePreview.appendChild(img);
-            } else {
-                const img = document.createElement('img');
-                img.src = '/img/templates/default-template.svg';
-                img.alt = 'Template par défaut';
-                templatePreview.appendChild(img);
-            }
+            const img = document.createElement('img');
+            img.src = template.imageUrl || '/img/templates/default-template.svg';
+            img.alt = template.name;
+            img.onerror = function() {
+                this.src = '/img/templates/default-template.svg';
+            };
+            templatePreview.appendChild(img);
             
             const templateInfo = document.createElement('div');
             templateInfo.className = 'template-info';
@@ -648,53 +729,86 @@ window.templateManager = (function() {
             const templateDescription = document.createElement('p');
             templateDescription.textContent = template.description;
             
-            const useButton = document.createElement('button');
-            useButton.className = 'use-template-btn';
-            useButton.textContent = 'Utiliser ce template';
-            useButton.addEventListener('click', function(e) {
-                e.stopPropagation(); // Empêcher la propagation au card
-                applyTemplate(template.id);
-            });
+            // Ajouter un bouton "Utiliser ce template"
+            const useTemplateBtn = document.createElement('button');
+            useTemplateBtn.className = 'use-template-btn';
+            useTemplateBtn.textContent = 'Utiliser ce template';
             
             templateInfo.appendChild(templateTitle);
             templateInfo.appendChild(templateDescription);
-            templateInfo.appendChild(useButton);
+            templateInfo.appendChild(useTemplateBtn);
             
-            templateCard.appendChild(templatePreview);
-            templateCard.appendChild(templateInfo);
+            templateCardInner.appendChild(templatePreview);
+            templateCardInner.appendChild(templateInfo);
             
-            // Ajouter un événement click sur la carte complète
-            templateCard.addEventListener('click', function() {
-                // Supprimer la classe 'selected' de tous les templates
-                document.querySelectorAll('.template-card').forEach(card => {
-                    card.classList.remove('selected');
-                });
-                
-                // Ajouter la classe 'selected' à cette carte
-                this.classList.add('selected');
-                
-                // Mettre en évidence visuellement
-                setTimeout(() => {
-                    const buttonRect = useButton.getBoundingClientRect();
-                    const ripple = document.createElement('span');
-                    ripple.className = 'ripple';
-                    ripple.style.left = '50%';
-                    ripple.style.top = '50%';
-                    templateCard.appendChild(ripple);
-                    
-                    setTimeout(() => {
-                        ripple.remove();
-                    }, 600);
-                }, 100);
-                
-                // Appliquer le template avec un léger délai pour l'animation
-                setTimeout(() => {
+            templateCard.appendChild(templateCardInner);
+
+            // Ajouter le comportement de sélection
+            templateCard.addEventListener('click', function(e) {
+                // Vérifier si le clic était sur le bouton
+                if (e.target === useTemplateBtn) {
+                    // Appliquer immédiatement le template
                     applyTemplate(template.id);
-                }, 300);
+                    return;
+                }
+                
+                // Retirer la sélection précédente
+                const selectedCard = document.querySelector('.template-card.selected');
+                if (selectedCard) {
+                    selectedCard.classList.remove('selected');
+                }
+                
+                // Sélectionner cette carte
+                this.classList.add('selected');
+                selectTemplate(template.id);
+                
+                // Activer le bouton de chargement
+                const loadButton = document.getElementById('load-template-button');
+                if (loadButton) {
+                    loadButton.disabled = false;
+                }
+                
+                // Ajouter un effet ripple
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                this.appendChild(ripple);
+                
+                // Supprimer l'effet après animation
+                setTimeout(() => ripple.remove(), 600);
             });
-            
-            container.appendChild(templateCard);
+
+            templateGrid.appendChild(templateCard);
         });
+
+        // Initialiser la sélection
+        selectedTemplateId = null;
+        
+        // Configurer le bouton de chargement
+        const loadButton = document.getElementById('load-template-button');
+        if (loadButton) {
+            loadButton.disabled = true;
+            
+            // Supprimer tous les écouteurs d'événements précédents
+            const newLoadButton = loadButton.cloneNode(true);
+            loadButton.parentNode.replaceChild(newLoadButton, loadButton);
+            
+            newLoadButton.addEventListener('click', function() {
+                if (selectedTemplateId) {
+                    applyTemplate(selectedTemplateId);
+                }
+            });
+        }
+        
+        console.log('[TemplateManager] Rendu des templates terminé');
+    }
+
+    /**
+     * Sélectionne un template spécifique
+     * @param {string} templateId - ID du template à sélectionner
+     */
+    function selectTemplate(templateId) {
+        selectedTemplateId = templateId;
+        console.log('[TemplateManager] Template sélectionné:', templateId);
     }
 
     /**
@@ -702,41 +816,38 @@ window.templateManager = (function() {
      * @param {string} templateId - ID du template à appliquer
      */
     function applyTemplate(templateId) {
+        console.log('[TemplateManager] Application du template:', templateId);
+        
+        if (!workflowEditor) {
+            console.error('[TemplateManager] Éditeur de workflow non disponible');
+            alert('Erreur: Éditeur de workflow non disponible');
+            return;
+        }
+        
         // Trouver le template correspondant
         const template = templates.find(t => t.id === templateId);
         if (!template) {
-            console.error(`[TemplateManager] Template non trouvé: ${templateId}`);
+            console.error('[TemplateManager] Template non trouvé:', templateId);
+            alert('Erreur: Template non trouvé');
             return;
         }
-
-        console.log(`[TemplateManager] Application du template: ${template.name}`);
-
-        // Vérifier que l'éditeur est initialisé
-        if (!workflowEditor) {
-            console.error('[TemplateManager] Éditeur de workflow non initialisé');
-            alert('Erreur: L\'éditeur de workflow n\'est pas disponible. Veuillez réessayer.');
-            return;
-        }
-
-        console.log('[TemplateManager] Éditeur disponible:', workflowEditor);
-        console.log('[TemplateManager] Données du template:', template.flow);
-
+        
         try {
             // Charger le template dans l'éditeur
             workflowEditor.loadTemplate(template.flow);
             
-            // Message de succès
-            if (workflowEditor.showNotification) {
-                workflowEditor.showNotification('Template appliqué avec succès');
-            } else {
-                console.log('[TemplateManager] Template appliqué avec succès, mais pas de fonction showNotification disponible');
-            }
-            
             // Fermer la boîte de dialogue
             closeTemplateDialog();
+            
+            // Notification de succès
+            if (window.workflowNotifications) {
+                window.workflowNotifications.showNotification('success', `Template "${template.name}" appliqué avec succès`);
+            } else {
+                alert(`Template "${template.name}" appliqué avec succès`);
+            }
         } catch (error) {
             console.error('[TemplateManager] Erreur lors de l\'application du template:', error);
-            alert('Erreur lors de l\'application du template: ' + error.message);
+            alert(`Erreur lors de l'application du template: ${error.message}`);
         }
     }
 
@@ -746,55 +857,57 @@ window.templateManager = (function() {
     function openTemplateDialog() {
         console.log('[TemplateManager] Ouverture de la boîte de dialogue des templates');
         
-        // Si la boîte de dialogue n'existe pas encore, la créer
         if (!templateDialog) {
-            console.log('[TemplateManager] Création de la boîte de dialogue des templates (auto)');
+            console.log('[TemplateManager] Création de la boîte de dialogue avant ouverture');
             createTemplateDialog();
-            
-            // Si la création a échoué, sortir
-            if (!templateDialog) {
-                console.error('[TemplateManager] Impossible de créer la boîte de dialogue des templates');
-                return;
-            }
         }
-
-        // Réinitialiser les filtres s'ils existent
-        const categoryFilter = document.getElementById('template-category-filter');
-        const searchInput = document.getElementById('template-search');
         
-        if (categoryFilter) categoryFilter.value = 'all';
-        if (searchInput) searchInput.value = '';
+        // Recharger les templates
+        loadTemplateData();
         
-        currentCategory = 'all';
-
-        // Rendre les templates
-        renderTemplates();
-
         // Afficher la boîte de dialogue
-        templateDialog.style.display = 'block';
+        templateDialog.style.display = 'flex';
         
-        // Ajouter une animation d'apparition
+        // Ajouter la classe pour l'animation après un court délai
         setTimeout(() => {
             templateDialog.classList.add('visible');
-        }, 50);
+            templateDialog.classList.add('show');
+        }, 10);
+        
+        // Réinitialiser la catégorie
+        currentCategory = 'all';
+        const categoryFilter = document.getElementById('template-category-filter');
+        if (categoryFilter) {
+            categoryFilter.value = 'all';
+        }
+        
+        // Réinitialiser la recherche
+        const searchInput = document.getElementById('template-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        
+        // Afficher les templates
+        renderTemplates();
     }
 
-    // Créer une fonction permettant de précharger la boîte de dialogue
-    // (à utiliser lors du chargement initial de la page)
+    /**
+     * Précharge la boîte de dialogue des templates pour une ouverture plus rapide
+     */
     function preloadTemplateDialog() {
         console.log('[TemplateManager] Préchargement de la boîte de dialogue des templates');
-        // Créer la boîte de dialogue en arrière-plan
-        if (createTemplateDialog()) {
-            console.log('[TemplateManager] Boîte de dialogue préchargée avec succès');
-            return true;
-        }
-        return false;
+        
+        // Créer la boîte de dialogue mais ne pas l'afficher
+        createTemplateDialog();
+        
+        console.log('[TemplateManager] Boîte de dialogue préchargée avec succès');
     }
-    
-    // Exposer les fonctions publiques
+
+    // API publique
     return {
         initialize,
         openTemplateDialog,
-        preloadTemplateDialog
+        preloadTemplateDialog,
+        closeTemplateDialog
     };
 })();
