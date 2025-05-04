@@ -1559,23 +1559,30 @@
                 <button class="close-template-dialog" id="close-template-dialog">&times;</button>
             </div>
             <div class="template-dialog-body">
-                <div class="template-categories">
-                    <h4>Catégories</h4>
-                    <ul id="template-category-list">
-                        <li class="active" data-category="all">Tous les templates</li>
-                        <li data-category="conversion">Conversion HL7</li>
-                        <li data-category="integration">Intégration des systèmes</li>
-                        <li data-category="interoperability">Interopérabilité</li>
-                        <li data-category="ai">Intelligence artificielle</li>
-                    </ul>
+                <div class="template-filter">
+                    <div class="category-filter">
+                        <label for="template-category-filter">Catégorie :</label>
+                        <select id="template-category-filter" onchange="window.templateManager.filterTemplatesByCategory()">
+                            <option value="all">Tous les templates</option>
+                            <option value="conversion">Conversion HL7</option>
+                            <option value="integration">Intégration des systèmes</option>
+                            <option value="interoperability">Interopérabilité</option>
+                            <option value="ai">Intelligence artificielle</option>
+                        </select>
+                    </div>
+                    <div class="template-search">
+                        <input type="text" id="template-search" placeholder="Rechercher un template..." 
+                               oninput="window.templateManager.searchTemplates()">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
                 </div>
-                <div class="template-list" id="template-list-container">
+                <div id="template-list-container">
                     <!-- Les templates seront insérés ici dynamiquement -->
                 </div>
             </div>
             <div class="template-dialog-footer">
                 <button class="cancel-template" id="cancel-template">Annuler</button>
-                <button class="load-template" id="load-template" disabled>Charger le template</button>
+                <button class="load-template" id="load-template-button" disabled>Charger le template</button>
             </div>
         </div>
     </div>

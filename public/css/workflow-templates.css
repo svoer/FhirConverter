@@ -228,28 +228,34 @@
 
 .use-template-btn {
     width: 100%;
-    padding: 10px 15px;
+    padding: 12px 20px;
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.95rem;
     margin-top: auto;
-    background: linear-gradient(135deg, #ff6b6b, #ff9f43);
-    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #e63946, #f4a261);
+    transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 3px 5px rgba(255, 107, 107, 0.3);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.3px;
 }
 
 .use-template-btn:hover {
+    background: linear-gradient(135deg, #f4a261, #e63946);
     transform: translateY(-2px);
-    box-shadow: 0 5px 10px rgba(255, 107, 107, 0.4);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .use-template-btn:active {
     transform: translateY(1px);
-    box-shadow: 0 2px 3px rgba(255, 107, 107, 0.3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .template-card.selected {
@@ -267,7 +273,53 @@
     border-top: 1px solid #e5e5e5;
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 15px;
+    background-color: #f8f9fa;
+}
+
+/* Boutons du pied de la boîte de dialogue */
+.template-dialog-footer button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.cancel-template {
+    background-color: #f1f3f5;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.cancel-template:hover {
+    background-color: #e9ecef;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.08);
+}
+
+.load-template {
+    background: linear-gradient(135deg, #e63946, #f4a261);
+    color: white;
+    border: none;
+}
+
+.load-template:hover {
+    background: linear-gradient(135deg, #f4a261, #e63946);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(230, 57, 70, 0.25);
+}
+
+.load-template:disabled {
+    background: linear-gradient(135deg, #ccc, #999);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Message d'absence de templates */
