@@ -963,6 +963,42 @@ class WorkflowEditor {
           { name: 'format', label: 'Format', type: 'select', options: ['HL7 v2.5', 'HL7 v2.6', 'HL7 v2.3'], default: 'HL7 v2.5' }
         ]
       },
+      'hl7-validator': {
+        label: 'Validation HL7',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'message', label: 'Message' }],
+        properties: [
+          { name: 'profile', label: 'Profil', type: 'select', options: ['Standard', 'Strict', 'Personnalisé'], default: 'Standard' },
+          { name: 'skipInvalid', label: 'Ignorer invalides', type: 'boolean', default: false }
+        ]
+      },
+      'hl7-to-fhir-converter': {
+        label: 'Convertisseur FHIR',
+        inputs: [{ name: 'message', label: 'Message HL7' }],
+        outputs: [{ name: 'fhir', label: 'FHIR' }],
+        properties: [
+          { name: 'version', label: 'Version FHIR', type: 'select', options: ['R4', 'R5', 'STU3'], default: 'R4' },
+          { name: 'mode', label: 'Mode de conversion', type: 'select', options: ['Standard', 'Avancé', 'Personnalisé'], default: 'Standard' }
+        ]
+      },
+      'fhir-validator': {
+        label: 'Validation FHIR',
+        inputs: [{ name: 'fhir', label: 'FHIR' }],
+        outputs: [{ name: 'fhir', label: 'FHIR validé' }],
+        properties: [
+          { name: 'profile', label: 'Profil', type: 'select', options: ['Base', 'FrenchMoH', 'Personnalisé'], default: 'Base' },
+          { name: 'skipInvalid', label: 'Ignorer invalides', type: 'boolean', default: false }
+        ]
+      },
+      'fhir-output': {
+        label: 'Sortie FHIR',
+        inputs: [{ name: 'fhir', label: 'FHIR' }],
+        outputs: [],
+        properties: [
+          { name: 'destination', label: 'Destination', type: 'select', options: ['API', 'Fichier', 'Base de données'], default: 'API' },
+          { name: 'format', label: 'Format', type: 'select', options: ['JSON', 'XML'], default: 'JSON' }
+        ]
+      },
       'json-input': {
         label: 'Entrée JSON',
         inputs: [],
