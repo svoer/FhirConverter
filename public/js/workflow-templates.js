@@ -24,9 +24,27 @@ window.templateManager = (function() {
      */
     function initialize(editor) {
         console.log('[TemplateManager] Initialisation avec l\'éditeur:', editor);
+        
+        if (!editor) {
+            console.error('[TemplateManager] Erreur: editor est undefined lors de l\'initialisation');
+            return false;
+        }
+        
+        // Stocker l'éditeur pour une utilisation ultérieure
         workflowEditor = editor;
+        
+        // Créer la boîte de dialogue des templates si elle n'existe pas déjà
+        if (!isInitialized || !templateDialog) {
+            createTemplateDialog();
+        }
+        
+        // Charger les données des templates
         loadTemplateData();
+        
+        // Marquer comme initialisé
         isInitialized = true;
+        
+        console.log('[TemplateManager] Initialisation réussie avec l\'éditeur');
         return true;
     }
     
@@ -663,14 +681,30 @@ window.templateManager = (function() {
         // Vérifier que l'éditeur est initialisé
         if (!workflowEditor) {
             console.error('[TemplateManager] Éditeur de workflow non initialisé');
+            alert('Erreur: L\'éditeur de workflow n\'est pas disponible. Veuillez réessayer.');
             return;
         }
 
-        // Charger le template dans l'éditeur
-        workflowEditor.loadTemplate(template.flow);
+        console.log('[TemplateManager] Éditeur disponible:', workflowEditor);
+        console.log('[TemplateManager] Données du template:', template.flow);
 
-        // Fermer la boîte de dialogue
-        closeTemplateDialog();
+        try {
+            // Charger le template dans l'éditeur
+            workflowEditor.loadTemplate(template.flow);
+            
+            // Message de succès
+            if (workflowEditor.showNotification) {
+                workflowEditor.showNotification('Template appliqué avec succès');
+            } else {
+                console.log('[TemplateManager] Template appliqué avec succès, mais pas de fonction showNotification disponible');
+            }
+            
+            // Fermer la boîte de dialogue
+            closeTemplateDialog();
+        } catch (error) {
+            console.error('[TemplateManager] Erreur lors de l\'application du template:', error);
+            alert('Erreur lors de l\'application du template: ' + error.message);
+        }
     }
 
     /**

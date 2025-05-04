@@ -108,12 +108,23 @@ document.addEventListener('DOMContentLoaded', function() {
      * Ouvre la boîte de dialogue pour choisir un template
      */
     function openTemplateDialog() {
+        console.log('[WorkflowIntegration] Tentative d\'ouverture de la boîte de dialogue des templates');
+        
         // Utiliser le gestionnaire de templates modernisé si disponible
         if (window.templateManager && window.templateManager.openTemplateDialog) {
-            // Si le gestionnaire de templates n'a pas encore été initialisé avec l'éditeur
-            if (editor && window.templateManager.initialize) {
-                window.templateManager.initialize(editor);
+            // Vérifier qu'on a bien un éditeur
+            if (!editor) {
+                console.error('[WorkflowIntegration] Erreur: Éditeur non disponible pour les templates');
+                showNotification('Erreur lors de l\'initialisation de l\'éditeur', 'error');
+                return;
             }
+            
+            console.log('[WorkflowIntegration] Réinitialisation forcée du gestionnaire de templates avec l\'éditeur actuel', editor);
+            
+            // Forcer la réinitialisation pour s'assurer que l'éditeur est correctement lié
+            const initResult = window.templateManager.initialize(editor);
+            console.log('[WorkflowIntegration] Résultat de l\'initialisation:', initResult);
+            
             console.log('[WorkflowIntegration] Utilisation du gestionnaire moderne de templates');
             window.templateManager.openTemplateDialog();
             return;

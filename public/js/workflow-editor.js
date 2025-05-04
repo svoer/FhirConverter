@@ -4847,6 +4847,89 @@ class WorkflowEditor {
       }, 300);
     }, 3000);
   }
+  
+  /**
+   * Charge un template de workflow dans l'éditeur
+   * Cette méthode est appelée par le gestionnaire de templates
+   * @param {Object} templateData - Données du template à charger
+   */
+  loadTemplate(templateData) {
+    console.log('[WorkflowEditor] Chargement d\'un template:', templateData);
+    
+    try {
+      // Vérifier que les données du template sont valides
+      if (!templateData || !templateData.nodes || !Array.isArray(templateData.nodes)) {
+        console.error('[WorkflowEditor] Données de template invalides');
+        this.showNotification('Erreur: Format de template invalide', 'error');
+        return;
+      }
+      
+      // Supprimer tous les nœuds existants
+      this.clearEditor();
+      
+      // Pour chaque nœud dans le template
+      const nodeMap = new Map(); // Pour suivre les ids d'origine et les nouveaux ids
+      
+      // Étape 1: Créer tous les nœuds
+      templateData.nodes.forEach(nodeTemplate => {
+        try {
+          // Créer le nœud avec sa position et son type
+          const newNode = this.addNode(
+            nodeTemplate.type, 
+            nodeTemplate.position || { x: 200, y: 200 },
+            nodeTemplate.data || {}
+          );
+          
+          // Mettre à jour le libellé si spécifié
+          if (nodeTemplate.label) {
+            const nodeElement = document.getElementById(newNode.id);
+            if (nodeElement) {
+              const labelElement = nodeElement.querySelector('.node-label');
+              if (labelElement) labelElement.textContent = nodeTemplate.label;
+              newNode.label = nodeTemplate.label;
+            }
+          }
+          
+          // Enregistrer la correspondance des IDs
+          nodeMap.set(nodeTemplate.id, newNode.id);
+        } catch (error) {
+          console.error(`[WorkflowEditor] Erreur lors de l'ajout du nœud ${nodeTemplate.type}:`, error);
+        }
+      });
+      
+      // Étape 2: Créer toutes les connexions
+      if (templateData.edges && Array.isArray(templateData.edges)) {
+        templateData.edges.forEach(edgeTemplate => {
+          try {
+            // Obtenir les nouveaux IDs
+            const sourceId = nodeMap.get(edgeTemplate.source);
+            const targetId = nodeMap.get(edgeTemplate.target);
+            
+            if (sourceId && targetId) {
+              // Créer la connexion
+              this.createConnection(
+                sourceId, 
+                targetId, 
+                edgeTemplate.sourceOutput || 0, 
+                edgeTemplate.targetInput || 0
+              );
+            }
+          } catch (error) {
+            console.error('[WorkflowEditor] Erreur lors de la création de la connexion:', error);
+          }
+        });
+      }
+      
+      // Centrer le workflow chargé
+      this.centerWorkflow();
+      
+      // Message de succès
+      this.showNotification('Template chargé avec succès', 'success');
+    } catch (error) {
+      console.error('[WorkflowEditor] Erreur lors du chargement du template:', error);
+      this.showNotification('Erreur lors du chargement du template', 'error');
+    }
+  }
 }
 
 // Autodetection
