@@ -831,6 +831,7 @@
                             <div class="workflow-footer">
                                 <button class="edit-btn" data-id="${workflow.id}">Modifier</button>
                                 <button class="editor-btn" data-id="${workflow.id}">Éditeur</button>
+                                <button class="export-template-btn" data-id="${workflow.id}" title="Exporter comme template">Exporter</button>
                                 <div class="workflow-actions">
                                     <button class="delete-btn" data-id="${workflow.id}">Supprimer</button>
                                 </div>
@@ -861,6 +862,13 @@
                         btn.addEventListener('click', function() {
                             const id = this.getAttribute('data-id');
                             openWorkflowEditor(id);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.export-template-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            exportWorkflowTemplate(id);
                         });
                     });
                 } catch (error) {

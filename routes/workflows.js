@@ -508,4 +508,199 @@ router.post('/:id/execute', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/workflows/{id}/export-template:
+ *   get:
+ *     summary: Exporter un workflow comme template
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du workflow à exporter comme template
+ *     responses:
+ *       200:
+ *         description: Template de workflow exporté
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/export-template', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de workflow invalide' });
+    }
+    
+    // Récupérer le workflow
+    const workflow = await workflowService.getWorkflowById(id);
+    
+    if (!workflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
+    }
+    
+    // Créer une version template en nettoyant les identifiants spécifiques
+    let flowJson;
+    try {
+      flowJson = JSON.parse(workflow.flow_json);
+      
+      // Nettoyer les identifiants spécifiques pour en faire un template générique
+      // 1. Générer de nouveaux IDs génériques pour les nœuds
+      const nodeIdMap = {};
+      if (flowJson.nodes) {
+        flowJson.nodes.forEach((node, index) => {
+          nodeIdMap[node.id] = `template_node_${index + 1}`;
+          node.id = nodeIdMap[node.id];
+          // Nettoyer les données spécifiques comme les chemins de fichiers absolus, etc.
+          if (node.data && node.data.filePath) {
+            node.data.filePath = ''; // Réinitialiser les chemins de fichiers
+          }
+        });
+      }
+      
+      // 2. Mettre à jour les références dans les arêtes
+      if (flowJson.edges) {
+        flowJson.edges.forEach((edge, index) => {
+          edge.id = `template_edge_${index + 1}`;
+          edge.source = nodeIdMap[edge.source] || edge.source;
+          edge.target = nodeIdMap[edge.target] || edge.target;
+        });
+      }
+    } catch (error) {
+      console.error(`[API] Erreur lors du parsing du JSON du workflow pour l'export:`, error);
+      return res.status(500).json({ error: 'Format JSON du workflow invalide' });
+    }
+    
+    // Créer l'objet template
+    const template = {
+      name: workflow.name,
+      description: workflow.description,
+      category: 'export',
+      tags: ['export', 'template'],
+      flow: flowJson,
+      metadata: {
+        exported_from: workflow.id,
+        exported_at: new Date().toISOString(),
+        version: '1.0'
+      }
+    };
+    
+    // Définir les headers pour le téléchargement
+    res.setHeader('Content-Disposition', `attachment; filename="${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_template.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    
+    res.json(template);
+  } catch (error) {
+    console.error(`[API] Erreur lors de l'export du template:`, error);
+    res.status(500).json({ error: 'Erreur lors de l\'export du template' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflows/import-template:
+ *   post:
+ *     summary: Importer un workflow depuis un template
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - application_id
+ *               - template
+ *             properties:
+ *               application_id:
+ *                 type: integer
+ *                 description: ID de l'application pour laquelle créer le workflow
+ *               name:
+ *                 type: string
+ *                 description: Nom du nouveau workflow (optionnel, sinon utilise le nom du template)
+ *               description:
+ *                 type: string
+ *                 description: Description du nouveau workflow (optionnel)
+ *               template:
+ *                 type: object
+ *                 description: Template de workflow à importer
+ *     responses:
+ *       201:
+ *         description: Workflow importé avec succès
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/import-template', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+  try {
+    const { application_id, name, description, template } = req.body;
+    
+    if (!application_id || !template || !template.flow) {
+      return res.status(400).json({ error: 'L\'ID de l\'application et le template complet sont obligatoires' });
+    }
+    
+    // Convertir les identifiants de template en identifiants uniques
+    const flowJson = template.flow;
+    
+    // 1. Générer de nouveaux IDs uniques pour les nœuds
+    const nodeIdMap = {};
+    if (flowJson.nodes) {
+      flowJson.nodes.forEach((node, index) => {
+        const oldId = node.id;
+        const newId = `node_${Date.now()}_${index}`;
+        nodeIdMap[oldId] = newId;
+        node.id = newId;
+      });
+    }
+    
+    // 2. Mettre à jour les références dans les arêtes
+    if (flowJson.edges) {
+      flowJson.edges.forEach((edge, index) => {
+        edge.id = `edge_${Date.now()}_${index}`;
+        edge.source = nodeIdMap[edge.source] || edge.source;
+        edge.target = nodeIdMap[edge.target] || edge.target;
+      });
+    }
+    
+    // Préparer les données du workflow
+    const workflowData = {
+      application_id: application_id,
+      name: name || template.name || `Template importé ${new Date().toLocaleString()}`,
+      description: description || template.description || '',
+      is_active: 1,
+      flow_json: JSON.stringify(flowJson)
+    };
+    
+    // Créer le nouveau workflow
+    const newWorkflow = await workflowService.createWorkflow(workflowData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Template importé avec succès',
+      workflow: newWorkflow
+    });
+  } catch (error) {
+    console.error(`[API] Erreur lors de l'import du template:`, error);
+    res.status(500).json({ error: 'Erreur lors de l\'import du template' });
+  }
+});
+
 module.exports = router;
