@@ -661,7 +661,7 @@ window.templateManager = (function() {
      * Rend les templates dans la boîte de dialogue
      */
     function renderTemplates() {
-        const container = document.getElementById('templates-container');
+        const container = document.getElementById('template-list-container');
         if (!container) {
             console.error('[TemplateManager] Container de templates non trouvé');
             return;
