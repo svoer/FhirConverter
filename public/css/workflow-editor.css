@@ -207,6 +207,10 @@
     margin-bottom: 12px;
 }
 
+.node-palette-items-container {
+    display: none; /* Les catégories sont fermées par défaut */
+}
+
 .node-palette-category h4 {
     margin: 0 0 8px 0;
     color: #333;
@@ -214,7 +218,11 @@
     background-color: #f5f5f5;
     padding: 6px 8px;
     border-radius: 4px;
-    border-left: 3px solid #666666;
+    border-left: 3px solid #e67e22;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .node-palette-item {

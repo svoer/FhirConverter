@@ -26,7 +26,7 @@ class WorkflowEditor {
       initialScale: 1,
       minScale: 0.2,
       maxScale: 2,
-      suppressDuplicateMenu: false, // Option pour supprimer le menu dupliqué
+      suppressDuplicateMenu: true, // Activer par défaut pour éviter les menus dupliqués
       ...options
     };
     
