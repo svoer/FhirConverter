@@ -1394,13 +1394,16 @@
                     editorContainer.innerHTML = '';
                     
                     // Créer une nouvelle instance de l'éditeur avec suppressDuplicateMenu=true
-                    console.log('Initialisation de l\'éditeur de workflow');
+                    console.log('Initialisation de l\'éditeur de workflow avec ID:', workflow.id);
                     window.workflowEditor = new WorkflowEditor('workflow-editor-container', {
                         initialData: parsedData,
                         snapToGrid: true,
                         gridSize: 20,
                         theme: 'neutral',
-                        suppressDuplicateMenu: true // Empêcher l'affichage du menu dupliqué
+                        suppressDuplicateMenu: true, // Empêcher l'affichage du menu dupliqué
+                        workflowId: workflow.id, // Passer l'ID du workflow à l'éditeur
+                        workflowName: workflow.name,
+                        workflowDescription: workflow.description
                     });
                     
                     // Informer l'utilisateur

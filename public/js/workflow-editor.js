@@ -27,6 +27,9 @@ class WorkflowEditor {
       minScale: 0.2,
       maxScale: 2,
       suppressDuplicateMenu: true, // Activer par défaut pour éviter les menus dupliqués
+      workflowId: null,
+      workflowName: '',
+      workflowDescription: '',
       ...options
     };
     
@@ -47,9 +50,11 @@ class WorkflowEditor {
     this.sourceNodeId = null;
     this.sourcePortIndex = null;
     this.isInputPortSource = false; // Indique si on commence une arête depuis un port d'entrée
-    this.workflowId = null;
-    this.workflowName = '';
-    this.workflowDescription = '';
+    this.workflowId = this.options.workflowId;
+    this.workflowName = this.options.workflowName || '';
+    this.workflowDescription = this.options.workflowDescription || '';
+    
+    console.log('[DEBUG] Constructor - workflowId:', this.workflowId);
     
     // État pour la sélection multiple
     this.selectionRect = null;
