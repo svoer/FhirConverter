@@ -120,14 +120,15 @@
     background-color: #ffffff;
 }
 
-/* Canva principal où les noeuds sont placés */
+/* Canva principal où les noeuds sont placés - Agrandi pour créer l'effet infini */
 .workflow-canvas {
-    transition: transform 0.2s ease-out;
+    transition: transform 0.05s linear; /* Transition plus rapide et linéaire */
     transform-origin: 0 0;
-    min-width: 4000px;  /* Taille minimale large pour supporter les workflows complexes */
-    min-height: 4000px; /* Taille minimale haute pour supporter les workflows complexes */
+    min-width: 20000px;  /* Taille très grande pour l'effet "infini" */
+    min-height: 20000px; /* Taille très grande pour l'effet "infini" */
     position: absolute; /* Position absolue pour permettre un débordement contrôlé */
     will-change: transform; /* Permet l'accélération GPU pour les transformations */
+    background-color: #ffffff; /* Arrière-plan blanc uniforme */
 }
 
 /* Palette de noeuds avec style neutre */
