@@ -132,6 +132,34 @@ class WorkflowEditor {
     this.edgesLayer.style.left = '0';
     this.edgesLayer.style.pointerEvents = 'none';
     this.edgesLayer.style.overflow = 'visible';
+    
+    // Ajout des définitions SVG pour les gradients et les marques de flèche
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    
+    // Gradient rouge-orange pour les connexions (identité visuelle de l'application)
+    const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+    gradient.setAttribute('id', 'flowGradient');
+    gradient.setAttribute('x1', '0%');
+    gradient.setAttribute('y1', '0%');
+    gradient.setAttribute('x2', '100%');
+    gradient.setAttribute('y2', '0%');
+    
+    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop1.setAttribute('offset', '0%');
+    stop1.setAttribute('stop-color', '#e73c3e');
+    
+    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+    stop2.setAttribute('offset', '100%');
+    stop2.setAttribute('stop-color', '#f5993c');
+    
+    gradient.appendChild(stop1);
+    gradient.appendChild(stop2);
+    defs.appendChild(gradient);
+    
+    // Ajouter les définitions au SVG
+    this.edgesLayer.appendChild(defs);
+    
+    // Ajouter le SVG au canvas
     this.canvas.appendChild(this.edgesLayer);
     
     // Ajouter la couche des noeuds
@@ -771,8 +799,23 @@ class WorkflowEditor {
     nodeType.className = 'node-type';
     nodeType.textContent = node.type;
     
+    // Ajouter un bouton de suppression dans l'en-tête
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'node-delete-btn';
+    deleteButton.innerHTML = '&times;'; // Symbole × (croix)
+    deleteButton.title = 'Supprimer ce nœud';
+    deleteButton.addEventListener('click', (e) => {
+      e.stopPropagation(); // Empêcher la propagation pour ne pas sélectionner le nœud
+      // Demander confirmation avant suppression
+      if (confirm(`Voulez-vous vraiment supprimer ce nœud "${node.label}"?`)) {
+        this.deleteNode(node.id);
+        this.showNotification('Nœud supprimé', 'info');
+      }
+    });
+    
     nodeHeader.appendChild(nodeTitle);
     nodeHeader.appendChild(nodeType);
+    nodeHeader.appendChild(deleteButton);
     nodeElement.appendChild(nodeHeader);
     
     // Ajouter une poignée de redimensionnement

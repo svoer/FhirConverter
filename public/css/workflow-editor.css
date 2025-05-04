@@ -349,6 +349,41 @@
     margin-left: 5px;
 }
 
+/* Bouton de suppression de nœud */
+.node-delete-btn {
+    display: none; /* Caché par défaut */
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #e73c3e;
+    color: white;
+    border: none;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 5px;
+    padding: 0;
+    text-align: center;
+    transition: all 0.2s ease;
+    opacity: 0.8;
+}
+
+.node-delete-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: #ff3a3f;
+}
+
+/* Afficher le bouton de suppression au survol du nœud */
+.node:hover .node-delete-btn {
+    display: block;
+}
+
+/* Laisser le bouton visible quand le nœud est sélectionné */
+.node.selected .node-delete-btn {
+    display: block;
+}
+
 .node-body {
     padding: 10px;
 }
@@ -442,7 +477,7 @@
     font-size: 12px;
 }
 
-/* Edges avec style plus visible */
+/* Edges avec style plus visible et animation */
 .edge {
     position: absolute;
     top: 0;
@@ -477,22 +512,45 @@
     stroke-dasharray: 5, 3;
 }
 
-/* Arêtes connectées en vert */
+/* Arêtes connectées en gradient rouge-orange selon l'identité visuelle */
 .edge.connected path {
-    stroke: #4caf50 !important;
-    stroke-width: 3 !important;  /* un peu plus épais pour le vert */
+    stroke: url(#flowGradient) !important;
+    stroke-width: 3 !important;
+    /* Effet de flux animé sur les connexions */
+    stroke-dasharray: 12, 5;
+    stroke-dashoffset: 0;
+    animation: flowAnimation 1.5s linear infinite;
 }
 
-/* Temporary edge while dragging */
+@keyframes flowAnimation {
+    to {
+        stroke-dashoffset: -17; /* Somme des valeurs de stroke-dasharray */
+    }
+}
+
+/* Effet pulsation au survol des connexions */
+.edge.connected:hover path {
+    animation: flowAnimationHover 1s linear infinite;
+    stroke-width: 4 !important;
+    filter: drop-shadow(0px 0px 3px rgba(231, 60, 62, 0.6));
+}
+
+@keyframes flowAnimationHover {
+    to {
+        stroke-dashoffset: -24; /* Plus rapide au survol */
+    }
+}
+
+/* Temporary edge while dragging - style distinct en rouge-orange */
 .temp-edge path {
-    stroke: #777;
-    stroke-width: 2.5;
+    stroke: #ff5722;
+    stroke-width: 3;
     stroke-linecap: round;
-    stroke-dasharray: 5, 3;
-    /* Ajout d'une ombre légère pour plus de visibilité */
-    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.15));
+    stroke-dasharray: 7, 3;
+    /* Ombre pour meilleure visibilité */
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.2));
     will-change: d; /* Optimisation GPU */
-    transition: d 0.1s ease-out;
+    transition: d 0.07s ease-out; /* Réponse plus rapide */
 }
 
 /* Node Properties Panel */
