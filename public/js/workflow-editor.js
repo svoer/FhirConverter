@@ -4245,6 +4245,7 @@ class WorkflowEditor {
    */
   loadTemplate(templateData) {
     try {
+      console.log('[Workflow] Chargement du template:', templateData);
       this.showLoading(true);
       
       // Effacer les noeuds et arêtes existants
@@ -4255,21 +4256,32 @@ class WorkflowEditor {
       this.workflowName = 'Nouveau workflow'; // Nom par défaut
       this.workflowDescription = 'Créé à partir d\'un template'; // Description par défaut
       
+      // Adapter au format approprié - les templates peuvent être sous forme template.flow ou directement template
+      const flowData = templateData.flow || templateData;
+      
       // Vérifier que nous avons des noeuds et des arêtes dans le template
-      if (!templateData.nodes || !Array.isArray(templateData.nodes)) {
+      if (!flowData.nodes || !Array.isArray(flowData.nodes)) {
+        console.error('[Workflow] Format de template invalide:', flowData);
         throw new Error('Format de template invalide: nodes manquant ou invalide');
       }
       
-      if (templateData.nodes.length > 0) {
+      if (flowData.nodes.length > 0) {
         // Trouver le prochain ID à utiliser
-        const nodeIds = templateData.nodes.map(node => {
-          const idMatch = node.id.match(/node-(\d+)/);
+        const nodeIds = flowData.nodes.map(node => {
+          // Supporter les deux formats "node-1" et "node_1"
+          const idMatch = node.id.match(/node[-_](\d+)/);
           return idMatch ? parseInt(idMatch[1]) : 0;
         });
         this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
         
         // Créer tous les noeuds
-        templateData.nodes.forEach(node => {
+        flowData.nodes.forEach(node => {
+          // Vérifier que le type et la position sont valides
+          if (!node.type || !node.position) {
+            console.warn(`[Workflow] Nœud invalide ignoré:`, node);
+            return;
+          }
+          
           const nodeElement = this.addNode(node.type, node.position);
           
           // Copier les propriétés
@@ -4285,16 +4297,17 @@ class WorkflowEditor {
       }
       
       // Créer les arêtes après un délai pour permettre au DOM de se mettre à jour
-      if (templateData.edges && Array.isArray(templateData.edges)) {
+      if (flowData.edges && Array.isArray(flowData.edges)) {
         // Trouver le prochain ID à utiliser
-        const edgeIds = templateData.edges.map(edge => {
-          const idMatch = edge.id.match(/edge-(\d+)/);
+        const edgeIds = flowData.edges.map(edge => {
+          // Supporter les deux formats "edge-1" et "edge_1"
+          const idMatch = edge.id.match(/edge[-_](\d+)/);
           return idMatch ? parseInt(idMatch[1]) : 0;
         });
         this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
         
         // Stockons les arêtes à créer
-        const edgesToCreate = [...templateData.edges];
+        const edgesToCreate = [...flowData.edges];
         
         // Log d'information pour le débogage
         console.log(`[Workflow] Création de ${edgesToCreate.length} arêtes à partir du template...`);
