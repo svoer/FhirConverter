@@ -54,6 +54,9 @@ class WorkflowEditor {
     this.workflowName = this.options.workflowName || '';
     this.workflowDescription = this.options.workflowDescription || '';
     
+    // Exposer l'instance pour le débogage
+    window._workflowEditorInstance = this;
+    
     console.log('[DEBUG] Constructor - workflowId:', this.workflowId);
     
     // État pour la sélection multiple
@@ -4720,7 +4723,84 @@ class WorkflowEditor {
    * @returns {{nodes: Array, edges: Array}}
    */
   getConfig() {
-    console.log('[DEBUG] getConfig() appelé - Nœuds:', this.nodes.length, 'Arêtes:', this.edges.length);
+    // Collecte de tous les nœuds depuis le DOM si this.nodes est vide
+    if (this.nodes.length === 0) {
+      const nodeDomElements = this.nodesLayer.querySelectorAll('.workflow-node');
+      console.log('[DEBUG] this.nodes est vide, collecte depuis le DOM:', nodeDomElements.length, 'éléments trouvés');
+      
+      // Reconstruction du tableau de nœuds à partir des éléments DOM
+      if (nodeDomElements.length > 0) {
+        nodeDomElements.forEach(nodeEl => {
+          const nodeId = nodeEl.id;
+          const nodeType = nodeEl.getAttribute('data-node-type');
+          
+          // S'assurer que le nœud n'est pas déjà dans la liste
+          if (!this.nodes.some(n => n.id === nodeId)) {
+            // Créer un objet nœud minimal
+            const node = {
+              id: nodeId,
+              type: nodeType,
+              label: nodeEl.querySelector('.node-title').textContent,
+              position: { 
+                x: parseInt(nodeEl.style.left), 
+                y: parseInt(nodeEl.style.top) 
+              },
+              width: parseInt(nodeEl.style.width) || 180,
+              height: parseInt(nodeEl.style.height) || 100,
+              inputs: [], // À récupérer si nécessaire
+              outputs: [], // À récupérer si nécessaire
+              data: {}
+            };
+            
+            // Ajouter le nœud au tableau
+            this.nodes.push(node);
+            console.log('[DEBUG] Nœud récupéré depuis le DOM:', node);
+          }
+        });
+      }
+    }
+    
+    // Collecte des arêtes depuis le DOM si this.edges est vide
+    if (this.edges.length === 0) {
+      const edgeDomElements = this.edgesLayer.querySelectorAll('.workflow-edge');
+      console.log('[DEBUG] this.edges est vide, collecte depuis le DOM:', edgeDomElements.length, 'éléments trouvés');
+      
+      // Reconstruction du tableau d'arêtes à partir des éléments DOM
+      if (edgeDomElements.length > 0) {
+        edgeDomElements.forEach(edgeEl => {
+          const edgeId = edgeEl.id;
+          
+          // Obtenir les données de l'arête depuis les attributs
+          const source = edgeEl.getAttribute('data-source');
+          const target = edgeEl.getAttribute('data-target');
+          const sourceOutput = parseInt(edgeEl.getAttribute('data-source-output') || '0');
+          const targetInput = parseInt(edgeEl.getAttribute('data-target-input') || '0');
+          
+          // S'assurer que l'arête n'est pas déjà dans la liste
+          if (!this.edges.some(e => e.id === edgeId)) {
+            // Créer un objet arête
+            const edge = {
+              id: edgeId,
+              source,
+              target,
+              sourceOutput,
+              targetInput
+            };
+            
+            // Ajouter l'arête au tableau
+            this.edges.push(edge);
+            console.log('[DEBUG] Arête récupérée depuis le DOM:', edge);
+          }
+        });
+      }
+    }
+    
+    console.log('[DEBUG] getConfig() après reconstruction - Nœuds:', this.nodes.length, 'Arêtes:', this.edges.length);
+    
+    // Vérification finale pour éviter tout problème
+    if (!Array.isArray(this.nodes)) this.nodes = [];
+    if (!Array.isArray(this.edges)) this.edges = [];
+    
     return {
       nodes: this.nodes,
       edges: this.edges

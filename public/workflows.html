@@ -864,6 +864,13 @@
                             }
                         }
                         
+                        // CORRECTIF IMPORTANT: S'assurer que l'éditeur a les dernières données
+                        // Forcer la collecte des nœuds et des arêtes avant de sauvegarder
+                        const workflowConfig = window.workflowEditor.getConfig();
+                        console.log('[DEBUG] Configuration actuelle du workflow:', 
+                                   'Nœuds:', workflowConfig.nodes.length, 
+                                   'Arêtes:', workflowConfig.edges.length);
+                        
                         console.log('[DEBUG] Appel de la méthode saveWorkflow() de l\'éditeur');
                         
                         // Sauvegarde du workflow de manière asynchrone
@@ -872,6 +879,9 @@
                         
                         // Une fois la sauvegarde terminée avec succès, on peut continuer
                         console.log('[DEBUG] Sauvegarde terminée avec succès, on peut continuer');
+                        
+                        // Confirmer à l'utilisateur
+                        showNotification('Workflow sauvegardé avec succès', 'success');
                     } else {
                         console.error('[DEBUG] Éditeur de workflow non initialisé');
                         showNotification('Erreur: Éditeur de workflow non initialisé', 'error');
