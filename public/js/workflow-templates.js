@@ -79,7 +79,7 @@ window.templateManager = (function() {
             templateDialog.innerHTML = `
                 <div class="template-dialog-content">
                     <div class="template-dialog-header">
-                        <h3>Choisir un Template</h3>
+                        <h3>Sélectionner un template de workflow</h3>
                         <button class="close-dialog" id="close-template-dialog">&times;</button>
                     </div>
                     <div class="template-dialog-body">
@@ -87,12 +87,11 @@ window.templateManager = (function() {
                             <div class="category-filter">
                                 <label>Catégorie:</label>
                                 <select id="template-category-filter">
-                                    <option value="all">Toutes les catégories</option>
+                                    <option value="all">Tous les templates</option>
                                     <option value="conversion">Conversion HL7</option>
-                                    <option value="integration">Intégration</option>
-                                    <option value="validation">Validation</option>
-                                    <option value="transformation">Transformation</option>
-                                    <option value="notification">Notification</option>
+                                    <option value="integration">Intégration des systèmes</option>
+                                    <option value="interoperability">Interopérabilité</option>
+                                    <option value="ai">Intelligence artificielle</option>
                                 </select>
                             </div>
                             <div class="template-search">
@@ -110,6 +109,9 @@ window.templateManager = (function() {
                     <div class="template-dialog-footer">
                         <button id="cancel-template-selection" class="button-ux2025 button-secondary">
                             <span>Annuler</span>
+                        </button>
+                        <button id="load-template-button" class="button-ux2025 button-primary" disabled>
+                            <span>Charger le template</span>
                         </button>
                     </div>
                 </div>
