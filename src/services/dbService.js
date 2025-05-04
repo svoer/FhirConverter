@@ -163,9 +163,13 @@ async function createTables() {
       );
       
       // Requête utilisant les colonnes existantes dans la structure réelle de la table api_keys
+      const crypto = require('crypto');
+      const apiKey = 'dev-key';
+      const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+      
       await run(
         'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description, is_active, created_at) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?, 1, CURRENT_TIMESTAMP',
-        ['Application par défaut', 'dev-key', 'dev-key', 'Clé de développement pour tests']
+        ['Application par défaut', apiKey, hashedKey, 'Clé de développement pour tests']
       );
     } catch (appErr) {
       console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
