@@ -1400,13 +1400,14 @@
                     // Vider le conteneur
                     editorContainer.innerHTML = '';
                     
-                    // Créer une nouvelle instance de l'éditeur
+                    // Créer une nouvelle instance de l'éditeur avec suppressDuplicateMenu=true
                     console.log('Initialisation de l\'éditeur de workflow');
                     window.workflowEditor = new WorkflowEditor('workflow-editor-container', {
                         initialData: parsedData,
                         snapToGrid: true,
                         gridSize: 20,
-                        theme: 'neutral'
+                        theme: 'neutral',
+                        suppressDuplicateMenu: true // Empêcher l'affichage du menu dupliqué
                     });
                     
                     // Informer l'utilisateur

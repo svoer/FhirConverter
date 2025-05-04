@@ -26,6 +26,7 @@ class WorkflowEditor {
       initialScale: 1,
       minScale: 0.2,
       maxScale: 2,
+      suppressDuplicateMenu: false, // Option pour supprimer le menu dupliqué
       ...options
     };
     
@@ -215,6 +216,12 @@ class WorkflowEditor {
    * Crée la palette de noeuds
    */
   createNodePalette() {
+    // Si l'option suppressDuplicateMenu est activée, ne pas créer de palette
+    if (this.options.suppressDuplicateMenu) {
+      console.log("[Workflow] Affichage de la palette de nœuds supprimé (évite duplication)");
+      return;
+    }
+    
     this.nodePalette = document.createElement('div');
     this.nodePalette.className = 'node-palette';
     
@@ -393,6 +400,10 @@ class WorkflowEditor {
           categoryTitle.style.opacity = '0.7';
         }
       });
+      
+      // Définir la catégorie comme repliée par défaut
+      categoryTitle.setAttribute('data-collapsed', 'true');
+      categoryTitle.style.opacity = '0.7';
       
       categoryDiv.appendChild(categoryTitle);
       
