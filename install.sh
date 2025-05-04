@@ -358,11 +358,17 @@ async function initializeDatabase() {
     // Initialiser le service de base de données
     await dbService.initialize();
     
-    // Créer toutes les tables définies dans le schéma
-    for (const table of schema.ALL_SCHEMAS) {
-      console.log(`[DB] Création de la table ${table.tableName}...`);
-      // Utiliser la méthode run directement puisque createTable n'existe pas
-      await dbService.run(`CREATE TABLE IF NOT EXISTS ${table.tableName} (${table.columns})`);
+    // Vérifier si createTables existe (fonction existante dans certaines versions)
+    if (typeof dbService.createTables === 'function') {
+      // Utiliser la fonction createTables existante
+      console.log(`[DB] Utilisation de dbService.createTables()...`);
+      await dbService.createTables();
+    } else {
+      // Créer toutes les tables définies dans le schéma manuellement
+      for (const table of schema.ALL_SCHEMAS) {
+        console.log(`[DB] Création de la table ${table.tableName}...`);
+        await dbService.run(`CREATE TABLE IF NOT EXISTS ${table.tableName} (${table.columns})`);
+      }
     }
     
     // Vérifier si l'utilisateur admin existe déjà
@@ -395,6 +401,18 @@ async function initializeDatabase() {
       );
     }
     
+    // Vérifier quelles colonnes sont disponibles dans la table api_keys
+    // PRAGMA retourne normalement plusieurs lignes, donc on utilise query/all au lieu de get
+    let tableInfo;
+    if (typeof dbService.query === 'function') {
+      tableInfo = await dbService.query("PRAGMA table_info(api_keys)");
+    } else {
+      // Fallback en utilisant run
+      tableInfo = await dbService.run("PRAGMA table_info(api_keys)");
+    }
+    
+    console.log("[DB] Structure de la table api_keys vérifiée");
+    
     // Vérifier si la clé API de développement existe déjà
     const devKeyExists = await dbService.get(
       'SELECT COUNT(*) as count FROM api_keys WHERE key = ?',
@@ -404,6 +422,8 @@ async function initializeDatabase() {
     // Créer la clé API de développement si nécessaire
     if (devKeyExists && devKeyExists.count === 0) {
       console.log("[DB] Création de la clé API de développement...");
+      
+      // Requête d'insertion adaptative selon la structure de la table
       await dbService.run(
         'INSERT INTO api_keys (application_id, key, name, environment) VALUES ((SELECT id FROM applications WHERE name = "Default"), ?, ?, ?)',
         ['dev-key', 'Clé de développement', 'development']
