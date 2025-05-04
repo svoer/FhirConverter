@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="margin-top: 15px; display: flex; gap: 10px;">
                     <button class="edit-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Modifier</button>
                     <button class="editor-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Éditeur</button>
-                    <button class="export-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Exporter</button>
+                    <button class="export-btn" data-id="${workflow.id}" style="background-color: #f8f0e3; color: #d35400; font-weight: bold; border: 1px solid #e67e22; padding: 8px 12px; border-radius: 4px; cursor: pointer;">⬇️ Exporter</button>
                     <button class="delete-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: auto;">Supprimer</button>
                 </div>
             </div>
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class="edit-btn" data-id="${workflowId}">Modifier</button>
             <button class="editor-btn" data-id="${workflowId}">Éditeur visuel</button>
             <button class="duplicate-btn" data-id="${workflowId}">Dupliquer</button>
-            <button class="export-btn" data-id="${workflowId}">Exporter</button>
+            <button class="export-btn" data-id="${workflowId}" style="background-color: #f8f0e3; color: #d35400; font-weight: bold;">⬇️ Exporter</button>
             <button class="delete-btn" data-id="${workflowId}">Supprimer</button>
         `;
         
