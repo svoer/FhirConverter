@@ -4256,6 +4256,40 @@ class WorkflowEditor {
   }
   
   /**
+   * Centre la vue sur l'ensemble du workflow
+   * Calcule le centre de tous les nœuds et ajuste la vue
+   */
+  centerWorkflow() {
+    if (this.nodes.length === 0) {
+      // S'il n'y a pas de nœuds, centrer simplement la vue
+      this.centerCanvas();
+      return;
+    }
+    
+    // Calculer les limites du workflow (min/max x/y)
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    
+    this.nodes.forEach(node => {
+      minX = Math.min(minX, node.position.x);
+      maxX = Math.max(maxX, node.position.x + 180); // Largeur approximative d'un nœud
+      minY = Math.min(minY, node.position.y);
+      maxY = Math.max(maxY, node.position.y + 100); // Hauteur approximative d'un nœud
+    });
+    
+    // Calculer le centre du workflow
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    // Centrer la vue sur ce point
+    this.centerCanvas({ x: centerX, y: centerY }, true);
+    
+    console.log(`[Workflow] Centrage du workflow (${this.nodes.length} nœuds, centre: ${centerX.toFixed(0)},${centerY.toFixed(0)})`);
+  }
+  
+  /**
    * Sauvegarde le workflow sur le serveur
    */
   async saveWorkflow() {
