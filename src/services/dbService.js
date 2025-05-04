@@ -127,9 +127,11 @@ async function createTables() {
       if (!adminCheck) {
         console.log('[DB] Création de l\'utilisateur administrateur par défaut');
         
-        // Hasher le mot de passe avec bcrypt
-        const bcrypt = require('bcrypt');
-        const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+        // Hasher le mot de passe avec crypto (même méthode que dans verifyPassword)
+        const crypto = require('crypto');
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = crypto.pbkdf2Sync('admin123', salt, 10000, 64, 'sha512').toString('hex');
+        const hashedPassword = `${salt}:${hash}`;
         
         await run(
           'INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)',
@@ -141,8 +143,10 @@ async function createTables() {
       
       // Création d'urgence de l'utilisateur admin sans vérification préalable
       console.log('[DB] Tentative de création directe de l\'utilisateur admin');
-      const bcrypt = require('bcrypt');
-      const hashedPassword = await bcrypt.hash('adminfhirhub', 10);
+      const crypto = require('crypto');
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.pbkdf2Sync('admin123', salt, 10000, 64, 'sha512').toString('hex');
+      const hashedPassword = `${salt}:${hash}`;
       
       try {
         await run(
