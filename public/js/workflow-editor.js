@@ -136,6 +136,22 @@ class WorkflowEditor {
       if (!flowData.nodes) flowData.nodes = [];
       if (!flowData.edges) flowData.edges = [];
       
+      // Normaliser les positions des nœuds s'ils sont hors champ
+      flowData.nodes.forEach(node => {
+        if (node && node.position) {
+          // Vérifier si les positions sont extrêmes (> 5000)
+          if (node.position.x > 5000 || node.position.y > 5000) {
+            console.log(`[DEBUG] Normalisation des positions extrêmes du nœud ${node.id}: (${node.position.x}, ${node.position.y})`);
+            
+            // Ramener à des coordonnées plus raisonnables
+            node.position.x = 500 + (Math.random() * 200 - 100); // 400-600
+            node.position.y = 300 + (Math.random() * 200 - 100); // 200-400
+            
+            console.log(`[DEBUG] Nouvelles positions: (${node.position.x}, ${node.position.y})`);
+          }
+        }
+      });
+      
       // Enregistrer les informations détaillées pour le débogage
       console.log('[DEBUG] Structure finale des données à charger:');
       console.log('[DEBUG] Nœuds:', flowData.nodes.length, JSON.stringify(flowData.nodes));
@@ -153,6 +169,43 @@ class WorkflowEditor {
           
         this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
         console.log('[DEBUG] nextNodeId initialisé à:', this.nextNodeId);
+        
+        // S'assurer que les positions des nœuds sont bien définies et visibles
+        let needsReposition = false;
+        flowData.nodes.forEach(node => {
+          if (node && node.position) {
+            // Si les positions sont en dehors des coordonnées visibles habituelles
+            if (node.position.x > 1000 || node.position.y > 1000 || 
+                node.position.x < 0 || node.position.y < 0) {
+              needsReposition = true;
+            }
+          } else {
+            needsReposition = true;
+          }
+        });
+        
+        // Si les nœuds ont des positions inappropriées, les redistribuer
+        if (needsReposition) {
+          console.log('[DEBUG] Repositionnement des nœuds pour une meilleure visibilité');
+          let offsetX = 250;
+          let offsetY = 200;
+          
+          flowData.nodes.forEach(node => {
+            node.position = {
+              x: offsetX,
+              y: offsetY
+            };
+            
+            // Décaler le prochain nœud
+            offsetX += 250;
+            
+            // Retour à la ligne après 3 nœuds
+            if (offsetX > 750) {
+              offsetX = 250;
+              offsetY += 200;
+            }
+          });
+        }
         
         // Créer tous les nœuds
         flowData.nodes.forEach(node => {
@@ -334,19 +387,41 @@ class WorkflowEditor {
       let targetX, targetY;
       
       if (validPoint) {
+        // Centrer sur le point spécifique
+        console.log(`[Workflow] Centrage sur le point spécifique:`, validPoint);
         targetX = containerRect.width / 2 - validPoint.x * this.scale;
         targetY = containerRect.height / 2 - validPoint.y * this.scale;
+      } else if (this.nodes.length > 0) {
+        // S'il y a des nœuds, centrer sur leur moyenne
+        let avgX = 0, avgY = 0;
+        for (const node of this.nodes) {
+          avgX += node.position.x;
+          avgY += node.position.y;
+        }
+        avgX /= this.nodes.length;
+        avgY /= this.nodes.length;
+        
+        console.log(`[Workflow] Centrage automatique sur la moyenne des nœuds: (${avgX}, ${avgY})`);
+        
+        // Conversion en coordonnées d'offset
+        targetX = containerRect.width / 2 - avgX * this.scale;
+        targetY = containerRect.height / 2 - avgY * this.scale;
       } else {
-        // Utiliser le centre du canevas défini dans createCanvas (10000,10000)
-        targetX = containerRect.width / 2 - this.canvasCenter.x * this.scale;
-        targetY = containerRect.height / 2 - this.canvasCenter.y * this.scale;
+        // Utiliser le centre visible du canevas (pas le point 10000,10000)
+        const visibleCenterX = 500; // Un point plus près de l'origine visible
+        const visibleCenterY = 500; // Un point plus près de l'origine visible
+        
+        console.log(`[Workflow] Centrage sur un point visible par défaut: (${visibleCenterX}, ${visibleCenterY})`);
+        
+        targetX = containerRect.width / 2 - visibleCenterX * this.scale;
+        targetY = containerRect.height / 2 - visibleCenterY * this.scale;
       }
       
       // Vérification des valeurs calculées
       if (isNaN(targetX) || isNaN(targetY)) {
         console.warn("[Workflow] Coordonnées de centrage invalides, utilisation des valeurs par défaut");
-        targetX = 0;
-        targetY = 0;
+        targetX = containerRect.width / 2 - 500 * this.scale; // Point par défaut visible
+        targetY = containerRect.height / 2 - 500 * this.scale; // Point par défaut visible
       }
       
       // Appliquer directement sans animation pour éviter les problèmes
@@ -363,8 +438,7 @@ class WorkflowEditor {
         }
       }, 50);
       
-      // Log simplifié
-      console.log(`[Workflow] Canvas centré`);
+      console.log(`[Workflow] Canvas centré avec offset: (${this.offset.x}, ${this.offset.y})`);
     } catch (error) {
       console.error("[Workflow] Erreur lors du centrage du canvas:", error);
       // En cas d'erreur, essayer de réinitialiser à l'origine
