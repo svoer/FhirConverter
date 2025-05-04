@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="/css/workflows.css">
     <link rel="stylesheet" href="/css/sidebar-menu.css">
     <link rel="stylesheet" href="/css/workflow-templates.css">
+    <!-- Styles pour la bulle d'aide contextuelle -->
+    <link rel="stylesheet" href="/css/help-bubble.css">
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -31,6 +33,9 @@
     <!-- Inclusion du menu latéral -->
     <script src="/js/include-sidebar.js" defer></script>
     <script src="/js/sidebar-menu-new.js" defer></script>
+    
+    <!-- Inclusion de la bulle d'aide contextuelle -->
+    <script src="/js/help-bubble.js" defer></script>
     <style>
         .workflow-grid {
             display: flex;
@@ -1535,10 +1540,32 @@
             loadApplications();
             // Ne pas appeler loadWorkflows() ici, il sera appelé par loadApplications()
             checkUrlParams();
+            
+            // Initialisation de la bulle d'aide contextuelle
+            initHelpBubble();
         });
     </script>
     
     <!-- Nous avons retiré le chatbot de cette page à la demande de l'utilisateur -->
+    <script>
+        // Fonction d'initialisation de la bulle d'aide contextuelle
+        function initHelpBubble() {
+            try {
+                // Vérifier que la classe est disponible
+                if (typeof HelpBubbleSystem === 'function') {
+                    window.helpBubble = new HelpBubbleSystem({
+                        aiEndpoint: '/api/ai/help-suggestion',
+                        introMessage: 'Besoin d\'aide avec l\'éditeur de workflow ou la création de flux de travail ?'
+                    });
+                    console.log("Bulle d'aide contextuelle initialisée avec succès");
+                } else {
+                    console.warn("La classe HelpBubbleSystem n'est pas disponible");
+                }
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation de la bulle d'aide contextuelle:", error);
+            }
+        }
+    </script>
     
     <!-- Dialogue de templates de workflow -->
     <div id="template-dialog" class="template-dialog">

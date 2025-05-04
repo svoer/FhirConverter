@@ -205,6 +205,9 @@
       // Initialisation du chatbot de support
       initChatbot();
       
+      // Initialisation de la bulle d'aide contextuelle
+      initHelpBubble();
+      
       // Gestionnaire d'événements pour le bouton de réinitialisation de l'environnement
       initResetEnvironmentButton();
     });
@@ -213,6 +216,25 @@
     function initChatbot() {
       // Pointeur vers le fichier externe qui initialise le chatbot
       console.log("Initialisation du chatbot via support-chatbot.js");
+    }
+    
+    // Initialisation de la bulle d'aide contextuelle
+    function initHelpBubble() {
+      // Créer une instance du système de bulle d'aide
+      try {
+        // Vérifier que la classe est disponible
+        if (typeof HelpBubbleSystem === 'function') {
+          window.helpBubble = new HelpBubbleSystem({
+            aiEndpoint: '/api/ai/help-suggestion',
+            introMessage: 'Besoin d\'aide avec le tableau de bord ou les statistiques de FHIRHub ?'
+          });
+          console.log("Bulle d'aide contextuelle initialisée avec succès");
+        } else {
+          console.warn("La classe HelpBubbleSystem n'est pas disponible");
+        }
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation de la bulle d'aide contextuelle:", error);
+      }
     }
     
     // Initialisation du bouton de réinitialisation de l'environnement
