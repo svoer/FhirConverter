@@ -111,12 +111,7 @@
     height: 100%;
     position: relative;
     overflow: hidden;
-    /* Une seule grille pour une apparence plus claire et sans séparation visible */
-    background-image:
-        linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
-    background-size: 100px 100px, 100px 100px;
-    background-position: center center;
+    /* Suppression complète de la grille pour un espace totalement uniforme */
     background-color: #ffffff;
 }
 
