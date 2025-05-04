@@ -1472,49 +1472,65 @@
                                 if (!tempData.nodes) tempData.nodes = [];
                                 if (!tempData.edges) tempData.edges = [];
                                 
-                                // Filtrer les nœuds de type "unknown" qui causent des problèmes
+                                // Transformer les positions extrêmes sans filtrer les nœuds unknown
                                 if (Array.isArray(tempData.nodes)) {
+                                    // Compter les nœuds de type "unknown" mais ne pas les supprimer
                                     const unknownNodes = tempData.nodes.filter(n => n.type === 'unknown').length;
                                     if (unknownNodes > 0) {
-                                        console.log(`[WorkflowEditor] Suppression de ${unknownNodes} nœuds problématiques de type 'unknown'`);
+                                        console.log(`[WorkflowEditor] Détecté ${unknownNodes} nœuds de type 'unknown' - Nous les conservons`);
                                     }
                                     
                                     // Transformer les positions extrêmes
                                     tempData.nodes.forEach(node => {
                                         if (node && node.position) {
-                                            if (node.position.x > 2000 || node.position.y > 2000) {
+                                            // Vérifier si les positions sont extrêmes (trop éloignées)
+                                            if (node.position.x > 2000 || node.position.y > 2000 ||
+                                                node.position.x < 0 || node.position.y < 0) {
                                                 node.position.x = 300 + Math.random() * 300;
                                                 node.position.y = 200 + Math.random() * 200;
                                                 console.log(`[WorkflowEditor] Positions normalisées pour le nœud ${node.id}`);
                                             }
+                                        } else if (node && !node.position) {
+                                            // Ajouter une position par défaut si elle est manquante
+                                            node.position = {
+                                                x: 300 + Math.random() * 300,
+                                                y: 200 + Math.random() * 200
+                                            };
+                                        }
+                                        
+                                        // Pour les nœuds de type "unknown", les transformer en nœuds valides (convertisseur)
+                                        if (node.type === 'unknown') {
+                                            node.type = 'fhirConverter';
+                                            node.inputs = [{ name: 'input', label: 'Entrée' }];
+                                            node.outputs = [{ name: 'output', label: 'Sortie' }];
+                                            console.log(`[WorkflowEditor] Transformation du nœud unknown en fhirConverter: ${node.id}`);
                                         }
                                     });
-                                    
-                                    // Ne conserver que les nœuds avec un type valide différent de "unknown"
-                                    tempData.nodes = tempData.nodes.filter(n => n.type && n.type !== 'unknown');
                                 }
                                 
-                                // N'utiliser les données que si elles sont valides
-                                if (tempData.nodes.length > 0 || tempData.edges.length > 0) {
-                                    parsedData = tempData;
-                                    console.log(`[WorkflowEditor] Données valides chargées: ${tempData.nodes.length} nœuds, ${tempData.edges.length} arêtes`);
-                                } else {
-                                    console.log('[WorkflowEditor] Aucun nœud valide trouvé, création d\'un workflow vide');
-                                }
+                                // Utiliser les données même si elles sont vides
+                                parsedData = tempData;
+                                console.log(`[WorkflowEditor] Données chargées: ${tempData.nodes.length} nœuds, ${tempData.edges.length} arêtes`);
                             } catch (parseError) {
                                 console.error('[WorkflowEditor] Erreur lors du parsing JSON:', parseError);
                             }
                         } else if (typeof workflow.flow_json === 'object') {
-                            // Si c'est déjà un objet, l'utiliser directement mais filtrer
+                            // Si c'est déjà un objet, l'utiliser directement
                             let tempData = workflow.flow_json;
                             
                             // S'assurer que la structure contient nodes et edges
                             if (!tempData.nodes) tempData.nodes = [];
                             if (!tempData.edges) tempData.edges = [];
                             
-                            // Filtrer les nœuds problématiques
+                            // Transformer les nœuds problématiques au lieu de les filtrer
                             if (Array.isArray(tempData.nodes)) {
-                                tempData.nodes = tempData.nodes.filter(n => n.type && n.type !== 'unknown');
+                                tempData.nodes.forEach(node => {
+                                    if (node.type === 'unknown') {
+                                        node.type = 'fhirConverter';
+                                        node.inputs = [{ name: 'input', label: 'Entrée' }];
+                                        node.outputs = [{ name: 'output', label: 'Sortie' }];
+                                    }
+                                });
                             }
                             
                             parsedData = tempData;
