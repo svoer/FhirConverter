@@ -238,6 +238,16 @@
     transform: scale(1.1);
 }
 
+/* Rectangle de sélection (rubber-band) */
+.selection-rect {
+    position: absolute;
+    border: 1px dashed #e73c3e;
+    background: rgba(245, 153, 60, 0.1);
+    pointer-events: none;
+    z-index: 50;
+    will-change: top, left, width, height;
+}
+
 /* Nodes avec design neutre */
 .node {
     position: absolute;
@@ -290,8 +300,21 @@
 }
 
 .node.selected {
-    border-color: #666;
-    box-shadow: 0 0 0 2px rgba(100, 100, 100, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-color: #e73c3e;
+    box-shadow: 0 0 0 2px rgba(245, 153, 60, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Style pour les nœuds en sélection multiple */
+.node.multi-selected {
+    border-color: #e73c3e;
+    box-shadow: 0 0 0 2px rgba(245, 153, 60, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: multi-select-pulse 2s infinite;
+}
+
+@keyframes multi-select-pulse {
+    0% { box-shadow: 0 0 0 2px rgba(245, 153, 60, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2); }
+    50% { box-shadow: 0 0 0 2px rgba(245, 153, 60, 0.6), 0 4px 8px rgba(0, 0, 0, 0.2); }
+    100% { box-shadow: 0 0 0 2px rgba(245, 153, 60, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2); }
 }
 
 .node-header {

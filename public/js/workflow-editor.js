@@ -373,11 +373,37 @@ class WorkflowEditor {
    * Attache les événements à l'éditeur
    */
   attachEvents() {
-    // Événements de la souris pour le panning
+    // Événements de la souris pour le panning et la sélection multiple
     if (this.options.allowPanning) {
       this.container.addEventListener('mousedown', (e) => {
-        // Si on clique sur le canvas (pas sur un noeud)
-        if (e.target === this.canvas || e.target === this.nodesLayer || e.target === this.edgesLayer) {
+        // Si la touche Shift est enfoncée, on commence une sélection multiple
+        if (e.shiftKey && (e.target === this.canvas || e.target === this.nodesLayer || e.target === this.edgesLayer)) {
+          this.isSelecting = true;
+          
+          // Convertir les coordonnées de la souris en coordonnées canvas
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const scaledX = (e.clientX - canvasRect.left - this.offset.x) / this.scale;
+          const scaledY = (e.clientY - canvasRect.top - this.offset.y) / this.scale;
+          
+          this.selectionStartPoint = { x: scaledX, y: scaledY };
+          
+          // Créer le rectangle de sélection
+          this.selectionRect = document.createElement('div');
+          this.selectionRect.className = 'selection-rect';
+          this.selectionRect.style.left = `${scaledX}px`;
+          this.selectionRect.style.top = `${scaledY}px`;
+          this.selectionRect.style.width = '0';
+          this.selectionRect.style.height = '0';
+          this.canvas.appendChild(this.selectionRect);
+          
+          console.log("[Workflow] Début de la sélection multiple");
+          
+          // Empêcher le comportement par défaut
+          e.preventDefault();
+          
+        // Si on clique sur le canvas (pas sur un noeud) sans Shift, on fait du panning
+        } else if (e.target === this.canvas || e.target === this.nodesLayer || e.target === this.edgesLayer) {
+          // Si on n'est pas en mode sélection, on fait du panning normal
           this.isDragging = true;
           this.dragStart = {
             x: e.clientX - this.offset.x,
@@ -389,9 +415,34 @@ class WorkflowEditor {
       
       document.addEventListener('mousemove', (e) => {
         if (this.isDragging) {
+          // Panning du canvas
           this.offset.x = e.clientX - this.dragStart.x;
           this.offset.y = e.clientY - this.dragStart.y;
           this.updateTransform();
+        } else if (this.isSelecting && this.selectionRect) {
+          // Mise à jour du rectangle de sélection
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const currentX = (e.clientX - canvasRect.left - this.offset.x) / this.scale;
+          const currentY = (e.clientY - canvasRect.top - this.offset.y) / this.scale;
+          
+          const startX = this.selectionStartPoint.x;
+          const startY = this.selectionStartPoint.y;
+          
+          // Calculer la position et les dimensions du rectangle
+          const left = Math.min(startX, currentX);
+          const top = Math.min(startY, currentY);
+          const width = Math.abs(currentX - startX);
+          const height = Math.abs(currentY - startY);
+          
+          // Appliquer les dimensions au rectangle de sélection
+          this.selectionRect.style.left = `${left}px`;
+          this.selectionRect.style.top = `${top}px`;
+          this.selectionRect.style.width = `${width}px`;
+          this.selectionRect.style.height = `${height}px`;
+          
+          // Prévisualiser les nœuds qui seront sélectionnés
+          this.updateSelectionPreview({ left, top, width, height });
+          
         } else if (this.isCreatingEdge) {
           this.updateTempEdge(e);
         }
@@ -401,6 +452,11 @@ class WorkflowEditor {
         if (this.isDragging) {
           this.isDragging = false;
           this.container.style.cursor = 'default';
+        }
+        
+        if (this.isSelecting) {
+          this.finalizeSelection();
+          this.isSelecting = false;
         }
         
         if (this.isCreatingEdge) {
