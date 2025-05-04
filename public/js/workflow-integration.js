@@ -142,7 +142,54 @@ document.addEventListener('DOMContentLoaded', function() {
             currentCategory = category;
             templateListContainer.innerHTML = '';
             
-            const templates = getWorkflowTemplatesByCategory(category);
+            // Définir les templates basiques directement ici puisque getWorkflowTemplatesByCategory n'existe pas encore
+            const allTemplates = [
+                {
+                    id: 'hl7-basic',
+                    name: 'Conversion HL7 basique',
+                    description: 'Template basique pour la conversion de messages HL7 vers FHIR',
+                    category: 'conversion',
+                    difficulty: 'Facile',
+                    data: {
+                        nodes: [
+                            { id: 'node-1', type: 'hl7-input', label: 'Entrée HL7', position: { x: 100, y: 100 } },
+                            { id: 'node-2', type: 'hl7-parser', label: 'Parseur HL7', position: { x: 300, y: 100 } },
+                            { id: 'node-3', type: 'hl7-to-fhir', label: 'Convertisseur FHIR', position: { x: 500, y: 100 } },
+                            { id: 'node-4', type: 'fhir-output', label: 'Sortie FHIR', position: { x: 700, y: 100 } }
+                        ],
+                        edges: [
+                            { id: 'edge-1', source: 'node-1', target: 'node-2', sourceOutput: 0, targetInput: 0 },
+                            { id: 'edge-2', source: 'node-2', target: 'node-3', sourceOutput: 0, targetInput: 0 },
+                            { id: 'edge-3', source: 'node-3', target: 'node-4', sourceOutput: 0, targetInput: 0 }
+                        ]
+                    }
+                },
+                {
+                    id: 'dicom-converter',
+                    name: 'Convertisseur DICOM',
+                    description: 'Template pour la conversion de fichiers DICOM vers FHIR',
+                    category: 'conversion',
+                    difficulty: 'Intermédiaire',
+                    data: {
+                        nodes: [
+                            { id: 'node-1', type: 'dicom-input', label: 'Entrée DICOM', position: { x: 100, y: 100 } },
+                            { id: 'node-2', type: 'dicom-parser', label: 'Parseur DICOM', position: { x: 300, y: 100 } },
+                            { id: 'node-3', type: 'dicom-to-fhir', label: 'Convertisseur FHIR', position: { x: 500, y: 100 } },
+                            { id: 'node-4', type: 'fhir-output', label: 'Sortie FHIR', position: { x: 700, y: 100 } }
+                        ],
+                        edges: [
+                            { id: 'edge-1', source: 'node-1', target: 'node-2', sourceOutput: 0, targetInput: 0 },
+                            { id: 'edge-2', source: 'node-2', target: 'node-3', sourceOutput: 0, targetInput: 0 },
+                            { id: 'edge-3', source: 'node-3', target: 'node-4', sourceOutput: 0, targetInput: 0 }
+                        ]
+                    }
+                }
+            ];
+            
+            // Filtrer les templates selon la catégorie
+            const templates = category === 'all' 
+                ? allTemplates 
+                : allTemplates.filter(t => t.category === category);
             
             templates.forEach(template => {
                 const templateItem = document.createElement('div');
@@ -222,7 +269,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Événement pour le bouton de chargement du template
         loadTemplateBtn.addEventListener('click', function() {
             if (selectedTemplateId) {
-                const template = getWorkflowTemplateById(selectedTemplateId);
+                // Rechercher le template par ID dans la liste des templates
+                const template = allTemplates.find(t => t.id === selectedTemplateId);
                 if (template && editor) {
                     // Charger le template dans l'éditeur
                     editor.loadTemplate(template.data);

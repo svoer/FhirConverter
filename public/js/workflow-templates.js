@@ -4,15 +4,9 @@
  * Ce module gère la boîte de dialogue de sélection des templates, leur chargement
  * et leur application à l'éditeur visuel de workflow.
  */
-document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si nous sommes sur la page workflows.html
-    if (!document.getElementById('workflow-editor-container')) {
-        console.log('[TemplateManager] Page de workflow non détectée, désinscription');
-        return;
-    }
 
-    console.log('[TemplateManager] Initialisation du gestionnaire de templates de workflow');
-
+// Créer un objet global templateManager
+window.templateManager = (function() {
     // Référence à la boîte de dialogue de templates
     let templateDialog = null;
     // Référence à l'éditeur de workflow
@@ -635,8 +629,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Exposer les fonctions publiques
-    window.templateManager = {
+    return {
         initialize,
         openTemplateDialog
     };
-});
+})();
