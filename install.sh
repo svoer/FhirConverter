@@ -380,9 +380,10 @@ async function initializeDatabase() {
     // Créer l'utilisateur admin par défaut si nécessaire
     if (adminExists && adminExists.count === 0) {
       console.log("[DB] Création de l'utilisateur admin par défaut...");
+      // Hash pour admin123 avec PBKDF2
       await dbService.run(
         'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
-        ['admin', '$2b$10$PeXcZgN6w9SYJ0CsVr3zxeVGoSGgvDIGQWIWjJQBkeVKdQ0.CH95W', 'admin', 'admin@example.com']
+        ['admin', '$pbkdf2-sha512$i=210000,l=64$fgj+8H+oPbUyW0BtYUMnfw$MtYAMZS/G0P5XBtJJWLqGpgGVIQdPZg7gFi7MRbLf1Gx3LeC7YzNaOiNCs5zlVLcHGZVrOQdSYnT5MAcYQBm1g', 'admin', 'admin@example.com']
       );
     }
     
@@ -562,7 +563,7 @@ echo ""
 echo "Site web accessible sur : http://localhost:5000"
 echo "Identifiants par défaut :"
 echo "  Utilisateur : admin"
-echo "  Mot de passe : adminfhirhub"
+echo "  Mot de passe : admin123"
 echo ""
 echo "Clé API de test : dev-key"
 echo "Documentation API : http://localhost:5000/api-docs"
