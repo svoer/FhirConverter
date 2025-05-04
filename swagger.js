@@ -12,15 +12,7 @@ const swaggerOptions = {
     info: {
       title: 'FHIRHub API',
       version: '1.0.0',
-      description: 'API pour le convertisseur HL7 v2.5 vers FHIR R4 avec support des terminologies françaises',
-      contact: {
-        name: 'Équipe FHIRHub',
-        email: 'support@fhirhub.fr'
-      },
-      license: {
-        name: 'Licence FHIRHub',
-        url: 'https://www.fhirhub.fr/licence'
-      }
+      description: 'API pour le convertisseur HL7 v2.5 vers FHIR R4 avec support des terminologies françaises'
     },
     servers: [
       {
