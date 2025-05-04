@@ -2757,7 +2757,12 @@ class WorkflowEditor {
    * Met à jour la transformation du canvas
    */
   updateTransform() {
+    // Appliquer les transformations au canvas avec l'origine de transformation au centre
+    this.canvas.style.transformOrigin = '0 0';
     this.canvas.style.transform = `translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`;
+    
+    // Debug pour vérifier que les transformations sont appliquées
+    console.log(`[Workflow] Transformation mise à jour: translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`);
   }
   
   /**
