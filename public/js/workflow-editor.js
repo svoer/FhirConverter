@@ -885,64 +885,96 @@ class WorkflowEditor {
    * @returns {Object} Le noeud créé
    */
   addNode(type, position = { x: 100, y: 100 }, animate = false) {
-    // Convertir position à la grille si nécessaire
-    if (this.options.snapToGrid) {
-      position.x = Math.round(position.x / this.options.gridSize) * this.options.gridSize;
-      position.y = Math.round(position.y / this.options.gridSize) * this.options.gridSize;
-    }
-    
-    // Créer l'objet du noeud
-    const nodeId = `node_${this.nextNodeId++}`;
-    const nodeConfig = this.getNodeConfig(type);
-    
-    const node = {
-      id: nodeId,
-      type: type,
-      label: nodeConfig.label || type,
-      position: position,
-      width: 180,
-      height: 100,
-      inputs: nodeConfig.inputs || [],
-      outputs: nodeConfig.outputs || [],
-      data: {}
-    };
-    
-    // Ajouter le noeud à la liste
-    this.nodes.push(node);
-    
-    // Créer l'élément DOM
-    this.createNodeElement(node);
-    
-    // Ajouter un effet visuel d'apparition si l'animation est activée
-    if (animate) {
-      const nodeElement = document.getElementById(node.id);
-      if (nodeElement) {
-        // Appliquer un effet de fade in et de scale
-        nodeElement.style.opacity = '0';
-        nodeElement.style.transform = 'scale(0.8)';
-        
-        // Force un repaint avant de démarrer l'animation
-        requestAnimationFrame(() => {
-          nodeElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-          nodeElement.style.opacity = '1';
-          nodeElement.style.transform = 'scale(1)';
-          
-          // Nettoyer après l'animation
-          setTimeout(() => {
-            nodeElement.style.transition = '';
-          }, 300);
-        });
+    try {
+      // S'assurer que le type est une chaîne valide
+      const nodeType = typeof type === 'string' ? type : 'default';
+      
+      // S'assurer que la position est un objet valide
+      const nodePosition = {
+        x: position && typeof position.x === 'number' ? position.x : 100,
+        y: position && typeof position.y === 'number' ? position.y : 100
+      };
+      
+      // Convertir position à la grille si nécessaire
+      if (this.options.snapToGrid) {
+        nodePosition.x = Math.round(nodePosition.x / this.options.gridSize) * this.options.gridSize;
+        nodePosition.y = Math.round(nodePosition.y / this.options.gridSize) * this.options.gridSize;
       }
+      
+      // Créer l'objet du noeud
+      const nodeId = `node_${this.nextNodeId++}`;
+      const nodeConfig = this.getNodeConfig(nodeType);
+      
+      const node = {
+        id: nodeId,
+        type: nodeType,
+        label: nodeConfig.label || nodeType,
+        position: nodePosition,
+        width: 180,
+        height: 100,
+        inputs: nodeConfig.inputs || [],
+        outputs: nodeConfig.outputs || [],
+        data: {}
+      };
+      
+      console.log(`[Workflow] Création du nœud de type ${nodeType}:`, node);
+      
+      // Ajouter le noeud à la liste
+      this.nodes.push(node);
+      
+      // Créer l'élément DOM
+      this.createNodeElement(node);
+      
+      // Ajouter un effet visuel d'apparition si l'animation est activée
+      if (animate) {
+        const nodeElement = document.getElementById(node.id);
+        if (nodeElement) {
+          // Appliquer un effet de fade in et de scale
+          nodeElement.style.opacity = '0';
+          nodeElement.style.transform = 'scale(0.8)';
+          
+          // Force un repaint avant de démarrer l'animation
+          requestAnimationFrame(() => {
+            nodeElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            nodeElement.style.opacity = '1';
+            nodeElement.style.transform = 'scale(1)';
+            
+            // Nettoyer après l'animation
+            setTimeout(() => {
+              nodeElement.style.transition = '';
+            }, 300);
+          });
+        }
+      }
+      
+      // Émettre l'événement
+      this.emit('nodeAdded', node);
+      this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
+      
+      // Sélectionner le nouveau noeud
+      this.selectNode(nodeId);
+      
+      return node;
+    } catch (error) {
+      console.error(`[Workflow] Erreur lors de la création du nœud:`, error);
+      
+      // Créer un nœud générique en cas d'erreur
+      const fallbackNode = {
+        id: `node_${this.nextNodeId++}`,
+        type: 'default',
+        label: 'Nœud générique',
+        position: { x: 100, y: 100 },
+        width: 180,
+        height: 100,
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        data: {}
+      };
+      
+      this.nodes.push(fallbackNode);
+      this.createNodeElement(fallbackNode);
+      return fallbackNode;
     }
-    
-    // Émettre l'événement
-    this.emit('nodeAdded', node);
-    this.emit('workflowChanged', { nodes: this.nodes, edges: this.edges });
-    
-    // Sélectionner le nouveau noeud
-    this.selectNode(nodeId);
-    
-    return node;
   }
   
   /**
@@ -1867,16 +1899,37 @@ class WorkflowEditor {
   /**
    * Crée l'élément DOM pour un noeud
    * @param {Object} node - Noeud à créer
+   * @returns {HTMLElement} L'élément DOM créé
    */
   createNodeElement(node) {
-    const nodeElement = document.createElement('div');
-    nodeElement.id = node.id;
-    nodeElement.className = 'node';
-    nodeElement.style.left = `${node.position.x}px`;
-    nodeElement.style.top = `${node.position.y}px`;
-    nodeElement.style.width = `${node.width}px`;
-    
-    // En-tête du noeud
+    try {
+      // Vérifier que le nœud est un objet valide
+      if (!node || typeof node !== 'object') {
+        console.error('[Workflow] Nœud invalide:', node);
+        return null;
+      }
+      
+      // Vérifier que le nœud a un ID valide
+      if (!node.id || typeof node.id !== 'string') {
+        console.error('[Workflow] ID de nœud invalide:', node);
+        return null;
+      }
+      
+      // Vérifier que le nœud a une position valide
+      if (!node.position || typeof node.position !== 'object' || 
+          typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+        console.error('[Workflow] Position de nœud invalide:', node);
+        node.position = { x: 100, y: 100 }; // Valeur par défaut
+      }
+      
+      const nodeElement = document.createElement('div');
+      nodeElement.id = node.id;
+      nodeElement.className = 'node';
+      nodeElement.style.left = `${node.position.x}px`;
+      nodeElement.style.top = `${node.position.y}px`;
+      nodeElement.style.width = node.width ? `${node.width}px` : '180px';
+      
+      // En-tête du noeud
     const nodeHeader = document.createElement('div');
     nodeHeader.className = 'node-header';
     
