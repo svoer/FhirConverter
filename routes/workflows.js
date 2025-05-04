@@ -365,4 +365,147 @@ router.get('/:id/editor', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/workflows/execute:
+ *   post:
+ *     summary: Exécuter un workflow pour une application
+ *     tags: [Workflows]
+ *     security:
+ *       - ApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - application_id
+ *               - data
+ *             properties:
+ *               application_id:
+ *                 type: integer
+ *                 description: ID de l'application pour laquelle exécuter le workflow
+ *               data:
+ *                 type: object
+ *                 description: Données d'entrée pour le workflow
+ *     responses:
+ *       200:
+ *         description: Résultat de l'exécution du workflow
+ *       400:
+ *         description: Données invalides
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/execute', async (req, res) => {
+  try {
+    const { application_id, data } = req.body;
+    
+    if (!application_id) {
+      return res.status(400).json({ error: 'L\'ID de l\'application est obligatoire' });
+    }
+    
+    // Convertir en nombre si ce n'est pas déjà le cas
+    const applicationId = parseInt(application_id);
+    
+    if (isNaN(applicationId)) {
+      return res.status(400).json({ error: 'L\'ID de l\'application doit être un nombre valide' });
+    }
+    
+    // Exécuter le workflow
+    const result = await workflowService.executeWorkflow(applicationId, data || {});
+    
+    if (!result) {
+      return res.status(404).json({ 
+        error: 'Aucun workflow actif trouvé pour cette application',
+        application_id: applicationId
+      });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error(`[API] Erreur lors de l'exécution du workflow:`, error);
+    res.status(500).json({ 
+      error: 'Erreur lors de l\'exécution du workflow',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflows/{id}/execute:
+ *   post:
+ *     summary: Exécuter un workflow spécifique par son ID
+ *     tags: [Workflows]
+ *     security:
+ *       - ApiKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du workflow à exécuter
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               data:
+ *                 type: object
+ *                 description: Données d'entrée pour le workflow
+ *     responses:
+ *       200:
+ *         description: Résultat de l'exécution du workflow
+ *       400:
+ *         description: Données invalides
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.post('/:id/execute', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de workflow invalide' });
+    }
+    
+    // Récupérer le workflow
+    const workflow = await workflowService.getWorkflowById(id);
+    
+    if (!workflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
+    }
+    
+    // S'assurer que le workflow est actif
+    if (!workflow.is_active) {
+      return res.status(400).json({ 
+        error: 'Ce workflow est inactif',
+        workflow_id: id
+      });
+    }
+    
+    // Obtenir l'ID de l'application depuis le workflow
+    const applicationId = workflow.application_id;
+    
+    // Exécuter le workflow avec les données fournies
+    const result = await workflowService.executeWorkflow(applicationId, req.body.data || {});
+    
+    res.json(result);
+  } catch (error) {
+    console.error(`[API] Erreur lors de l'exécution du workflow ${req.params.id}:`, error);
+    res.status(500).json({ 
+      error: 'Erreur lors de l\'exécution du workflow',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;
