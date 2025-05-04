@@ -719,6 +719,9 @@
                         option.textContent = app.name;
                         workflowApplication.appendChild(option);
                     });
+                    
+                    // Appeler loadWorkflows une seule fois à la fin de loadApplications
+                    loadWorkflows('all');
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
@@ -1107,7 +1110,7 @@
             
             // Initialisation de la page
             loadApplications();
-            loadWorkflows();
+            // Ne pas appeler loadWorkflows() ici, il sera appelé par loadApplications()
             checkUrlParams();
         });
     </script>
