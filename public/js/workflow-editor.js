@@ -1922,6 +1922,14 @@ class WorkflowEditor {
         node.position = { x: 100, y: 100 }; // Valeur par défaut
       }
       
+      // S'assurer que les tableaux inputs et outputs existent
+      node.inputs = Array.isArray(node.inputs) ? node.inputs : [];
+      node.outputs = Array.isArray(node.outputs) ? node.outputs : [];
+      
+      // S'assurer que les données existent
+      node.data = node.data || {};
+      
+      // Créer l'élément DOM principal pour le nœud
       const nodeElement = document.createElement('div');
       nodeElement.id = node.id;
       nodeElement.className = 'node';
