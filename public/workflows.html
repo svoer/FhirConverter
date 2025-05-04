@@ -837,6 +837,33 @@
                 try {
                     console.log('[DEBUG] Clic sur le bouton de sauvegarde de l\'éditeur');
                     if (window.workflowEditor) {
+                        // Vérifier et réinitialiser l'ID du workflow si nécessaire
+                        if (!window.workflowEditor.workflowId) {
+                            console.log('[DEBUG] ID du workflow manquant, tentative de récupération...');
+                            
+                            // 1. Essayer de récupérer depuis sessionStorage
+                            const storedId = sessionStorage.getItem('currentWorkflowId');
+                            if (storedId) {
+                                console.log('[DEBUG] ID récupéré depuis sessionStorage:', storedId);
+                                window.workflowEditor.workflowId = storedId;
+                            } 
+                            // 2. Essayer depuis l'attribut de la modal
+                            else if (editorModal.getAttribute('data-workflow-id')) {
+                                const modalId = editorModal.getAttribute('data-workflow-id');
+                                console.log('[DEBUG] ID récupéré depuis data-workflow-id de la modal:', modalId);
+                                window.workflowEditor.workflowId = modalId;
+                            }
+                            // 3. Essayer depuis l'URL
+                            else {
+                                const urlParams = new URLSearchParams(window.location.search);
+                                const urlId = urlParams.get('editWorkflow');
+                                if (urlId) {
+                                    console.log('[DEBUG] ID récupéré depuis l\'URL:', urlId);
+                                    window.workflowEditor.workflowId = urlId;
+                                }
+                            }
+                        }
+                        
                         console.log('[DEBUG] Appel de la méthode saveWorkflow() de l\'éditeur');
                         window.workflowEditor.saveWorkflow();
                     } else {
@@ -1444,6 +1471,13 @@
                         workflowName: workflow.name,
                         workflowDescription: workflow.description
                     });
+                    
+                    // CORRECTION: Forçage explicite de l'ID de workflow directement sur l'instance
+                    window.workflowEditor.workflowId = workflow.id;
+                    console.log('[DEBUG] ID du workflow forcé sur l\'instance:', workflow.id);
+                    
+                    // Enregistrer également dans sessionStorage pour plus de sécurité
+                    sessionStorage.setItem('currentWorkflowId', workflow.id);
                     
                     // Informer l'utilisateur
                     showNotification('Éditeur visuel de workflow ouvert.', 'info');
