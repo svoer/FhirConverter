@@ -732,29 +732,55 @@ app.get('/api/stats', (req, res) => {
     
     // Vérifier la présence des colonnes requises avant d'exécuter les requêtes
     try {
-      // Récupérer les statistiques de temps de conversion
-      conversionStats = db.prepare(`
+      // Vérifier les colonnes disponibles dans la table conversion_logs
+      const tableInfo = db.prepare(`PRAGMA table_info(conversion_logs)`).all();
+      const columns = tableInfo.map(col => col.name);
+      
+      // Déterminer quelles colonnes utiliser pour les statistiques
+      const processingTimeCol = columns.includes('processing_time') ? 'processing_time' : 
+                               (columns.includes('duration') ? 'duration' : 'NULL');
+      
+      const resourceCountCol = columns.includes('resource_count') ? 'resource_count' : 
+                              (columns.includes('fhir_resource_count') ? 'fhir_resource_count' : 'NULL');
+      
+      // Construire dynamiquement la requête SQL
+      const statsQuery = `
         SELECT 
-          AVG(processing_time) as avg_time,
-          MIN(processing_time) as min_time,
-          MAX(processing_time) as max_time,
-          AVG(resource_count) as avg_resources
+          AVG(${processingTimeCol}) as avg_time,
+          MIN(${processingTimeCol}) as min_time,
+          MAX(${processingTimeCol}) as max_time,
+          AVG(${resourceCountCol}) as avg_resources
         FROM conversion_logs
-        WHERE processing_time > 0
-      `).get();
+        WHERE ${processingTimeCol} > 0
+      `;
+      
+      conversionStats = db.prepare(statsQuery).get();
     } catch (err) {
       console.warn('[STATS] Erreur lors de la récupération des statistiques:', err.message);
     }
     
     try {
-      // Récupérer le dernier temps de conversion
-      lastConversion = db.prepare(`
-        SELECT processing_time, resource_count
+      // Vérifier les colonnes disponibles
+      const tableInfo = db.prepare(`PRAGMA table_info(conversion_logs)`).all();
+      const columns = tableInfo.map(col => col.name);
+      
+      // Déterminer quelles colonnes utiliser
+      const processingTimeCol = columns.includes('processing_time') ? 'processing_time' : 
+                               (columns.includes('duration') ? 'duration' : 'NULL');
+      
+      const resourceCountCol = columns.includes('resource_count') ? 'resource_count' : 
+                              (columns.includes('fhir_resource_count') ? 'fhir_resource_count' : 'NULL');
+      
+      // Construire dynamiquement la requête SQL
+      const lastConversionQuery = `
+        SELECT ${processingTimeCol} as processing_time, ${resourceCountCol} as resource_count
         FROM conversion_logs
-        WHERE processing_time > 0
+        WHERE ${processingTimeCol} > 0
         ORDER BY timestamp DESC
         LIMIT 1
-      `).get();
+      `;
+      
+      lastConversion = db.prepare(lastConversionQuery).get();
     } catch (err) {
       console.warn('[STATS] Erreur lors de la récupération de la dernière conversion:', err.message);
     }
