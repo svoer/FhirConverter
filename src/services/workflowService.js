@@ -128,9 +128,43 @@ async function createWorkflow(workflowData) {
     }
     
     // Créer un flow JSON vide par défaut si non fourni
+    // Assurer une structure JSON valide pour flow_json avec nœuds et arêtes
+    let flowJsonToStore;
+    
     if (!workflowData.flow_json) {
-      workflowData.flow_json = JSON.stringify([]);
+      // Structure JSON vide mais valide avec nœuds et arêtes
+      flowJsonToStore = JSON.stringify({
+        nodes: [],
+        edges: []
+      });
+    } else {
+      // Normaliser la structure flow_json
+      const flowJsonData = workflowData.flow_json;
+      
+      if (typeof flowJsonData === 'string') {
+        try {
+          // Vérifier si la chaîne est un JSON valide
+          const parsedData = JSON.parse(flowJsonData);
+          // S'assurer que les nœuds et arêtes sont présents
+          if (!parsedData.nodes) parsedData.nodes = [];
+          if (!parsedData.edges) parsedData.edges = [];
+          flowJsonToStore = JSON.stringify(parsedData);
+        } catch (e) {
+          console.error("[WORKFLOW] Erreur lors du parsing JSON, création d'une structure vide:", e);
+          flowJsonToStore = JSON.stringify({
+            nodes: [],
+            edges: []
+          });
+        }
+      } else {
+        // Pour un objet direct, s'assurer que les nœuds et arêtes sont présents
+        if (!flowJsonData.nodes) flowJsonData.nodes = [];
+        if (!flowJsonData.edges) flowJsonData.edges = [];
+        flowJsonToStore = JSON.stringify(flowJsonData);
+      }
     }
+    
+    console.log('[WORKFLOW] Structure flow_json créée:', flowJsonToStore);
     
     // Insertion en base de données
     const result = await db.run(`
@@ -142,7 +176,7 @@ async function createWorkflow(workflowData) {
       workflowData.name,
       workflowData.description || '',
       workflowData.is_active === undefined ? 1 : workflowData.is_active,
-      typeof workflowData.flow_json === 'string' ? workflowData.flow_json : JSON.stringify(workflowData.flow_json)
+      flowJsonToStore
     ]);
     
     if (result.lastID) {
@@ -195,9 +229,30 @@ async function updateWorkflow(id, workflowData) {
     
     if (workflowData.flow_json !== undefined) {
       updateFields.push('flow_json = ?');
-      updateValues.push(typeof workflowData.flow_json === 'string' 
-        ? workflowData.flow_json 
-        : JSON.stringify(workflowData.flow_json));
+      // Assurer que les données JSON sont correctement formatées et complètes
+      const flowJsonData = workflowData.flow_json;
+      let jsonToStore;
+      
+      if (typeof flowJsonData === 'string') {
+        try {
+          // Vérifier si la chaîne est un JSON valide
+          const parsedData = JSON.parse(flowJsonData);
+          // S'assurer que les nœuds et arêtes sont présents
+          if (!parsedData.nodes) parsedData.nodes = [];
+          if (!parsedData.edges) parsedData.edges = [];
+          jsonToStore = JSON.stringify(parsedData);
+        } catch (e) {
+          console.error("[WORKFLOW] Erreur lors du parsing JSON, utilisation de la chaîne brute:", e);
+          jsonToStore = flowJsonData;
+        }
+      } else {
+        // Pour un objet direct, s'assurer que les nœuds et arêtes sont présents
+        if (!flowJsonData.nodes) flowJsonData.nodes = [];
+        if (!flowJsonData.edges) flowJsonData.edges = [];
+        jsonToStore = JSON.stringify(flowJsonData);
+      }
+      
+      updateValues.push(jsonToStore);
     }
     
     if (workflowData.application_id !== undefined) {
