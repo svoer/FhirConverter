@@ -750,6 +750,20 @@ const cacheRoutes = require('./routes/cache');
 const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
 const aiChatRoutes = require('./routes/ai-chat');
+let aiHelpRoutes;
+try {
+  aiHelpRoutes = require('./routes/aiHelpRoutes');
+  console.log('[APP] Routes d\'aide IA chargées avec succès');
+} catch (error) {
+  console.error('[APP] Erreur lors du chargement des routes d\'aide IA:', error);
+  // Créer un router de remplacement
+  const express = require('express');
+  aiHelpRoutes = express.Router();
+  // Ajouter une route de base pour éviter les erreurs
+  aiHelpRoutes.get('/help-suggestion', (req, res) => {
+    res.json({ success: false, message: 'Service non disponible' });
+  });
+}
 const workflowsRoutes = require('./routes/workflows');
 const adminRoutes = require('./routes/adminRoutes');
 
@@ -763,6 +777,7 @@ app.use('/api/cache', cacheRoutes);
 app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
+app.use('/api/ai', aiHelpRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/admin', adminRoutes);
 

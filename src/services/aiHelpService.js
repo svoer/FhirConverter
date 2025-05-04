@@ -3,8 +3,37 @@
  * FHIRHub - Système d'aide contextuelle
  */
 
-const { getAIProvider } = require('./aiProviderService');
-const logger = require('../utils/logger');
+// Import avec gestion d'erreur
+let aiProviderService;
+try {
+    aiProviderService = require('./aiProviderService');
+} catch (error) {
+    console.error('[AI Help] Erreur lors de l\'import du service aiProviderService:', error);
+    // Créer un service de remplacement pour éviter les erreurs
+    aiProviderService = {
+        getActiveProviders: async () => {
+            console.log('[AI Help Fallback] Demande de fournisseurs actifs');
+            return [];
+        },
+        getProviderWrapper: async () => {
+            console.log('[AI Help Fallback] Demande de wrapper IA');
+            return null;
+        }
+    };
+}
+
+// Utiliser console.log en cas d'erreur avec le logger
+let logger;
+try {
+    logger = require('../utils/logger');
+} catch (error) {
+    console.error('[AI Help] Erreur lors de l\'import du logger:', error);
+    logger = {
+        info: console.log,
+        warn: console.warn,
+        error: console.error
+    };
+}
 
 /**
  * Service pour gérer les suggestions d'aide et réponses aux questions basées sur l'IA
@@ -26,11 +55,14 @@ class AIHelpService {
     async getContextualHelpSuggestions(context, currentUrl, userRole) {
         try {
             // Vérifier si un service d'IA est disponible
-            const aiProvider = await getAIProvider();
-            if (!aiProvider) {
+            const activeProviders = await aiProviderService.getActiveProviders();
+            if (!activeProviders || activeProviders.length === 0) {
                 logger.warn('[AI Help] Aucun fournisseur d\'IA disponible, utilisation des suggestions par défaut');
                 return this._getDefaultSuggestions(context);
             }
+            
+            // Utiliser le premier fournisseur disponible
+            const aiProvider = await aiProviderService.getProviderWrapper(activeProviders[0].id);
 
             // Construire le prompt pour l'IA
             const prompt = this._buildContextualSuggestionsPrompt(context, currentUrl, userRole);
@@ -63,14 +95,17 @@ class AIHelpService {
     async answerUserQuery(query, context, currentUrl) {
         try {
             // Vérifier si un service d'IA est disponible
-            const aiProvider = await getAIProvider();
-            if (!aiProvider) {
+            const activeProviders = await aiProviderService.getActiveProviders();
+            if (!activeProviders || activeProviders.length === 0) {
                 logger.warn('[AI Help] Aucun fournisseur d\'IA disponible, utilisation des réponses par défaut');
                 return {
                     answer: "Je suis désolé, le service d'intelligence artificielle n'est pas disponible actuellement. Veuillez réessayer ultérieurement ou consulter notre documentation.",
                     relatedSuggestions: this._getDefaultSuggestions('default')
                 };
             }
+            
+            // Utiliser le premier fournisseur disponible
+            const aiProvider = await aiProviderService.getProviderWrapper(activeProviders[0].id);
 
             // Construire le prompt pour l'IA
             const prompt = this._buildQueryResponsePrompt(query, context, currentUrl);

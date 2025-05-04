@@ -6,7 +6,26 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/authCombined');
-const aiService = require('../src/services/aiService');
+let aiService;
+
+// Importer le service avec gestion d'erreur
+try {
+    aiService = require('../src/services/aiService');
+    console.log('[ROUTES] Service aiService importé avec succès');
+} catch (error) {
+    console.error('[ROUTES] Erreur lors de l\'import du service aiService:', error);
+    // Créer un service de remplacement pour éviter les erreurs
+    aiService = {
+        getContextualHelpSuggestions: (context) => {
+            console.log(`[FALLBACK] Demande de suggestions pour le contexte ${context}`);
+            return [];
+        },
+        answerUserQuery: (query) => {
+            console.log(`[FALLBACK] Demande de réponse pour la question: ${query}`);
+            return { answer: 'Service non disponible', relatedSuggestions: [] };
+        }
+    };
+}
 
 /**
  * @swagger
