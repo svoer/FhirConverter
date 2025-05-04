@@ -563,9 +563,10 @@
 .edge.connected path {
     stroke: #4caf50 !important;
     stroke-width: 3 !important;
-    /* Effet statique sur les connexions (animation désactivée) */
-    stroke-dasharray: none;
+    /* Effet de flux animé sur les connexions */
+    stroke-dasharray: 12, 5;
     stroke-dashoffset: 0;
+    animation: flowAnimation 1.5s linear infinite;
 }
 
 @keyframes flowAnimation {
@@ -576,7 +577,7 @@
 
 /* Effet pulsation au survol des connexions */
 .edge.connected:hover path {
-    /* Animation désactivée */
+    animation: flowAnimationHover 1s linear infinite;
     stroke-width: 4 !important;
     filter: drop-shadow(0px 0px 3px rgba(76, 175, 80, 0.6));
 }
