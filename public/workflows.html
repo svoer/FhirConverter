@@ -12,6 +12,7 @@
     <!-- Style spécifique pour la page des workflows -->
     <link rel="stylesheet" href="/css/workflows.css">
     <link rel="stylesheet" href="/css/sidebar-menu.css">
+    <link rel="stylesheet" href="/css/workflow-templates.css">
     
     <!-- CodeMirror CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.3/codemirror.min.css">
@@ -686,6 +687,7 @@
     <script src="js/auth-utils.js"></script>
     <!-- Scripts pour l'éditeur visuel de workflow -->
     <script src="js/workflow-editor.js"></script>
+    <script src="js/workflow-templates.js"></script>
     <script src="js/workflow-integration.js"></script>
     <script>
         // Fonction pour afficher les notifications
@@ -1533,5 +1535,34 @@
     </script>
     
     <!-- Nous avons retiré le chatbot de cette page à la demande de l'utilisateur -->
+    
+    <!-- Dialogue de templates de workflow -->
+    <div id="template-dialog" class="template-dialog">
+        <div class="template-dialog-content">
+            <div class="template-dialog-header">
+                <h3>Sélectionner un template de workflow</h3>
+                <button class="close-template-dialog" id="close-template-dialog">&times;</button>
+            </div>
+            <div class="template-dialog-body">
+                <div class="template-categories">
+                    <h4>Catégories</h4>
+                    <ul id="template-category-list">
+                        <li class="active" data-category="all">Tous les templates</li>
+                        <li data-category="conversion">Conversion HL7</li>
+                        <li data-category="integration">Intégration des systèmes</li>
+                        <li data-category="interoperability">Interopérabilité</li>
+                        <li data-category="ai">Intelligence artificielle</li>
+                    </ul>
+                </div>
+                <div class="template-list" id="template-list-container">
+                    <!-- Les templates seront insérés ici dynamiquement -->
+                </div>
+            </div>
+            <div class="template-dialog-footer">
+                <button class="cancel-template" id="cancel-template">Annuler</button>
+                <button class="load-template" id="load-template" disabled>Charger le template</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
