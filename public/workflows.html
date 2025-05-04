@@ -438,25 +438,50 @@
             border: none;
         }
         
-        .loading-spinner {
+        .loading-indicator {
             display: none;
             text-align: center;
             margin: 50px 0;
+            color: #666;
         }
         
-        .spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #e63946;
+        .loading-indicator p {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .loading-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .loading-dots span {
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(135deg, #e63946, #f4a261);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            opacity: 0.7;
+            display: inline-block;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loading-dots span:nth-child(1) {
+            animation: fadeInOut 1.2s ease-in-out 0s infinite;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation: fadeInOut 1.2s ease-in-out 0.4s infinite; 
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation: fadeInOut 1.2s ease-in-out 0.8s infinite;
+        }
+        
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
@@ -497,8 +522,12 @@
                 </select>
             </div>
             
-            <div class="loading-spinner" id="loading-spinner">
-                <div class="spinner"></div>
+            <div class="loading-indicator" id="loading-spinner">
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
                 <p>Chargement des workflows...</p>
             </div>
             
