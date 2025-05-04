@@ -774,6 +774,11 @@ select.property-input {
     100% { transform: rotate(360deg); }
 }
 
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
 .loading-overlay {
     position: absolute;
     top: 0;
@@ -797,12 +802,31 @@ select.property-input {
 }
 
 .loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #666;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.loading-spinner span {
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(135deg, #e73c3e 0%, #f5993c 100%);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    opacity: 0.7;
+    display: inline-block;
+}
+
+.loading-spinner span:nth-child(1) {
+    animation: fadeInOut 1.2s ease-in-out 0s infinite;
+}
+
+.loading-spinner span:nth-child(2) {
+    animation: fadeInOut 1.2s ease-in-out 0.4s infinite; 
+}
+
+.loading-spinner span:nth-child(3) {
+    animation: fadeInOut 1.2s ease-in-out 0.8s infinite;
 }
 
 /* Styles de réactivité */

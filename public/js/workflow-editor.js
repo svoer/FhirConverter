@@ -150,7 +150,7 @@ class WorkflowEditor {
     // Overlay de chargement
     this.loadingOverlay = document.createElement('div');
     this.loadingOverlay.className = 'loading-overlay';
-    this.loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+    this.loadingOverlay.innerHTML = '<div class="loading-spinner"><span></span><span></span><span></span></div><p style="color: #555; margin-top: 15px;">Chargement en cours...</p>';
     this.container.appendChild(this.loadingOverlay);
     
     // Centrer le canvas initialement
