@@ -2325,7 +2325,12 @@ class WorkflowEditor {
     });
     
     this.nodesLayer.appendChild(nodeElement);
+    return nodeElement;
+  } catch (error) {
+    console.error('[Workflow] Erreur lors de la création du nœud:', error);
+    return null;
   }
+}
   
   /**
    * Met à jour l'aperçu de la sélection pendant le déplacement de la souris
