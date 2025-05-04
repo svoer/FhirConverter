@@ -325,20 +325,25 @@ input:checked + .toggle-slider:before {
 
 .export-template-btn {
   color: white;
-  background-color: #e74c3c;
+  background: linear-gradient(to right, #e74c3c, #f39c12);
   border: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(231, 76, 60, 0.15);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.15s ease;
 }
 
 .export-template-btn:hover {
-  background-color: #d44637;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 6px rgba(231, 76, 60, 0.25);
   transform: translateY(-1px);
 }
 
 .export-template-btn:active {
   transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(231, 76, 60, 0.2);
 }
+
+/* Note: l'effet d'onde pour tous les boutons est défini plus loin dans le fichier */
 
 .delete-btn {
   color: #b91c1c;
