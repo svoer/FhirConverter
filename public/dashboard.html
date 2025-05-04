@@ -247,7 +247,8 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-KEY': 'dev-key'
+            'X-API-KEY': 'dev-key',
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // Ajout du token d'authentification
           }
         })
         .then(response => {
