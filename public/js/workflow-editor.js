@@ -2568,8 +2568,9 @@ class WorkflowEditor {
           if (node) {
             // Calculer la position par rapport au canvas
             const canvasRect = self.canvas.getBoundingClientRect();
-            const x = (newLeft - self.pan.x) / self.scale;
-            const y = (newTop - self.pan.y) / self.scale;
+            // Correction: utilisation de self.offset au lieu de self.pan
+            const x = (newLeft - self.offset.x) / self.scale;
+            const y = (newTop - self.offset.y) / self.scale;
             
             // Mettre à jour la position du nœud
             node.position = { x, y };
