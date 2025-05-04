@@ -133,32 +133,6 @@ class WorkflowEditor {
     this.edgesLayer.style.pointerEvents = 'none';
     this.edgesLayer.style.overflow = 'visible';
     
-    // Ajout des définitions SVG pour les gradients et les marques de flèche
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    
-    // Gradient rouge-orange pour les connexions (identité visuelle de l'application)
-    const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-    gradient.setAttribute('id', 'flowGradient');
-    gradient.setAttribute('x1', '0%');
-    gradient.setAttribute('y1', '0%');
-    gradient.setAttribute('x2', '100%');
-    gradient.setAttribute('y2', '0%');
-    
-    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop1.setAttribute('offset', '0%');
-    stop1.setAttribute('stop-color', '#e73c3e');
-    
-    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop2.setAttribute('offset', '100%');
-    stop2.setAttribute('stop-color', '#f5993c');
-    
-    gradient.appendChild(stop1);
-    gradient.appendChild(stop2);
-    defs.appendChild(gradient);
-    
-    // Ajouter les définitions au SVG
-    this.edgesLayer.appendChild(defs);
-    
     // Ajouter le SVG au canvas
     this.canvas.appendChild(this.edgesLayer);
     
