@@ -1230,7 +1230,7 @@
                         
                         card.innerHTML = `
                             <div class="workflow-header">
-                                <h3>${workflow.name}</h3>
+                                <h3>${workflow.name && workflow.name.trim() !== '' ? workflow.name : `Workflow #${workflow.id}`}</h3>
                                 <span class="workflow-status ${workflow.is_active ? 'status-active' : 'status-inactive'}"></span>
                             </div>
                             <div class="workflow-body">
@@ -1630,9 +1630,15 @@
                         if (Array.isArray(rawJson.nodes)) {
                             const countBefore = rawJson.nodes.length;
                             
-                            // Filtrer les nœuds de type unknown
-                            rawJson.nodes = rawJson.nodes.filter(node => {
-                                return node && node.type && node.type !== 'unknown';
+                            // Transformer les nœuds de type unknown au lieu de les filtrer
+                            rawJson.nodes.forEach(node => {
+                                if (node && (!node.type || node.type === 'unknown')) {
+                                    console.log(`[WorkflowEditor] Transformation d'un nœud 'unknown' en 'fhirConverter' avant sauvegarde`);
+                                    node.type = 'fhirConverter';
+                                    node.label = node.label || 'Conversion FHIR';
+                                    node.inputs = node.inputs || [{ name: 'input', label: 'Entrée' }];
+                                    node.outputs = node.outputs || [{ name: 'output', label: 'Sortie' }];
+                                }
                             });
                             
                             const countAfter = rawJson.nodes.length;

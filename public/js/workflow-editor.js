@@ -136,23 +136,29 @@ class WorkflowEditor {
       if (!flowData.nodes) flowData.nodes = [];
       if (!flowData.edges) flowData.edges = [];
       
-      // Filtrer les nœuds de type "unknown" qui causent des problèmes
+      // Convertir les nœuds de type "unknown" au lieu de les filtrer
       if (Array.isArray(flowData.nodes)) {
         // Vérifier s'il y a des nœuds "unknown"
         const unknownNodes = flowData.nodes.filter(n => n.type === 'unknown').length;
         if (unknownNodes > 0) {
           console.log(`[DEBUG] Détection de ${unknownNodes} nœuds problématiques de type 'unknown'`);
           
-          // Afficher un message d'avertissement
+          // Afficher un message d'information
           this.showNotification(
-            `Attention: ${unknownNodes} nœuds de type 'unknown' ont été détectés et seront ignorés pour éviter des problèmes. 
-            Utilisez la palette pour ajouter des nœuds de types appropriés.`,
-            'warning'
+            `Information: ${unknownNodes} nœuds de type 'unknown' ont été détectés et convertis en nœuds de conversion FHIR.`,
+            'info'
           );
           
-          // Filtrer les nœuds problématiques
-          flowData.nodes = flowData.nodes.filter(node => node.type !== 'unknown');
-          console.log(`[DEBUG] Nœuds après filtrage: ${flowData.nodes.length}`);
+          // Transformer les nœuds unknown en nœuds valides au lieu de les filtrer
+          flowData.nodes.forEach(node => {
+            if (node.type === 'unknown') {
+              console.log(`[DEBUG] Conversion du nœud ${node.id} de type 'unknown' en 'fhirConverter'`);
+              node.type = 'fhirConverter';
+              node.label = node.label || 'Conversion FHIR';
+              node.inputs = [{ name: 'input', label: 'Entrée' }];
+              node.outputs = [{ name: 'output', label: 'Sortie' }];
+            }
+          });
         }
       }
       
