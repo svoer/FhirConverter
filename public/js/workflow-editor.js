@@ -4428,34 +4428,57 @@ class WorkflowEditor {
     if (!this.workflowId) {
       console.log('[DEBUG] WorkflowId non défini dans l\'instance, recherche alternative...');
       
-      // 1. Essayer de récupérer depuis la variable globale window.currentWorkflowId
-      if (window.currentWorkflowId) {
+      // 1. Essayer de récupérer depuis les options d'initialisation
+      if (this.options && this.options.workflowId) {
+        console.log('[DEBUG] ID du workflow récupéré depuis les options d\'initialisation:', this.options.workflowId);
+        this.workflowId = this.options.workflowId;
+      }
+      // 2. Essayer de récupérer depuis la variable globale window.currentWorkflowId
+      else if (window.currentWorkflowId) {
         console.log('[DEBUG] ID du workflow récupéré depuis window.currentWorkflowId:', window.currentWorkflowId);
         this.workflowId = window.currentWorkflowId;
       } 
-      // 2. Essayer de récupérer depuis l'attribut data-workflow-id de la modal
-      else {
+      // 3. Essayer de récupérer depuis l'attribut data-workflow-id de la modal
+      else if (document.getElementById('editor-modal') && document.getElementById('editor-modal').getAttribute('data-workflow-id')) {
         const editorModal = document.getElementById('editor-modal');
-        const modalWorkflowId = editorModal ? editorModal.getAttribute('data-workflow-id') : null;
+        const modalWorkflowId = editorModal.getAttribute('data-workflow-id');
         
-        if (modalWorkflowId) {
-          console.log('[DEBUG] ID du workflow récupéré depuis data-workflow-id de la modal:', modalWorkflowId);
-          this.workflowId = modalWorkflowId;
-        } 
-        // 3. Échec - impossible de récupérer l'ID du workflow
-        else {
-          this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
-          console.error('[DEBUG] Aucun ID de workflow trouvé dans aucune source');
-          
-          // Afficher l'état actuel
-          console.log('[DEBUG] État actuel - Modal editor-modal:', editorModal);
-          if (editorModal) {
-            console.log('[DEBUG] Attributs de la modal:', editorModal.attributes);
-            console.log('[DEBUG] data-workflow-id:', editorModal.getAttribute('data-workflow-id'));
-          }
-          
-          return;
+        console.log('[DEBUG] ID du workflow récupéré depuis data-workflow-id de la modal:', modalWorkflowId);
+        this.workflowId = modalWorkflowId;
+      }
+      // 4. Essayer de récupérer depuis sessionStorage (ajouté comme source supplémentaire)
+      else if (sessionStorage.getItem('currentWorkflowId')) {
+        const storedId = sessionStorage.getItem('currentWorkflowId');
+        console.log('[DEBUG] ID du workflow récupéré depuis sessionStorage:', storedId);
+        this.workflowId = storedId;
+      }
+      // 5. Essayer de récupérer depuis l'URL (si présent)
+      else if (window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlWorkflowId = urlParams.get('editWorkflow');
+        
+        if (urlWorkflowId) {
+          console.log('[DEBUG] ID du workflow récupéré depuis l\'URL:', urlWorkflowId);
+          this.workflowId = urlWorkflowId;
         }
+      }
+      // 6. Échec - impossible de récupérer l'ID du workflow
+      else {
+        this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
+        console.error('[DEBUG] Aucun ID de workflow trouvé dans aucune source');
+        
+        // Afficher l'état actuel pour diagnostic
+        console.log('[DEBUG] État actuel - Modal editor-modal:', document.getElementById('editor-modal'));
+        const editorModal = document.getElementById('editor-modal');
+        if (editorModal) {
+          console.log('[DEBUG] Attributs de la modal:', editorModal.attributes);
+          console.log('[DEBUG] data-workflow-id:', editorModal.getAttribute('data-workflow-id'));
+        }
+        console.log('[DEBUG] window.currentWorkflowId:', window.currentWorkflowId);
+        console.log('[DEBUG] sessionStorage:', sessionStorage.getItem('currentWorkflowId'));
+        console.log('[DEBUG] Options:', this.options);
+        
+        return;
       }
     }
     

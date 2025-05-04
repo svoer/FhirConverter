@@ -1372,6 +1372,8 @@
             
             // Ouvrir l'éditeur visuel de workflow en plein écran
             async function openWorkflowEditor(id) {
+                console.log('[WorkflowEditor] Ouverture de l\'éditeur avec ID de workflow:', id);
+                
                 try {
                     // Récupérer les informations sur le workflow directement
                     const workflowResponse = await fetch(`/api/workflows/${id}`, {
@@ -1386,7 +1388,7 @@
                     }
                     
                     const workflowResult = await workflowResponse.json();
-                    console.log('Workflow récupéré pour l\'éditeur visuel:', workflowResult);
+                    console.log('[WorkflowEditor] Workflow récupéré:', workflowResult);
                     
                     let workflow = workflowResult;
                     if (workflowResult.success && workflowResult.data) {
@@ -1396,12 +1398,16 @@
                     // Mettre à jour le titre de l'éditeur
                     editorTitle.textContent = `Éditeur visuel: ${workflow.name}`;
                     
-                    // Stocker l'ID du workflow dans l'attribut data de la modal et dans une variable globale
+                    // CORRECTION: Stockage robuste de l'ID du workflow
+                    // 1. Stocker dans l'attribut data de la modal
                     editorModal.setAttribute('data-workflow-id', workflow.id);
-                    console.log('[DEBUG] ID du workflow défini dans la modal:', workflow.id);
-                    
-                    // Définir l'ID comme variable globale pour garantir sa disponibilité
+                    // 2. Définir l'ID comme variable globale pour garantir sa disponibilité
                     window.currentWorkflowId = workflow.id;
+                    // 3. Stocker dans sessionStorage pour persistance entre rechargements
+                    sessionStorage.setItem('currentWorkflowId', workflow.id);
+                    
+                    console.log('[WorkflowEditor] ID du workflow défini:', workflow.id);
+                    console.log('[WorkflowEditor] Variable globale window.currentWorkflowId:', window.currentWorkflowId);
                     
                     // Afficher la modal de l'éditeur visuel
                     editorModal.style.display = 'block';
@@ -1414,12 +1420,12 @@
                     
                     const editorContainer = document.getElementById('workflow-editor-container');
                     
-                    // Si un éditeur existe déjà, le supprimer
+                    // Si un éditeur existe déjà, le supprimer proprement
                     if (window.workflowEditor) {
                         try {
                             window.workflowEditor.destroy();
                         } catch (e) {
-                            console.warn('Erreur lors de la destruction de l\'éditeur:', e);
+                            console.warn('[WorkflowEditor] Erreur lors de la destruction de l\'éditeur:', e);
                         }
                     }
                     
