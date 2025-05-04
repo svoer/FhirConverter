@@ -396,10 +396,27 @@ async function initializeDatabase() {
     // Créer l'application par défaut si nécessaire
     if (defaultAppExists && defaultAppExists.count === 0) {
       console.log("[DB] Création de l'application par défaut...");
-      await dbService.run(
-        'INSERT INTO applications (name, description) VALUES (?, ?)',
-        ['Default', 'Application par défaut pour le développement']
-      );
+      try {
+        // Utiliser une requête SQL paramétrique pour éviter les problèmes de citation
+        await dbService.run(
+          'INSERT INTO applications (name, description) VALUES (?, ?)',
+          ['Default', 'Application par défaut pour le convertisseur HL7 v2.5 vers FHIR R4']
+        );
+        console.log("[DB] Application par défaut créée avec succès");
+      } catch (err) {
+        console.error("[DB] Erreur lors de la création de l'application par défaut:", err.message);
+        
+        // Tentative de correction pour les anciennes versions
+        try {
+          console.log("[DB] Tentative alternative de création d'application...");
+          await dbService.run(
+            "INSERT INTO applications (name, description) VALUES ('Default', 'Application par défaut')"
+          );
+          console.log("[DB] Application par défaut créée avec succès (méthode alternative)");
+        } catch (fallbackErr) {
+          console.error("[DB] Échec de la création d'application:", fallbackErr.message);
+        }
+      }
     }
     
     // Vérifier quelles colonnes sont disponibles dans la table api_keys
@@ -424,11 +441,28 @@ async function initializeDatabase() {
     if (devKeyExists && devKeyExists.count === 0) {
       console.log("[DB] Création de la clé API de développement...");
       
-      // Requête d'insertion adaptative selon la structure de la table
-      await dbService.run(
-        'INSERT INTO api_keys (application_id, key, name, environment) VALUES ((SELECT id FROM applications WHERE name = "Default"), ?, ?, ?)',
-        ['dev-key', 'Clé de développement', 'development']
-      );
+      try {
+        // D'abord, récupérer l'ID de l'application "Default"
+        const defaultApp = await dbService.get('SELECT id FROM applications WHERE name = ?', ['Default']);
+        
+        if (defaultApp && defaultApp.id) {
+          // Insérer la clé en utilisant l'ID récupéré
+          await dbService.run(
+            'INSERT INTO api_keys (application_id, key, name, environment) VALUES (?, ?, ?, ?)',
+            [defaultApp.id, 'dev-key', 'Clé de développement', 'development']
+          );
+          console.log("[DB] Clé API de développement créée avec succès");
+        } else {
+          // Méthode alternative si on ne peut pas récupérer l'ID
+          console.log("[DB] Tentative alternative de création de clé API...");
+          await dbService.run(
+            "INSERT INTO api_keys (application_id, key, name, environment) VALUES (1, 'dev-key', 'Clé de développement', 'development')"
+          );
+          console.log("[DB] Clé API de développement créée avec succès (méthode alternative)");
+        }
+      } catch (err) {
+        console.error("[DB] Erreur lors de la création de la clé API:", err.message);
+      }
     }
     
     console.log("[DB] Initialisation de la base de données terminée avec succès!");
