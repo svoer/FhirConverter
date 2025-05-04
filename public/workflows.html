@@ -1172,17 +1172,17 @@
                         });
                     });
                     
-                    document.querySelectorAll('.editor-btn').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const id = this.getAttribute('data-id');
-                            openWorkflowEditor(id);
-                        });
-                    });
-                    
                     document.querySelectorAll('.export-template-btn').forEach(btn => {
                         btn.addEventListener('click', function() {
                             const id = this.getAttribute('data-id');
                             exportWorkflowTemplate(id);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.editor-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            openWorkflowEditor(id);
                         });
                     });
                 } catch (error) {

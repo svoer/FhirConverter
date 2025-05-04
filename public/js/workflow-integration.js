@@ -172,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="margin-top: 15px; display: flex; gap: 10px;">
                     <button class="edit-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Modifier</button>
                     <button class="editor-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Éditeur</button>
+                    <button class="export-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Exporter</button>
                     <button class="delete-btn" data-id="${workflow.id}" style="background: #f1f1f1; border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-left: auto;">Supprimer</button>
                 </div>
             </div>
@@ -191,13 +192,15 @@ document.addEventListener('DOMContentLoaded', function() {
         card.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const action = this.className.split('-')[0]; // edit, editor, delete
+                const action = this.className.split('-')[0]; // edit, editor, export, delete
                 const workflowId = this.getAttribute('data-id');
                 
                 if (action === 'editor') {
                     openVisualEditor(workflowId);
                 } else if (action === 'edit') {
                     editWorkflow(workflowId);
+                } else if (action === 'export') {
+                    exportWorkflowTemplate(workflowId);
                 } else if (action === 'delete') {
                     deleteWorkflow(workflowId);
                 }
