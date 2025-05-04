@@ -163,26 +163,37 @@ class WorkflowEditor {
           }
           
           try {
-            // Ajouter le nœud et récupérer sa référence
-            const nodeElement = this.addNode(node.type, node.position);
+            // Préserver l'ID d'origine en ajoutant le nœud directement à this.nodes et au DOM
+            // Au lieu d'utiliser addNode() qui génère un nouvel ID
+            const nodeConfig = this.getNodeConfig(node.type);
             
-            // Copier les propriétés
-            if (nodeElement) {
-              nodeElement.id = node.id; // Préserver l'ID d'origine
-              nodeElement.label = node.label || nodeElement.label;
-              nodeElement.data = node.data || {};
-              
-              // Mise à jour visuelle du nœud
-              const domNode = document.getElementById(nodeElement.id);
-              if (domNode) {
-                const titleElement = domNode.querySelector('.node-title');
-                if (titleElement) {
-                  titleElement.textContent = nodeElement.label;
-                }
-              }
-              
-              console.log('[DEBUG] Nœud créé avec succès:', nodeElement.id, nodeElement.label);
-            }
+            // Créer le nœud avec son ID d'origine
+            const nodeData = {
+              id: node.id,  // Utiliser l'ID d'origine
+              type: node.type,
+              label: node.label || (nodeConfig ? nodeConfig.label : node.type),
+              position: node.position,
+              width: node.width || 180,
+              height: node.height || 100,
+              inputs: node.inputs || (nodeConfig ? nodeConfig.inputs : []),
+              outputs: node.outputs || (nodeConfig ? nodeConfig.outputs : []),
+              data: node.data || {}
+            };
+            
+            // Ajouter le nœud au tableau interne
+            this.nodes.push(nodeData);
+            
+            // Créer l'élément DOM directement
+            const nodeEl = this.createNodeElement(nodeData);
+            this.nodesLayer.appendChild(nodeEl);
+            
+            console.log('[DEBUG] Nœud restauré avec succès:', nodeData.id, nodeData.label);
+            
+            // Événement workflow modifié
+            this.emit('workflowChanged', {
+              nodes: this.nodes,
+              edges: this.edges
+            });
           } catch (nodeError) {
             console.error('[DEBUG] Erreur lors de la création du nœud:', nodeError);
           }
