@@ -831,4 +831,73 @@ router.get('/templates/:templateId', jwtAuth({ roles: ['admin', 'user'] }), asyn
   }
 });
 
+/**
+ * @swagger
+ * /api/workflows/{id}:
+ *   put:
+ *     summary: Mettre à jour un workflow existant
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du workflow à mettre à jour
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               is_active:
+ *                 type: boolean
+ *               flow_json:
+ *                 type: string
+ *               application_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Workflow mis à jour avec succès
+ *       400:
+ *         description: Requête invalide
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de workflow invalide' });
+    }
+    
+    // Vérifier si le workflow existe
+    const existingWorkflow = await workflowService.getWorkflowById(id);
+    if (!existingWorkflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
+    }
+    
+    // Mettre à jour le workflow
+    console.log(`[WORKFLOW] Mise à jour du workflow ${id}:`, req.body);
+    const updatedWorkflow = await workflowService.updateWorkflow(id, req.body);
+    
+    res.json(updatedWorkflow);
+  } catch (error) {
+    console.error(`[API] Erreur lors de la mise à jour du workflow ${req.params.id}:`, error);
+    res.status(500).json({ error: `Erreur lors de la mise à jour du workflow: ${error.message}` });
+  }
+});
+
 module.exports = router;
