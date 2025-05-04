@@ -1347,7 +1347,13 @@
                     }
                     
                     showNotification('Workflow supprimé avec succès', 'success');
-                    loadWorkflows(applicationFilter.value);
+                    
+                    // Utiliser la fonction appropriée pour recharger les workflows
+                    if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                        window.workflowIntegration.loadWorkflowsWithNewDesign(applicationFilter.value);
+                    } else {
+                        loadWorkflows(applicationFilter.value);
+                    }
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
@@ -1470,7 +1476,13 @@
                     
                     workflowModal.style.display = 'none';
                     showNotification('Workflow sauvegardé avec succès', 'success');
-                    loadWorkflows(applicationFilter.value);
+                    
+                    // Utiliser la fonction appropriée pour recharger les workflows
+                    if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                        window.workflowIntegration.loadWorkflowsWithNewDesign(applicationFilter.value);
+                    } else {
+                        loadWorkflows(applicationFilter.value);
+                    }
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
@@ -1479,7 +1491,12 @@
             
             // Filtrer les workflows par application
             applicationFilter.addEventListener('change', function() {
-                loadWorkflows(this.value);
+                // Utiliser la fonction appropriée pour recharger les workflows
+                if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                    window.workflowIntegration.loadWorkflowsWithNewDesign(this.value);
+                } else {
+                    loadWorkflows(this.value);
+                }
             });
             
             // Fonction d'affichage des notifications
