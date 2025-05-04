@@ -2741,56 +2741,78 @@ class WorkflowEditor {
    * Réinitialise la vue
    */
   resetView() {
-    // Sauvegarder l'échelle actuelle pour l'animation
-    const oldScale = this.scale;
-    
-    // Réinitialiser l'échelle à la valeur initiale
-    this.scale = this.options.initialScale;
-    
-    // Centre du canvas (2000,2000)
-    const centerX = 2000;
-    const centerY = 2000;
-    
-    // Animer le centrage et le zoom
-    // Si des nœuds existent, essayer de centrer sur eux plutôt que sur un point fixe
-    if (this.nodes.length > 0) {
-      // Calculer le centre des nœuds existants
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    try {
+      // Réinitialiser l'échelle à la valeur initiale
+      this.scale = this.options.initialScale;
       
-      this.nodes.forEach(node => {
-        minX = Math.min(minX, node.position.x);
-        maxX = Math.max(maxX, node.position.x + (node.width || 180));
-        minY = Math.min(minY, node.position.y);
-        maxY = Math.max(maxY, node.position.y + (node.height || 100));
-      });
-      
-      // Calculer le centre du groupe de nœuds
-      const centerNodesX = minX + (maxX - minX) / 2;
-      const centerNodesY = minY + (maxY - minY) / 2;
-      
-      console.log(`[Workflow] Réinitialisation de la vue centrée sur le groupe de nœuds (${centerNodesX}, ${centerNodesY})`);
-      
-      // Centrer sur le groupe de nœuds avec animation
-      this.centerCanvas({ x: centerNodesX, y: centerNodesY }, true);
-    } else {
-      // Pas de nœuds, centrer sur le milieu du canvas
-      console.log('[Workflow] Réinitialisation de la vue centrée sur le milieu du canvas');
-      this.centerCanvas(null, true);
+      // Si des nœuds existent, centrer sur eux
+      if (this.nodes.length > 0) {
+        // Calculer les limites du groupe de nœuds
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        
+        this.nodes.forEach(node => {
+          // Vérification défensive des valeurs
+          if (node && node.position && typeof node.position.x === 'number' && typeof node.position.y === 'number') {
+            const nodeWidth = (typeof node.width === 'number') ? node.width : 180;
+            const nodeHeight = (typeof node.height === 'number') ? node.height : 100;
+            
+            minX = Math.min(minX, node.position.x);
+            maxX = Math.max(maxX, node.position.x + nodeWidth);
+            minY = Math.min(minY, node.position.y);
+            maxY = Math.max(maxY, node.position.y + nodeHeight);
+          }
+        });
+        
+        // Vérifier que nous avons des valeurs valides
+        if (minX !== Infinity && maxX !== -Infinity && minY !== Infinity && maxY !== -Infinity) {
+          // Calculer le centre du groupe de nœuds
+          const centerNodesX = minX + (maxX - minX) / 2;
+          const centerNodesY = minY + (maxY - minY) / 2;
+          
+          console.log(`[Workflow] Vue réinitialisée sur les nœuds (${centerNodesX}, ${centerNodesY})`);
+          
+          // Centrer directement sans animation pour plus de stabilité
+          this.centerCanvas({ x: centerNodesX, y: centerNodesY }, false);
+        } else {
+          // Valeurs invalides, centrer sur le point par défaut
+          console.log('[Workflow] Vue réinitialisée au centre par défaut (valeurs invalides)');
+          this.centerCanvas(null, false);
+        }
+      } else {
+        // Pas de nœuds, centrer sur le milieu du canvas
+        console.log('[Workflow] Vue réinitialisée au centre par défaut (pas de nœuds)');
+        this.centerCanvas(null, false);
+      }
+    } catch (error) {
+      console.error('[Workflow] Erreur lors de la réinitialisation de la vue:', error);
+      // En cas d'erreur, réinitialiser aux valeurs par défaut
+      this.scale = 1;
+      this.offset = { x: 0, y: 0 };
+      this.updateTransform();
     }
-    
-    // Mettre à jour les arêtes (sera fait par centerCanvas)
   }
   
   /**
    * Met à jour la transformation du canvas
    */
   updateTransform() {
-    // Appliquer les transformations au canvas avec l'origine de transformation au centre
-    this.canvas.style.transformOrigin = '0 0';
-    this.canvas.style.transform = `translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`;
-    
-    // Debug limité pour éviter de surcharger la console
-    // console.log(`[Workflow] Transformation mise à jour: translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`);
+    try {
+      // Vérifier que les valeurs sont numériques et valides
+      const offsetX = isNaN(this.offset.x) ? 0 : this.offset.x;
+      const offsetY = isNaN(this.offset.y) ? 0 : this.offset.y;
+      const scale = isNaN(this.scale) ? 1 : this.scale;
+      
+      // Appliquer les transformations au canvas avec l'origine au point (0,0)
+      this.canvas.style.transformOrigin = '0 0';
+      
+      // Utiliser matrix3d pour une meilleure performance (évite les recalculs intermédiaires)
+      // Format: matrix3d(scaleX, 0, 0, 0, 0, scaleY, 0, 0, 0, 0, 1, 0, translateX, translateY, 0, 1)
+      this.canvas.style.transform = `matrix3d(${scale}, 0, 0, 0, 0, ${scale}, 0, 0, 0, 0, 1, 0, ${offsetX}, ${offsetY}, 0, 1)`;
+    } catch (error) {
+      console.error('[Workflow] Erreur lors de la mise à jour des transformations:', error);
+      // Réinitialiser en cas d'erreur
+      this.canvas.style.transform = 'none';
+    }
   }
   
   /**
