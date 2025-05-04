@@ -217,6 +217,30 @@ class WorkflowEditor {
   createNodePalette() {
     this.nodePalette = document.createElement('div');
     this.nodePalette.className = 'node-palette';
+    
+    // Amélioration du style de la palette
+    this.nodePalette.style.position = 'absolute';
+    this.nodePalette.style.top = '10px';
+    this.nodePalette.style.left = '10px';
+    this.nodePalette.style.width = '250px';
+    this.nodePalette.style.background = 'white';
+    this.nodePalette.style.borderRadius = '8px';
+    this.nodePalette.style.padding = '10px';
+    this.nodePalette.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.15)';
+    this.nodePalette.style.zIndex = '100';
+    this.nodePalette.style.maxHeight = 'calc(100% - 20px)';
+    this.nodePalette.style.overflowY = 'auto';
+    this.nodePalette.style.border = '1px solid #e0e0e0';
+    this.nodePalette.style.resize = 'both';
+    this.nodePalette.style.overflow = 'auto';
+    this.nodePalette.style.minWidth = '200px';
+    this.nodePalette.style.minHeight = '150px';
+    
+    // Ajouter un dégradé rouge-orange pour s'aligner avec le design FHIRHub
+    this.nodePalette.style.borderTop = '4px solid transparent';
+    this.nodePalette.style.borderImageSource = 'linear-gradient(to right, #e74c3c, #e67e22)';
+    this.nodePalette.style.borderImageSlice = '1';
+    
     this.container.appendChild(this.nodePalette);
     
     // Titre de la palette
@@ -227,27 +251,69 @@ class WorkflowEditor {
     // Rendre la palette déplaçable
     this.makeElementDraggable(this.nodePalette, paletteTitle);
     
-    // Catégories de noeuds
+    // Champ de recherche pour filtrer les nœuds
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'node-palette-search';
+    searchContainer.style.margin = '0 0 10px 0';
+    searchContainer.style.padding = '5px';
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Rechercher un nœud...';
+    searchInput.className = 'node-palette-search-input';
+    searchInput.style.width = '100%';
+    searchInput.style.padding = '6px 8px';
+    searchInput.style.border = '1px solid #ddd';
+    searchInput.style.borderRadius = '4px';
+    searchInput.style.fontSize = '13px';
+    
+    // Ajouter la fonctionnalité de recherche
+    searchInput.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      
+      // Récupérer tous les éléments de nœud dans la palette
+      const nodeItems = this.nodePalette.querySelectorAll('.node-palette-item');
+      const nodeCategories = this.nodePalette.querySelectorAll('.node-palette-category');
+      
+      // Parcourir tous les nœuds et filtrer
+      let foundNodesInCategory = new Map();
+      
+      nodeItems.forEach(nodeItem => {
+        const nodeLabel = nodeItem.querySelector('.node-palette-item-label').textContent.toLowerCase();
+        const nodeType = nodeItem.getAttribute('data-node-type').toLowerCase();
+        const matchesSearch = nodeLabel.includes(searchTerm) || nodeType.includes(searchTerm);
+        
+        // Afficher ou masquer en fonction de la recherche
+        nodeItem.style.display = matchesSearch ? 'flex' : 'none';
+        
+        // Si ce nœud correspond, marquer sa catégorie comme ayant des nœuds visibles
+        if (matchesSearch) {
+          const category = nodeItem.closest('.node-palette-category');
+          foundNodesInCategory.set(category, true);
+        }
+      });
+      
+      // Masquer les catégories qui n'ont pas de nœuds correspondants
+      nodeCategories.forEach(category => {
+        category.style.display = foundNodesInCategory.has(category) ? 'block' : 'none';
+      });
+    });
+    
+    searchContainer.appendChild(searchInput);
+    this.nodePalette.appendChild(searchContainer);
+    
+    // Catégories de noeuds avec meilleure organisation
     const categories = [
       {
-        name: 'Entrées',
+        name: '📥 Entrées/Sources',
         nodes: [
-          { type: 'hl7-input', label: 'Entrée HL7', icon: '📥' },
+          { type: 'hl7-input', label: 'Entrée HL7', icon: '📨' },
           { type: 'json-input', label: 'Entrée JSON', icon: '📄' },
           { type: 'file-input', label: 'Entrée fichier', icon: '📁' }
         ]
       },
       {
-        name: 'Traitement',
-        nodes: [
-          { type: 'segment-extractor', label: 'Extraire segment', icon: '🔍' },
-          { type: 'field-mapper', label: 'Mapper champs', icon: '🔀' },
-          { type: 'condition', label: 'Condition', icon: '⚙️' },
-          { type: 'transform', label: 'Transformer', icon: '🔄' }
-        ]
-      },
-      {
-        name: 'Conversion',
+        name: '🔄 Conversion',
         nodes: [
           { type: 'fhir-converter', label: 'Convertir FHIR', icon: '🔥' },
           { type: 'template', label: 'Template JSON', icon: '📝' },
@@ -255,11 +321,37 @@ class WorkflowEditor {
         ]
       },
       {
-        name: 'Sorties',
+        name: '⚙️ Traitement',
         nodes: [
-          { type: 'fhir-output', label: 'Sortie FHIR', icon: '📤' },
+          { type: 'field-mapper', label: 'Mapper champs', icon: '🔀' },
+          { type: 'segment-extractor', label: 'Extraire segment', icon: '✂️' },
+          { type: 'transform', label: 'Transformer', icon: '🔄' },
+          { type: 'condition', label: 'Condition', icon: '🔍' }
+        ]
+      },
+      {
+        name: '🔌 Intégration',
+        nodes: [
           { type: 'api-call', label: 'Appel API', icon: '🌐' },
+          { type: 'fhir-output', label: 'Sortie FHIR', icon: '📤' },
           { type: 'file-output', label: 'Sortie fichier', icon: '💾' }
+        ]
+      },
+      {
+        name: '🏥 Systèmes Santé',
+        nodes: [
+          { type: 'hl7-v3', label: 'HL7 v3', icon: '🏥' },
+          { type: 'dicom', label: 'DICOM', icon: '🔬' },
+          { type: 'sis', label: 'SIH', icon: '🏢' }
+        ]
+      },
+      {
+        name: '🌐 Connecteurs',
+        nodes: [
+          { type: 'soap', label: 'SOAP Client', icon: '🧼' },
+          { type: 'rest', label: 'REST Client', icon: '🔗' },
+          { type: 'sftp', label: 'SFTP', icon: '📡' },
+          { type: 'mllp', label: 'MLLP', icon: '📶' }
         ]
       }
     ];
@@ -271,6 +363,37 @@ class WorkflowEditor {
       
       const categoryTitle = document.createElement('h4');
       categoryTitle.textContent = category.name;
+      
+      // Ajouter un style pour mettre en évidence les catégories
+      categoryTitle.style.background = 'linear-gradient(to right, #f5f5f5, #ffffff)';
+      categoryTitle.style.padding = '8px 10px';
+      categoryTitle.style.borderLeft = '4px solid #e67e22';
+      categoryTitle.style.borderRadius = '4px';
+      categoryTitle.style.margin = '10px 0 8px 0';
+      categoryTitle.style.fontSize = '14px';
+      categoryTitle.style.fontWeight = 'bold';
+      categoryTitle.style.cursor = 'pointer';
+      
+      // Ajouter un événement pour replier/déplier la catégorie
+      categoryTitle.addEventListener('click', () => {
+        // Trouver tous les éléments de nœud dans cette catégorie
+        const nodeItems = categoryDiv.querySelectorAll('.node-palette-item');
+        
+        // Vérifier si la catégorie est repliée
+        const isCollapsed = categoryTitle.getAttribute('data-collapsed') === 'true';
+        
+        // Changer l'état
+        if (isCollapsed) {
+          nodeItems.forEach(item => item.style.display = 'flex');
+          categoryTitle.setAttribute('data-collapsed', 'false');
+          categoryTitle.style.opacity = '1';
+        } else {
+          nodeItems.forEach(item => item.style.display = 'none');
+          categoryTitle.setAttribute('data-collapsed', 'true');
+          categoryTitle.style.opacity = '0.7';
+        }
+      });
+      
       categoryDiv.appendChild(categoryTitle);
       
       // Créer les éléments de noeuds
@@ -279,13 +402,49 @@ class WorkflowEditor {
         nodeItem.className = 'node-palette-item';
         nodeItem.setAttribute('data-node-type', node.type);
         
+        // Style amélioré pour les éléments de la palette
+        nodeItem.style.display = 'flex';
+        nodeItem.style.alignItems = 'center';
+        nodeItem.style.padding = '8px 10px';
+        nodeItem.style.margin = '0 0 8px 0';
+        nodeItem.style.backgroundColor = '#f9f9f9';
+        nodeItem.style.border = '1px solid #eee';
+        nodeItem.style.borderRadius = '4px';
+        nodeItem.style.cursor = 'grab';
+        nodeItem.style.transition = 'all 0.2s';
+        nodeItem.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+        
+        // Effet hover
+        nodeItem.addEventListener('mouseenter', () => {
+          nodeItem.style.backgroundColor = '#f0f0f0';
+          nodeItem.style.transform = 'translateY(-2px)';
+          nodeItem.style.boxShadow = '0 3px 6px rgba(0,0,0,0.1)';
+          nodeItem.style.borderColor = '#ddd';
+        });
+        
+        nodeItem.addEventListener('mouseleave', () => {
+          nodeItem.style.backgroundColor = '#f9f9f9';
+          nodeItem.style.transform = 'translateY(0)';
+          nodeItem.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+          nodeItem.style.borderColor = '#eee';
+        });
+        
         const nodeIcon = document.createElement('div');
         nodeIcon.className = 'node-palette-item-icon';
         nodeIcon.textContent = node.icon;
+        nodeIcon.style.width = '24px';
+        nodeIcon.style.height = '24px';
+        nodeIcon.style.marginRight = '10px';
+        nodeIcon.style.display = 'flex';
+        nodeIcon.style.alignItems = 'center';
+        nodeIcon.style.justifyContent = 'center';
+        nodeIcon.style.fontSize = '16px';
         
         const nodeLabel = document.createElement('div');
         nodeLabel.className = 'node-palette-item-label';
         nodeLabel.textContent = node.label;
+        nodeLabel.style.fontSize = '13px';
+        nodeLabel.style.fontWeight = '500';
         
         nodeItem.appendChild(nodeIcon);
         nodeItem.appendChild(nodeLabel);
