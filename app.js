@@ -771,16 +771,34 @@ app.get('/api/stats', (req, res) => {
       const resourceCountCol = columns.includes('resource_count') ? 'resource_count' : 
                               (columns.includes('fhir_resource_count') ? 'fhir_resource_count' : 'NULL');
       
-      // Construire dynamiquement la requête SQL
-      const lastConversionQuery = `
-        SELECT ${processingTimeCol} as processing_time, ${resourceCountCol} as resource_count
-        FROM conversion_logs
-        WHERE ${processingTimeCol} > 0
-        ORDER BY timestamp DESC
-        LIMIT 1
-      `;
+      // Déterminer quelle colonne de date utiliser
+      const dateCol = columns.includes('timestamp') ? 'timestamp' : 
+                    (columns.includes('created_at') ? 'created_at' : 
+                     (columns.includes('date') ? 'date' : null));
       
-      lastConversion = db.prepare(lastConversionQuery).get();
+      if (dateCol) {
+        // Construire dynamiquement la requête SQL
+        const lastConversionQuery = `
+          SELECT ${processingTimeCol} as processing_time, ${resourceCountCol} as resource_count
+          FROM conversion_logs
+          WHERE ${processingTimeCol} > 0
+          ORDER BY ${dateCol} DESC
+          LIMIT 1
+        `;
+        
+        lastConversion = db.prepare(lastConversionQuery).get();
+      } else {
+        // Pas de colonne de date trouvée, prendre le dernier par ID
+        const lastConversionQuery = `
+          SELECT ${processingTimeCol} as processing_time, ${resourceCountCol} as resource_count
+          FROM conversion_logs
+          WHERE ${processingTimeCol} > 0
+          ORDER BY id DESC
+          LIMIT 1
+        `;
+        
+        lastConversion = db.prepare(lastConversionQuery).get();
+      }
     } catch (err) {
       console.warn('[STATS] Erreur lors de la récupération de la dernière conversion:', err.message);
     }
