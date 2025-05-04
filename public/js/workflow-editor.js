@@ -3331,7 +3331,29 @@ class WorkflowEditor {
    * @returns {Array} Tableau de champs de configuration
    */
   getNodeConfigFields(nodeType) {
-    // Configuration par défaut pour les différents types de nœuds
+    // Récupérer les propriétés du nœud depuis la configuration centralisée
+    const nodeConfig = this.getNodeConfig(nodeType);
+    
+    // Si la configuration contient des propriétés, les utiliser
+    if (nodeConfig && nodeConfig.properties && Array.isArray(nodeConfig.properties)) {
+      return nodeConfig.properties.map(prop => {
+        // Convertir les options de type select en format attendu par l'interface
+        if (prop.type === 'select' && Array.isArray(prop.options)) {
+          return {
+            ...prop,
+            options: prop.options.map(opt => {
+              if (typeof opt === 'string') {
+                return { value: opt, label: opt };
+              }
+              return opt;
+            })
+          };
+        }
+        return prop;
+      });
+    }
+    
+    // Configuration par défaut pour les différents types de nœuds (pour compatibilité rétroactive)
     const configs = {
       'hl7-input': [
         {
@@ -3561,6 +3583,7 @@ class WorkflowEditor {
       ]
     };
     
+    // Essayer d'abord la configuration centralisée, puis l'ancienne configuration, sinon retourner un tableau vide
     return configs[nodeType] || [];
   }
   
