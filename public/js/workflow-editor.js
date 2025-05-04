@@ -4143,6 +4143,119 @@ class WorkflowEditor {
   }
   
   /**
+   * Charge un template de workflow prédéfini
+   * @param {Object} templateData - Les données du template
+   */
+  loadTemplate(templateData) {
+    try {
+      this.showLoading(true);
+      
+      // Effacer les noeuds et arêtes existants
+      this.clearWorkflow();
+      
+      // Marquer le workflow comme nouveau (il faudra le sauvegarder)
+      this.workflowId = null; // Pas d'ID car c'est un nouveau workflow
+      this.workflowName = 'Nouveau workflow'; // Nom par défaut
+      this.workflowDescription = 'Créé à partir d\'un template'; // Description par défaut
+      
+      // Vérifier que nous avons des noeuds et des arêtes dans le template
+      if (!templateData.nodes || !Array.isArray(templateData.nodes)) {
+        throw new Error('Format de template invalide: nodes manquant ou invalide');
+      }
+      
+      if (templateData.nodes.length > 0) {
+        // Trouver le prochain ID à utiliser
+        const nodeIds = templateData.nodes.map(node => {
+          const idMatch = node.id.match(/node-(\d+)/);
+          return idMatch ? parseInt(idMatch[1]) : 0;
+        });
+        this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
+        
+        // Créer tous les noeuds
+        templateData.nodes.forEach(node => {
+          const nodeElement = this.addNode(node.type, node.position);
+          
+          // Copier les propriétés
+          nodeElement.label = node.label || nodeElement.label;
+          nodeElement.data = node.data || {};
+          
+          // Mettre à jour l'affichage du noeud
+          const domNode = document.getElementById(nodeElement.id);
+          if (domNode) {
+            domNode.querySelector('.node-title').textContent = nodeElement.label;
+          }
+        });
+      }
+      
+      // Créer les arêtes après un délai pour permettre au DOM de se mettre à jour
+      if (templateData.edges && Array.isArray(templateData.edges)) {
+        // Trouver le prochain ID à utiliser
+        const edgeIds = templateData.edges.map(edge => {
+          const idMatch = edge.id.match(/edge-(\d+)/);
+          return idMatch ? parseInt(idMatch[1]) : 0;
+        });
+        this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
+        
+        // Stockons les arêtes à créer
+        const edgesToCreate = [...templateData.edges];
+        
+        // Log d'information pour le débogage
+        console.log(`[Workflow] Création de ${edgesToCreate.length} arêtes à partir du template...`);
+        
+        // Fonction pour vérifier si tous les éléments DOM des nœuds sont prêts
+        const areNodesReady = () => {
+          const allNodesExist = this.nodes.every(node => {
+            const nodeElement = document.getElementById(node.id);
+            return !!nodeElement;
+          });
+          
+          return allNodesExist;
+        };
+        
+        // Fonction pour créer les arêtes
+        const createEdges = () => {
+          if (areNodesReady()) {
+            // Toutes les nœuds sont prêts, on peut créer les arêtes
+            edgesToCreate.forEach(edge => {
+              this.createEdge(edge.source, edge.target, edge.sourceOutput, edge.targetInput);
+            });
+            
+            // Log de confirmation
+            console.log('[Workflow] Toutes les arêtes créées à partir du template');
+            this.showLoading(false);
+            
+            // Notifier
+            this.showNotification('Template chargé avec succès', 'success');
+            
+            // Émettre l'événement de changement de workflow
+            this.emit('workflowChanged', { 
+              nodes: this.nodes, 
+              edges: this.edges 
+            });
+          } else {
+            // Les nœuds ne sont pas encore prêts, on réessaye après un délai
+            console.log('[Workflow] Nœuds pas encore prêts, attente...');
+            setTimeout(createEdges, 100);
+          }
+        };
+        
+        // Lancer la création des arêtes
+        setTimeout(createEdges, 100);
+      } else {
+        this.showLoading(false);
+      }
+      
+      // Centrer le workflow
+      this.centerWorkflow();
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement du template:', error);
+      this.showNotification('Erreur lors du chargement du template: ' + error.message, 'error');
+      this.showLoading(false);
+    }
+  }
+  
+  /**
    * Sauvegarde le workflow sur le serveur
    */
   async saveWorkflow() {

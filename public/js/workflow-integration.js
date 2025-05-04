@@ -91,11 +91,141 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Charger le workflow dans l'éditeur
         if (editor) {
-            editor.loadWorkflow(workflowId);
+            // Si c'est un nouveau workflow (workflowId commence par "new:"), 
+            // on ouvre la boîte de dialogue pour choisir un template
+            if (workflowId && workflowId.startsWith("new:")) {
+                openTemplateDialog();
+            } else {
+                editor.loadWorkflow(workflowId);
+            }
         } else {
             console.error('Éditeur non initialisé');
             showNotification('Erreur: Impossible d\'initialiser l\'éditeur', 'error');
         }
+    }
+    
+    /**
+     * Ouvre la boîte de dialogue pour choisir un template
+     */
+    function openTemplateDialog() {
+        const templateDialog = document.getElementById('template-dialog');
+        const templateListContainer = document.getElementById('template-list-container');
+        const templateCategoryList = document.getElementById('template-category-list');
+        const loadTemplateBtn = document.getElementById('load-template');
+        
+        // Référence au template sélectionné
+        let selectedTemplateId = null;
+        
+        // Variable pour suivre la catégorie actuelle
+        let currentCategory = 'all';
+        
+        // Fonction pour fermer la boîte de dialogue
+        function closeTemplateDialog() {
+            templateDialog.style.display = 'none';
+        }
+        
+        // Fonction pour charger les templates par catégorie
+        function loadTemplatesByCategory(category) {
+            currentCategory = category;
+            templateListContainer.innerHTML = '';
+            
+            const templates = getWorkflowTemplatesByCategory(category);
+            
+            templates.forEach(template => {
+                const templateItem = document.createElement('div');
+                templateItem.className = 'template-item';
+                templateItem.dataset.id = template.id;
+                
+                const previewImagePath = `/img/templates/${template.id}.svg`;
+                
+                // Vérifier si l'image existe, sinon utiliser l'image par défaut
+                fetch(previewImagePath)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Image non trouvée');
+                        }
+                        return previewImagePath;
+                    })
+                    .catch(() => {
+                        return '/img/templates/default-template.svg';
+                    })
+                    .then(imagePath => {
+                        templateItem.innerHTML = `
+                            <div class="template-preview">
+                                <img src="${imagePath}" alt="${template.name}">
+                            </div>
+                            <div class="template-info">
+                                <h4>${template.name}</h4>
+                                <span class="template-difficulty ${template.difficulty.toLowerCase()}">${template.difficulty}</span>
+                                <p>${template.description}</p>
+                            </div>
+                        `;
+                    });
+                
+                // Événement de clic pour sélectionner le template
+                templateItem.addEventListener('click', function() {
+                    // Supprimer la classe selected de tous les templates
+                    document.querySelectorAll('.template-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    
+                    // Ajouter la classe selected au template cliqué
+                    this.classList.add('selected');
+                    
+                    // Stocker l'ID du template sélectionné
+                    selectedTemplateId = this.dataset.id;
+                    
+                    // Activer le bouton "Charger le template"
+                    loadTemplateBtn.disabled = false;
+                });
+                
+                templateListContainer.appendChild(templateItem);
+            });
+        }
+        
+        // Configurer les événements pour les catégories
+        templateCategoryList.querySelectorAll('li').forEach(item => {
+            item.addEventListener('click', function() {
+                // Supprimer la classe active de tous les items
+                templateCategoryList.querySelectorAll('li').forEach(cat => {
+                    cat.classList.remove('active');
+                });
+                
+                // Ajouter la classe active à l'item cliqué
+                this.classList.add('active');
+                
+                // Charger les templates de la catégorie sélectionnée
+                const category = this.dataset.category;
+                loadTemplatesByCategory(category);
+            });
+        });
+        
+        // Événement pour le bouton de fermeture
+        document.getElementById('close-template-dialog').addEventListener('click', closeTemplateDialog);
+        
+        // Événement pour le bouton d'annulation
+        document.getElementById('cancel-template').addEventListener('click', closeTemplateDialog);
+        
+        // Événement pour le bouton de chargement du template
+        loadTemplateBtn.addEventListener('click', function() {
+            if (selectedTemplateId) {
+                const template = getWorkflowTemplateById(selectedTemplateId);
+                if (template && editor) {
+                    // Charger le template dans l'éditeur
+                    editor.loadTemplate(template.data);
+                    showNotification('Template chargé avec succès', 'success');
+                    closeTemplateDialog();
+                } else {
+                    showNotification('Erreur: Template non trouvé', 'error');
+                }
+            }
+        });
+        
+        // Charger les templates initiaux (tous)
+        loadTemplatesByCategory('all');
+        
+        // Afficher la boîte de dialogue
+        templateDialog.style.display = 'flex';
     }
     
     /**
