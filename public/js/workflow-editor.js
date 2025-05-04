@@ -4125,11 +4125,23 @@ class WorkflowEditor {
       // Charger les noeuds et arêtes
       let flowData;
       try {
-        flowData = typeof workflow.flow_json === 'string' 
-          ? JSON.parse(workflow.flow_json) 
-          : workflow.flow_json;
+        // Si flow_json est une chaîne, essayer de la parser
+        // Sinon, utiliser directement l'objet
+        if (typeof workflow.flow_json === 'string') {
+          try {
+            flowData = JSON.parse(workflow.flow_json);
+            console.log('[DEBUG] flow_json parsé depuis une chaîne:', flowData);
+          } catch (parseError) {
+            console.error('[DEBUG] Erreur de parsing du JSON:', parseError);
+            flowData = { nodes: [], edges: [] };
+          }
+        } else {
+          // Utiliser directement l'objet
+          flowData = workflow.flow_json;
+          console.log('[DEBUG] flow_json utilisé directement comme objet:', flowData);
+        }
       } catch (e) {
-        console.error('Erreur lors du parsing du JSON du workflow:', e);
+        console.error('Erreur lors du traitement du flow_json du workflow:', e);
         flowData = { nodes: [], edges: [] };
       }
       
@@ -4530,7 +4542,7 @@ class WorkflowEditor {
       const workflowData = {
         name: this.workflowName,
         description: this.workflowDescription,
-        flow_json: JSON.stringify(flowData)
+        flow_json: flowData  // Envoi direct de l'objet sans JSON.stringify pour éviter la double sérialisation
       };
       
       console.log('[DEBUG] Données du workflow à envoyer:', workflowData);

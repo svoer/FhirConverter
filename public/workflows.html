@@ -833,7 +833,7 @@
                 editorModal.style.display = 'none';
             });
             
-            saveWorkflowEditor.addEventListener('click', function() {
+            saveWorkflowEditor.addEventListener('click', async function() {
                 try {
                     console.log('[DEBUG] Clic sur le bouton de sauvegarde de l\'éditeur');
                     if (window.workflowEditor) {
@@ -865,7 +865,13 @@
                         }
                         
                         console.log('[DEBUG] Appel de la méthode saveWorkflow() de l\'éditeur');
-                        window.workflowEditor.saveWorkflow();
+                        
+                        // Sauvegarde du workflow de manière asynchrone
+                        // On attend la fin de la sauvegarde avec await pour être sûr que tout est bien enregistré
+                        await window.workflowEditor.saveWorkflow();
+                        
+                        // Une fois la sauvegarde terminée avec succès, on peut continuer
+                        console.log('[DEBUG] Sauvegarde terminée avec succès, on peut continuer');
                     } else {
                         console.error('[DEBUG] Éditeur de workflow non initialisé');
                         showNotification('Erreur: Éditeur de workflow non initialisé', 'error');
