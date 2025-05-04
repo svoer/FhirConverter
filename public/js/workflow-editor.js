@@ -1219,12 +1219,13 @@ class WorkflowEditor {
    */
   updateEdgePath(edge) {
     try {
-      // Fallback si l'arête n'a pas toutes les propriétés requises
+      // Validation de base des données d'arête
       if (!edge || !edge.source || !edge.target || typeof edge.sourceOutput === "undefined" || typeof edge.targetInput === "undefined") {
         console.warn("[Workflow] Arête mal formée:", edge);
         return;
       }
       
+      // Récupérer les données des nœuds directement en utilisant getNodeById
       const sourceNode = this.getNodeById(edge.source);
       const targetNode = this.getNodeById(edge.target);
       
@@ -1233,39 +1234,7 @@ class WorkflowEditor {
         return;
       }
       
-      const sourceElement = document.getElementById(sourceNode.id);
-      const targetElement = document.getElementById(targetNode.id);
-      
-      if (!sourceElement || !targetElement) {
-        console.warn("[Workflow] Éléments DOM non trouvés pour l'arête:", edge);
-        return;
-      }
-      
-      // Sélection plus robuste des éléments de port
-      const sourcePortSelector = `.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`;
-      const targetPortSelector = `.node-input[data-port-index="${edge.targetInput}"] .port-handle`;
-      
-      const sourcePort = sourceElement.querySelector(sourcePortSelector);
-      const targetPort = targetElement.querySelector(targetPortSelector);
-      
-      if (!sourcePort || !targetPort) {
-        console.warn("[Workflow] Ports non trouvés pour l'arête:", {
-          edge: edge,
-          sourceNode: sourceNode.id,
-          targetNode: targetNode.id,
-          sourceSelector: sourcePortSelector,
-          targetSelector: targetPortSelector
-        });
-        return;
-      }
-      
-      // Mettre à jour la classe "connected" pour les ports
-      sourcePort.classList.add("connected");
-      targetPort.classList.add("connected");
-      
-      // Calculer les positions relatives des ports dans le canvas
-      // En utilisant directement les positions des nœuds stockées dans les données plutôt que les bounding rects
-      
+      // Récupérer les positions des ports directement avec getPortPosition
       const sourcePortPosition = this.getPortPosition(sourceNode, true, edge.sourceOutput);
       const targetPortPosition = this.getPortPosition(targetNode, false, edge.targetInput);
       
@@ -1274,71 +1243,79 @@ class WorkflowEditor {
         return;
       }
       
-      // Amélioration des courbes avec un control distance plus adaptatif
+      // Marquer les ports visuellement comme connectés
+      const sourceElement = document.getElementById(sourceNode.id);
+      const targetElement = document.getElementById(targetNode.id);
+      
+      if (sourceElement && targetElement) {
+        const sourcePortSelector = `.node-output[data-port-index="${edge.sourceOutput}"] .port-handle`;
+        const targetPortSelector = `.node-input[data-port-index="${edge.targetInput}"] .port-handle`;
+        
+        const sourcePort = sourceElement.querySelector(sourcePortSelector);
+        const targetPort = targetElement.querySelector(targetPortSelector);
+        
+        if (sourcePort) sourcePort.classList.add("connected");
+        if (targetPort) targetPort.classList.add("connected");
+      }
+      
+      // Calcul optimisé de la courbe de Bézier
       const dx = Math.abs(targetPortPosition.x - sourcePortPosition.x);
       const dy = Math.abs(targetPortPosition.y - sourcePortPosition.y);
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      // Plus la distance est grande, plus la courbe sera prononcée
-      const controlDistance = Math.min(dx * 0.5, distance * 0.4);
+      // Ajustement adaptatif de la courbure en fonction de la distance
+      const controlDistance = Math.max(50, Math.min(dx * 0.5, distance * 0.4));
       
-      // Créer un chemin Bézier avec des points de contrôle qui assurent une courbure élégante
+      // Création du chemin SVG avec des points de contrôle optimaux
       const d = `M ${sourcePortPosition.x} ${sourcePortPosition.y} C ${sourcePortPosition.x + controlDistance} ${sourcePortPosition.y}, ${targetPortPosition.x - controlDistance} ${targetPortPosition.y}, ${targetPortPosition.x} ${targetPortPosition.y}`;
       
-      // Mettre à jour le chemin
-      const edgeElement = document.getElementById(edge.id);
+      // Récupérer ou créer l'élément DOM de l'arête
+      let edgeElement = document.getElementById(edge.id);
+      let path;
+      
       if (edgeElement) {
-        const path = edgeElement.querySelector("path");
+        path = edgeElement.querySelector("path");
         if (path) {
-          // Animer le tracé du chemin
-          // 1. Calculer la longueur du chemin pour l'animation
+          // Mettre à jour le chemin existant
           path.setAttribute("d", d);
           
-          // Calculer la longueur du chemin pour l'animation si pas déjà fait
-          if (!path.hasAttribute("data-length")) {
+          // Gérer l'animation selon l'état de l'arête
+          if (!path.hasAttribute("data-length") || edge.pathChanged) {
+            // Première initialisation ou changement significatif du chemin
             const length = path.getTotalLength();
-            path.setAttribute("stroke-dasharray", length);
-            path.setAttribute("stroke-dashoffset", length);
             path.setAttribute("data-length", length);
             
-            // Force un repaint avant de démarrer la transition
-            requestAnimationFrame(() => {
-              path.style.transition = "stroke-dashoffset 0.4s ease-out";
-              path.style.strokeDashoffset = "0";
-            });
-          } else if (edge.isAnimating) {
-            // Si l'arête est en cours d'animation et que le chemin change
-            const length = path.getTotalLength();
-            path.setAttribute("data-length", length);
-            path.setAttribute("stroke-dasharray", length);
-            // L'offset reste à 0 pour que l'arête reste visible
-          } else if (edge.isNew) {
-            // Nouvelle arête à animer
-            const length = path.getTotalLength();
-            path.setAttribute("data-length", length);
-            path.setAttribute("stroke-dasharray", length);
-            path.setAttribute("stroke-dashoffset", length);
-            
-            // Force un repaint avant de démarrer la transition
-            requestAnimationFrame(() => {
-              edge.isAnimating = true;
-              path.style.transition = "stroke-dashoffset 0.4s ease-out";
-              path.style.strokeDashoffset = "0";
+            if (edge.isNew) {
+              // Pour les nouvelles arêtes, configurer l'animation complète
+              path.setAttribute("stroke-dasharray", length);
+              path.setAttribute("stroke-dashoffset", length);
               
-              // Nettoyer les flags après l'animation
-              setTimeout(() => {
-                edge.isNew = false;
-                edge.isAnimating = false;
-              }, 400);
-            });
+              // Forcer un repaint avant d'animer pour éviter les problèmes de timing
+              requestAnimationFrame(() => {
+                edge.isAnimating = true;
+                path.style.transition = "stroke-dashoffset 0.4s ease-out";
+                path.style.strokeDashoffset = "0";
+                
+                // Nettoyer les flags après l'animation
+                setTimeout(() => {
+                  edge.isNew = false;
+                  edge.isAnimating = false;
+                  edge.pathChanged = false;
+                }, 400);
+              });
+            } else if (edge.isAnimating) {
+              // Si déjà en animation, mettre à jour les paramètres sans réinitialiser
+              path.setAttribute("stroke-dasharray", length);
+            } else {
+              // Pour les mises à jour normales (déplacement de nœud), transition plus subtile
+              path.setAttribute("stroke-dasharray", "none");
+              path.style.transition = "d 0.2s ease-out";
+            }
           }
-          
-          path.setAttribute("fill", "none");
-          path.style.pointerEvents = "auto";
         }
       } else {
-        // Si l'élément de l'arête n'existe pas, le créer
-        edge.isNew = true; // Marquer comme nouvelle arête pour l'animation
+        // Créer un nouvel élément d'arête si nécessaire
+        edge.isNew = true;
         this.createEdgeElement(edge);
       }
     } catch (err) {
@@ -1529,52 +1506,39 @@ class WorkflowEditor {
       return;
     }
     
-    const sourceNode = document.getElementById(this.sourceNodeId);
-    if (!sourceNode) {
-      return;
-    }
-    
-    // Sélectionner le port approprié en fonction de si nous commençons par une entrée ou une sortie
-    const portSelector = this.isInputPortSource 
-      ? `.node-input[data-port-index="${this.sourcePortIndex}"] .port-handle` 
-      : `.node-output[data-port-index="${this.sourcePortIndex}"] .port-handle`;
-    
-    const sourcePort = sourceNode.querySelector(portSelector);
-    if (!sourcePort) {
-      return;
-    }
-    
-    // Obtenir les données du nœud source
+    // 1. Utiliser directement getPortPosition pour le point de départ
     const sourceNodeData = this.getNodeById(this.sourceNodeId);
+    if (!sourceNodeData) {
+      return;
+    }
     
-    // Obtenir les rectangles de délimitation pour calculer des positions précises
-    const sourcePortRect = sourcePort.getBoundingClientRect();
-    const sourceNodeRect = sourceNode.getBoundingClientRect();
+    // Obtenir les coordonnées du port source dans le système de coordonnées du canvas
+    const start = this.getPortPosition(
+      sourceNodeData,
+      !this.isInputPortSource, // true si port de sortie, false si entrée
+      this.sourcePortIndex
+    );
     
-    // Calculer le centre du port par rapport à son nœud parent de manière cohérente
-    // avec la méthode getPortPosition
-    const portRelativeX = sourcePortRect.left - sourceNodeRect.left + (sourcePortRect.width / 2);
-    const portRelativeY = sourcePortRect.top - sourceNodeRect.top + (sourcePortRect.height / 2);
+    if (!start) {
+      console.warn("[Workflow] Impossible de déterminer la position du port source");
+      return;
+    }
     
-    const start = {
-      x: sourceNodeData.position.x + portRelativeX,
-      y: sourceNodeData.position.y + portRelativeY
-    };
-    
-    // Position de la souris dans les coordonnées du canvas
-    const canvasRect = this.canvas.getBoundingClientRect();
+    // 2. Convertir proprement les coordonnées de la souris en coordonnées canvas
+    const rect = this.canvas.getBoundingClientRect();
     const end = {
-      x: (e.clientX - canvasRect.left) / this.scale - this.offset.x / this.scale,
-      y: (e.clientY - canvasRect.top) / this.scale - this.offset.y / this.scale
+      x: (e.clientX - rect.left - this.offset.x) / this.scale,
+      y: (e.clientY - rect.top - this.offset.y) / this.scale
     };
     
-    // Calculer les points de contrôle pour une courbe de Bézier
+    // 3. Calculer une courbe de Bézier élégante
     const dx = Math.abs(end.x - start.x);
     const controlDistance = Math.min(dx * 0.5, 100);
     
+    // S'assurer que la chaîne reste sur une seule ligne pour éviter les problèmes de SVG
     const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
     
-    // Mettre à jour le chemin
+    // 4. Mettre à jour le chemin avec les attributs visuels
     const path = this.tempEdge.querySelector('path');
     if (path) {
       path.setAttribute('d', d);
