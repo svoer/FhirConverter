@@ -704,6 +704,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('workflow-grid')) {
         console.log('[WorkflowIntegration] Chargement initial des workflows');
         loadWorkflowsWithNewDesign();
+        
+        // Précharger la boîte de dialogue des templates pour éviter les problèmes d'initialisation
+        if (window.templateManager && typeof window.templateManager.preloadTemplateDialog === 'function') {
+            console.log('[WorkflowIntegration] Préchargement du gestionnaire de templates');
+            setTimeout(() => {
+                window.templateManager.preloadTemplateDialog();
+            }, 500); // Délai pour s'assurer que la page est bien chargée
+        } else {
+            console.log('[WorkflowIntegration] Le gestionnaire de templates n\'est pas disponible pour le préchargement');
+        }
     }
     
     // Gérer la recherche

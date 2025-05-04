@@ -35,74 +35,127 @@ window.templateManager = (function() {
 
     /**
      * Crée la boîte de dialogue de sélection des templates
+     * @returns {boolean} - Indique si la création a réussi
      */
     function createTemplateDialog() {
-        // Vérifier si la boîte de dialogue existe déjà
-        if (document.getElementById('template-dialog')) {
-            return;
-        }
-
-        // Créer la boîte de dialogue
-        templateDialog = document.createElement('div');
-        templateDialog.id = 'template-dialog';
-        templateDialog.className = 'template-dialog';
-        templateDialog.style.display = 'none';
-
-        // Structure de la boîte de dialogue
-        templateDialog.innerHTML = `
-            <div class="template-dialog-content">
-                <div class="template-dialog-header">
-                    <h3>Choisir un Template</h3>
-                    <button class="close-dialog" id="close-template-dialog">&times;</button>
-                </div>
-                <div class="template-dialog-body">
-                    <div class="template-filter">
-                        <div class="category-filter">
-                            <label>Catégorie:</label>
-                            <select id="template-category-filter">
-                                <option value="all">Toutes les catégories</option>
-                                <option value="conversion">Conversion HL7</option>
-                                <option value="integration">Intégration</option>
-                                <option value="validation">Validation</option>
-                                <option value="transformation">Transformation</option>
-                                <option value="notification">Notification</option>
-                            </select>
-                        </div>
-                        <div class="template-search">
-                            <input type="text" placeholder="Rechercher..." id="template-search">
-                            <i class="fas fa-search search-icon"></i>
-                        </div>
-                    </div>
-                    <div class="templates-container" id="templates-container">
-                        <div class="loading-templates">
-                            <div class="spinner"></div>
-                            <p>Chargement des templates...</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="template-dialog-footer">
-                    <button id="cancel-template-selection" class="button-ux2025 button-secondary">
-                        <span>Annuler</span>
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Ajouter la boîte de dialogue au document
-        document.body.appendChild(templateDialog);
-
-        // Attacher les événements
-        document.getElementById('close-template-dialog').addEventListener('click', closeTemplateDialog);
-        document.getElementById('cancel-template-selection').addEventListener('click', closeTemplateDialog);
-        document.getElementById('template-category-filter').addEventListener('change', filterTemplatesByCategory);
-        document.getElementById('template-search').addEventListener('input', searchTemplates);
-
-        // Fermer la boîte de dialogue en cliquant en dehors
-        templateDialog.addEventListener('click', function(event) {
-            if (event.target === templateDialog) {
-                closeTemplateDialog();
+        console.log('[TemplateManager] Tentative de création de la boîte de dialogue des templates');
+        
+        try {
+            // Vérifier si la boîte de dialogue existe déjà
+            const existingDialog = document.getElementById('template-dialog');
+            if (existingDialog) {
+                console.log('[TemplateManager] Boîte de dialogue existante trouvée');
+                templateDialog = existingDialog;
+                return true;
             }
-        });
+
+            console.log('[TemplateManager] Création d\'une nouvelle boîte de dialogue');
+            
+            // Créer la boîte de dialogue
+            templateDialog = document.createElement('div');
+            templateDialog.id = 'template-dialog';
+            templateDialog.className = 'template-dialog';
+            templateDialog.style.display = 'none';
+
+            // Structure de la boîte de dialogue
+            templateDialog.innerHTML = `
+                <div class="template-dialog-content">
+                    <div class="template-dialog-header">
+                        <h3>Choisir un Template</h3>
+                        <button class="close-dialog" id="close-template-dialog">&times;</button>
+                    </div>
+                    <div class="template-dialog-body">
+                        <div class="template-filter">
+                            <div class="category-filter">
+                                <label>Catégorie:</label>
+                                <select id="template-category-filter">
+                                    <option value="all">Toutes les catégories</option>
+                                    <option value="conversion">Conversion HL7</option>
+                                    <option value="integration">Intégration</option>
+                                    <option value="validation">Validation</option>
+                                    <option value="transformation">Transformation</option>
+                                    <option value="notification">Notification</option>
+                                </select>
+                            </div>
+                            <div class="template-search">
+                                <input type="text" placeholder="Rechercher..." id="template-search">
+                                <i class="fas fa-search search-icon"></i>
+                            </div>
+                        </div>
+                        <div class="templates-container" id="templates-container">
+                            <div class="loading-templates">
+                                <div class="spinner"></div>
+                                <p>Chargement des templates...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="template-dialog-footer">
+                        <button id="cancel-template-selection" class="button-ux2025 button-secondary">
+                            <span>Annuler</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Ajouter la boîte de dialogue au document
+            document.body.appendChild(templateDialog);
+            
+            console.log('[TemplateManager] Élément de boîte de dialogue ajouté au DOM');
+
+            // Attacher les événements
+            setTimeout(() => {
+                try {
+                    console.log('[TemplateManager] Attachement des gestionnaires d\'événements');
+                    
+                    const closeButton = document.getElementById('close-template-dialog');
+                    const cancelButton = document.getElementById('cancel-template-selection');
+                    const categoryFilter = document.getElementById('template-category-filter');
+                    const searchInput = document.getElementById('template-search');
+                    
+                    if (closeButton) {
+                        closeButton.addEventListener('click', closeTemplateDialog);
+                    } else {
+                        console.error('[TemplateManager] Bouton de fermeture non trouvé');
+                    }
+                    
+                    if (cancelButton) {
+                        cancelButton.addEventListener('click', closeTemplateDialog);
+                    } else {
+                        console.error('[TemplateManager] Bouton d\'annulation non trouvé');
+                    }
+                    
+                    if (categoryFilter) {
+                        categoryFilter.addEventListener('change', filterTemplatesByCategory);
+                    } else {
+                        console.error('[TemplateManager] Filtre de catégorie non trouvé');
+                    }
+                    
+                    if (searchInput) {
+                        searchInput.addEventListener('input', searchTemplates);
+                    } else {
+                        console.error('[TemplateManager] Champ de recherche non trouvé');
+                    }
+
+                    // Fermer la boîte de dialogue en cliquant en dehors
+                    templateDialog.addEventListener('click', function(event) {
+                        if (event.target === templateDialog) {
+                            closeTemplateDialog();
+                        }
+                    });
+                    
+                    console.log('[TemplateManager] Boîte de dialogue créée avec succès');
+                    return true;
+                } catch (error) {
+                    console.error('[TemplateManager] Erreur lors de l\'attachement des événements:', error);
+                    return false;
+                }
+            }, 50); // Petit délai pour s'assurer que le DOM est mis à jour
+            
+            return true;
+        } catch (error) {
+            console.error('[TemplateManager] Erreur lors de la création de la boîte de dialogue:', error);
+            return false;
+        }
     }
 
     /**
@@ -659,9 +712,22 @@ window.templateManager = (function() {
         }, 50);
     }
 
+    // Créer une fonction permettant de précharger la boîte de dialogue
+    // (à utiliser lors du chargement initial de la page)
+    function preloadTemplateDialog() {
+        console.log('[TemplateManager] Préchargement de la boîte de dialogue des templates');
+        // Créer la boîte de dialogue en arrière-plan
+        if (createTemplateDialog()) {
+            console.log('[TemplateManager] Boîte de dialogue préchargée avec succès');
+            return true;
+        }
+        return false;
+    }
+    
     // Exposer les fonctions publiques
     return {
         initialize,
-        openTemplateDialog
+        openTemplateDialog,
+        preloadTemplateDialog
     };
 })();
