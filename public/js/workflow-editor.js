@@ -4837,11 +4837,13 @@ class WorkflowEditor {
     // Animation d'entrée
     setTimeout(() => {
       notification.classList.add('show');
+      notification.classList.add('visible');
     }, 10);
     
     // Supprimer après un délai
     setTimeout(() => {
       notification.classList.remove('show');
+      notification.classList.remove('visible');
       setTimeout(() => {
         notification.remove();
       }, 300);
@@ -4857,77 +4859,163 @@ class WorkflowEditor {
     console.log('[WorkflowEditor] Chargement d\'un template:', templateData);
     
     try {
-      // Vérifier que les données du template sont valides
-      if (!templateData || !templateData.nodes || !Array.isArray(templateData.nodes)) {
-        console.error('[WorkflowEditor] Données de template invalides');
-        this.showNotification('Erreur: Format de template invalide', 'error');
-        return;
+      // Vérifier que les données sont au bon format
+      let flowData = templateData;
+      
+      // Si c'est une chaîne, tenter de la parser
+      if (typeof templateData === 'string') {
+        flowData = JSON.parse(templateData);
       }
       
-      // Supprimer tous les nœuds existants
-      this.clearEditor();
+      // Vider l'éditeur actuel
+      this.clearAllNodes();
       
-      // Pour chaque nœud dans le template
-      const nodeMap = new Map(); // Pour suivre les ids d'origine et les nouveaux ids
-      
-      // Étape 1: Créer tous les nœuds
-      templateData.nodes.forEach(nodeTemplate => {
-        try {
-          // Créer le nœud avec sa position et son type
-          const newNode = this.addNode(
-            nodeTemplate.type, 
-            nodeTemplate.position || { x: 200, y: 200 },
-            nodeTemplate.data || {}
-          );
-          
-          // Mettre à jour le libellé si spécifié
-          if (nodeTemplate.label) {
-            const nodeElement = document.getElementById(newNode.id);
-            if (nodeElement) {
-              const labelElement = nodeElement.querySelector('.node-label');
-              if (labelElement) labelElement.textContent = nodeTemplate.label;
-              newNode.label = nodeTemplate.label;
+      // Plusieurs formats possibles
+      // 1. Tableau d'objets {type: 'node'} ou {type: 'edge'}
+      if (Array.isArray(flowData)) {
+        console.log('[WorkflowEditor] Chargement du format tableau');
+        // Première passe: charger tous les noeuds
+        const nodeMap = new Map();
+        
+        // Compter les noeuds
+        const nodeCount = flowData.filter(item => item.type === 'node').length;
+        console.log(`[WorkflowEditor] ${nodeCount} noeuds à créer`);
+        
+        // Créer les noeuds
+        flowData.forEach(item => {
+          if (item.type === 'node') {
+            try {
+              // Créer le noeud
+              const nodeType = item.nodeType || 'default';
+              const position = item.position || { x: 100, y: 100 };
+              const data = item.data || {};
+              
+              console.log(`[WorkflowEditor] Création du noeud ${nodeType} à la position (${position.x}, ${position.y})`);
+              
+              const newNode = this.addNode(nodeType, position, data);
+              
+              // Mémoriser pour la seconde passe
+              nodeMap.set(item.id, newNode.id);
+              console.log(`[WorkflowEditor] Noeud créé avec succès: ${item.id} -> ${newNode.id}`);
+            } catch (error) {
+              console.error(`[WorkflowEditor] Erreur lors de la création du noeud ${item.nodeType}:`, error);
             }
-          }
-          
-          // Enregistrer la correspondance des IDs
-          nodeMap.set(nodeTemplate.id, newNode.id);
-        } catch (error) {
-          console.error(`[WorkflowEditor] Erreur lors de l'ajout du nœud ${nodeTemplate.type}:`, error);
-        }
-      });
-      
-      // Étape 2: Créer toutes les connexions
-      if (templateData.edges && Array.isArray(templateData.edges)) {
-        templateData.edges.forEach(edgeTemplate => {
-          try {
-            // Obtenir les nouveaux IDs
-            const sourceId = nodeMap.get(edgeTemplate.source);
-            const targetId = nodeMap.get(edgeTemplate.target);
-            
-            if (sourceId && targetId) {
-              // Créer la connexion
-              this.createConnection(
-                sourceId, 
-                targetId, 
-                edgeTemplate.sourceOutput || 0, 
-                edgeTemplate.targetInput || 0
-              );
-            }
-          } catch (error) {
-            console.error('[WorkflowEditor] Erreur lors de la création de la connexion:', error);
           }
         });
+        
+        // Deuxième passe: créer les liens
+        const edgeCount = flowData.filter(item => item.type === 'edge').length;
+        console.log(`[WorkflowEditor] ${edgeCount} liens à créer`);
+        
+        setTimeout(() => {
+          flowData.forEach(item => {
+            if (item.type === 'edge') {
+              try {
+                // Récupérer les IDs des noeuds
+                const sourceId = nodeMap.get(item.source);
+                const targetId = nodeMap.get(item.target);
+                
+                if (sourceId && targetId) {
+                  // Créer le lien
+                  console.log(`[WorkflowEditor] Création d'un lien de ${sourceId} à ${targetId}`);
+                  this.createEdge(
+                    sourceId,
+                    targetId,
+                    item.sourceHandle || 0,
+                    item.targetHandle || 0
+                  );
+                } else {
+                  console.warn(`[WorkflowEditor] Impossible de créer le lien: source=${sourceId}, target=${targetId}`);
+                }
+              } catch (error) {
+                console.error('[WorkflowEditor] Erreur lors de la création du lien:', error);
+              }
+            }
+          });
+          
+          // Centrer la vue sur le graph
+          this.centerGraph();
+          
+          console.log('[WorkflowEditor] Template chargé avec succès');
+          this.showNotification('Template chargé avec succès', 'success');
+        }, 500); // Délai pour s'assurer que les noeuds sont bien rendus
+        
+        return true;
+      } 
+      // 2. Objet avec propriétés nodes et edges
+      else if (flowData.nodes && Array.isArray(flowData.nodes)) {
+        console.log('[WorkflowEditor] Chargement du format objet');
+        // Créer une carte pour suivre les correspondances d'ID
+        const nodeMap = new Map();
+        
+        // Première passe: créer tous les nœuds
+        console.log(`[WorkflowEditor] ${flowData.nodes.length} noeuds à créer`);
+        
+        flowData.nodes.forEach(nodeTemplate => {
+          try {
+            // Créer le nœud avec sa position et son type
+            const nodeType = nodeTemplate.type || 'default';
+            const position = nodeTemplate.position || { x: 200, y: 200 };
+            const data = nodeTemplate.data || {};
+            
+            console.log(`[WorkflowEditor] Création du noeud ${nodeType} à la position (${position.x}, ${position.y})`);
+            
+            const newNode = this.addNode(nodeType, position, data);
+            
+            // Enregistrer la correspondance des IDs
+            nodeMap.set(nodeTemplate.id, newNode.id);
+            console.log(`[WorkflowEditor] Noeud créé avec succès: ${nodeTemplate.id} -> ${newNode.id}`);
+          } catch (error) {
+            console.error(`[WorkflowEditor] Erreur lors de l'ajout du nœud ${nodeTemplate.type}:`, error);
+          }
+        });
+        
+        // Deuxième passe: créer les connexions
+        if (flowData.edges && Array.isArray(flowData.edges)) {
+          console.log(`[WorkflowEditor] ${flowData.edges.length} liens à créer`);
+          
+          setTimeout(() => {
+            flowData.edges.forEach(edgeTemplate => {
+              try {
+                // Obtenir les nouveaux IDs
+                const sourceId = nodeMap.get(edgeTemplate.source);
+                const targetId = nodeMap.get(edgeTemplate.target);
+                
+                if (sourceId && targetId) {
+                  // Créer la connexion
+                  console.log(`[WorkflowEditor] Création d'un lien de ${sourceId} à ${targetId}`);
+                  this.createEdge(
+                    sourceId, 
+                    targetId, 
+                    edgeTemplate.sourceOutput || 0, 
+                    edgeTemplate.targetInput || 0
+                  );
+                } else {
+                  console.warn(`[WorkflowEditor] Impossible de créer le lien: source=${sourceId}, target=${targetId}`);
+                }
+              } catch (error) {
+                console.error('[WorkflowEditor] Erreur lors de la création de la connexion:', error);
+              }
+            });
+            
+            // Centrer le workflow
+            this.centerGraph();
+            
+            console.log('[WorkflowEditor] Template chargé avec succès');
+            this.showNotification('Template chargé avec succès', 'success');
+          }, 500); // Délai pour s'assurer que les noeuds sont bien rendus
+        }
+        
+        return true;
+      } else {
+        console.error('[WorkflowEditor] Format de template invalide:', flowData);
+        this.showNotification('Format de template invalide', 'error');
+        return false;
       }
-      
-      // Centrer le workflow chargé
-      this.centerWorkflow();
-      
-      // Message de succès
-      this.showNotification('Template chargé avec succès', 'success');
     } catch (error) {
       console.error('[WorkflowEditor] Erreur lors du chargement du template:', error);
-      this.showNotification('Erreur lors du chargement du template', 'error');
+      this.showNotification('Erreur lors du chargement du template: ' + error.message, 'error');
+      return false;
     }
   }
 }

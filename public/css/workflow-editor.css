@@ -1150,7 +1150,7 @@ select.property-input {
     border-left: 4px solid #2196f3;
 }
 
-.workflow-notification.show {
+.workflow-notification.show, .workflow-notification.visible {
     opacity: 1;
     transform: translateY(0);
 }
