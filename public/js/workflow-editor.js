@@ -4253,7 +4253,18 @@ class WorkflowEditor {
           if (areNodesReady()) {
             // Toutes les nœuds sont prêts, on peut créer les arêtes
             edgesToCreate.forEach(edge => {
-              this.createEdge(edge.source, edge.target, edge.sourceOutput, edge.targetInput);
+              try {
+                // Vérifier si les indices de sourceOutput et targetInput sont des nombres
+                const sourceOutputIndex = typeof edge.sourceOutput === 'number' ? edge.sourceOutput : 0;
+                const targetInputIndex = typeof edge.targetInput === 'number' ? edge.targetInput : 0;
+                
+                // Créer l'arête avec des valeurs par défaut si nécessaire
+                this.createEdge(edge.source, edge.target, sourceOutputIndex, targetInputIndex);
+                
+                console.log(`[Workflow] Arête créée: ${edge.source} -> ${edge.target}`);
+              } catch (err) {
+                console.error(`[Workflow] Erreur lors de la création de l'arête: ${err.message}`);
+              }
             });
             
             // Log de confirmation
