@@ -1367,8 +1367,12 @@
                     // Mettre à jour le titre de l'éditeur
                     editorTitle.textContent = `Éditeur visuel: ${workflow.name}`;
                     
-                    // Stocker l'ID du workflow dans l'attribut data de la modal
+                    // Stocker l'ID du workflow dans l'attribut data de la modal et dans une variable globale
                     editorModal.setAttribute('data-workflow-id', workflow.id);
+                    console.log('[DEBUG] ID du workflow défini dans la modal:', workflow.id);
+                    
+                    // Définir l'ID comme variable globale pour garantir sa disponibilité
+                    window.currentWorkflowId = workflow.id;
                     
                     // Afficher la modal de l'éditeur visuel
                     editorModal.style.display = 'block';
