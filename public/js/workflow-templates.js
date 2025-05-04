@@ -833,8 +833,14 @@ window.templateManager = (function() {
         }
         
         try {
+            // Vérifier que le template a les propriétés requises
+            if (!template.nodes || !template.edges) {
+                console.error('[TemplateManager] Le template ne contient pas les propriétés nodes/edges requises');
+                throw new Error('Format de template invalide');
+            }
+            
             // Charger le template dans l'éditeur
-            workflowEditor.loadTemplate(template.flow);
+            workflowEditor.loadTemplate(template);
             
             // Fermer la boîte de dialogue
             closeTemplateDialog();
