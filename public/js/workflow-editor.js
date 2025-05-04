@@ -1128,9 +1128,127 @@ class WorkflowEditor {
   }
   
   /**
-   * Sélectionne un noeud
-   * @param {string} nodeId - ID du noeud à sélectionner
+   * Met à jour l'aperçu de la sélection pendant le déplacement de la souris
+   * @param {Object} rect - Rectangle de sélection {left, top, width, height}
    */
+  updateSelectionPreview(rect) {
+    // Remettre à zéro les sélections visuelles temporaires
+    this.nodes.forEach(node => {
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.classList.remove('multi-selected');
+      }
+    });
+    
+    // Appliquer une prévisualisation aux noeuds qui seront sélectionnés
+    this.nodes.forEach(node => {
+      if (this.isNodeInSelectionRect(node, rect)) {
+        const nodeElement = document.getElementById(node.id);
+        if (nodeElement) {
+          nodeElement.classList.add('multi-selected');
+        }
+      }
+    });
+  }
+  
+  /**
+   * Vérifie si un noeud est dans le rectangle de sélection
+   * @param {Object} node - Noeud à vérifier
+   * @param {Object} rect - Rectangle de sélection {left, top, width, height}
+   * @returns {boolean} Vrai si le noeud est dans le rectangle
+   */
+  isNodeInSelectionRect(node, rect) {
+    // Si le noeud n'est pas valide, il n'est pas dans la sélection
+    if (!node || !node.position) return false;
+    
+    // Calculer les coordonnées du noeud
+    const nodeLeft = node.position.x;
+    const nodeTop = node.position.y;
+    const nodeWidth = 180; // Largeur par défaut, à améliorer en récupérant la taille réelle
+    const nodeHeight = 100; // Hauteur par défaut, à améliorer en récupérant la taille réelle
+    const nodeRight = nodeLeft + nodeWidth;
+    const nodeBottom = nodeTop + nodeHeight;
+    
+    // Calculer les coordonnées du rectangle de sélection
+    const rectRight = rect.left + rect.width;
+    const rectBottom = rect.top + rect.height;
+    
+    // Vérifier si le noeud est entièrement contenu dans le rectangle
+    return (
+      nodeLeft >= rect.left &&
+      nodeTop >= rect.top &&
+      nodeRight <= rectRight &&
+      nodeBottom <= rectBottom
+    );
+  }
+  
+  /**
+   * Finalise la sélection multiple
+   */
+  finalizeSelection() {
+    if (!this.selectionRect) return;
+    
+    // Récupérer les dimensions du rectangle de sélection
+    const rect = {
+      left: parseFloat(this.selectionRect.style.left),
+      top: parseFloat(this.selectionRect.style.top),
+      width: parseFloat(this.selectionRect.style.width),
+      height: parseFloat(this.selectionRect.style.height)
+    };
+    
+    // Supprimer le rectangle de sélection
+    this.selectionRect.remove();
+    this.selectionRect = null;
+    
+    // Collecter les noeuds sélectionnés
+    this.selectedNodes = this.nodes.filter(node => this.isNodeInSelectionRect(node, rect));
+    
+    // Mettre à jour visuellement les nœuds sélectionnés
+    this.nodes.forEach(node => {
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.classList.remove('multi-selected');
+      }
+    });
+    
+    // Si des nœuds sont sélectionnés, appliquer la classe multi-selected
+    if (this.selectedNodes.length > 0) {
+      this.selectedNodes.forEach(node => {
+        const nodeElement = document.getElementById(node.id);
+        if (nodeElement) {
+          nodeElement.classList.add('multi-selected');
+        }
+      });
+      
+      console.log(`[Workflow] ${this.selectedNodes.length} nœuds sélectionnés`);
+    } else {
+      console.log(`[Workflow] Aucun nœud sélectionné`);
+    }
+  }
+    
+  /**
+   * Désélectionne tous les noeuds
+   */
+  deselectAllNodes() {
+    if (this.selectedNodeId) {
+      const prevNode = document.getElementById(this.selectedNodeId);
+      if (prevNode) {
+        prevNode.classList.remove('selected');
+      }
+      this.selectedNodeId = null;
+    }
+    
+    // Désélectionner tous les nœuds en sélection multiple
+    this.selectedNodes.forEach(node => {
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.classList.remove('multi-selected');
+      }
+    });
+    
+    this.selectedNodes = [];
+  }
+  
   selectNode(nodeId) {
     // Désélectionner le noeud précédemment sélectionné
     if (this.selectedNodeId) {
@@ -1148,6 +1266,15 @@ class WorkflowEditor {
       }
       this.selectedEdgeId = null;
     }
+    
+    // Désélectionner tous les nœuds en sélection multiple
+    this.selectedNodes.forEach(node => {
+      const nodeElement = document.getElementById(node.id);
+      if (nodeElement) {
+        nodeElement.classList.remove('multi-selected');
+      }
+    });
+    this.selectedNodes = [];
     
     // Sélectionner le nouveau noeud
     this.selectedNodeId = nodeId;
