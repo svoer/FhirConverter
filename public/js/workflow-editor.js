@@ -4431,19 +4431,30 @@ class WorkflowEditor {
   async saveWorkflow() {
     // Vérifier à partir de plusieurs sources
     if (!this.workflowId) {
-      console.log('[DEBUG] WorkflowId non défini dans l\'instance, recherche alternative...');
+      console.log('[DEBUG] WorkflowId non défini dans l\'instance, recherche alternative en utilisant toutes les sources disponibles...');
       
-      // 1. Essayer de récupérer depuis les options d'initialisation
-      if (this.options && this.options.workflowId) {
+      // 1. Essayer de récupérer depuis la propriété statique de l'éditeur
+      if (this.staticWorkflowId) {
+        console.log('[DEBUG] ID du workflow récupéré depuis la propriété statique de l\'éditeur:', this.staticWorkflowId);
+        this.workflowId = this.staticWorkflowId;
+      }
+      // 2. Essayer de récupérer depuis le champ caché dans le DOM
+      else if (document.getElementById('current-workflow-id-field')) {
+        const hiddenFieldValue = document.getElementById('current-workflow-id-field').value;
+        console.log('[DEBUG] ID du workflow récupéré depuis le champ caché:', hiddenFieldValue);
+        this.workflowId = hiddenFieldValue;
+      }
+      // 3. Essayer de récupérer depuis les options d'initialisation
+      else if (this.options && this.options.workflowId) {
         console.log('[DEBUG] ID du workflow récupéré depuis les options d\'initialisation:', this.options.workflowId);
         this.workflowId = this.options.workflowId;
       }
-      // 2. Essayer de récupérer depuis la variable globale window.currentWorkflowId
+      // 4. Essayer de récupérer depuis la variable globale window.currentWorkflowId
       else if (window.currentWorkflowId) {
         console.log('[DEBUG] ID du workflow récupéré depuis window.currentWorkflowId:', window.currentWorkflowId);
         this.workflowId = window.currentWorkflowId;
       } 
-      // 3. Essayer de récupérer depuis l'attribut data-workflow-id de la modal
+      // 5. Essayer de récupérer depuis l'attribut data-workflow-id de la modal
       else if (document.getElementById('editor-modal') && document.getElementById('editor-modal').getAttribute('data-workflow-id')) {
         const editorModal = document.getElementById('editor-modal');
         const modalWorkflowId = editorModal.getAttribute('data-workflow-id');
@@ -4451,13 +4462,19 @@ class WorkflowEditor {
         console.log('[DEBUG] ID du workflow récupéré depuis data-workflow-id de la modal:', modalWorkflowId);
         this.workflowId = modalWorkflowId;
       }
-      // 4. Essayer de récupérer depuis sessionStorage (ajouté comme source supplémentaire)
+      // 6. Essayer de récupérer directement depuis la propriété de la modal
+      else if (document.getElementById('editor-modal') && document.getElementById('editor-modal').workflowId) {
+        const editorModal = document.getElementById('editor-modal');
+        console.log('[DEBUG] ID du workflow récupéré depuis la propriété workflowId de la modal:', editorModal.workflowId);
+        this.workflowId = editorModal.workflowId;
+      }
+      // 7. Essayer de récupérer depuis sessionStorage
       else if (sessionStorage.getItem('currentWorkflowId')) {
         const storedId = sessionStorage.getItem('currentWorkflowId');
         console.log('[DEBUG] ID du workflow récupéré depuis sessionStorage:', storedId);
         this.workflowId = storedId;
       }
-      // 5. Essayer de récupérer depuis l'URL (si présent)
+      // 8. Essayer de récupérer depuis l'URL
       else if (window.location.search) {
         const urlParams = new URLSearchParams(window.location.search);
         const urlWorkflowId = urlParams.get('editWorkflow');
@@ -4467,21 +4484,30 @@ class WorkflowEditor {
           this.workflowId = urlWorkflowId;
         }
       }
-      // 6. Échec - impossible de récupérer l'ID du workflow
+      // 9. Échec - impossible de récupérer l'ID du workflow après vérification de toutes les sources
       else {
         this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
         console.error('[DEBUG] Aucun ID de workflow trouvé dans aucune source');
         
-        // Afficher l'état actuel pour diagnostic
-        console.log('[DEBUG] État actuel - Modal editor-modal:', document.getElementById('editor-modal'));
+        // Diagnostic complet de toutes les sources possibles
+        console.log('[DEBUG] === DIAGNOSTIC COMPLET DES SOURCES D\'ID ===');
+        console.log('[DEBUG] this.workflowId:', this.workflowId);
+        console.log('[DEBUG] this.staticWorkflowId:', this.staticWorkflowId);
+        console.log('[DEBUG] Champ caché:', document.getElementById('current-workflow-id-field') ? document.getElementById('current-workflow-id-field').value : 'Non trouvé');
+        console.log('[DEBUG] this.options.workflowId:', this.options ? this.options.workflowId : 'Options non définies');
+        console.log('[DEBUG] window.currentWorkflowId:', window.currentWorkflowId);
+        
         const editorModal = document.getElementById('editor-modal');
         if (editorModal) {
-          console.log('[DEBUG] Attributs de la modal:', editorModal.attributes);
-          console.log('[DEBUG] data-workflow-id:', editorModal.getAttribute('data-workflow-id'));
+          console.log('[DEBUG] Modal data-workflow-id:', editorModal.getAttribute('data-workflow-id'));
+          console.log('[DEBUG] Modal propriété workflowId:', editorModal.workflowId);
+        } else {
+          console.log('[DEBUG] Modal non trouvée');
         }
-        console.log('[DEBUG] window.currentWorkflowId:', window.currentWorkflowId);
-        console.log('[DEBUG] sessionStorage:', sessionStorage.getItem('currentWorkflowId'));
-        console.log('[DEBUG] Options:', this.options);
+        
+        console.log('[DEBUG] sessionStorage - currentWorkflowId:', sessionStorage.getItem('currentWorkflowId'));
+        console.log('[DEBUG] URL params:', window.location.search);
+        console.log('[DEBUG] ========================================');
         
         return;
       }
