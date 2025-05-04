@@ -4426,6 +4426,7 @@ class WorkflowEditor {
     
     try {
       this.showLoading(true);
+      console.log('[DEBUG] Début de la sauvegarde du workflow ID:', this.workflowId);
       
       // Préparer les données du workflow
       const flowData = {
@@ -4433,51 +4434,88 @@ class WorkflowEditor {
         edges: this.edges
       };
       
+      console.log('[DEBUG] Structure du workflow à sauvegarder:', 
+                 'Noeuds:', this.nodes.length, 
+                 'Arêtes:', this.edges.length);
+      
       const workflowData = {
         name: this.workflowName,
         description: this.workflowDescription,
         flow_json: JSON.stringify(flowData)
       };
       
+      console.log('[DEBUG] Données du workflow à envoyer:', workflowData);
+      
       // Obtenir le token d'authentification selon la méthode disponible
       let token = null;
       if (typeof getToken === 'function') {
         token = getToken(); // Fonction définie dans workflows.html
+        console.log('[DEBUG] Token obtenu via getToken()', token ? 'Présent' : 'Absent');
       } else if (window.FHIRHubAuth && typeof window.FHIRHubAuth.getAuthToken === 'function') {
         token = window.FHIRHubAuth.getAuthToken(); // Fonction globale du système d'auth
+        console.log('[DEBUG] Token obtenu via FHIRHubAuth', token ? 'Présent' : 'Absent');
       } else if (localStorage.getItem('token')) {
         token = localStorage.getItem('token'); // Accès direct au localStorage
+        console.log('[DEBUG] Token obtenu via localStorage', token ? 'Présent' : 'Absent');
+      } else {
+        console.log('[DEBUG] Aucun token disponible');
       }
       
       // Envoyer les données au serveur
-      const response = await fetch(`/api/workflows/${this.workflowId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'X-API-KEY': 'dev-key'
-        },
-        body: JSON.stringify(workflowData)
-      });
+      console.log('[DEBUG] Envoi de la requête PUT à:', `/api/workflows/${this.workflowId}`);
       
-      if (!response.ok) {
-        let errorMessage = 'Erreur lors de la sauvegarde du workflow';
-        try {
-          // Tenter de lire le message d'erreur du serveur
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          console.error('Détails de l\'erreur:', errorData);
-        } catch (parseError) {
-          console.error('Impossible de lire les détails de l\'erreur', parseError);
-        }
-        throw new Error(errorMessage);
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': 'dev-key'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
       
-      this.showNotification('Workflow sauvegardé avec succès', 'success');
-      this.emit('workflowSaved', flowData);
+      console.log('[DEBUG] Headers de la requête:', headers);
+      
+      try {
+        const response = await fetch(`/api/workflows/${this.workflowId}`, {
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify(workflowData)
+        });
+        
+        console.log('[DEBUG] Status de la réponse:', response.status, response.statusText);
+        
+        const responseText = await response.text();
+        console.log('[DEBUG] Réponse brute:', responseText);
+        
+        if (!response.ok) {
+          let errorMessage = 'Erreur lors de la sauvegarde du workflow';
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+            console.error('[DEBUG] Détails de l\'erreur:', errorData);
+          } catch (parseError) {
+            console.error('[DEBUG] Impossible de parser la réponse JSON:', parseError);
+          }
+          throw new Error(errorMessage);
+        }
+        
+        try {
+          const responseData = JSON.parse(responseText);
+          console.log('[DEBUG] Données de réponse parsées:', responseData);
+        } catch (parseError) {
+          console.log('[DEBUG] La réponse n\'est pas au format JSON');
+        }
+        
+        this.showNotification('Workflow sauvegardé avec succès', 'success');
+        this.emit('workflowSaved', flowData);
+      } catch (fetchError) {
+        console.error('[DEBUG] Erreur réseau lors de la sauvegarde:', fetchError);
+        throw fetchError;
+      }
+      
       this.showLoading(false);
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde du workflow:', error);
+      console.error('[DEBUG] Erreur globale lors de la sauvegarde du workflow:', error);
       this.showNotification(`Erreur: ${error.message}`, 'error');
       this.showLoading(false);
     }
