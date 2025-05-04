@@ -1460,27 +1460,70 @@
                     let parsedData;
                     
                     try {
+                        // Initialiser un flux vide par défaut
+                        parsedData = { nodes: [], edges: [] };
+                        
                         // Si flow_json est une chaîne, essayer de la parser
                         if (typeof workflow.flow_json === 'string' && workflow.flow_json.trim() !== '') {
-                            parsedData = JSON.parse(workflow.flow_json);
-                            
-                            // S'assurer que la structure contient nodes et edges
-                            if (!parsedData.nodes) parsedData.nodes = [];
-                            if (!parsedData.edges) parsedData.edges = [];
+                            try {
+                                let tempData = JSON.parse(workflow.flow_json);
+                                
+                                // S'assurer que la structure contient nodes et edges
+                                if (!tempData.nodes) tempData.nodes = [];
+                                if (!tempData.edges) tempData.edges = [];
+                                
+                                // Filtrer les nœuds de type "unknown" qui causent des problèmes
+                                if (Array.isArray(tempData.nodes)) {
+                                    const unknownNodes = tempData.nodes.filter(n => n.type === 'unknown').length;
+                                    if (unknownNodes > 0) {
+                                        console.log(`[WorkflowEditor] Suppression de ${unknownNodes} nœuds problématiques de type 'unknown'`);
+                                    }
+                                    
+                                    // Transformer les positions extrêmes
+                                    tempData.nodes.forEach(node => {
+                                        if (node && node.position) {
+                                            if (node.position.x > 2000 || node.position.y > 2000) {
+                                                node.position.x = 300 + Math.random() * 300;
+                                                node.position.y = 200 + Math.random() * 200;
+                                                console.log(`[WorkflowEditor] Positions normalisées pour le nœud ${node.id}`);
+                                            }
+                                        }
+                                    });
+                                    
+                                    // Ne conserver que les nœuds avec un type valide différent de "unknown"
+                                    tempData.nodes = tempData.nodes.filter(n => n.type && n.type !== 'unknown');
+                                }
+                                
+                                // N'utiliser les données que si elles sont valides
+                                if (tempData.nodes.length > 0 || tempData.edges.length > 0) {
+                                    parsedData = tempData;
+                                    console.log(`[WorkflowEditor] Données valides chargées: ${tempData.nodes.length} nœuds, ${tempData.edges.length} arêtes`);
+                                } else {
+                                    console.log('[WorkflowEditor] Aucun nœud valide trouvé, création d\'un workflow vide');
+                                }
+                            } catch (parseError) {
+                                console.error('[WorkflowEditor] Erreur lors du parsing JSON:', parseError);
+                            }
                         } else if (typeof workflow.flow_json === 'object') {
-                            // Si c'est déjà un objet, l'utiliser directement
-                            parsedData = workflow.flow_json;
+                            // Si c'est déjà un objet, l'utiliser directement mais filtrer
+                            let tempData = workflow.flow_json;
                             
                             // S'assurer que la structure contient nodes et edges
-                            if (!parsedData.nodes) parsedData.nodes = [];
-                            if (!parsedData.edges) parsedData.edges = [];
-                        } else {
-                            // Sinon, créer un objet vide mais structuré
-                            parsedData = { nodes: [], edges: [] };
+                            if (!tempData.nodes) tempData.nodes = [];
+                            if (!tempData.edges) tempData.edges = [];
+                            
+                            // Filtrer les nœuds problématiques
+                            if (Array.isArray(tempData.nodes)) {
+                                tempData.nodes = tempData.nodes.filter(n => n.type && n.type !== 'unknown');
+                            }
+                            
+                            parsedData = tempData;
                         }
+                        
+                        console.log('[WorkflowEditor] Données préparées pour l\'éditeur:', parsedData);
                     } catch (e) {
-                        console.error('[WorkflowEditor] Erreur de parsing JSON:', e);
-                        // En cas d'erreur, créer un objet vide mais structuré
+                        console.error('[WorkflowEditor] Erreur globale lors du traitement des données:', e);
+                        // En cas d'erreur, garantir un objet vide mais structuré
                         parsedData = { nodes: [], edges: [] };
                     }
                     
@@ -1560,8 +1603,57 @@
                     
                     let flowJson;
                     try {
-                        flowJson = JSON.parse(jsonEditor.getValue());
+                        // Récupérer et parser le JSON
+                        let rawJson = JSON.parse(jsonEditor.getValue());
+                        
+                        // S'assurer qu'il a la structure correcte
+                        if (!rawJson.nodes) rawJson.nodes = [];
+                        if (!rawJson.edges) rawJson.edges = [];
+                        
+                        // Nettoyer les nœuds problématiques
+                        if (Array.isArray(rawJson.nodes)) {
+                            const countBefore = rawJson.nodes.length;
+                            
+                            // Filtrer les nœuds de type unknown
+                            rawJson.nodes = rawJson.nodes.filter(node => {
+                                return node && node.type && node.type !== 'unknown';
+                            });
+                            
+                            const countAfter = rawJson.nodes.length;
+                            if (countBefore !== countAfter) {
+                                console.log(`[WorkflowEditor] Nettoyage: ${countBefore - countAfter} nœuds problématiques supprimés avant sauvegarde`);
+                            }
+                            
+                            // Normaliser les positions extrêmes
+                            rawJson.nodes.forEach(node => {
+                                if (node && node.position) {
+                                    if (node.position.x > 2000 || node.position.y > 2000) {
+                                        node.position.x = 300 + Math.random() * 300;
+                                        node.position.y = 200 + Math.random() * 200;
+                                        console.log(`[WorkflowEditor] Position normalisée pour le nœud ${node.id}`);
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // S'assurer que les arêtes font référence à des nœuds existants
+                        if (Array.isArray(rawJson.edges)) {
+                            const nodeIds = new Set(rawJson.nodes.map(n => n.id));
+                            
+                            const edgesBefore = rawJson.edges.length;
+                            rawJson.edges = rawJson.edges.filter(edge => {
+                                return edge && edge.source && edge.target && 
+                                       nodeIds.has(edge.source) && nodeIds.has(edge.target);
+                            });
+                            
+                            if (edgesBefore !== rawJson.edges.length) {
+                                console.log(`[WorkflowEditor] ${edgesBefore - rawJson.edges.length} arêtes invalides supprimées`);
+                            }
+                        }
+                        
+                        flowJson = rawJson;
                     } catch (e) {
+                        console.error('[WorkflowEditor] Erreur lors du parsing/nettoyage du JSON:', e);
                         showNotification('JSON invalide', 'error');
                         return;
                     }

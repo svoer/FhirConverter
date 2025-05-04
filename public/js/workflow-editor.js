@@ -136,16 +136,37 @@ class WorkflowEditor {
       if (!flowData.nodes) flowData.nodes = [];
       if (!flowData.edges) flowData.edges = [];
       
+      // Filtrer les nœuds de type "unknown" qui causent des problèmes
+      if (Array.isArray(flowData.nodes)) {
+        // Vérifier s'il y a des nœuds "unknown"
+        const unknownNodes = flowData.nodes.filter(n => n.type === 'unknown').length;
+        if (unknownNodes > 0) {
+          console.log(`[DEBUG] Détection de ${unknownNodes} nœuds problématiques de type 'unknown'`);
+          
+          // Afficher un message d'avertissement
+          this.showNotification(
+            `Attention: ${unknownNodes} nœuds de type 'unknown' ont été détectés et seront ignorés pour éviter des problèmes. 
+            Utilisez la palette pour ajouter des nœuds de types appropriés.`,
+            'warning'
+          );
+          
+          // Filtrer les nœuds problématiques
+          flowData.nodes = flowData.nodes.filter(node => node.type !== 'unknown');
+          console.log(`[DEBUG] Nœuds après filtrage: ${flowData.nodes.length}`);
+        }
+      }
+      
       // Normaliser les positions des nœuds s'ils sont hors champ
       flowData.nodes.forEach(node => {
         if (node && node.position) {
-          // Vérifier si les positions sont extrêmes (> 5000)
-          if (node.position.x > 5000 || node.position.y > 5000) {
+          // Vérifier si les positions sont extrêmes (> 1000)
+          if (node.position.x > 1000 || node.position.y > 1000 || 
+              node.position.x < 0 || node.position.y < 0) {
             console.log(`[DEBUG] Normalisation des positions extrêmes du nœud ${node.id}: (${node.position.x}, ${node.position.y})`);
             
             // Ramener à des coordonnées plus raisonnables
-            node.position.x = 500 + (Math.random() * 200 - 100); // 400-600
-            node.position.y = 300 + (Math.random() * 200 - 100); // 200-400
+            node.position.x = 300 + (Math.random() * 200); // 300-500
+            node.position.y = 200 + (Math.random() * 200); // 200-400
             
             console.log(`[DEBUG] Nouvelles positions: (${node.position.x}, ${node.position.y})`);
           }
