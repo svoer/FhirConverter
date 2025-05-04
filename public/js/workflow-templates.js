@@ -833,14 +833,14 @@ window.templateManager = (function() {
         }
         
         try {
-            // Vérifier que le template a les propriétés requises
-            if (!template.nodes || !template.edges) {
-                console.error('[TemplateManager] Le template ne contient pas les propriétés nodes/edges requises');
+            // Vérifier que le template a un flux défini
+            if (!template.flow || !template.flow.nodes || !template.flow.edges) {
+                console.error('[TemplateManager] Le template ne contient pas de flux valide:', template);
                 throw new Error('Format de template invalide');
             }
             
             // Charger le template dans l'éditeur
-            workflowEditor.loadTemplate(template);
+            workflowEditor.loadTemplate(template.flow);
             
             // Fermer la boîte de dialogue
             closeTemplateDialog();
