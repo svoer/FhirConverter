@@ -97,6 +97,8 @@
     background-color: #ffffff; /* Arrière-plan blanc uniforme */
     border: none; /* Aucune bordure */
     outline: none; /* Aucun contour */
+    box-shadow: none; /* Aucune ombre */
+    transition: none; /* Suppression de toute transition pour éviter les artefacts visuels */
 }
 
 .workflow-editor-container {
@@ -107,6 +109,9 @@
     color: #333;
     font-family: 'Roboto', sans-serif;
     border: none;
+    outline: none;
+    box-shadow: none;
+    background-color: #ffffff; /* Fond blanc uniforme pour assurer la continuité */
 }
 
 /* Canva principal où les noeuds sont placés - Agrandi pour créer l'effet infini */
@@ -124,6 +129,9 @@
     outline: none; /* Aucun contour */
     box-shadow: none; /* Aucune ombre */
     transition: none; /* Suppression de toute transition pour éviter les artefacts visuels */
+    /* Ajout de masquage pour éviter la ligne de séparation */
+    -webkit-mask-image: none;
+    mask-image: none;
 }
 
 /* Palette de noeuds avec style neutre */
