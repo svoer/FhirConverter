@@ -296,90 +296,151 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser au chargement de la page
     attachWorkflowCardEvents();
     
-    // Réattacher les événements après un changement de la liste des workflows
-    // (par exemple après un filtre ou un rechargement)
-    if (window.loadWorkflows) {
-        const originalLoadWorkflows = window.loadWorkflows;
-        window.loadWorkflows = function(...args) {
-            originalLoadWorkflows.apply(this, args).then(() => {
-                attachWorkflowCardEvents();
-            });
-        };
-    }
+    // Variable pour garder la trace du dernier appel à loadWorkflowsWithNewDesign
+    let loadWorkflowsCounter = 0;
     
     /**
      * Charge et affiche les workflows avec le nouveau design
      * @param {string} applicationId - ID de l'application pour filtrer (ou 'all' pour toutes)
+     * @returns {Promise<Array>} - Les workflows chargés
      */
     async function loadWorkflowsWithNewDesign(applicationId = 'all') {
+        // Incrémenter le compteur d'appels
+        const currentCallId = ++loadWorkflowsCounter;
+        
+        // Ajouter un log pour déboguer
+        console.log(`[WorkflowIntegration] Appel #${currentCallId} à loadWorkflowsWithNewDesign(${applicationId})`);
+        const stackTrace = new Error().stack;
+        console.log(`[WorkflowIntegration] Trace d'appel: ${stackTrace}`);
+        
         try {
             const workflowGrid = document.getElementById('workflow-grid');
             const loadingSpinner = document.getElementById('loading-spinner');
             
-            if (workflowGrid && loadingSpinner) {
-                workflowGrid.innerHTML = '';
-                loadingSpinner.style.display = 'block';
-                
-                let url = '/api/workflows';
-                if (applicationId !== 'all') {
-                    url = `/api/workflows/application/${applicationId}`;
-                }
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'Authorization': `Bearer ${getToken()}`,
-                        'X-API-KEY': 'dev-key'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Erreur lors du chargement des workflows');
-                }
-                
-                const result = await response.json();
-                console.log('Workflows chargés:', result);
-                
-                loadingSpinner.style.display = 'none';
-                
-                // Vérifier que la réponse contient les données attendues
-                let workflows = [];
-                if (result.success && result.data) {
-                    workflows = result.data;
-                } else if (Array.isArray(result)) {
-                    workflows = result;
-                } else {
-                    console.warn('Format de réponse inattendu pour les workflows:', result);
-                }
-                
-                if (workflows.length === 0) {
-                    workflowGrid.innerHTML = '<p class="no-workflows">Aucun workflow trouvé.</p>';
-                    return;
-                }
-                
-                // Supprimer les doublons en utilisant un Map avec l'ID comme clé
-                const uniqueWorkflows = new Map();
-                workflows.forEach(workflow => {
-                    uniqueWorkflows.set(workflow.id, workflow);
-                });
-                
-                // Utiliser le nouveau format de carte pour chaque workflow unique
-                uniqueWorkflows.forEach(workflow => {
-                    const card = createWorkflowCard(workflow);
-                    workflowGrid.appendChild(card);
-                });
+            if (!workflowGrid || !loadingSpinner) {
+                console.warn('[WorkflowIntegration] Éléments DOM manquants pour l\'affichage des workflows');
+                return [];
             }
+            
+            // Vérifier si cet appel est toujours le plus récent
+            if (currentCallId !== loadWorkflowsCounter) {
+                console.log(`[WorkflowIntegration] Abandon de l'appel #${currentCallId}, un appel plus récent #${loadWorkflowsCounter} existe`);
+                return []; // Ne pas continuer si un appel plus récent a été fait
+            }
+            
+            // Vider la grille et afficher le spinner
+            workflowGrid.innerHTML = '';
+            loadingSpinner.style.display = 'block';
+            
+            // Construire l'URL
+            let url = '/api/workflows';
+            if (applicationId !== 'all') {
+                url = `/api/workflows/application/${applicationId}`;
+            }
+            
+            // Faire la requête
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    'X-API-KEY': 'dev-key'
+                }
+            });
+            
+            // Vérifier à nouveau si cet appel est toujours le plus récent
+            if (currentCallId !== loadWorkflowsCounter) {
+                console.log(`[WorkflowIntegration] Abandon de l'appel #${currentCallId} après requête`);
+                return []; // Ne pas continuer si un appel plus récent a été fait
+            }
+            
+            if (!response.ok) {
+                throw new Error('Erreur lors du chargement des workflows');
+            }
+            
+            const result = await response.json();
+            console.log(`[WorkflowIntegration] Workflows chargés (appel #${currentCallId}):`, result);
+            
+            // Vérifier à nouveau si cet appel est toujours le plus récent
+            if (currentCallId !== loadWorkflowsCounter) {
+                console.log(`[WorkflowIntegration] Abandon de l'appel #${currentCallId} après réception des données`);
+                return []; 
+            }
+            
+            loadingSpinner.style.display = 'none';
+            
+            // Vérifier que la réponse contient les données attendues
+            let workflows = [];
+            if (result.success && result.data) {
+                workflows = result.data;
+            } else if (Array.isArray(result)) {
+                workflows = result;
+            } else {
+                console.warn('[WorkflowIntegration] Format de réponse inattendu pour les workflows:', result);
+            }
+            
+            if (workflows.length === 0) {
+                workflowGrid.innerHTML = '<p class="no-workflows">Aucun workflow trouvé.</p>';
+                return [];
+            }
+            
+            // Supprimer les doublons en utilisant un Map avec l'ID comme clé
+            const uniqueWorkflows = new Map();
+            workflows.forEach(workflow => {
+                uniqueWorkflows.set(workflow.id, workflow);
+            });
+            
+            // Vérifier une dernière fois si cet appel est toujours le plus récent
+            if (currentCallId !== loadWorkflowsCounter) {
+                console.log(`[WorkflowIntegration] Abandon de l'appel #${currentCallId} avant affichage`);
+                return Array.from(uniqueWorkflows.values()); 
+            }
+            
+            // Utiliser le nouveau format de carte pour chaque workflow unique
+            uniqueWorkflows.forEach(workflow => {
+                const card = createWorkflowCard(workflow);
+                workflowGrid.appendChild(card);
+            });
+            
+            // Attacher les événements aux nouvelles cartes
+            attachWorkflowCardEvents();
+            
+            return Array.from(uniqueWorkflows.values());
         } catch (error) {
-            console.error('Erreur:', error);
+            console.error('[WorkflowIntegration] Erreur:', error);
             const loadingSpinner = document.getElementById('loading-spinner');
             if (loadingSpinner) {
                 loadingSpinner.style.display = 'none';
             }
-            showNotification('Erreur: ' + error.message, 'error');
+            
+            // Afficher l'erreur seulement si c'est le dernier appel
+            if (currentCallId === loadWorkflowsCounter) {
+                const workflowGrid = document.getElementById('workflow-grid');
+                if (workflowGrid) {
+                    workflowGrid.innerHTML = `<p class="error-message">Erreur: ${error.message}</p>`;
+                }
+                showNotification('Erreur: ' + error.message, 'error');
+            }
+            
+            return [];
         }
     }
     
+    // Remplacer la fonction loadWorkflows originale pour éviter les appels en double
+    if (window.loadWorkflows) {
+        console.log('[WorkflowIntegration] Remplacement de la fonction loadWorkflows originale');
+        window.loadWorkflows = function(applicationId = 'all') {
+            console.log('[WorkflowIntegration] Redirection de loadWorkflows vers loadWorkflowsWithNewDesign');
+            return loadWorkflowsWithNewDesign(applicationId);
+        };
+    } else {
+        window.loadWorkflows = loadWorkflowsWithNewDesign;
+    }
+    
     // Initialiser le chargement des workflows au démarrage
-    loadWorkflowsWithNewDesign();
+    // Mais uniquement si nous sommes sur la page des workflows
+    if (document.getElementById('workflow-grid')) {
+        console.log('[WorkflowIntegration] Chargement initial des workflows');
+        loadWorkflowsWithNewDesign();
+    }
     
     // Gérer la recherche
     const searchInput = document.getElementById('workflow-search');

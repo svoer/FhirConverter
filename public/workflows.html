@@ -721,7 +721,14 @@
                     });
                     
                     // Appeler loadWorkflows une seule fois à la fin de loadApplications
-                    loadWorkflows('all');
+                    // Vérifier si workflowIntegration est déjà chargé
+                    if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                        console.log('[Workflows] Appel de loadWorkflowsWithNewDesign depuis loadApplications');
+                        window.workflowIntegration.loadWorkflowsWithNewDesign('all');
+                    } else {
+                        console.log('[Workflows] Appel de loadWorkflows depuis loadApplications');
+                        loadWorkflows('all');
+                    }
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
@@ -731,8 +738,14 @@
             // Variable pour garder une trace du dernier appel à loadWorkflows
             let workflowLoadCounter = 0;
             
-            // Chargement des workflows
+            // Chargement des workflows - avec gestion des appels multiples
             async function loadWorkflows(applicationId = 'all') {
+                // Si la fonction loadWorkflows est redéfinie dans workflow-integration.js, l'utiliser
+                if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                    console.log(`[Workflows] Délégation à workflowIntegration.loadWorkflowsWithNewDesign`);
+                    return window.workflowIntegration.loadWorkflowsWithNewDesign(applicationId);
+                }
+                
                 // Incrémenter le compteur pour garder trace de l'appel actuel
                 const currentCallId = ++workflowLoadCounter;
                 
