@@ -1249,6 +1249,405 @@ function getCustomNodeDefinitions() {
   };
 }
 
+/**
+ * Récupérer tous les templates de workflow prédéfinis
+ * @returns {Promise<Array>} Liste des templates
+ */
+async function getWorkflowTemplates() {
+  try {
+    // Vérifier l'initialisation
+    if (!initialized) {
+      await initialize();
+    }
+    
+    // Chemin vers le répertoire des templates
+    const templatesDir = path.join(process.cwd(), 'data', 'templates');
+    
+    // Créer le répertoire s'il n'existe pas
+    if (!fs.existsSync(templatesDir)) {
+      fs.mkdirSync(templatesDir, { recursive: true });
+      
+      // Créer les templates par défaut
+      await createDefaultTemplates(templatesDir);
+    }
+    
+    // Lire tous les fichiers de template
+    const files = fs.readdirSync(templatesDir).filter(file => file.endsWith('.json'));
+    
+    // Charger les templates
+    const templates = files.map(file => {
+      const filePath = path.join(templatesDir, file);
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      try {
+        const template = JSON.parse(fileContent);
+        template.id = path.basename(file, '.json'); // Utiliser le nom du fichier comme ID
+        return template;
+      } catch (e) {
+        console.error(`[WORKFLOW] Erreur lors du parsing du template ${file}:`, e);
+        return null;
+      }
+    }).filter(Boolean); // Filtrer les templates invalides
+    
+    return templates;
+  } catch (error) {
+    console.error('[WORKFLOW] Erreur lors de la récupération des templates de workflow:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupérer un template de workflow par son ID
+ * @param {string} templateId - ID du template
+ * @returns {Promise<Object|null>} Template ou null si non trouvé
+ */
+async function getWorkflowTemplateById(templateId) {
+  try {
+    // Vérifier l'initialisation
+    if (!initialized) {
+      await initialize();
+    }
+    
+    // Chemin vers le fichier de template
+    const templatePath = path.join(process.cwd(), 'data', 'templates', `${templateId}.json`);
+    
+    // Vérifier si le template existe
+    if (!fs.existsSync(templatePath)) {
+      return null;
+    }
+    
+    // Lire le template
+    const fileContent = fs.readFileSync(templatePath, 'utf8');
+    const template = JSON.parse(fileContent);
+    template.id = templateId;
+    
+    return template;
+  } catch (error) {
+    console.error(`[WORKFLOW] Erreur lors de la récupération du template ${templateId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Créer les templates par défaut
+ * @param {string} templatesDir - Chemin vers le répertoire des templates
+ * @returns {Promise<void>}
+ */
+async function createDefaultTemplates(templatesDir) {
+  try {
+    // Template 1: Convertisseur HL7 vers FHIR simple
+    const hl7ToFhirTemplate = {
+      name: "Convertisseur HL7 vers FHIR simple",
+      description: "Template de base pour convertir un message HL7 en ressource FHIR. Idéal pour démarrer un nouveau projet d'intégration.",
+      template_version: "1.0",
+      created_at: new Date().toISOString(),
+      metadata: {
+        author: "FHIRHub",
+        category: "conversion",
+        tags: ["hl7", "fhir", "conversion", "débutant"]
+      },
+      nodes: [
+        {
+          id: "1",
+          type: "hl7-input",
+          position: { x: 100, y: 200 },
+          data: { name: "Entrée HL7" },
+          ports: {
+            input: [],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "2",
+          type: "field-mapper",
+          position: { x: 400, y: 200 },
+          data: { name: "Mapper champs", config: { mapRules: [] } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "3",
+          type: "fhir-converter",
+          position: { x: 700, y: 200 },
+          data: { name: "Convertir FHIR" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "4",
+          type: "fhir-output",
+          position: { x: 1000, y: 200 },
+          data: { name: "Sortie FHIR" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: []
+          }
+        }
+      ],
+      edges: [
+        { id: "e1-2", source: "1", target: "2", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e2-3", source: "2", target: "3", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e3-4", source: "3", target: "4", sourceHandle: "output1", targetHandle: "input1" }
+      ]
+    };
+    
+    // Template 2: Workflow pour interface SIH
+    const sihInterfaceTemplate = {
+      name: "Interface SIH complète",
+      description: "Template d'intégration complète avec un Système d'Information Hospitalier. Inclut la validation, la transformation et l'audit des messages.",
+      template_version: "1.0",
+      created_at: new Date().toISOString(),
+      metadata: {
+        author: "FHIRHub",
+        category: "intégration",
+        tags: ["sih", "hôpital", "intégration", "audit"]
+      },
+      nodes: [
+        {
+          id: "1",
+          type: "mllp",
+          position: { x: 100, y: 200 },
+          data: { name: "Récepteur MLLP", config: { port: 2575 } },
+          ports: {
+            input: [],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "2",
+          type: "validator",
+          position: { x: 400, y: 200 },
+          data: { name: "Validation HL7", config: { strictMode: true } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [
+              { id: "valid", label: "Valide" },
+              { id: "invalid", label: "Invalide" }
+            ]
+          }
+        },
+        {
+          id: "3",
+          type: "hl7-to-fhir",
+          position: { x: 700, y: 100 },
+          data: { name: "Conversion FHIR" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "4",
+          type: "api-call",
+          position: { x: 1000, y: 100 },
+          data: { name: "API SIH", config: { url: "/api/sih/patients", method: "POST" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "5",
+          type: "error-handler",
+          position: { x: 700, y: 300 },
+          data: { name: "Gestion erreurs", config: { retryCount: 3 } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "6",
+          type: "logger",
+          position: { x: 1000, y: 300 },
+          data: { name: "Journalisation", config: { logLevel: "error" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: []
+          }
+        }
+      ],
+      edges: [
+        { id: "e1-2", source: "1", target: "2", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e2-3", source: "2", target: "3", sourceHandle: "valid", targetHandle: "input1" },
+        { id: "e3-4", source: "3", target: "4", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e2-5", source: "2", target: "5", sourceHandle: "invalid", targetHandle: "input1" },
+        { id: "e5-6", source: "5", target: "6", sourceHandle: "output1", targetHandle: "input1" }
+      ]
+    };
+    
+    // Template 3: Extraction de données patients
+    const patientDataTemplate = {
+      name: "Extraction données patients",
+      description: "Template pour l'extraction et le traitement des données patients à partir de messages HL7 ADT. Optimisé pour l'interopérabilité.",
+      template_version: "1.0",
+      created_at: new Date().toISOString(),
+      metadata: {
+        author: "FHIRHub",
+        category: "extraction",
+        tags: ["patient", "adt", "démographie", "extraction"]
+      },
+      nodes: [
+        {
+          id: "1",
+          type: "hl7-input",
+          position: { x: 100, y: 200 },
+          data: { name: "Entrée HL7 ADT" },
+          ports: {
+            input: [],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "2",
+          type: "segment-extractor",
+          position: { x: 400, y: 200 },
+          data: { name: "Extractor PID", config: { segment: "PID" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "3",
+          type: "anonymizer",
+          position: { x: 700, y: 200 },
+          data: { name: "Anonymisation", config: { fields: ["PID.5", "PID.7", "PID.19"] } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "4",
+          type: "database-query",
+          position: { x: 1000, y: 200 },
+          data: { name: "Stockage BDD", config: { table: "patients" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "5",
+          type: "email-sender",
+          position: { x: 1300, y: 200 },
+          data: { name: "Notification", config: { template: "patient_update" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: []
+          }
+        }
+      ],
+      edges: [
+        { id: "e1-2", source: "1", target: "2", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e2-3", source: "2", target: "3", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e3-4", source: "3", target: "4", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e4-5", source: "4", target: "5", sourceHandle: "output1", targetHandle: "input1" }
+      ]
+    };
+    
+    // Template 4: Interopérabilité DMP
+    const dmpTemplate = {
+      name: "Interopérabilité DMP",
+      description: "Template pour l'intégration avec le Dossier Médical Partagé français, incluant la conversion CDA et l'identification INS.",
+      template_version: "1.0",
+      created_at: new Date().toISOString(),
+      metadata: {
+        author: "FHIRHub",
+        category: "dmp",
+        tags: ["dmp", "ins", "cda", "france", "interopérabilité"]
+      },
+      nodes: [
+        {
+          id: "1",
+          type: "file-input",
+          position: { x: 100, y: 200 },
+          data: { name: "Entrée fichier CDA" },
+          ports: {
+            input: [],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "2",
+          type: "ins-lookup",
+          position: { x: 400, y: 200 },
+          data: { name: "Recherche INS" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "3",
+          type: "cda-to-fhir",
+          position: { x: 700, y: 200 },
+          data: { name: "Conversion CDA->FHIR" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [{ id: "output1", label: "Output" }]
+          }
+        },
+        {
+          id: "4",
+          type: "dmp-export",
+          position: { x: 1000, y: 200 },
+          data: { name: "Export DMP" },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: [
+              { id: "success", label: "Succès" },
+              { id: "error", label: "Erreur" }
+            ]
+          }
+        },
+        {
+          id: "5",
+          type: "logger",
+          position: { x: 1300, y: 100 },
+          data: { name: "Log succès", config: { logLevel: "info" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: []
+          }
+        },
+        {
+          id: "6",
+          type: "logger",
+          position: { x: 1300, y: 300 },
+          data: { name: "Log erreur", config: { logLevel: "error" } },
+          ports: {
+            input: [{ id: "input1", label: "Input" }],
+            output: []
+          }
+        }
+      ],
+      edges: [
+        { id: "e1-2", source: "1", target: "2", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e2-3", source: "2", target: "3", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e3-4", source: "3", target: "4", sourceHandle: "output1", targetHandle: "input1" },
+        { id: "e4-5", source: "4", target: "5", sourceHandle: "success", targetHandle: "input1" },
+        { id: "e4-6", source: "4", target: "6", sourceHandle: "error", targetHandle: "input1" }
+      ]
+    };
+    
+    // Sauvegarder les templates
+    fs.writeFileSync(path.join(templatesDir, 'hl7-to-fhir-simple.json'), JSON.stringify(hl7ToFhirTemplate, null, 2));
+    fs.writeFileSync(path.join(templatesDir, 'sih-interface.json'), JSON.stringify(sihInterfaceTemplate, null, 2));
+    fs.writeFileSync(path.join(templatesDir, 'patient-data-extraction.json'), JSON.stringify(patientDataTemplate, null, 2));
+    fs.writeFileSync(path.join(templatesDir, 'dmp-interoperability.json'), JSON.stringify(dmpTemplate, null, 2));
+    
+    console.log('[WORKFLOW] Templates par défaut créés avec succès');
+  } catch (error) {
+    console.error('[WORKFLOW] Erreur lors de la création des templates par défaut:', error);
+    throw error;
+  }
+}
+
 // Exporter les fonctions du service
 module.exports = {
   initialize,
@@ -1261,6 +1660,8 @@ module.exports = {
   executeWorkflow,
   getEditorUrl,
   getCustomNodeDefinitions,
+  getWorkflowTemplates,
+  getWorkflowTemplateById,
   // Cette fonction n'est plus disponible mais est maintenue pour la compatibilité
   getRedApp: () => null
 };
