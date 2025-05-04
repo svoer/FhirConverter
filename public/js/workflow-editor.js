@@ -2249,36 +2249,127 @@ class WorkflowEditor {
    */
   makeElementDraggable(element, handle) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let isDragging = false;
+    let animationFrameId = null;
+    let elementId = element.id;
+    let self = this; // Référence à l'instance WorkflowEditor
+    
+    // Utiliser will-change pour optimiser les performances de rendu
+    element.style.willChange = 'transform';
     
     handle.onmousedown = dragMouseDown;
     
     function dragMouseDown(e) {
       e = e || window.event;
       e.preventDefault();
+      
       // Position initiale du curseur
       pos3 = e.clientX;
       pos4 = e.clientY;
+      
+      // Indiquer que l'élément est en cours de déplacement
+      isDragging = true;
+      element.classList.add('dragging');
+      
+      // Configurer les gestionnaires d'événements
       document.onmouseup = closeDragElement;
       document.onmousemove = elementDrag;
+      
+      // Vérifier si l'élément est un nœud et stocker sa position initiale
+      if (elementId && elementId.startsWith('node_')) {
+        const node = self.getNodeById(elementId);
+        if (node) {
+          node.isDragging = true;
+          node.initialDragPosition = { ...node.position };
+        }
+      }
     }
     
     function elementDrag(e) {
       e = e || window.event;
       e.preventDefault();
-      // Calculer la nouvelle position
+      
+      if (!isDragging) return;
+      
+      // Annuler toute animation en cours
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      
+      // Calculer le déplacement
       pos1 = pos3 - e.clientX;
       pos2 = pos4 - e.clientY;
       pos3 = e.clientX;
       pos4 = e.clientY;
-      // Définir la nouvelle position de l'élément
-      element.style.top = (element.offsetTop - pos2) + "px";
-      element.style.left = (element.offsetLeft - pos1) + "px";
+      
+      // Utiliser requestAnimationFrame pour des animations plus fluides
+      animationFrameId = requestAnimationFrame(() => {
+        // Mettre à jour la position de l'élément avec transform pour de meilleures performances
+        const newTop = element.offsetTop - pos2;
+        const newLeft = element.offsetLeft - pos1;
+        
+        element.style.top = newTop + "px";
+        element.style.left = newLeft + "px";
+        
+        // Si c'est un nœud, mettre à jour sa position dans le modèle et les arêtes associées
+        if (elementId && elementId.startsWith('node_')) {
+          const node = self.getNodeById(elementId);
+          if (node) {
+            // Calculer la position par rapport au canvas
+            const canvasRect = self.canvas.getBoundingClientRect();
+            const x = (newLeft - self.pan.x) / self.scale;
+            const y = (newTop - self.pan.y) / self.scale;
+            
+            // Mettre à jour la position du nœud
+            node.position = { x, y };
+            
+            // Mettre à jour les arêtes connectées
+            self.updateEdges();
+          }
+        }
+      });
     }
     
     function closeDragElement() {
-      // Arrêter de déplacer quand le bouton de la souris est relâché
+      // Arrêter l'animation
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      
+      // Marquer la fin du déplacement
+      isDragging = false;
+      element.classList.remove('dragging');
+      
+      // Nettoyer les gestionnaires d'événements
       document.onmouseup = null;
       document.onmousemove = null;
+      
+      // Restaurer les propriétés d'optimisation
+      element.style.willChange = 'auto';
+      
+      // Si c'est un nœud, terminer le déplacement et vérifier s'il s'agit d'un vrai déplacement
+      if (elementId && elementId.startsWith('node_')) {
+        const node = self.getNodeById(elementId);
+        if (node) {
+          node.isDragging = false;
+          
+          // Vérifier si le nœud a réellement bougé
+          if (node.initialDragPosition && 
+              (Math.abs(node.initialDragPosition.x - node.position.x) > 2 ||
+               Math.abs(node.initialDragPosition.y - node.position.y) > 2)) {
+            // Émettre un événement signalant que le nœud a été déplacé
+            self.emit('nodePositionChanged', {
+              nodeId: node.id,
+              position: node.position,
+              previousPosition: node.initialDragPosition
+            });
+          }
+          
+          // Une dernière mise à jour des arêtes pour assurer la cohérence
+          self.updateEdges();
+        }
+      }
     }
   }
   
