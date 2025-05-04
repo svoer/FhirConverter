@@ -216,18 +216,18 @@ class WorkflowEditor {
    * Crée la palette de noeuds
    */
   createNodePalette() {
-    // Si l'option suppressDuplicateMenu est activée, chercher si une palette existe déjà
-    if (this.options.suppressDuplicateMenu) {
-      const existingPalette = document.querySelector('.node-palette');
-      if (existingPalette) {
-        console.log("[Workflow] Palette de nœuds existante détectée, utilisation de celle-ci");
-        this.nodePalette = existingPalette;
-        return;
-      }
-    }
+    // Supprimer toutes les palettes existantes pour éviter la duplication
+    const existingPalettes = document.querySelectorAll('.node-palette');
+    existingPalettes.forEach(palette => {
+      palette.remove();
+    });
     
+    console.log(`[Workflow] ${existingPalettes.length} palettes de nœuds supprimées`);
+    
+    // Créer une nouvelle palette
     this.nodePalette = document.createElement('div');
     this.nodePalette.className = 'node-palette';
+    this.nodePalette.id = 'unique-node-palette';
     
     // Amélioration du style de la palette
     this.nodePalette.style.position = 'absolute';
@@ -455,7 +455,7 @@ class WorkflowEditor {
       categoryDiv.className = 'node-palette-category';
       
       const categoryTitle = document.createElement('h4');
-      categoryTitle.textContent = category.name;
+      // Ne pas définir le texte du titre ici, il sera défini plus tard avec l'icône
       
       // Ajouter un style pour mettre en évidence les catégories
       categoryTitle.style.background = 'linear-gradient(to right, #f5f5f5, #ffffff)';
@@ -467,60 +467,51 @@ class WorkflowEditor {
       categoryTitle.style.fontWeight = 'bold';
       categoryTitle.style.cursor = 'pointer';
       
-      // Ajouter un événement pour replier/déplier la catégorie
-      categoryTitle.addEventListener('click', () => {
-        // Trouver tous les éléments de nœud dans cette catégorie
-        const nodeItems = categoryDiv.querySelectorAll('.node-palette-item');
-        
-        // Vérifier si la catégorie est repliée
-        const isCollapsed = categoryTitle.getAttribute('data-collapsed') === 'true';
-        
-        // Changer l'état
-        if (isCollapsed) {
-          nodeItems.forEach(item => item.style.display = 'flex');
-          categoryTitle.setAttribute('data-collapsed', 'false');
-          categoryTitle.style.opacity = '1';
-        } else {
-          nodeItems.forEach(item => item.style.display = 'none');
-          categoryTitle.setAttribute('data-collapsed', 'true');
-          categoryTitle.style.opacity = '0.7';
-        }
-      });
-      
-      // Définir la catégorie comme repliée par défaut
-      categoryTitle.setAttribute('data-collapsed', 'true');
-      categoryTitle.style.opacity = '0.7';
-      categoryTitle.style.cursor = 'pointer';
-      
-      // Ajouter un indicateur visuel pour montrer que c'est cliquable
-      categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▶</span>`;
-      
-      // Ajouter l'événement de clic pour replier/déplier
-      categoryTitle.addEventListener('click', () => {
-        const isCollapsed = categoryTitle.getAttribute('data-collapsed') === 'true';
-        const itemsContainer = categoryTitle.nextElementSibling;
-        
-        if (isCollapsed) {
-          // Déplier
-          categoryTitle.setAttribute('data-collapsed', 'false');
-          categoryTitle.style.opacity = '1';
-          categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▼</span>`;
-          itemsContainer.style.display = 'block';
-        } else {
-          // Replier
-          categoryTitle.setAttribute('data-collapsed', 'true');
-          categoryTitle.style.opacity = '0.7';
-          categoryTitle.innerHTML = `${category.name} <span style="float:right;font-size:12px;">▶</span>`;
-          itemsContainer.style.display = 'none';
-        }
-      });
-      
-      categoryDiv.appendChild(categoryTitle);
+      // Nous utilisons maintenant categoryTitle.onclick plus bas, ne pas ajouter d'écouteur d'événement ici
       
       // Créer un conteneur pour les éléments de nœuds
       const nodesContainer = document.createElement('div');
       nodesContainer.className = 'node-palette-items-container';
-      nodesContainer.style.display = 'none'; // Masquer par défaut
+      
+      // Définir la catégorie comme repliée par défaut
+      categoryTitle.setAttribute('data-collapsed', 'true');
+      categoryTitle.style.opacity = '0.8';
+      categoryTitle.style.cursor = 'pointer';
+      
+      // Ajouter un indicateur visuel pour montrer que c'est cliquable
+      const arrowSpan = document.createElement('span');
+      arrowSpan.innerHTML = '▶';
+      arrowSpan.style.float = 'right';
+      arrowSpan.style.fontSize = '12px';
+      arrowSpan.style.marginRight = '5px';
+      categoryTitle.appendChild(document.createTextNode(category.name + ' '));
+      categoryTitle.appendChild(arrowSpan);
+      
+      // Ajouter l'événement de clic pour replier/déplier
+      categoryTitle.onclick = function() {
+        const isCollapsed = this.getAttribute('data-collapsed') === 'true';
+        
+        if (isCollapsed) {
+          // Déplier
+          this.setAttribute('data-collapsed', 'false');
+          this.style.opacity = '1';
+          arrowSpan.innerHTML = '▼';
+          nodesContainer.style.display = 'block';
+          console.log(`[Workflow] Catégorie "${category.name}" dépliée`);
+        } else {
+          // Replier
+          this.setAttribute('data-collapsed', 'true');
+          this.style.opacity = '0.8';
+          arrowSpan.innerHTML = '▶';
+          nodesContainer.style.display = 'none';
+          console.log(`[Workflow] Catégorie "${category.name}" repliée`);
+        }
+      };
+      
+      categoryDiv.appendChild(categoryTitle);
+      
+      // Masquer le conteneur par défaut puisque toutes les catégories sont repliées au début
+      nodesContainer.style.display = 'none';
       categoryDiv.appendChild(nodesContainer);
       
       // Créer les éléments de noeuds
