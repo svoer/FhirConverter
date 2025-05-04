@@ -803,14 +803,25 @@ app.get('/api/stats', (req, res) => {
       console.warn('[STATS] Erreur lors de la récupération de la dernière conversion:', err.message);
     }
     
+    // Calculer le temps économisé par rapport à une conversion traditionnelle
+    const conversions = conversionCount.count || 0;
+    const avgProcessingTime = conversionStats ? Math.round(conversionStats.avg_time || 0) : 0;
+    
+    // Un fournisseur traditionnel prend environ 45 secondes par conversion contre notre moyenne de quelques millisecondes
+    const traditionalTimePerConversionSeconds = 45; // Temps moyen des autres fournisseurs (en secondes)
+    const ourTimePerConversionSeconds = avgProcessingTime / 1000 || 0.1; // Notre temps en secondes
+    const timeSavedPerConversion = traditionalTimePerConversionSeconds - ourTimePerConversionSeconds;
+    const timeSavedHours = ((timeSavedPerConversion * conversions) / 3600).toFixed(1); // Conversion en heures
+    
     res.json({
       success: true,
       data: {
-        conversions: conversionCount.count,
+        conversions: conversions,
         uptime: process.uptime(),
         memory: process.memoryUsage(),
+        timeSavedHours: parseFloat(timeSavedHours), // Ajouter cette métrique
         conversionStats: {
-          avgTime: conversionStats ? Math.round(conversionStats.avg_time || 0) : 0,
+          avgTime: avgProcessingTime,
           minTime: conversionStats ? conversionStats.min_time || 0 : 0,
           maxTime: conversionStats ? conversionStats.max_time || 0 : 0,
           avgResources: conversionStats ? Math.round(conversionStats.avg_resources || 0) : 0,
