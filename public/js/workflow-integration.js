@@ -757,12 +757,99 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
+    /**
+     * Affiche une notification à l'utilisateur
+     * @param {string} message - Message à afficher
+     * @param {string} type - Type de notification (success, error, info, warning)
+     */
+    function showNotification(message, type = 'info') {
+        // Utiliser la fonction globale si elle existe
+        if (window.showNotification) {
+            window.showNotification(message, type);
+            return;
+        }
+        
+        // Sinon, créer notre propre notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <span>${message}</span>
+            <button class="close-notification">&times;</button>
+        `;
+        
+        // Ajouter au corps du document
+        document.body.appendChild(notification);
+        
+        // Affichage avec animation
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        // Suppression automatique après 5 secondes
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 5000);
+        
+        // Gestion du bouton de fermeture
+        notification.querySelector('.close-notification').addEventListener('click', function() {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        });
+    }
+    
+    /**
+     * Supprime un workflow par son ID
+     * @param {string|number} id - ID du workflow à supprimer
+     */
+    async function deleteWorkflow(id) {
+        try {
+            console.log(`[WorkflowIntegration] Suppression du workflow ID: ${id}`);
+            
+            // Obtenir le token d'authentification selon la méthode disponible
+            let token = null;
+            if (typeof getToken === 'function') {
+                token = getToken(); // Fonction définie dans workflows.html
+            } else if (window.FHIRHubAuth && typeof window.FHIRHubAuth.getAuthToken === 'function') {
+                token = window.FHIRHubAuth.getAuthToken(); // Fonction globale du système d'auth
+            } else if (localStorage.getItem('token')) {
+                token = localStorage.getItem('token'); // Accès direct au localStorage
+            }
+            
+            const response = await fetch(`/api/workflows/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'X-API-KEY': 'dev-key'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erreur lors de la suppression du workflow');
+            }
+            
+            // Afficher une notification de succès
+            showNotification('Workflow supprimé avec succès', 'success');
+            
+            // Rafraîchir la liste des workflows
+            await loadWorkflowsWithNewDesign(document.getElementById('application-filter')?.value || 'all');
+        } catch (error) {
+            console.error('[WorkflowIntegration] Erreur de suppression:', error);
+            showNotification('Erreur: ' + error.message, 'error');
+        }
+    }
+    
     // Exposer les fonctions pour pouvoir les appeler depuis d'autres scripts
     window.workflowIntegration = {
         openVisualEditor,
         attachWorkflowCardEvents,
         loadWorkflowsWithNewDesign,
         createWorkflowCard,
-        exportWorkflowTemplate
+        exportWorkflowTemplate,
+        deleteWorkflow
     };
 });
