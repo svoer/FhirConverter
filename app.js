@@ -426,25 +426,30 @@ function processHL7Conversion(hl7Message, req, res) {
     const userId = req.user ? req.user.id : null;
     const db = req.app.locals.db;
     
-    // Vérifier si la colonne user_id existe dans conversion_logs
-    db.prepare(`
-      INSERT INTO conversion_logs (
-        input_message,
-        output_message,
-        status,
-        timestamp,
-        processing_time,
-        resource_count,
-        user_id
-      ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
-    `).run(
-      hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
-      JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
-      'success',
-      conversionTime,
-      result.entry ? result.entry.length : 0,
-      userId
-    );
+    // Adapter l'insertion au schéma existant dans la base de données
+    try {
+      db.prepare(`
+        INSERT INTO conversion_logs (
+          input_message,
+          output_message,
+          status,
+          timestamp,
+          processing_time,
+          resource_count,
+          user_id
+        ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
+      `).run(
+        hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message,
+        JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result),
+        'success',
+        conversionTime,
+        result.entry ? result.entry.length : 0,
+        userId
+      );
+    } catch (err) {
+      console.error('[CONVERSION LOG ERROR]', err.message);
+      // Continue sans interrompre le processus de conversion
+    }
     
     // Nettoyer les métadonnées internes avant de retourner le résultat
     if (result._meta) {
