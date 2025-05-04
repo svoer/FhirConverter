@@ -100,10 +100,153 @@ class WorkflowEditor {
     // Ajouter les événements
     this.attachEvents();
     
+    // Charger les données initiales si fournies
+    if (this.options.initialData) {
+      console.log('[DEBUG] Chargement des données initiales:', this.options.initialData);
+      this.loadInitialData(this.options.initialData);
+    }
+    
     // Mettre à jour l'affichage
     this.update();
     
     console.log('Éditeur de workflow initialisé');
+  }
+  
+  /**
+   * Charge les données initiales dans l'éditeur (pour initialiser depuis un workflow existant)
+   * @param {Object} data - Les données à charger (structure avec nodes et edges)
+   */
+  loadInitialData(data) {
+    try {
+      console.log('[DEBUG] Exécution de loadInitialData avec data:', data);
+      
+      // S'assurer que nous avons des données valides
+      let flowData = data;
+      
+      // Normaliser le format si nécessaire
+      if (Array.isArray(data)) {
+        console.log('[DEBUG] Conversion des données de tableau à objet structuré');
+        flowData = {
+          nodes: data.filter(item => item.type || item.position || item.label),
+          edges: data.filter(item => item.source && item.target)
+        };
+      }
+      
+      // S'assurer que la structure est correcte
+      if (!flowData.nodes) flowData.nodes = [];
+      if (!flowData.edges) flowData.edges = [];
+      
+      // Enregistrer les informations détaillées pour le débogage
+      console.log('[DEBUG] Structure finale des données à charger:');
+      console.log('[DEBUG] Nœuds:', flowData.nodes.length, JSON.stringify(flowData.nodes));
+      console.log('[DEBUG] Arêtes:', flowData.edges.length, JSON.stringify(flowData.edges));
+      
+      // Importer les nœuds
+      if (flowData.nodes && Array.isArray(flowData.nodes) && flowData.nodes.length > 0) {
+        // Trouver le prochain ID à utiliser
+        const nodeIds = flowData.nodes
+          .filter(node => node && node.id)
+          .map(node => {
+            const idMatch = node.id.match(/node_(\d+)/);
+            return idMatch ? parseInt(idMatch[1]) : 0;
+          });
+          
+        this.nextNodeId = nodeIds.length > 0 ? Math.max(...nodeIds) + 1 : 1;
+        console.log('[DEBUG] nextNodeId initialisé à:', this.nextNodeId);
+        
+        // Créer tous les nœuds
+        flowData.nodes.forEach(node => {
+          // Vérifications de sécurité
+          if (!node || !node.type || !node.position) {
+            console.warn('[DEBUG] Nœud invalide ignoré:', node);
+            return;
+          }
+          
+          try {
+            // Ajouter le nœud et récupérer sa référence
+            const nodeElement = this.addNode(node.type, node.position);
+            
+            // Copier les propriétés
+            if (nodeElement) {
+              nodeElement.id = node.id; // Préserver l'ID d'origine
+              nodeElement.label = node.label || nodeElement.label;
+              nodeElement.data = node.data || {};
+              
+              // Mise à jour visuelle du nœud
+              const domNode = document.getElementById(nodeElement.id);
+              if (domNode) {
+                const titleElement = domNode.querySelector('.node-title');
+                if (titleElement) {
+                  titleElement.textContent = nodeElement.label;
+                }
+              }
+              
+              console.log('[DEBUG] Nœud créé avec succès:', nodeElement.id, nodeElement.label);
+            }
+          } catch (nodeError) {
+            console.error('[DEBUG] Erreur lors de la création du nœud:', nodeError);
+          }
+        });
+      }
+      
+      // Importer les arêtes après un délai pour attendre la création des nœuds
+      if (flowData.edges && Array.isArray(flowData.edges) && flowData.edges.length > 0) {
+        setTimeout(() => {
+          try {
+            // Trouver le prochain ID d'arête à utiliser
+            const edgeIds = flowData.edges
+              .filter(edge => edge && edge.id)
+              .map(edge => {
+                const idMatch = edge.id.match(/edge_(\d+)/);
+                return idMatch ? parseInt(idMatch[1]) : 0;
+              });
+              
+            this.nextEdgeId = edgeIds.length > 0 ? Math.max(...edgeIds) + 1 : 1;
+            console.log('[DEBUG] nextEdgeId initialisé à:', this.nextEdgeId);
+            
+            // Créer toutes les arêtes
+            flowData.edges.forEach(edge => {
+              if (!edge || !edge.source || !edge.target) {
+                console.warn('[DEBUG] Arête invalide ignorée:', edge);
+                return;
+              }
+              
+              try {
+                // Vérifier que les nœuds source et cible existent
+                const sourceNode = this.getNodeById(edge.source);
+                const targetNode = this.getNodeById(edge.target);
+                
+                if (sourceNode && targetNode) {
+                  // Créer l'arête avec ses propriétés
+                  const sourcePort = typeof edge.sourceOutput === 'number' ? edge.sourceOutput : 0;
+                  const targetPort = typeof edge.targetInput === 'number' ? edge.targetInput : 0;
+                  
+                  this.createEdge(edge.source, edge.target, sourcePort, targetPort);
+                  console.log(`[DEBUG] Arête créée: ${edge.source} -> ${edge.target}`);
+                } else {
+                  console.warn(`[DEBUG] Impossible de créer l'arête: nœuds manquants (source: ${edge.source}, target: ${edge.target})`);
+                }
+              } catch (edgeError) {
+                console.error('[DEBUG] Erreur lors de la création de l\'arête:', edgeError);
+              }
+            });
+            
+            // Actualiser les connexions
+            this.updateEdges();
+            
+            // Centrer la vue sur les nœuds après chargement
+            if (this.nodes.length > 0) {
+              console.log('[DEBUG] Centrage de la vue sur les nœuds après chargement');
+              this.resetView();
+            }
+          } catch (edgesError) {
+            console.error('[DEBUG] Erreur globale lors de la création des arêtes:', edgesError);
+          }
+        }, 500); // Attendre 500ms pour que les nœuds soient bien créés
+      }
+    } catch (error) {
+      console.error('[DEBUG] Erreur lors du chargement des données initiales:', error);
+    }
   }
   
   /**
@@ -4615,11 +4758,18 @@ class WorkflowEditor {
       console.log('[DEBUG] Nombre de nœuds:', flowData.nodes ? flowData.nodes.length : 0, 
                  'Nombre d\'arêtes:', flowData.edges ? flowData.edges.length : 0);
       
+      // S'assurer que flowData est au format correct avec nodes et edges
+      if (!flowData.nodes) flowData.nodes = [];
+      if (!flowData.edges) flowData.edges = [];
+
+      // IMPORTANT: Nous devons serialiser l'objet flow_json en JSON pour l'API
       const workflowData = {
         name: this.workflowName,
         description: this.workflowDescription,
-        flow_json: flowData  // Envoi direct de l'objet sans JSON.stringify pour éviter la double sérialisation
+        flow_json: JSON.stringify(flowData)  // Serialiser en JSON pour l'envoi à l'API REST
       };
+      
+      console.log('[DEBUG] Données flow_json après serialisation:', workflowData.flow_json);
       
       console.log('[DEBUG] Données du workflow à envoyer:', workflowData);
       
