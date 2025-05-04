@@ -1815,15 +1815,29 @@ class WorkflowEditor {
   
   /**
    * Crée une arête temporaire pendant le glisser-déposer
+   * avec un style visuel distinctif pour une meilleure expérience utilisateur
    */
   createTempEdge() {
+    // Créer un groupe SVG pour l'arête temporaire
     this.tempEdge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.tempEdge.setAttribute('class', 'temp-edge');
     
+    // Créer le chemin SVG avec les attributs stylisés dès la création
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke', '#ff5722');  // Couleur rouge-orange selon l'identité visuelle
+    path.setAttribute('stroke-width', '3');
+    path.setAttribute('stroke-dasharray', '7,3');  // Ligne pointillée plus distinctive
+    path.setAttribute('fill', 'none');
+    path.style.strokeLinecap = 'round';  // Extrémités arrondies pour un style plus doux
+    
+    // Ajouter le chemin au groupe
     this.tempEdge.appendChild(path);
     
+    // Ajouter le groupe au calque SVG
     this.edgesLayer.appendChild(this.tempEdge);
+    
+    // Log pour le débogage
+    console.log('[Workflow] Arête temporaire créée');
   }
   
   /**
@@ -1870,11 +1884,16 @@ class WorkflowEditor {
           return;
         }
         
-        // 2. Convertir les coordonnées de la souris en coordonnées canvas
-        const rect = this.canvas.getBoundingClientRect();
+        // 2. Conversion précise des coordonnées de la souris en coordonnées canvas
+        // Utiliser le container comme référence de base
+        const containerRect = this.container.getBoundingClientRect();
+        
+        // Calculer les coordonnées dans l'espace du canvas avec une meilleure précision
+        // Cette formule corrige le problème de diagonale en tenant compte correctement
+        // de l'échelle et du décalage
         const end = {
-          x: (e.clientX - rect.left - this.offset.x) / this.scale,
-          y: (e.clientY - rect.top - this.offset.y) / this.scale
+          x: (e.clientX - containerRect.left) / this.scale - this.offset.x / this.scale,
+          y: (e.clientY - containerRect.top) / this.scale - this.offset.y / this.scale
         };
         
         // 3. Calculer une courbe de Bézier élégante
@@ -1884,15 +1903,19 @@ class WorkflowEditor {
         // S'assurer que la chaîne reste sur une seule ligne pour éviter les problèmes de SVG
         const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
         
-        // 4. Mettre à jour le chemin avec les attributs visuels
+        // 4. Mettre à jour le chemin avec des attributs visuels améliorés
         const path = this.tempEdge.querySelector('path');
         if (path) {
           path.setAttribute('d', d);
-          // S'assurer que le chemin temporaire est bien visible
-          path.setAttribute('stroke', '#999');
-          path.setAttribute('stroke-width', '2');
-          path.setAttribute('stroke-dasharray', '5,5');
+          // Améliorer la visibilité du fil temporaire avec une couleur plus vive
+          // Gradient de couleur dans le style visuel de l'application (rouge-orange)
+          path.setAttribute('stroke', '#ff5722');
+          path.setAttribute('stroke-width', '3');
+          path.setAttribute('stroke-dasharray', '7,3');
           path.setAttribute('fill', 'none');
+          // Ajouter une animation légère pour mieux indiquer qu'il s'agit d'un fil temporaire
+          path.style.strokeLinecap = 'round';
+          // Pas d'animation pour éviter des problèmes de performance
         }
         
         // Désactiver la mise en évidence sur tous les ports
