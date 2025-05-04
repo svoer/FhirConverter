@@ -1249,6 +1249,39 @@ class WorkflowEditor {
     this.selectedNodes = [];
   }
   
+  /**
+   * Supprime tous les nœuds sélectionnés
+   * @returns {number} Le nombre de nœuds supprimés
+   */
+  deleteSelectedNodes() {
+    if (this.selectedNodes.length === 0) {
+      // Si aucun nœud n'est sélectionné en multi-sélection, 
+      // tenter de supprimer le nœud sélectionné individuellement
+      if (this.selectedNodeId) {
+        this.deleteNode(this.selectedNodeId);
+        return 1;
+      }
+      return 0;
+    }
+    
+    // Créer une copie du tableau pour éviter les problèmes lors de la suppression
+    const nodesToDelete = [...this.selectedNodes];
+    const count = nodesToDelete.length;
+    
+    // Supprimer chaque nœud
+    nodesToDelete.forEach(node => {
+      this.deleteNode(node.id);
+    });
+    
+    // Vider la liste des nœuds sélectionnés
+    this.selectedNodes = [];
+    
+    console.log(`[Workflow] ${count} nœuds supprimés`);
+    this.showNotification(`${count} nœuds supprimés`, 'info');
+    
+    return count;
+  }
+  
   selectNode(nodeId) {
     // Désélectionner le noeud précédemment sélectionné
     if (this.selectedNodeId) {
