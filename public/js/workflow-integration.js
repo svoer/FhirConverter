@@ -108,6 +108,19 @@ document.addEventListener('DOMContentLoaded', function() {
      * Ouvre la boîte de dialogue pour choisir un template
      */
     function openTemplateDialog() {
+        // Utiliser le gestionnaire de templates modernisé si disponible
+        if (window.templateManager && window.templateManager.openTemplateDialog) {
+            // Si le gestionnaire de templates n'a pas encore été initialisé avec l'éditeur
+            if (editor && window.templateManager.initialize) {
+                window.templateManager.initialize(editor);
+            }
+            console.log('[WorkflowIntegration] Utilisation du gestionnaire moderne de templates');
+            window.templateManager.openTemplateDialog();
+            return;
+        }
+        
+        console.log('[WorkflowIntegration] Utilisation du gestionnaire basique de templates');
+        
         const templateDialog = document.getElementById('template-dialog');
         const templateListContainer = document.getElementById('template-list-container');
         const templateCategoryList = document.getElementById('template-category-list');
