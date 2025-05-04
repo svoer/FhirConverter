@@ -1517,8 +1517,12 @@ class WorkflowEditor {
       const sourcePortPosition = this.getPortPosition(sourceNode, true, edge.sourceOutput);
       const targetPortPosition = this.getPortPosition(targetNode, false, edge.targetInput);
       
-      if (!sourcePortPosition || !targetPortPosition) {
-        console.warn("[Workflow] Impossible de calculer les positions des ports");
+      // Validation complète des positions - notre méthode getPortPosition améliorée ne devrait plus
+      // jamais retourner null, mais nous validons quand même par sécurité
+      if (!sourcePortPosition || !targetPortPosition ||
+          typeof sourcePortPosition.x !== 'number' || typeof sourcePortPosition.y !== 'number' ||
+          typeof targetPortPosition.x !== 'number' || typeof targetPortPosition.y !== 'number') {
+        console.warn("[Workflow] Positions des ports invalides pour l'arête:", edge.id);
         return;
       }
       
@@ -1611,20 +1615,44 @@ class WorkflowEditor {
    */
   getPortPosition(node, isOutput, portIndex) {
     try {
-      if (!node || !node.position) {
-        console.warn("[Workflow] Nœud sans position:", node);
-        return null;
+      // Vérifications préliminaires robustes
+      if (!node) {
+        console.warn("[Workflow] Nœud inexistant pour calcul de position de port");
+        // Retourner une position par défaut au lieu de null
+        return { x: 0, y: 0 };
       }
       
-      const nodeElem = document.getElementById(node.id);
-      if (!nodeElem) {
-        console.warn(`[Workflow] Élément DOM non trouvé pour le nœud: ${node.id}`);
-        return null;
+      // S'assurer que le nœud a toujours une position valide
+      if (!node.position || typeof node.position.x !== 'number' || typeof node.position.y !== 'number') {
+        console.warn("[Workflow] Nœud avec position invalide, utilisation position par défaut");
+        // Fournir une position par défaut
+        node.position = { x: 0, y: 0 };
       }
       
       // Taille par défaut si non spécifiée
-      const width = node.width || 200;
-      const height = node.height || 100;
+      const width = (node.width && typeof node.width === 'number') ? node.width : 200;
+      const height = (node.height && typeof node.height === 'number') ? node.height : 100;
+      
+      // Vérifier l'élément DOM du nœud
+      const nodeElem = document.getElementById(node.id);
+      if (!nodeElem) {
+        console.warn(`[Workflow] Élément DOM non trouvé pour le nœud: ${node.id}`);
+        // Position de fallback calculée à partir de la position du nœud
+        if (isOutput) {
+          return {
+            x: node.position.x + width,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        } else {
+          return {
+            x: node.position.x,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        }
+      }
+      
+      // Vérifier que portIndex est un nombre valide
+      portIndex = typeof portIndex === 'number' ? portIndex : 0;
       
       const portSelector = isOutput 
         ? `.node-output[data-port-index="${portIndex}"] .port-handle` 
@@ -1651,25 +1679,50 @@ class WorkflowEditor {
         }
       }
       
-      // Obtenir les dimensions du port
-      const portRect = portElem.getBoundingClientRect();
-      const canvasRect = this.canvas.getBoundingClientRect();
-      
-      // Calculer la position relative du port par rapport au nœud
-      const nodeRect = nodeElem.getBoundingClientRect();
-      
-      // Calculer la position relative du port par rapport au nœud
-      const portRelativeX = portRect.left - nodeRect.left + (portRect.width / 2);
-      const portRelativeY = portRect.top - nodeRect.top + (portRect.height / 2);
-      
-      // Calculer la position absolue du port en fonction de la position du nœud
-      return {
-        x: node.position.x + portRelativeX,
-        y: node.position.y + portRelativeY
-      };
+      try {
+        // Obtention des rectangles avec gestion d'erreurs
+        const portRect = portElem.getBoundingClientRect();
+        const nodeRect = nodeElem.getBoundingClientRect();
+        
+        if (!portRect || !nodeRect || !portRect.width || !nodeRect.width) {
+          throw new Error("Calcul de rectangles invalide");
+        }
+        
+        // Calculer la position relative du port par rapport au nœud
+        const portRelativeX = portRect.left - nodeRect.left + (portRect.width / 2);
+        const portRelativeY = portRect.top - nodeRect.top + (portRect.height / 2);
+        
+        // Vérification supplémentaire que les valeurs sont des nombres
+        if (isNaN(portRelativeX) || isNaN(portRelativeY) || 
+            isNaN(node.position.x) || isNaN(node.position.y)) {
+          throw new Error("Valeurs de position non numériques");
+        }
+        
+        // Calculer la position absolue du port en fonction de la position du nœud
+        return {
+          x: node.position.x + portRelativeX,
+          y: node.position.y + portRelativeY
+        };
+      } catch (rectError) {
+        console.warn("[Workflow] Erreur lors du calcul des rectangles:", rectError);
+        
+        // Position de fallback en cas d'erreur
+        if (isOutput) {
+          return {
+            x: node.position.x + width,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        } else {
+          return {
+            x: node.position.x,
+            y: node.position.y + (height / 2) + (portIndex * 20)
+          };
+        }
+      }
     } catch (err) {
-      console.error("[Workflow] Erreur lors du calcul de la position du port:", err);
-      return null;
+      console.error("[Workflow] Erreur générale lors du calcul de la position du port:", err);
+      // En cas d'erreur générale, toujours retourner une position valide
+      return { x: 0, y: 0 };
     }
   }
   
@@ -1814,7 +1867,9 @@ class WorkflowEditor {
           this.sourcePortIndex
         );
         
-        if (!start) {
+        // Même si getPortPosition ne devrait plus jamais retourner null, vérification par sécurité
+        if (!start || typeof start.x !== 'number' || typeof start.y !== 'number') {
+          console.warn("[Workflow] Position de départ invalide pour l'arête temporaire");
           return;
         }
         
@@ -2660,32 +2715,48 @@ class WorkflowEditor {
       const deltaOffsetX = targetOffsetX - startOffsetX;
       const deltaOffsetY = targetOffsetY - startOffsetY;
       
-      const duration = 200; // durée en ms
-      const startTime = performance.now();
+      // Réduire la durée d'animation pour un zoom plus rapide
+      const duration = 100; // réduit de 200ms à 100ms
       
-      const animateZoom = (currentTime) => {
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        
-        // Fonction d'ease-out pour une animation plus naturelle
-        const easeOutProgress = 1 - Math.pow(1 - progress, 2);
-        
-        this.scale = startScale + deltaScale * easeOutProgress;
-        this.offset.x = startOffsetX + deltaOffsetX * easeOutProgress;
-        this.offset.y = startOffsetY + deltaOffsetY * easeOutProgress;
-        
+      // Optimisation: pour les petits changements de zoom, pas d'animation
+      const isSmallChange = Math.abs(deltaScale) < 0.1 && 
+                          Math.abs(deltaOffsetX) < 10 && 
+                          Math.abs(deltaOffsetY) < 10;
+      
+      if (isSmallChange) {
+        // Application directe pour les petits changements
+        this.scale = newScale;
+        this.offset.x = targetOffsetX;
+        this.offset.y = targetOffsetY;
         this.updateTransform();
+        this.updateEdges();
+      } else {
+        // Animation optimisée pour les changements plus importants
+        const startTime = performance.now();
         
-        if (progress < 1) {
-          requestAnimationFrame(animateZoom);
-        } else {
-          // Mise à jour des arêtes une fois l'animation terminée
-          this.updateEdges();
-          console.log(`[Workflow] Zoom terminé: échelle ${this.scale.toFixed(2)}`);
-        }
-      };
-      
-      requestAnimationFrame(animateZoom);
+        const animateZoom = (currentTime) => {
+          const elapsedTime = currentTime - startTime;
+          const progress = Math.min(elapsedTime / duration, 1);
+          
+          // Fonction d'ease-out simplifiée
+          const easeOutProgress = 1 - (1 - progress) * (1 - progress);
+          
+          this.scale = startScale + deltaScale * easeOutProgress;
+          this.offset.x = startOffsetX + deltaOffsetX * easeOutProgress;
+          this.offset.y = startOffsetY + deltaOffsetY * easeOutProgress;
+          
+          this.updateTransform();
+          
+          if (progress < 1) {
+            requestAnimationFrame(animateZoom);
+          } else {
+            // Mise à jour des arêtes une fois l'animation terminée
+            this.updateEdges();
+          }
+        };
+        
+        requestAnimationFrame(animateZoom);
+      }
     } else {
       // Sans animation, mise à jour immédiate
       this.scale = newScale;
@@ -2762,8 +2833,8 @@ class WorkflowEditor {
     this.canvas.style.transformOrigin = '0 0';
     this.canvas.style.transform = `translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`;
     
-    // Debug pour vérifier que les transformations sont appliquées
-    console.log(`[Workflow] Transformation mise à jour: translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`);
+    // Debug limité pour éviter de surcharger la console
+    // console.log(`[Workflow] Transformation mise à jour: translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`);
   }
   
   /**
