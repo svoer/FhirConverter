@@ -101,10 +101,10 @@ class WorkflowEditor {
    * Crée le canevas principal
    */
   createCanvas() {
-    // Définir les dimensions du canvas pour un espace de travail très large
+    // Définir les dimensions du canvas pour un espace de travail quasi "infini"
     this.canvasSize = {
-      width: 4000,  // Grande taille pour supporter les workflows complexes
-      height: 4000  // Grande taille pour supporter les workflows complexes
+      width: 20000,  // Taille extrêmement grande pour un effet "infini"
+      height: 20000  // Taille extrêmement grande pour un effet "infini"
     };
     
     this.canvas = document.createElement('div');
@@ -113,6 +113,12 @@ class WorkflowEditor {
     // Définir les dimensions explicitement
     this.canvas.style.width = this.canvasSize.width + 'px';
     this.canvas.style.height = this.canvasSize.height + 'px';
+    
+    // Définir le point central du canevas pour les calculs futurs
+    this.canvasCenter = {
+      x: this.canvasSize.width / 2,
+      y: this.canvasSize.height / 2
+    };
     
     this.container.appendChild(this.canvas);
     
@@ -166,8 +172,9 @@ class WorkflowEditor {
         targetX = containerRect.width / 2 - validPoint.x * this.scale;
         targetY = containerRect.height / 2 - validPoint.y * this.scale;
       } else {
-        targetX = containerRect.width / 2 - 2000 * this.scale; // 2000 = milieu du canvas
-        targetY = containerRect.height / 2 - 2000 * this.scale;
+        // Utiliser le centre du canevas défini dans createCanvas (10000,10000)
+        targetX = containerRect.width / 2 - this.canvasCenter.x * this.scale;
+        targetY = containerRect.height / 2 - this.canvasCenter.y * this.scale;
       }
       
       // Vérification des valeurs calculées
