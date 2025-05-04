@@ -728,9 +728,21 @@
                 }
             }
             
+            // Variable pour garder une trace du dernier appel à loadWorkflows
+            let workflowLoadCounter = 0;
+            
             // Chargement des workflows
             async function loadWorkflows(applicationId = 'all') {
+                // Incrémenter le compteur pour garder trace de l'appel actuel
+                const currentCallId = ++workflowLoadCounter;
+                
+                // Ajouter un log pour mieux comprendre d'où vient l'appel
+                const stackTrace = new Error().stack;
+                console.log(`[Workflows] Appel #${currentCallId} de loadWorkflows avec applicationId=${applicationId}`);
+                console.log(`[Workflows] Trace d'appel: ${stackTrace}`);
+                
                 try {
+                    // Effacer complètement la grille de workflows
                     workflowGrid.innerHTML = '';
                     loadingSpinner.style.display = 'block';
                     
@@ -752,6 +764,12 @@
                     
                     const result = await response.json();
                     console.log('Workflows chargés:', result);
+                    
+                    // Vérifier si cet appel est toujours le plus récent
+                    if (currentCallId !== workflowLoadCounter) {
+                        console.log(`[Workflows] Abandon de l'appel #${currentCallId}, un appel plus récent #${workflowLoadCounter} existe`);
+                        return; // Ne pas continuer si un appel plus récent a été fait
+                    }
                     
                     loadingSpinner.style.display = 'none';
                     
