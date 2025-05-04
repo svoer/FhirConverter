@@ -4439,12 +4439,22 @@ class WorkflowEditor {
         flow_json: JSON.stringify(flowData)
       };
       
+      // Obtenir le token d'authentification selon la méthode disponible
+      let token = null;
+      if (typeof getToken === 'function') {
+        token = getToken(); // Fonction définie dans workflows.html
+      } else if (window.FHIRHubAuth && typeof window.FHIRHubAuth.getAuthToken === 'function') {
+        token = window.FHIRHubAuth.getAuthToken(); // Fonction globale du système d'auth
+      } else if (localStorage.getItem('token')) {
+        token = localStorage.getItem('token'); // Accès direct au localStorage
+      }
+      
       // Envoyer les données au serveur
       const response = await fetch(`/api/workflows/${this.workflowId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken ? getToken() : ''}`,
+          'Authorization': `Bearer ${token}`,
           'X-API-KEY': 'dev-key'
         },
         body: JSON.stringify(workflowData)
