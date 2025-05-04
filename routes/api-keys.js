@@ -178,19 +178,15 @@ router.post('/', authCombined, (req, res) => {
     // Générer ou utiliser la clé API fournie
     const apiKey = custom_key || require('crypto').randomBytes(32).toString('hex');
     
-    // Hacher la clé API pour le stockage
-    const hashedKey = require('crypto').createHash('sha256').update(apiKey).digest('hex');
-    
-    // Insérer la clé API
+    // Insérer la clé API (sans hashed_key qui n'existe plus dans le schéma)
     const result = db.prepare(`
       INSERT INTO api_keys (
-        application_id, key, hashed_key, description, expires_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+        application_id, key, name, environment, active, expires_at, created_at
+      ) VALUES (?, ?, ?, 'production', 1, ?, datetime('now'))
     `).run(
       application_id,
       apiKey,
-      hashedKey,
-      description || null,
+      description || 'Clé API',
       expires_at || null
     );
     
@@ -260,7 +256,7 @@ router.post('/:id/revoke', authCombined, (req, res) => {
     // Révoquer la clé API
     db.prepare(`
       UPDATE api_keys
-      SET is_active = 0
+      SET active = 0
       WHERE id = ?
     `).run(id);
     
@@ -322,7 +318,7 @@ router.post('/:id/activate', authCombined, (req, res) => {
     // Activer la clé API
     db.prepare(`
       UPDATE api_keys
-      SET is_active = 1
+      SET active = 1
       WHERE id = ?
     `).run(id);
     

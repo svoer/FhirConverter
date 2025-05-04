@@ -36,16 +36,15 @@ function apiKeyAuth(options = {}) {
     try {
       // Vérifier la clé dans la base de données
       const db = req.app.locals.db;
-      const hashedKey = hashValue(apiKey);
-      
+      // Utiliser key directement au lieu de hashed_key qui n'existe plus
       const keyData = db.prepare(`
         SELECT 
-          ak.id, ak.application_id, ak.key, ak.is_active, ak.expires_at,
+          ak.id, ak.application_id, ak.key, ak.active as is_active, ak.expires_at,
           a.name as app_name, a.cors_origins, a.settings
         FROM api_keys ak
         JOIN applications a ON ak.application_id = a.id
-        WHERE ak.hashed_key = ? AND ak.is_active = 1
-      `).get(hashedKey);
+        WHERE ak.key = ? AND ak.active = 1
+      `).get(apiKey);
       
       if (!keyData) {
         if (required) {
@@ -107,10 +106,6 @@ function apiKeyAuth(options = {}) {
   };
 }
 
-// Fonction pour hacher une valeur (pour les clés API)
-function hashValue(value) {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
+// Note: La fonction hashValue n'est plus utilisée puisque nous n'utilisons plus la colonne hashed_key
 
 module.exports = apiKeyAuth;

@@ -162,9 +162,10 @@ async function createTables() {
         ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
       );
       
+      // Requête adaptée sans la colonne hashed_key qui n'existe plus dans le schéma actuel
       await run(
-        'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?',
-        ['Application par défaut', 'dev-key', 'dev-key', 'Clé de développement']
+        'INSERT OR IGNORE INTO api_keys (application_id, key, name, environment) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?',
+        ['Application par défaut', 'dev-key', 'Clé de développement', 'development']
       );
     } catch (appErr) {
       console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
