@@ -953,73 +953,875 @@ class WorkflowEditor {
   getNodeConfig(type) {
     // Configurations par défaut pour les différents types de noeuds
     const configs = {
+      // ===== ENTRÉES/SOURCES =====
       'hl7-input': {
         label: 'Entrée HL7',
         inputs: [],
-        outputs: [{ name: 'message', label: 'Message' }]
+        outputs: [{ name: 'message', label: 'Message' }],
+        properties: [
+          { name: 'source', label: 'Source', type: 'select', options: ['Manuel', 'Fichier', 'MLLP'], default: 'Manuel' },
+          { name: 'format', label: 'Format', type: 'select', options: ['HL7 v2.5', 'HL7 v2.6', 'HL7 v2.3'], default: 'HL7 v2.5' }
+        ]
       },
       'json-input': {
         label: 'Entrée JSON',
         inputs: [],
-        outputs: [{ name: 'json', label: 'JSON' }]
+        outputs: [{ name: 'json', label: 'JSON' }],
+        properties: [
+          { name: 'source', label: 'Source', type: 'select', options: ['Manuel', 'Fichier', 'API'], default: 'Manuel' },
+          { name: 'schema', label: 'Schéma', type: 'text', default: '' }
+        ]
       },
       'file-input': {
         label: 'Entrée fichier',
         inputs: [],
-        outputs: [{ name: 'content', label: 'Contenu' }]
+        outputs: [{ name: 'content', label: 'Contenu' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '' },
+          { name: 'encoding', label: 'Encodage', type: 'select', options: ['UTF-8', 'ISO-8859-1', 'ASCII'], default: 'UTF-8' },
+          { name: 'format', label: 'Format', type: 'select', options: ['Texte', 'JSON', 'XML', 'CSV', 'HL7'], default: 'Texte' }
+        ]
       },
-      'segment-extractor': {
-        label: 'Extraire segment',
-        inputs: [{ name: 'message', label: 'Message' }],
-        outputs: [{ name: 'segment', label: 'Segment' }]
+      'ftp-input': {
+        label: 'Entrée FTP',
+        inputs: [],
+        outputs: [{ name: 'files', label: 'Fichiers' }],
+        properties: [
+          { name: 'host', label: 'Hôte', type: 'text', default: '' },
+          { name: 'port', label: 'Port', type: 'number', default: 21 },
+          { name: 'username', label: 'Identifiant', type: 'text', default: '' },
+          { name: 'password', label: 'Mot de passe', type: 'password', default: '' },
+          { name: 'path', label: 'Chemin', type: 'text', default: '/' },
+          { name: 'passive', label: 'Mode passif', type: 'boolean', default: true }
+        ]
       },
+      'folder-watcher': {
+        label: 'Surveiller dossier',
+        inputs: [],
+        outputs: [{ name: 'file', label: 'Fichier' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '' },
+          { name: 'filter', label: 'Filtre', type: 'text', default: '*.*' },
+          { name: 'recursive', label: 'Récursif', type: 'boolean', default: false },
+          { name: 'interval', label: 'Intervalle (s)', type: 'number', default: 60 }
+        ]
+      },
+      'timer-trigger': {
+        label: 'Déclencheur temporel',
+        inputs: [],
+        outputs: [{ name: 'trigger', label: 'Déclencheur' }],
+        properties: [
+          { name: 'interval', label: 'Intervalle (s)', type: 'number', default: 60 },
+          { name: 'cron', label: 'Expression Cron', type: 'text', default: '' },
+          { name: 'payload', label: 'Contenu', type: 'json', default: '{}' }
+        ]
+      },
+      'http-receiver': {
+        label: 'Récepteur HTTP',
+        inputs: [],
+        outputs: [{ name: 'request', label: 'Requête' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '/webhook' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['POST', 'GET', 'PUT', 'DELETE'], default: 'POST' },
+          { name: 'auth', label: 'Authentification', type: 'boolean', default: false }
+        ]
+      },
+      
+      // ===== CONVERSION =====
+      'fhir-converter': {
+        label: 'Convertir FHIR',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'inputFormat', label: 'Format d\'entrée', type: 'select', options: ['JSON', 'XML'], default: 'JSON' },
+          { name: 'outputFormat', label: 'Format de sortie', type: 'select', options: ['JSON', 'XML'], default: 'JSON' },
+          { name: 'version', label: 'Version FHIR', type: 'select', options: ['R4', 'STU3', 'DSTU2'], default: 'R4' }
+        ]
+      },
+      'hl7-to-fhir': {
+        label: 'HL7 vers FHIR',
+        inputs: [{ name: 'hl7', label: 'HL7' }],
+        outputs: [{ name: 'fhir', label: 'FHIR' }],
+        properties: [
+          { name: 'hl7Version', label: 'Version HL7', type: 'select', options: ['2.5', '2.4', '2.3'], default: '2.5' },
+          { name: 'fhirVersion', label: 'Version FHIR', type: 'select', options: ['R4', 'STU3'], default: 'R4' },
+          { name: 'profile', label: 'Profil ANS', type: 'boolean', default: true }
+        ]
+      },
+      'fhir-to-hl7': {
+        label: 'FHIR vers HL7',
+        inputs: [{ name: 'fhir', label: 'FHIR' }],
+        outputs: [{ name: 'hl7', label: 'HL7' }],
+        properties: [
+          { name: 'fhirVersion', label: 'Version FHIR', type: 'select', options: ['R4', 'STU3'], default: 'R4' },
+          { name: 'hl7Version', label: 'Version HL7', type: 'select', options: ['2.5', '2.4', '2.3'], default: '2.5' },
+          { name: 'encoding', label: 'Encodage', type: 'select', options: ['UTF-8', 'ISO-8859-1'], default: 'UTF-8' }
+        ]
+      },
+      'cda-to-fhir': {
+        label: 'CDA vers FHIR',
+        inputs: [{ name: 'cda', label: 'CDA' }],
+        outputs: [{ name: 'fhir', label: 'FHIR' }],
+        properties: [
+          { name: 'cdaVersion', label: 'Version CDA', type: 'select', options: ['R2'], default: 'R2' },
+          { name: 'fhirVersion', label: 'Version FHIR', type: 'select', options: ['R4', 'STU3'], default: 'R4' }
+        ]
+      },
+      'dicom-to-fhir': {
+        label: 'DICOM vers FHIR',
+        inputs: [{ name: 'dicom', label: 'DICOM' }],
+        outputs: [{ name: 'fhir', label: 'FHIR' }],
+        properties: [
+          { name: 'extractImages', label: 'Extraire les images', type: 'boolean', default: false },
+          { name: 'patientMatch', label: 'Association patient', type: 'boolean', default: true }
+        ]
+      },
+      'xml-to-json': {
+        label: 'XML vers JSON',
+        inputs: [{ name: 'xml', label: 'XML' }],
+        outputs: [{ name: 'json', label: 'JSON' }],
+        properties: [
+          { name: 'ignoreAttributes', label: 'Ignorer attributs', type: 'boolean', default: false },
+          { name: 'parseValues', label: 'Convertir valeurs', type: 'boolean', default: true }
+        ]
+      },
+      'json-to-xml': {
+        label: 'JSON vers XML',
+        inputs: [{ name: 'json', label: 'JSON' }],
+        outputs: [{ name: 'xml', label: 'XML' }],
+        properties: [
+          { name: 'rootElement', label: 'Élément racine', type: 'text', default: 'root' },
+          { name: 'declaration', label: 'Déclaration XML', type: 'boolean', default: true }
+        ]
+      },
+      'template': {
+        label: 'Template JSON',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'template', label: 'Template', type: 'textarea', default: '{}' },
+          { name: 'engine', label: 'Moteur', type: 'select', options: ['Handlebars', 'Mustache', 'JSON Path'], default: 'Handlebars' }
+        ]
+      },
+      'custom-script': {
+        label: 'Script JS',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'script', label: 'Script', type: 'code', language: 'javascript', default: 'function process(input) {\n  // Traitement\n  return input;\n}' }
+        ]
+      },
+      'xslt-transform': {
+        label: 'Transformation XSLT',
+        inputs: [{ name: 'xml', label: 'XML' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'xslt', label: 'XSLT', type: 'code', language: 'xml', default: '<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">\n  <xsl:template match="/">\n    <!-- Transformation -->\n  </xsl:template>\n</xsl:stylesheet>' }
+        ]
+      },
+      
+      // ===== TRAITEMENT =====
       'field-mapper': {
         label: 'Mapper champs',
         inputs: [{ name: 'input', label: 'Entrée' }],
-        outputs: [{ name: 'output', label: 'Sortie' }]
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'mappings', label: 'Mappings', type: 'mappings', default: '[]' },
+          { name: 'preserveOriginal', label: 'Préserver données originales', type: 'boolean', default: false }
+        ]
       },
-      'condition': {
-        label: 'Condition',
-        inputs: [{ name: 'value', label: 'Valeur' }],
-        outputs: [
-          { name: 'true', label: 'Vrai' },
-          { name: 'false', label: 'Faux' }
+      'segment-extractor': {
+        label: 'Extraire segment',
+        inputs: [{ name: 'hl7', label: 'HL7' }],
+        outputs: [{ name: 'segment', label: 'Segment' }],
+        properties: [
+          { name: 'segmentType', label: 'Type de segment', type: 'text', default: 'PID' },
+          { name: 'multiple', label: 'Extraire multiples', type: 'boolean', default: false }
         ]
       },
       'transform': {
         label: 'Transformer',
         inputs: [{ name: 'input', label: 'Entrée' }],
-        outputs: [{ name: 'output', label: 'Sortie' }]
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operations', label: 'Opérations', type: 'array', default: '[]' }
+        ]
       },
-      'fhir-converter': {
-        label: 'Convertir FHIR',
-        inputs: [{ name: 'hl7', label: 'HL7' }],
-        outputs: [{ name: 'fhir', label: 'FHIR' }]
-      },
-      'template': {
-        label: 'Template JSON',
-        inputs: [{ name: 'data', label: 'Données' }],
-        outputs: [{ name: 'result', label: 'Résultat' }]
-      },
-      'custom-script': {
-        label: 'Script JS',
+      'condition': {
+        label: 'Condition',
         inputs: [{ name: 'input', label: 'Entrée' }],
-        outputs: [{ name: 'output', label: 'Sortie' }]
+        outputs: [
+          { name: 'true', label: 'Vrai' },
+          { name: 'false', label: 'Faux' }
+        ],
+        properties: [
+          { name: 'condition', label: 'Condition', type: 'text', default: '' },
+          { name: 'expressionType', label: 'Type d\'expression', type: 'select', options: ['JSONPath', 'JavaScript', 'Simple'], default: 'Simple' }
+        ]
+      },
+      'split': {
+        label: 'Diviseur',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'items', label: 'Éléments' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '' },
+          { name: 'sendItems', label: 'Envoyer individuellement', type: 'boolean', default: true }
+        ]
+      },
+      'merge': {
+        label: 'Fusionner',
+        inputs: [
+          { name: 'input1', label: 'Entrée 1' },
+          { name: 'input2', label: 'Entrée 2' }
+        ],
+        outputs: [{ name: 'merged', label: 'Fusionné' }],
+        properties: [
+          { name: 'strategy', label: 'Stratégie', type: 'select', options: ['Concat', 'Merge Objects', 'Join'], default: 'Merge Objects' }
+        ]
+      },
+      'filter': {
+        label: 'Filtre',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'criteria', label: 'Critères', type: 'text', default: '' },
+          { name: 'type', label: 'Type', type: 'select', options: ['JSONPath', 'JavaScript', 'SQL-like'], default: 'JSONPath' }
+        ]
+      },
+      'validator': {
+        label: 'Validateur',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [
+          { name: 'valid', label: 'Valide' },
+          { name: 'invalid', label: 'Invalide' }
+        ],
+        properties: [
+          { name: 'rules', label: 'Règles', type: 'array', default: '[]' },
+          { name: 'schema', label: 'Schéma', type: 'textarea', default: '' }
+        ]
+      },
+      'sorter': {
+        label: 'Trieur',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'sorted', label: 'Trié' }],
+        properties: [
+          { name: 'field', label: 'Champ', type: 'text', default: '' },
+          { name: 'direction', label: 'Direction', type: 'select', options: ['Ascending', 'Descending'], default: 'Ascending' }
+        ]
+      },
+      'batch-processor': {
+        label: 'Traitement par lot',
+        inputs: [{ name: 'items', label: 'Éléments' }],
+        outputs: [{ name: 'batch', label: 'Lot' }],
+        properties: [
+          { name: 'size', label: 'Taille du lot', type: 'number', default: 10 },
+          { name: 'timeout', label: 'Délai (ms)', type: 'number', default: 1000 }
+        ]
+      },
+      'debatcher': {
+        label: 'Décomposition lot',
+        inputs: [{ name: 'batch', label: 'Lot' }],
+        outputs: [{ name: 'item', label: 'Élément' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '' }
+        ]
+      },
+      
+      // ===== INTÉGRATION =====
+      'api-call': {
+        label: 'Appel API',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['GET', 'POST', 'PUT', 'DELETE'], default: 'GET' },
+          { name: 'headers', label: 'En-têtes', type: 'json', default: '{}' },
+          { name: 'auth', label: 'Authentification', type: 'select', options: ['None', 'Basic', 'Bearer', 'OAuth2'], default: 'None' }
+        ]
       },
       'fhir-output': {
         label: 'Sortie FHIR',
         inputs: [{ name: 'fhir', label: 'FHIR' }],
-        outputs: []
-      },
-      'api-call': {
-        label: 'Appel API',
-        inputs: [{ name: 'data', label: 'Données' }],
-        outputs: [{ name: 'response', label: 'Réponse' }]
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'server', label: 'Serveur', type: 'text', default: '' },
+          { name: 'resourceType', label: 'Type de ressource', type: 'select', options: ['Patient', 'Observation', 'Encounter', 'Condition', 'Procedure'], default: 'Patient' },
+          { name: 'operation', label: 'Opération', type: 'select', options: ['create', 'update', 'search'], default: 'create' }
+        ]
       },
       'file-output': {
         label: 'Sortie fichier',
         inputs: [{ name: 'content', label: 'Contenu' }],
-        outputs: []
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'path', label: 'Chemin', type: 'text', default: '' },
+          { name: 'format', label: 'Format', type: 'select', options: ['Auto', 'JSON', 'XML', 'Text'], default: 'Auto' },
+          { name: 'encoding', label: 'Encodage', type: 'select', options: ['UTF-8', 'ISO-8859-1'], default: 'UTF-8' }
+        ]
+      },
+      'database-query': {
+        label: 'Requête BDD',
+        inputs: [{ name: 'params', label: 'Paramètres' }],
+        outputs: [{ name: 'results', label: 'Résultats' }],
+        properties: [
+          { name: 'connection', label: 'Connexion', type: 'select', options: ['Default', 'Custom'], default: 'Default' },
+          { name: 'query', label: 'Requête', type: 'textarea', default: 'SELECT * FROM users WHERE id = :id' },
+          { name: 'queryType', label: 'Type', type: 'select', options: ['Select', 'Insert', 'Update', 'Delete'], default: 'Select' }
+        ]
+      },
+      'email-sender': {
+        label: 'Envoi email',
+        inputs: [{ name: 'content', label: 'Contenu' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'to', label: 'Destinataire', type: 'text', default: '' },
+          { name: 'subject', label: 'Sujet', type: 'text', default: '' },
+          { name: 'from', label: 'Expéditeur', type: 'text', default: '' },
+          { name: 'smtp', label: 'Serveur SMTP', type: 'text', default: '' }
+        ]
+      },
+      'sms-sender': {
+        label: 'Envoi SMS',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'to', label: 'Destinataire', type: 'text', default: '' },
+          { name: 'provider', label: 'Fournisseur', type: 'select', options: ['Twilio', 'SNS', 'Custom'], default: 'Twilio' }
+        ]
+      },
+      'webhook-sender': {
+        label: 'Envoi webhook',
+        inputs: [{ name: 'payload', label: 'Contenu' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'headers', label: 'En-têtes', type: 'json', default: '{}' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['POST', 'PUT'], default: 'POST' }
+        ]
+      },
+      'queue-publisher': {
+        label: 'Publier file',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'queue', label: 'File', type: 'text', default: '' },
+          { name: 'provider', label: 'Fournisseur', type: 'select', options: ['RabbitMQ', 'SQS', 'Kafka'], default: 'RabbitMQ' }
+        ]
+      },
+      'queue-consumer': {
+        label: 'Consommer file',
+        inputs: [],
+        outputs: [{ name: 'message', label: 'Message' }],
+        properties: [
+          { name: 'queue', label: 'File', type: 'text', default: '' },
+          { name: 'provider', label: 'Fournisseur', type: 'select', options: ['RabbitMQ', 'SQS', 'Kafka'], default: 'RabbitMQ' },
+          { name: 'autoAck', label: 'Acquittement auto', type: 'boolean', default: true }
+        ]
+      },
+      
+      // ===== SYSTÈMES SANTÉ =====
+      'hl7-v2': {
+        label: 'HL7 v2.x',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Parse', 'Generate', 'Validate'], default: 'Parse' },
+          { name: 'version', label: 'Version', type: 'select', options: ['2.5', '2.4', '2.3'], default: '2.5' }
+        ]
+      },
+      'hl7-v3': {
+        label: 'HL7 v3',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Parse', 'Generate', 'Validate'], default: 'Parse' },
+          { name: 'interactionId', label: 'ID d\'interaction', type: 'text', default: '' }
+        ]
+      },
+      'dicom': {
+        label: 'DICOM',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Parse', 'Store', 'Query', 'Retrieve'], default: 'Parse' },
+          { name: 'extractImage', label: 'Extraire image', type: 'boolean', default: false }
+        ]
+      },
+      'sis': {
+        label: 'SIH',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'system', label: 'Système', type: 'select', options: ['Generic', 'Hexagone', 'WebPIMS', 'Resurgences'], default: 'Generic' },
+          { name: 'endpoint', label: 'Point d\'accès', type: 'text', default: '' }
+        ]
+      },
+      'cda': {
+        label: 'CDA',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Parse', 'Generate', 'Validate'], default: 'Parse' },
+          { name: 'template', label: 'Template', type: 'text', default: '' }
+        ]
+      },
+      'fhir-r4': {
+        label: 'FHIR R4',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Read', 'Create', 'Update', 'Search'], default: 'Read' },
+          { name: 'resourceType', label: 'Type de ressource', type: 'select', options: ['Patient', 'Observation', 'Encounter', 'Condition'], default: 'Patient' }
+        ]
+      },
+      'fhir-dstu2': {
+        label: 'FHIR DSTU2',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Read', 'Create', 'Update', 'Search'], default: 'Read' },
+          { name: 'resourceType', label: 'Type de ressource', type: 'select', options: ['Patient', 'Observation', 'Encounter', 'Condition'], default: 'Patient' }
+        ]
+      },
+      'fhir-stu3': {
+        label: 'FHIR STU3',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Read', 'Create', 'Update', 'Search'], default: 'Read' },
+          { name: 'resourceType', label: 'Type de ressource', type: 'select', options: ['Patient', 'Observation', 'Encounter', 'Condition'], default: 'Patient' }
+        ]
+      },
+      'loinc-mapper': {
+        label: 'Mappeur LOINC',
+        inputs: [{ name: 'codes', label: 'Codes' }],
+        outputs: [{ name: 'mapped', label: 'Mappés' }],
+        properties: [
+          { name: 'sourceSystem', label: 'Système source', type: 'text', default: '' },
+          { name: 'language', label: 'Langue', type: 'select', options: ['fr-FR', 'en-US'], default: 'fr-FR' }
+        ]
+      },
+      'snomed-mapper': {
+        label: 'Mappeur SNOMED',
+        inputs: [{ name: 'codes', label: 'Codes' }],
+        outputs: [{ name: 'mapped', label: 'Mappés' }],
+        properties: [
+          { name: 'sourceSystem', label: 'Système source', type: 'text', default: '' },
+          { name: 'edition', label: 'Édition', type: 'select', options: ['International', 'France'], default: 'France' }
+        ]
+      },
+      'french-nih': {
+        label: 'NIH Français',
+        inputs: [{ name: 'patient', label: 'Patient' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Search', 'Create', 'Validate'], default: 'Search' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['INSi', 'INSI-SOAP', 'Manual'], default: 'INSi' }
+        ]
+      },
+      'dmp-export': {
+        label: 'Export DMP',
+        inputs: [{ name: 'document', label: 'Document' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'documentType', label: 'Type de document', type: 'select', options: ['CR-BIO', 'CR-RAD', 'LDL-EES', 'LDL-SES'], default: 'CR-BIO' },
+          { name: 'patientConsent', label: 'Consentement patient', type: 'boolean', default: true }
+        ]
+      },
+      'rpps-lookup': {
+        label: 'Recherche RPPS',
+        inputs: [{ name: 'query', label: 'Requête' }],
+        outputs: [{ name: 'practitioner', label: 'Praticien' }],
+        properties: [
+          { name: 'type', label: 'Type', type: 'select', options: ['RPPS', 'ADELI'], default: 'RPPS' },
+          { name: 'source', label: 'Source', type: 'select', options: ['ANS', 'Local', 'API'], default: 'ANS' }
+        ]
+      },
+      'mssante': {
+        label: 'MSSanté',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'result', label: 'Résultat' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Send', 'Receive', 'Search'], default: 'Send' },
+          { name: 'endpoint', label: 'Point d\'accès', type: 'text', default: '' }
+        ]
+      },
+      'ins-lookup': {
+        label: 'Recherche INS',
+        inputs: [{ name: 'patient', label: 'Patient' }],
+        outputs: [{ name: 'ins', label: 'INS' }],
+        properties: [
+          { name: 'method', label: 'Méthode', type: 'select', options: ['TRAITS', 'CARTE-VITALE', 'PDSm'], default: 'TRAITS' },
+          { name: 'source', label: 'Source', type: 'select', options: ['Téléservice', 'Local'], default: 'Téléservice' }
+        ]
+      },
+      'sesam-vitale': {
+        label: 'SESAM-Vitale',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['ReadCard', 'Invoice', 'Status'], default: 'ReadCard' },
+          { name: 'apiVersion', label: 'Version API', type: 'select', options: ['1.40', '1.31'], default: '1.40' }
+        ]
+      },
+      
+      // ===== SÉCURITÉ =====
+      'authentication': {
+        label: 'Authentification',
+        inputs: [{ name: 'credentials', label: 'Identifiants' }],
+        outputs: [
+          { name: 'success', label: 'Succès' },
+          { name: 'failure', label: 'Échec' }
+        ],
+        properties: [
+          { name: 'method', label: 'Méthode', type: 'select', options: ['Basic', 'OAuth2', 'JWT', 'SAML'], default: 'Basic' },
+          { name: 'provider', label: 'Fournisseur', type: 'text', default: '' }
+        ]
+      },
+      'authorization': {
+        label: 'Autorisation',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [
+          { name: 'allowed', label: 'Autorisé' },
+          { name: 'denied', label: 'Refusé' }
+        ],
+        properties: [
+          { name: 'rules', label: 'Règles', type: 'json', default: '[]' },
+          { name: 'role', label: 'Rôle requis', type: 'text', default: '' }
+        ]
+      },
+      'encryption': {
+        label: 'Chiffrement',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'encrypted', label: 'Chiffré' }],
+        properties: [
+          { name: 'algorithm', label: 'Algorithme', type: 'select', options: ['AES-256', 'RSA', 'ChaCha20'], default: 'AES-256' },
+          { name: 'keySource', label: 'Source de la clé', type: 'select', options: ['Secret', 'KeyStore', 'HSM'], default: 'Secret' }
+        ]
+      },
+      'decryption': {
+        label: 'Déchiffrement',
+        inputs: [{ name: 'encrypted', label: 'Chiffré' }],
+        outputs: [{ name: 'decrypted', label: 'Déchiffré' }],
+        properties: [
+          { name: 'algorithm', label: 'Algorithme', type: 'select', options: ['AES-256', 'RSA', 'ChaCha20'], default: 'AES-256' },
+          { name: 'keySource', label: 'Source de la clé', type: 'select', options: ['Secret', 'KeyStore', 'HSM'], default: 'Secret' }
+        ]
+      },
+      'anonymizer': {
+        label: 'Anonymisation',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'anonymized', label: 'Anonymisé' }],
+        properties: [
+          { name: 'level', label: 'Niveau', type: 'select', options: ['Complet', 'Partiel', 'Pseudonymisation'], default: 'Complet' },
+          { name: 'fields', label: 'Champs', type: 'array', default: '[]' }
+        ]
+      },
+      'data-masking': {
+        label: 'Masquage données',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'masked', label: 'Masqué' }],
+        properties: [
+          { name: 'rules', label: 'Règles', type: 'json', default: '[]' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['Hash', 'Redact', 'Substitute'], default: 'Redact' }
+        ]
+      },
+      'logger': {
+        label: 'Journalisation',
+        inputs: [{ name: 'event', label: 'Événement' }],
+        outputs: [{ name: 'logged', label: 'Journalisé' }],
+        properties: [
+          { name: 'level', label: 'Niveau', type: 'select', options: ['INFO', 'WARNING', 'ERROR', 'DEBUG'], default: 'INFO' },
+          { name: 'destination', label: 'Destination', type: 'select', options: ['File', 'Database', 'Service'], default: 'File' }
+        ]
+      },
+      'audit-trail': {
+        label: 'Piste d\'audit',
+        inputs: [{ name: 'action', label: 'Action' }],
+        outputs: [{ name: 'audit', label: 'Audit' }],
+        properties: [
+          { name: 'includeUser', label: 'Inclure utilisateur', type: 'boolean', default: true },
+          { name: 'storePayload', label: 'Stocker contenu', type: 'boolean', default: false }
+        ]
+      },
+      
+      // ===== CONNECTEURS =====
+      'soap': {
+        label: 'SOAP Client',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'wsdl', label: 'WSDL', type: 'text', default: '' },
+          { name: 'operation', label: 'Opération', type: 'text', default: '' },
+          { name: 'auth', label: 'Authentification', type: 'select', options: ['None', 'Basic', 'WSSecurity'], default: 'None' }
+        ]
+      },
+      'rest': {
+        label: 'REST Client',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], default: 'GET' },
+          { name: 'headers', label: 'En-têtes', type: 'json', default: '{}' }
+        ]
+      },
+      'sftp': {
+        label: 'SFTP',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'host', label: 'Hôte', type: 'text', default: '' },
+          { name: 'port', label: 'Port', type: 'number', default: 22 },
+          { name: 'username', label: 'Identifiant', type: 'text', default: '' },
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Get', 'Put', 'List'], default: 'Get' }
+        ]
+      },
+      'mllp': {
+        label: 'MLLP',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'host', label: 'Hôte', type: 'text', default: '' },
+          { name: 'port', label: 'Port', type: 'number', default: 2575 },
+          { name: 'mode', label: 'Mode', type: 'select', options: ['Client', 'Server'], default: 'Client' }
+        ]
+      },
+      'jdbc': {
+        label: 'JDBC',
+        inputs: [{ name: 'query', label: 'Requête' }],
+        outputs: [{ name: 'results', label: 'Résultats' }],
+        properties: [
+          { name: 'connection', label: 'Connexion', type: 'text', default: '' },
+          { name: 'driver', label: 'Pilote', type: 'select', options: ['MySQL', 'PostgreSQL', 'Oracle', 'SQLite'], default: 'PostgreSQL' }
+        ]
+      },
+      'ldap': {
+        label: 'LDAP',
+        inputs: [{ name: 'query', label: 'Requête' }],
+        outputs: [{ name: 'results', label: 'Résultats' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'baseDN', label: 'DN de base', type: 'text', default: '' },
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Search', 'Add', 'Modify', 'Delete'], default: 'Search' }
+        ]
+      },
+      'mqtt': {
+        label: 'MQTT',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'received', label: 'Reçu' }],
+        properties: [
+          { name: 'broker', label: 'Broker', type: 'text', default: '' },
+          { name: 'topic', label: 'Sujet', type: 'text', default: '' },
+          { name: 'qos', label: 'QoS', type: 'select', options: ['0', '1', '2'], default: '1' }
+        ]
+      },
+      'amqp': {
+        label: 'AMQP',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'received', label: 'Reçu' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'exchange', label: 'Exchange', type: 'text', default: '' },
+          { name: 'queue', label: 'Queue', type: 'text', default: '' }
+        ]
+      },
+      'kafka': {
+        label: 'Kafka',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'received', label: 'Reçu' }],
+        properties: [
+          { name: 'brokers', label: 'Brokers', type: 'text', default: '' },
+          { name: 'topic', label: 'Sujet', type: 'text', default: '' },
+          { name: 'groupId', label: 'ID de groupe', type: 'text', default: '' }
+        ]
+      },
+      'websocket': {
+        label: 'WebSocket',
+        inputs: [{ name: 'message', label: 'Message' }],
+        outputs: [{ name: 'received', label: 'Reçu' }],
+        properties: [
+          { name: 'url', label: 'URL', type: 'text', default: '' },
+          { name: 'mode', label: 'Mode', type: 'select', options: ['Client', 'Server'], default: 'Client' }
+        ]
+      },
+      'grpc': {
+        label: 'gRPC',
+        inputs: [{ name: 'request', label: 'Requête' }],
+        outputs: [{ name: 'response', label: 'Réponse' }],
+        properties: [
+          { name: 'endpoint', label: 'Point d\'accès', type: 'text', default: '' },
+          { name: 'service', label: 'Service', type: 'text', default: '' },
+          { name: 'method', label: 'Méthode', type: 'text', default: '' }
+        ]
+      },
+      
+      // ===== IA & ANALYSE =====
+      'nlp-processor': {
+        label: 'Processeur NLP',
+        inputs: [{ name: 'text', label: 'Texte' }],
+        outputs: [{ name: 'analysis', label: 'Analyse' }],
+        properties: [
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Entities', 'Sentiment', 'Keywords', 'Summary'], default: 'Entities' },
+          { name: 'language', label: 'Langue', type: 'select', options: ['fr', 'en', 'auto'], default: 'fr' },
+          { name: 'model', label: 'Modèle', type: 'select', options: ['Mistral', 'Claude', 'GPT-4o', 'Local'], default: 'Mistral' }
+        ]
+      },
+      'terminologie-mapper': {
+        label: 'Mappeur terminologie',
+        inputs: [{ name: 'terms', label: 'Termes' }],
+        outputs: [{ name: 'mapped', label: 'Mappés' }],
+        properties: [
+          { name: 'source', label: 'Source', type: 'text', default: '' },
+          { name: 'target', label: 'Cible', type: 'text', default: '' },
+          { name: 'method', label: 'Méthode', type: 'select', options: ['Exact', 'Fuzzy', 'AI'], default: 'Exact' }
+        ]
+      },
+      'data-enricher': {
+        label: 'Enrichisseur données',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'enriched', label: 'Enrichies' }],
+        properties: [
+          { name: 'sources', label: 'Sources', type: 'array', default: '[]' },
+          { name: 'strategy', label: 'Stratégie', type: 'select', options: ['Auto', 'Override', 'Merge'], default: 'Auto' }
+        ]
+      },
+      'sentiment-analyzer': {
+        label: 'Analyse sentiment',
+        inputs: [{ name: 'text', label: 'Texte' }],
+        outputs: [{ name: 'sentiment', label: 'Sentiment' }],
+        properties: [
+          { name: 'language', label: 'Langue', type: 'select', options: ['fr', 'en', 'auto'], default: 'fr' },
+          { name: 'model', label: 'Modèle', type: 'select', options: ['Basic', 'Advanced', 'Medical'], default: 'Medical' }
+        ]
+      },
+      'anomaly-detector': {
+        label: 'Détection anomalies',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [
+          { name: 'normal', label: 'Normal' },
+          { name: 'anomaly', label: 'Anomalie' }
+        ],
+        properties: [
+          { name: 'method', label: 'Méthode', type: 'select', options: ['Statistical', 'ML', 'Rule-based'], default: 'Statistical' },
+          { name: 'sensitivity', label: 'Sensibilité', type: 'number', default: 0.5 }
+        ]
+      },
+      'diagnosis-suggester': {
+        label: 'Suggestion diagnostic',
+        inputs: [{ name: 'observations', label: 'Observations' }],
+        outputs: [{ name: 'suggestions', label: 'Suggestions' }],
+        properties: [
+          { name: 'model', label: 'Modèle', type: 'select', options: ['Local', 'Mistral', 'Claude', 'GPT-4o'], default: 'Mistral' },
+          { name: 'confidence', label: 'Seuil de confiance', type: 'number', default: 0.7 }
+        ]
+      },
+      'medical-ai': {
+        label: 'IA médicale',
+        inputs: [{ name: 'data', label: 'Données' }],
+        outputs: [{ name: 'analysis', label: 'Analyse' }],
+        properties: [
+          { name: 'model', label: 'Modèle', type: 'select', options: ['General', 'Radiology', 'Pathology', 'Cardiology'], default: 'General' },
+          { name: 'operation', label: 'Opération', type: 'select', options: ['Analysis', 'Prediction', 'Classification'], default: 'Analysis' }
+        ]
+      },
+      
+      // ===== AVANCÉ =====
+      'error-handler': {
+        label: 'Gestionnaire erreurs',
+        inputs: [{ name: 'error', label: 'Erreur' }],
+        outputs: [
+          { name: 'handled', label: 'Traitée' },
+          { name: 'escalated', label: 'Escaladée' }
+        ],
+        properties: [
+          { name: 'retryCount', label: 'Nombre de réessais', type: 'number', default: 3 },
+          { name: 'logErrors', label: 'Journaliser erreurs', type: 'boolean', default: true },
+          { name: 'errorTypes', label: 'Types d\'erreurs', type: 'array', default: '["all"]' }
+        ]
+      },
+      'retry-policy': {
+        label: 'Politique réessai',
+        inputs: [{ name: 'action', label: 'Action' }],
+        outputs: [
+          { name: 'success', label: 'Succès' },
+          { name: 'failure', label: 'Échec final' }
+        ],
+        properties: [
+          { name: 'maxRetries', label: 'Nombre max', type: 'number', default: 3 },
+          { name: 'delayMs', label: 'Délai initial (ms)', type: 'number', default: 1000 },
+          { name: 'backoffFactor', label: 'Facteur d\'augmentation', type: 'number', default: 2 }
+        ]
+      },
+      'circuit-breaker': {
+        label: 'Disjoncteur',
+        inputs: [{ name: 'action', label: 'Action' }],
+        outputs: [
+          { name: 'success', label: 'Succès' },
+          { name: 'failure', label: 'Échec' },
+          { name: 'open', label: 'Circuit ouvert' }
+        ],
+        properties: [
+          { name: 'failureThreshold', label: 'Seuil d\'échecs', type: 'number', default: 5 },
+          { name: 'resetTimeoutMs', label: 'Délai de réinitialisation (ms)', type: 'number', default: 30000 }
+        ]
+      },
+      'throttle': {
+        label: 'Limiteur débit',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'rate', label: 'Débit', type: 'number', default: 10 },
+          { name: 'per', label: 'Par', type: 'select', options: ['second', 'minute', 'hour'], default: 'second' },
+          { name: 'burst', label: 'Rafale', type: 'number', default: 1 }
+        ]
+      },
+      'cache': {
+        label: 'Cache',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'ttl', label: 'TTL (s)', type: 'number', default: 300 },
+          { name: 'keyField', label: 'Champ clé', type: 'text', default: 'id' },
+          { name: 'storageType', label: 'Type de stockage', type: 'select', options: ['Memory', 'Redis', 'File'], default: 'Memory' }
+        ]
+      },
+      'aggregator': {
+        label: 'Agrégateur',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'aggregated', label: 'Agrégé' }],
+        properties: [
+          { name: 'strategy', label: 'Stratégie', type: 'select', options: ['Count', 'Batch', 'Correlation', 'Time'], default: 'Batch' },
+          { name: 'count', label: 'Nombre', type: 'number', default: 10 },
+          { name: 'timeoutMs', label: 'Délai (ms)', type: 'number', default: 60000 }
+        ]
+      },
+      'scheduler': {
+        label: 'Planificateur',
+        inputs: [{ name: 'job', label: 'Tâche' }],
+        outputs: [{ name: 'trigger', label: 'Déclencheur' }],
+        properties: [
+          { name: 'schedule', label: 'Planification', type: 'select', options: ['Interval', 'Cron', 'Once'], default: 'Interval' },
+          { name: 'value', label: 'Valeur', type: 'text', default: '60' },
+          { name: 'timezone', label: 'Fuseau horaire', type: 'text', default: 'Europe/Paris' }
+        ]
+      },
+      'subprocess': {
+        label: 'Sous-processus',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: [
+          { name: 'workflowId', label: 'ID du workflow', type: 'text', default: '' },
+          { name: 'waitForCompletion', label: 'Attendre', type: 'boolean', default: true }
+        ]
+      },
+
+      // Configuration par défaut pour les nouveaux types de noeuds
+      'default': {
+        label: 'Noeud générique',
+        inputs: [{ name: 'input', label: 'Entrée' }],
+        outputs: [{ name: 'output', label: 'Sortie' }],
+        properties: []
       }
     };
     
