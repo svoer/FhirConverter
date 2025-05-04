@@ -146,17 +146,36 @@
 /* Carte de template */
 .template-card {
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     background-color: white;
     display: flex;
     flex-direction: column;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.template-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff6b6b, #ff9f43);
+    transition: height 0.2s;
 }
 
 .template-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    border-color: #ff9f43;
+}
+
+.template-card:hover::before {
+    height: 6px;
 }
 
 .template-preview {
@@ -203,13 +222,37 @@
 
 .use-template-btn {
     width: 100%;
-    padding: 8px 15px;
+    padding: 10px 15px;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     margin-top: auto;
+    background: linear-gradient(135deg, #ff6b6b, #ff9f43);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 3px 5px rgba(255, 107, 107, 0.3);
+}
+
+.use-template-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px rgba(255, 107, 107, 0.4);
+}
+
+.use-template-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 3px rgba(255, 107, 107, 0.3);
+}
+
+.template-card.selected {
+    border: 2px solid #ff6b6b;
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+}
+
+.template-card.selected::before {
+    height: 8px;
 }
 
 /* Pied de la boîte de dialogue */
@@ -262,6 +305,27 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Animation d'effet ripple pour les sélections */
+.ripple {
+    position: absolute;
+    background-color: rgba(255, 107, 107, 0.3);
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    margin-left: -50px;
+    margin-top: -50px;
+    transform: scale(0);
+    animation: ripple 0.6s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
     }
 }
 

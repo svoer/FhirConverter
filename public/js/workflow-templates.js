@@ -647,9 +647,10 @@ window.templateManager = (function() {
             templateDescription.textContent = template.description;
             
             const useButton = document.createElement('button');
-            useButton.className = 'use-template-btn button-ux2025 button-primary';
+            useButton.className = 'use-template-btn';
             useButton.textContent = 'Utiliser ce template';
-            useButton.addEventListener('click', function() {
+            useButton.addEventListener('click', function(e) {
+                e.stopPropagation(); // Empêcher la propagation au card
                 applyTemplate(template.id);
             });
             
@@ -659,6 +660,36 @@ window.templateManager = (function() {
             
             templateCard.appendChild(templatePreview);
             templateCard.appendChild(templateInfo);
+            
+            // Ajouter un événement click sur la carte complète
+            templateCard.addEventListener('click', function() {
+                // Supprimer la classe 'selected' de tous les templates
+                document.querySelectorAll('.template-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                
+                // Ajouter la classe 'selected' à cette carte
+                this.classList.add('selected');
+                
+                // Mettre en évidence visuellement
+                setTimeout(() => {
+                    const buttonRect = useButton.getBoundingClientRect();
+                    const ripple = document.createElement('span');
+                    ripple.className = 'ripple';
+                    ripple.style.left = '50%';
+                    ripple.style.top = '50%';
+                    templateCard.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                }, 100);
+                
+                // Appliquer le template avec un léger délai pour l'animation
+                setTimeout(() => {
+                    applyTemplate(template.id);
+                }, 300);
+            });
             
             container.appendChild(templateCard);
         });
