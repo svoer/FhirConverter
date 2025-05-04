@@ -4424,9 +4424,20 @@ class WorkflowEditor {
    * Sauvegarde le workflow sur le serveur
    */
   async saveWorkflow() {
+    // Vérifier d'abord si l'ID du workflow est disponible dans l'instance
     if (!this.workflowId) {
-      this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
-      return;
+      // Si l'ID n'est pas disponible dans l'instance, essayer de le récupérer depuis l'attribut data de la modal
+      const editorModal = document.getElementById('workflow-editor-modal');
+      const modalWorkflowId = editorModal ? editorModal.getAttribute('data-workflow-id') : null;
+      
+      if (modalWorkflowId) {
+        console.log('[DEBUG] ID du workflow récupéré depuis la modal:', modalWorkflowId);
+        this.workflowId = modalWorkflowId;
+      } else {
+        this.showNotification('Impossible de sauvegarder: aucun workflow chargé', 'error');
+        console.error('[DEBUG] Aucun ID de workflow trouvé ni dans l\'instance ni dans la modal');
+        return;
+      }
     }
     
     try {
