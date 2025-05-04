@@ -798,7 +798,7 @@
                 }
             });
             
-            // Gérer le bouton d'import de template
+            // Configurer les interactions pour l'import de template via des événements
             importTemplateBtn.addEventListener('click', function() {
                 // Réinitialiser l'état
                 loadedTemplate = null;
@@ -912,11 +912,15 @@
                         throw new Error('Erreur lors de l\'import du template');
                     }
                     
-                    const result = await response.json();
-                    
                     importTemplateModal.style.display = 'none';
                     showNotification('Template importé avec succès', 'success');
-                    loadWorkflows(applicationFilter.value);
+                    
+                    // Recharger les workflows en utilisant la fonction appropriée
+                    if (window.workflowIntegration && window.workflowIntegration.loadWorkflowsWithNewDesign) {
+                        window.workflowIntegration.loadWorkflowsWithNewDesign(applicationFilter.value);
+                    } else {
+                        loadWorkflows(applicationFilter.value);
+                    }
                 } catch (error) {
                     console.error('Erreur:', error);
                     showNotification('Erreur: ' + error.message, 'error');
@@ -924,47 +928,54 @@
             });
             
             // Fonction pour exporter un workflow comme template
+            // Utilise la fonction exposée par workflow-integration.js
             async function exportWorkflowTemplate(id) {
-                try {
-                    // Récupérer l'URL du template
-                    const response = await fetch(`/api/workflows/${id}/export-template`, {
-                        headers: {
-                            'Authorization': `Bearer ${getToken()}`,
-                            'X-API-KEY': 'dev-key'
+                if (window.workflowIntegration && window.workflowIntegration.exportWorkflowTemplate) {
+                    // Utiliser la fonction de workflow-integration.js
+                    return window.workflowIntegration.exportWorkflowTemplate(id);
+                } else {
+                    try {
+                        // Fallback si la fonction n'est pas disponible
+                        // Récupérer l'URL du template
+                        const response = await fetch(`/api/workflows/${id}/export-template`, {
+                            headers: {
+                                'Authorization': `Bearer ${getToken()}`,
+                                'X-API-KEY': 'dev-key'
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Erreur lors de l\'export du template');
                         }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Erreur lors de l\'export du template');
+                        
+                        // Récupérer le workflow pour avoir son nom
+                        const workflow = await getWorkflow(id);
+                        const fileName = `${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_template.json`;
+                        
+                        // Récupérer les données du template
+                        const templateData = await response.json();
+                        
+                        // Créer un objet Blob
+                        const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
+                        
+                        // Créer un lien de téléchargement et cliquer dessus automatiquement
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // Nettoyer
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        showNotification('Template exporté avec succès', 'success');
+                    } catch (error) {
+                        console.error('Erreur:', error);
+                        showNotification('Erreur: ' + error.message, 'error');
                     }
-                    
-                    // Récupérer le workflow pour avoir son nom
-                    const workflow = await getWorkflow(id);
-                    const fileName = `${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_template.json`;
-                    
-                    // Récupérer les données du template
-                    const templateData = await response.json();
-                    
-                    // Créer un objet Blob
-                    const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
-                    
-                    // Créer un lien de téléchargement et cliquer dessus automatiquement
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // Nettoyer
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                    
-                    showNotification('Template exporté avec succès', 'success');
-                } catch (error) {
-                    console.error('Erreur:', error);
-                    showNotification('Erreur: ' + error.message, 'error');
                 }
             }
             

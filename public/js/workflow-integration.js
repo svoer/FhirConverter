@@ -247,6 +247,14 @@ document.addEventListener('DOMContentLoaded', function() {
             openVisualEditor(id);
         });
         
+        // Ajouter l'événement pour le bouton d'export
+        menu.querySelector('.export-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = this.getAttribute('data-id');
+            menu.remove();
+            exportWorkflowTemplate(id);
+        });
+        
         // Fermer le menu au clic à l'extérieur
         document.addEventListener('click', function closeMenu(e) {
             if (!menu.contains(e.target) && e.target !== buttonElement) {
@@ -280,6 +288,66 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showNotification(`Workflow ${isActive ? 'activé' : 'désactivé'}`, 'success');
+        } catch (error) {
+            console.error('Erreur:', error);
+            showNotification('Erreur: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Exporte un workflow comme template
+     * @param {string} workflowId - ID du workflow à exporter
+     */
+    async function exportWorkflowTemplate(workflowId) {
+        try {
+            // Récupérer l'URL du template
+            const response = await fetch(`/api/workflows/${workflowId}/export-template`, {
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    'X-API-KEY': 'dev-key'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erreur lors de l\'export du template');
+            }
+            
+            // Récupérer le workflow pour avoir son nom
+            const workflowResponse = await fetch(`/api/workflows/${workflowId}`, {
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    'X-API-KEY': 'dev-key'
+                }
+            });
+            
+            if (!workflowResponse.ok) {
+                throw new Error('Erreur lors de la récupération des détails du workflow');
+            }
+            
+            const workflowData = await workflowResponse.json();
+            const workflow = workflowData.data || workflowData;
+            const fileName = `${workflow.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_template.json`;
+            
+            // Récupérer les données du template
+            const templateData = await response.json();
+            
+            // Créer un objet Blob
+            const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
+            
+            // Créer un lien de téléchargement et cliquer dessus automatiquement
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Nettoyer
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showNotification('Template exporté avec succès', 'success');
         } catch (error) {
             console.error('Erreur:', error);
             showNotification('Erreur: ' + error.message, 'error');
@@ -477,6 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
         openVisualEditor,
         attachWorkflowCardEvents,
         loadWorkflowsWithNewDesign,
-        createWorkflowCard
+        createWorkflowCard,
+        exportWorkflowTemplate
     };
 });
