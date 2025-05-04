@@ -703,4 +703,132 @@ router.post('/import-template', jwtAuth({ roles: ['admin'] }), async (req, res) 
   }
 });
 
+/**
+ * @swagger
+ * /api/workflows/{id}/export-template:
+ *   get:
+ *     summary: Exporter un workflow comme template
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du workflow
+ *     responses:
+ *       200:
+ *         description: Template de workflow exporté avec succès
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Workflow non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/export-template', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID de workflow invalide' });
+    }
+    
+    const workflow = await workflowService.getWorkflowById(id);
+    
+    if (!workflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
+    }
+    
+    // Créer un template à partir du workflow
+    const template = {
+      name: workflow.name,
+      description: workflow.description,
+      template_version: "1.0",
+      created_at: new Date().toISOString(),
+      nodes: JSON.parse(workflow.flow_json),
+      metadata: {
+        author: req.user.username,
+        category: "template",
+        tags: ["exported-template"]
+      }
+    };
+    
+    res.json(template);
+  } catch (error) {
+    console.error(`[API] Erreur lors de l'export du workflow ${req.params.id} en template:`, error);
+    res.status(500).json({ error: 'Erreur lors de l\'export du workflow en template' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflows/templates:
+ *   get:
+ *     summary: Récupérer tous les templates de workflow prédéfinis
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des templates de workflow
+ *       401:
+ *         description: Non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/templates', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
+  try {
+    // Récupérer tous les templates prédéfinis
+    const templates = await workflowService.getWorkflowTemplates();
+    res.json(templates);
+  } catch (error) {
+    console.error('[API] Erreur lors de la récupération des templates de workflow:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des templates de workflow' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/workflows/templates/{templateId}:
+ *   get:
+ *     summary: Récupérer un template de workflow par son ID
+ *     tags: [Workflows]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: templateId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du template
+ *     responses:
+ *       200:
+ *         description: Template de workflow
+ *       401:
+ *         description: Non autorisé
+ *       404:
+ *         description: Template non trouvé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/templates/:templateId', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
+  try {
+    const templateId = req.params.templateId;
+    const template = await workflowService.getWorkflowTemplateById(templateId);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template non trouvé' });
+    }
+    
+    res.json(template);
+  } catch (error) {
+    console.error(`[API] Erreur lors de la récupération du template ${req.params.templateId}:`, error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du template' });
+  }
+});
+
 module.exports = router;

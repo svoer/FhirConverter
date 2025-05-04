@@ -309,22 +309,33 @@ class WorkflowEditor {
     searchContainer.appendChild(searchInput);
     this.nodePalette.appendChild(searchContainer);
     
-    // Catégories de noeuds avec meilleure organisation
+    // Catégories de noeuds avec meilleure organisation et plus de nœuds spécialisés pour en faire un véritable EAI
     const categories = [
       {
         name: '📥 Entrées/Sources',
         nodes: [
           { type: 'hl7-input', label: 'Entrée HL7', icon: '📨' },
           { type: 'json-input', label: 'Entrée JSON', icon: '📄' },
-          { type: 'file-input', label: 'Entrée fichier', icon: '📁' }
+          { type: 'file-input', label: 'Entrée fichier', icon: '📁' },
+          { type: 'ftp-input', label: 'Entrée FTP', icon: '📡' },
+          { type: 'folder-watcher', label: 'Surveiller dossier', icon: '👁️' },
+          { type: 'timer-trigger', label: 'Déclencheur temporel', icon: '⏲️' },
+          { type: 'http-receiver', label: 'Récepteur HTTP', icon: '🔌' }
         ]
       },
       {
         name: '🔄 Conversion',
         nodes: [
           { type: 'fhir-converter', label: 'Convertir FHIR', icon: '🔥' },
+          { type: 'hl7-to-fhir', label: 'HL7 vers FHIR', icon: '🔄' },
+          { type: 'fhir-to-hl7', label: 'FHIR vers HL7', icon: '⚙️' },
+          { type: 'cda-to-fhir', label: 'CDA vers FHIR', icon: '📋' },
+          { type: 'dicom-to-fhir', label: 'DICOM vers FHIR', icon: '🔬' },
+          { type: 'xml-to-json', label: 'XML vers JSON', icon: '🔄' },
+          { type: 'json-to-xml', label: 'JSON vers XML', icon: '📄' },
           { type: 'template', label: 'Template JSON', icon: '📝' },
-          { type: 'custom-script', label: 'Script JS', icon: '📜' }
+          { type: 'custom-script', label: 'Script JS', icon: '📜' },
+          { type: 'xslt-transform', label: 'Transformation XSLT', icon: '🔄' }
         ]
       },
       {
@@ -333,7 +344,14 @@ class WorkflowEditor {
           { type: 'field-mapper', label: 'Mapper champs', icon: '🔀' },
           { type: 'segment-extractor', label: 'Extraire segment', icon: '✂️' },
           { type: 'transform', label: 'Transformer', icon: '🔄' },
-          { type: 'condition', label: 'Condition', icon: '🔍' }
+          { type: 'condition', label: 'Condition', icon: '🔍' },
+          { type: 'split', label: 'Diviseur', icon: '🪓' },
+          { type: 'merge', label: 'Fusionner', icon: '🔗' },
+          { type: 'filter', label: 'Filtre', icon: '🧹' },
+          { type: 'validator', label: 'Validateur', icon: '✓' },
+          { type: 'sorter', label: 'Trieur', icon: '📊' },
+          { type: 'batch-processor', label: 'Traitement par lot', icon: '📦' },
+          { type: 'debatcher', label: 'Décomposition lot', icon: '📭' }
         ]
       },
       {
@@ -341,15 +359,47 @@ class WorkflowEditor {
         nodes: [
           { type: 'api-call', label: 'Appel API', icon: '🌐' },
           { type: 'fhir-output', label: 'Sortie FHIR', icon: '📤' },
-          { type: 'file-output', label: 'Sortie fichier', icon: '💾' }
+          { type: 'file-output', label: 'Sortie fichier', icon: '💾' },
+          { type: 'database-query', label: 'Requête BDD', icon: '🗄️' },
+          { type: 'email-sender', label: 'Envoi email', icon: '📧' },
+          { type: 'sms-sender', label: 'Envoi SMS', icon: '📱' },
+          { type: 'webhook-sender', label: 'Envoi webhook', icon: '🔔' },
+          { type: 'queue-publisher', label: 'Publier file', icon: '📨' },
+          { type: 'queue-consumer', label: 'Consommer file', icon: '📬' }
         ]
       },
       {
         name: '🏥 Systèmes Santé',
         nodes: [
+          { type: 'hl7-v2', label: 'HL7 v2.x', icon: '📋' },
           { type: 'hl7-v3', label: 'HL7 v3', icon: '🏥' },
           { type: 'dicom', label: 'DICOM', icon: '🔬' },
-          { type: 'sis', label: 'SIH', icon: '🏢' }
+          { type: 'sis', label: 'SIH', icon: '🏢' },
+          { type: 'cda', label: 'CDA', icon: '📑' },
+          { type: 'fhir-r4', label: 'FHIR R4', icon: '🔥' },
+          { type: 'fhir-dstu2', label: 'FHIR DSTU2', icon: '🔥' },
+          { type: 'fhir-stu3', label: 'FHIR STU3', icon: '🔥' },
+          { type: 'loinc-mapper', label: 'Mappeur LOINC', icon: '🔀' },
+          { type: 'snomed-mapper', label: 'Mappeur SNOMED', icon: '🔀' },
+          { type: 'french-nih', label: 'NIH Français', icon: '🇫🇷' },
+          { type: 'dmp-export', label: 'Export DMP', icon: '📊' },
+          { type: 'rpps-lookup', label: 'Recherche RPPS', icon: '🔍' },
+          { type: 'mssante', label: 'MSSanté', icon: '📧' },
+          { type: 'ins-lookup', label: 'Recherche INS', icon: '🔑' },
+          { type: 'sesam-vitale', label: 'SESAM-Vitale', icon: '💳' }
+        ]
+      },
+      {
+        name: '🔒 Sécurité',
+        nodes: [
+          { type: 'authentication', label: 'Authentification', icon: '🔐' },
+          { type: 'authorization', label: 'Autorisation', icon: '🛡️' },
+          { type: 'encryption', label: 'Chiffrement', icon: '🔒' },
+          { type: 'decryption', label: 'Déchiffrement', icon: '🔓' },
+          { type: 'anonymizer', label: 'Anonymisation', icon: '👤' },
+          { type: 'data-masking', label: 'Masquage données', icon: '⬛' },
+          { type: 'logger', label: 'Journalisation', icon: '📝' },
+          { type: 'audit-trail', label: 'Piste d\'audit', icon: '🔍' }
         ]
       },
       {
@@ -358,7 +408,39 @@ class WorkflowEditor {
           { type: 'soap', label: 'SOAP Client', icon: '🧼' },
           { type: 'rest', label: 'REST Client', icon: '🔗' },
           { type: 'sftp', label: 'SFTP', icon: '📡' },
-          { type: 'mllp', label: 'MLLP', icon: '📶' }
+          { type: 'mllp', label: 'MLLP', icon: '📶' },
+          { type: 'jdbc', label: 'JDBC', icon: '💾' },
+          { type: 'ldap', label: 'LDAP', icon: '👥' },
+          { type: 'mqtt', label: 'MQTT', icon: '📡' },
+          { type: 'amqp', label: 'AMQP', icon: '🐰' },
+          { type: 'kafka', label: 'Kafka', icon: '📢' },
+          { type: 'websocket', label: 'WebSocket', icon: '🔌' },
+          { type: 'grpc', label: 'gRPC', icon: '⚡' }
+        ]
+      },
+      {
+        name: '💡 IA & Analyse',
+        nodes: [
+          { type: 'nlp-processor', label: 'Processeur NLP', icon: '🧠' },
+          { type: 'terminologie-mapper', label: 'Mappeur terminologie', icon: '📚' },
+          { type: 'data-enricher', label: 'Enrichisseur données', icon: '✨' },
+          { type: 'sentiment-analyzer', label: 'Analyse sentiment', icon: '😀' },
+          { type: 'anomaly-detector', label: 'Détection anomalies', icon: '⚠️' },
+          { type: 'diagnosis-suggester', label: 'Suggestion diagnostic', icon: '🏥' },
+          { type: 'medical-ai', label: 'IA médicale', icon: '🤖' }
+        ]
+      },
+      {
+        name: '🧩 Avancé',
+        nodes: [
+          { type: 'error-handler', label: 'Gestionnaire erreurs', icon: '❌' },
+          { type: 'retry-policy', label: 'Politique réessai', icon: '🔄' },
+          { type: 'circuit-breaker', label: 'Disjoncteur', icon: '🔌' },
+          { type: 'throttle', label: 'Limiteur débit', icon: '🚦' },
+          { type: 'cache', label: 'Cache', icon: '💨' },
+          { type: 'aggregator', label: 'Agrégateur', icon: '📊' },
+          { type: 'scheduler', label: 'Planificateur', icon: '📆' },
+          { type: 'subprocess', label: 'Sous-processus', icon: '🔄' }
         ]
       }
     ];
