@@ -926,6 +926,7 @@ class WorkflowEditor {
       
       // Ajouter le noeud à la liste
       this.nodes.push(node);
+      console.log(`[Workflow] Après l'ajout du nœud, this.nodes contient ${this.nodes.length} nœuds`);
       
       // Créer l'élément DOM
       this.createNodeElement(node);
@@ -4529,15 +4530,14 @@ class WorkflowEditor {
       this.showLoading(true);
       console.log('[DEBUG] Début de la sauvegarde du workflow ID:', this.workflowId);
       
-      // Préparer les données du workflow
-      const flowData = {
-        nodes: this.nodes,
-        edges: this.edges
-      };
+      // Préparer les données du workflow en utilisant getConfig() pour garantir la bonne structure
+      const flowData = this.getConfig();
       
-      console.log('[DEBUG] Structure du workflow à sauvegarder:', 
-                 'Noeuds:', this.nodes.length, 
-                 'Arêtes:', this.edges.length);
+      // Afficher des logs détaillés pour diagnostiquer le problème
+      console.log('[DEBUG] État actuel des nœuds dans l\'instance:', this.nodes);
+      console.log('[DEBUG] Structure du workflow à sauvegarder:', flowData);
+      console.log('[DEBUG] Nombre de nœuds:', flowData.nodes ? flowData.nodes.length : 0, 
+                 'Nombre d\'arêtes:', flowData.edges ? flowData.edges.length : 0);
       
       const workflowData = {
         name: this.workflowName,
@@ -4720,6 +4720,7 @@ class WorkflowEditor {
    * @returns {{nodes: Array, edges: Array}}
    */
   getConfig() {
+    console.log('[DEBUG] getConfig() appelé - Nœuds:', this.nodes.length, 'Arêtes:', this.edges.length);
     return {
       nodes: this.nodes,
       edges: this.edges
