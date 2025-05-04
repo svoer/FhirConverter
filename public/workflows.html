@@ -470,8 +470,18 @@
             <p class="description">Créez et gérez des workflows de transformation pour personnaliser le traitement des messages HL7 et FHIR pour chaque application.</p>
             
             <div class="action-buttons">
-                <button id="add-workflow-btn" class="add-workflow"><i class="fas fa-plus"></i>Nouveau Workflow</button>
-                <button id="import-template-btn" class="import-template"><i class="fas fa-file-import"></i>Importer Template</button>
+                <button id="add-workflow-btn" class="button-ux2025 button-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Nouveau Workflow</span>
+                </button>
+                <button id="import-template-btn" class="button-ux2025 button-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Importer Template</span>
+                </button>
             </div>
             
             <div class="filter-container">
@@ -548,8 +558,18 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button id="cancel-workflow" class="cancel-btn">Annuler</button>
-                    <button id="save-workflow" class="submit-btn">Enregistrer</button>
+                    <button id="cancel-workflow" class="button-ux2025 button-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Annuler</span>
+                    </button>
+                    <button id="save-workflow" class="button-ux2025 button-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 13L9 17L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Enregistrer</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -567,11 +587,18 @@
                         <h3 id="editor-title">Éditeur Visuel de Workflow</h3>
                     </div>
                     <div class="editor-actions">
-                        <button id="save-workflow-editor" class="action-btn save-btn">
-                            <i class="fas fa-save"></i> Sauvegarder
+                        <button id="save-workflow-editor" class="button-ux2025 button-primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Sauvegarder</span>
                         </button>
-                        <button id="close-editor" class="action-btn exit-btn">
-                            <i class="fas fa-times"></i> Quitter
+                        <button id="close-editor" class="button-ux2025 button-secondary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Quitter</span>
                         </button>
                     </div>
                 </div>
@@ -625,8 +652,18 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button id="cancel-import" class="cancel-btn">Annuler</button>
-                    <button id="import-template" class="submit-btn">Importer</button>
+                    <button id="cancel-import" class="button-ux2025 button-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Annuler</span>
+                    </button>
+                    <button id="import-template" class="button-ux2025 button-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Importer</span>
+                    </button>
                 </div>
             </div>
         </div>
