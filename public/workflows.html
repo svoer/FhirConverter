@@ -750,6 +750,7 @@
             const closeEditor = document.getElementById('close-editor');
             const saveWorkflowEditor = document.getElementById('save-workflow-editor');
             const editorTitle = document.getElementById('editor-title');
+            const newFromTemplateBtn = document.getElementById('new-from-template-btn');
             
             // Initialisation de l'éditeur JSON
             const jsonEditor = CodeMirror(document.getElementById('json-editor'), {
@@ -840,6 +841,14 @@
                 } catch (error) {
                     console.error('Erreur lors de la sauvegarde:', error);
                     showNotification('Erreur: ' + error.message, 'error');
+                }
+            });
+            
+            // Événement pour le bouton "À partir d'un Template"
+            newFromTemplateBtn.addEventListener('click', function() {
+                // Ouvrir l'éditeur visuel avec le code spécial pour indiquer qu'il faut afficher les templates
+                if (window.workflowIntegration && window.workflowIntegration.openVisualEditor) {
+                    window.workflowIntegration.openVisualEditor("new:template");
                 }
             });
             

@@ -500,6 +500,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Variable pour garder la trace du dernier appel à loadWorkflowsWithNewDesign
     let loadWorkflowsCounter = 0;
     
+    // Interface pour les interactions externes - sera exposée à la fin
+    
     /**
      * Charge et affiche les workflows avec le nouveau design
      * @param {string} applicationId - ID de l'application pour filtrer (ou 'all' pour toutes)
