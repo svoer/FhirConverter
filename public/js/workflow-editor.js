@@ -1545,76 +1545,95 @@ class WorkflowEditor {
   }
   
   /**
-   * Met à jour la position de l'arête temporaire
+   * Met à jour la position et l'affichage de l'arête temporaire durant le glisser-déposer
+   * Utilise requestAnimationFrame pour optimiser les performances d'animation
    * @param {MouseEvent} e - Événement de la souris
    */
   updateTempEdge(e) {
+    // Vérifications de base
     if (!this.tempEdge || !this.sourceNodeId) {
       return;
     }
     
-    // 1. Utiliser directement getPortPosition pour le point de départ
-    const sourceNodeData = this.getNodeById(this.sourceNodeId);
-    if (!sourceNodeData) {
+    // Si une mise à jour est déjà prévue, ne pas en programmer une autre
+    if (this.tempEdgeUpdateScheduled) {
       return;
     }
     
-    // Obtenir les coordonnées du port source dans le système de coordonnées du canvas
-    const start = this.getPortPosition(
-      sourceNodeData,
-      !this.isInputPortSource, // true si port de sortie, false si entrée
-      this.sourcePortIndex
-    );
+    // Marquer qu'une mise à jour est en cours
+    this.tempEdgeUpdateScheduled = true;
     
-    if (!start) {
-      console.warn("[Workflow] Impossible de déterminer la position du port source");
-      return;
-    }
-    
-    // 2. Convertir proprement les coordonnées de la souris en coordonnées canvas
-    const rect = this.canvas.getBoundingClientRect();
-    const end = {
-      x: (e.clientX - rect.left - this.offset.x) / this.scale,
-      y: (e.clientY - rect.top - this.offset.y) / this.scale
-    };
-    
-    // 3. Calculer une courbe de Bézier élégante
-    const dx = Math.abs(end.x - start.x);
-    const controlDistance = Math.min(dx * 0.5, 100);
-    
-    // S'assurer que la chaîne reste sur une seule ligne pour éviter les problèmes de SVG
-    const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
-    
-    // 4. Mettre à jour le chemin avec les attributs visuels
-    const path = this.tempEdge.querySelector('path');
-    if (path) {
-      path.setAttribute('d', d);
-      // S'assurer que le chemin temporaire est bien visible
-      path.setAttribute('stroke', '#999');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('stroke-dasharray', '5,5');
-      path.setAttribute('fill', 'none');
-    }
-    
-    // Désactiver la mise en évidence sur tous les ports
-    this.clearPortHighlights();
-    
-    // Vérifier si nous survolons un port compatible et le mettre en évidence
-    const target = document.elementFromPoint(e.clientX, e.clientY);
-    if (target && target.classList.contains('port-handle')) {
-      const targetPort = target.closest('.node-port');
-      
-      if (targetPort) {
-        const targetNode = targetPort.closest('.node');
-        if (targetNode && targetNode.id !== this.sourceNodeId) {
-          // Si nous commençons par une entrée, chercher une sortie et vice versa
-          const compatibleType = this.isInputPortSource ? 'output' : 'input';
-          if (targetPort.getAttribute('data-port-type') === compatibleType) {
-            target.classList.add('highlight');
+    // Utiliser requestAnimationFrame pour optimiser les performances d'animation
+    requestAnimationFrame(() => {
+      try {
+        // Réinitialiser le flag
+        this.tempEdgeUpdateScheduled = false;
+        
+        // 1. Récupérer les données du nœud source
+        const sourceNodeData = this.getNodeById(this.sourceNodeId);
+        if (!sourceNodeData) {
+          return;
+        }
+        
+        // Obtenir les coordonnées du port source dans le système de coordonnées du canvas
+        const start = this.getPortPosition(
+          sourceNodeData,
+          !this.isInputPortSource, // true si port de sortie, false si entrée
+          this.sourcePortIndex
+        );
+        
+        if (!start) {
+          return;
+        }
+        
+        // 2. Convertir les coordonnées de la souris en coordonnées canvas
+        const rect = this.canvas.getBoundingClientRect();
+        const end = {
+          x: (e.clientX - rect.left - this.offset.x) / this.scale,
+          y: (e.clientY - rect.top - this.offset.y) / this.scale
+        };
+        
+        // 3. Calculer une courbe de Bézier élégante
+        const dx = Math.abs(end.x - start.x);
+        const controlDistance = Math.min(dx * 0.5, 100);
+        
+        // S'assurer que la chaîne reste sur une seule ligne pour éviter les problèmes de SVG
+        const d = `M ${start.x} ${start.y} C ${start.x + controlDistance} ${start.y}, ${end.x - controlDistance} ${end.y}, ${end.x} ${end.y}`;
+        
+        // 4. Mettre à jour le chemin avec les attributs visuels
+        const path = this.tempEdge.querySelector('path');
+        if (path) {
+          path.setAttribute('d', d);
+          // S'assurer que le chemin temporaire est bien visible
+          path.setAttribute('stroke', '#999');
+          path.setAttribute('stroke-width', '2');
+          path.setAttribute('stroke-dasharray', '5,5');
+          path.setAttribute('fill', 'none');
+        }
+        
+        // Désactiver la mise en évidence sur tous les ports
+        this.clearPortHighlights();
+        
+        // Vérifier si nous survolons un port compatible et le mettre en évidence
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        if (target && target.classList.contains('port-handle')) {
+          const targetPort = target.closest('.node-port');
+          
+          if (targetPort) {
+            const targetNode = targetPort.closest('.node');
+            if (targetNode && targetNode.id !== this.sourceNodeId) {
+              // Si nous commençons par une entrée, chercher une sortie et vice versa
+              const compatibleType = this.isInputPortSource ? 'output' : 'input';
+              if (targetPort.getAttribute('data-port-type') === compatibleType) {
+                target.classList.add('highlight');
+              }
+            }
           }
         }
+      } catch (error) {
+        console.error('[Workflow] Erreur dans updateTempEdge:', error);
       }
-    }
+    });
   }
   
   /**
@@ -1624,7 +1643,7 @@ class WorkflowEditor {
     document.querySelectorAll('.port-handle.highlight').forEach(port => {
       port.classList.remove('highlight');
     });
-  }
+  };
   
   /**
    * Supprime l'arête temporaire
