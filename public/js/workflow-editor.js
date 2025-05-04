@@ -4427,7 +4427,7 @@ class WorkflowEditor {
     // Vérifier d'abord si l'ID du workflow est disponible dans l'instance
     if (!this.workflowId) {
       // Si l'ID n'est pas disponible dans l'instance, essayer de le récupérer depuis l'attribut data de la modal
-      const editorModal = document.getElementById('workflow-editor-modal');
+      const editorModal = document.getElementById('editor-modal');
       const modalWorkflowId = editorModal ? editorModal.getAttribute('data-workflow-id') : null;
       
       if (modalWorkflowId) {
