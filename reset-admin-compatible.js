@@ -43,7 +43,7 @@ if (result.changes > 0) {
   console.log(`Nom d'utilisateur: ${username}`);
   console.log(`Mot de passe: ${password}`);
 } else {
-  console.error('Erreur: Aucune mise à jour effectuée. Vérifiez le nom d'utilisateur.');
+  console.error("Erreur: Aucune mise à jour effectuée. Vérifiez le nom d'utilisateur.");
 }
 
 db.close();
