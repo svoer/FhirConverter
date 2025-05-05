@@ -358,9 +358,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Structure HTML selon l'image fournie
+        // Assurer qu'un workflow a toujours un nom visible, utiliser l'ID si le nom est vide
+        const displayName = workflow.name && workflow.name.trim() !== '' ? workflow.name : `Workflow #${workflow.id}`;
+        
         card.innerHTML = `
             <div class="workflow-header" style="background: linear-gradient(90deg, #e63946, #f4a261); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 18px;">${workflow.name}</h3>
+                <h3 style="margin: 0; font-size: 18px;">${displayName}</h3>
                 <label class="workflow-toggle">
                     <input type="checkbox" class="status-toggle" data-id="${workflow.id}" ${workflow.is_active ? 'checked' : ''}>
                     <span class="toggle-slider"></span>
