@@ -418,7 +418,19 @@
         const data = await response.json();
         
         if (data.success && data.data && data.data.length > 0) {
-          renderApplications(data.data);
+          // Récupérer les statistiques pour chaque application
+          const appsWithStats = [];
+          for (const app of data.data) {
+            // Récupérer les statistiques de l'application (conversions, clés API, etc.)
+            const statsData = await fetchApplicationStats(app.id);
+            appsWithStats.push({
+              ...app,
+              stats: statsData
+            });
+          }
+          
+          renderApplications(appsWithStats);
+          
           const noAppsMessage = document.getElementById('noAppsMessage');
           if (noAppsMessage) {
             noAppsMessage.style.display = 'none';
