@@ -1,59 +1,48 @@
 /**
- * Correctifs pour empêcher le clignotement dans Swagger UI
- * Ce fichier désactive complètement les animations et transitions
- * qui causent des problèmes visuels dans l'interface Swagger
- * Version stabilisée - Correction des problèmes de clignotement
+ * Correction radicale des problèmes de clignotement dans Swagger UI
+ * Solution optimisée pour éviter tout effet visuel indésirable
  */
 
-/* Désactiver strictement toutes les animations pour empêcher le clignotement */
+/* SOLUTION RADICALE - DÉSACTIVATION COMPLÈTE DE TOUTES LES ANIMATIONS */
 .swagger-ui * {
   animation: none !important;
   transition: none !important;
-  animation-delay: 0 !important;
-  animation-duration: 0 !important;
-  transition-delay: 0 !important;
-  transition-duration: 0 !important;
-}
-
-/* Réglages spécifiques pour le modal d'authentification */
-.swagger-ui .dialog-ux .backdrop-container {
-  animation: none !important;
-  transition: none !important;
-  opacity: 0.8 !important;
-}
-
-.swagger-ui .dialog-ux .modal-ux {
-  animation: none !important;
-  transition: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  animation-iteration-count: 0 !important;
+  animation-fill-mode: none !important;
+  animation-play-state: paused !important;
   opacity: 1 !important;
-}
-
-.swagger-ui .dialog-ux .modal-ux-inner {
-  animation: none !important;
-  transition: none !important;
   transform: none !important;
 }
 
-.swagger-ui .auth-container {
+/* Prévention spécifique du clignotement dans le modal d'authentification */
+.swagger-ui .dialog-ux,
+.swagger-ui .dialog-ux .backdrop-container,
+.swagger-ui .dialog-ux .modal-ux,
+.swagger-ui .dialog-ux .modal-ux-inner,
+.swagger-ui .dialog-ux .modal-ux-content,
+.swagger-ui .auth-container,
+.swagger-ui .model-box,
+.swagger-ui .model,
+.swagger-ui .model-toggle,
+.swagger-ui .highlight-code,
+.swagger-ui .expand-operation,
+.swagger-ui table tbody tr td {
   animation: none !important;
   transition: none !important;
+  transform: none !important;
   opacity: 1 !important;
 }
 
-/* Force l'affichage du modal sans animation */
-.swagger-ui .dialog-ux {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: 9999 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+/* Suppression des écrans de chargement */
+.swagger-ui .loading-container {
+  display: none !important;
 }
 
-/* Améliorations visuelles pour les boutons et interactions */
+/* Thème cohérent avec le standard FHIRHub (dégradé rouge-orange) */
 .swagger-ui .btn.authorize {
   background: linear-gradient(135deg, #e74c3c, #ff5722) !important;
   color: white !important;
@@ -85,16 +74,68 @@
   color: #333 !important;
 }
 
-/* Styles généraux pour améliorer l'expérience utilisateur */
-.swagger-ui .opblock-summary {
-  transition: none !important;
+/* Amélioration de l'accessibilité */
+.swagger-ui .opblock-summary-method {
+  font-weight: bold !important;
 }
 
-.swagger-ui .opblock-summary:hover {
-  background-color: #f8f9fa !important;
+/* Améliorer les boutons Try it out */
+.swagger-ui .btn.try-out__btn {
+  background: linear-gradient(135deg, #e74c3c, #ff5722) !important;
+  color: white !important;
+  border: none !important;
 }
 
-/* Fond pour le modal d'authentification */
+/* Reforcer les boutons Execute */
+.swagger-ui .btn.execute {
+  background: linear-gradient(135deg, #e74c3c, #ff5722) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: bold !important;
+}
+
+/* Positionnement fixe et stable du modal d'authentification */
+.swagger-ui .dialog-ux {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+}
+
+/* Fond opaque stable pour le modal */
 .swagger-ui .dialog-ux .backdrop-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   background-color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 9998 !important;
+}
+
+/* Position fixe et stable du contenu du modal */
+.swagger-ui .dialog-ux .modal-ux {
+  position: relative !important;
+  z-index: 9999 !important;
+  background: white !important;
+  border-radius: 4px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  max-width: 500px !important;
+  width: 100% !important;
+  padding: 20px !important;
+}
+
+/* Accélérer le rendu par défaut des opérations */
+.swagger-ui .opblock .opblock-summary-description {
+  text-align: right !important;
+}
+
+/* Fix pour les onglets */
+.swagger-ui .tab li {
+  padding: 0 !important;
 }
