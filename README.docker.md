@@ -1,155 +1,123 @@
 # FHIRHub - Documentation Docker
 
-Ce document explique comment utiliser FHIRHub avec Docker pour faciliter le déploiement et la maintenance.
+Ce document explique comment utiliser FHIRHub avec Docker.
+
+## Configuration incluse
+
+Cette configuration Docker complète inclut :
+
+1. **FHIRHub** - L'application principale de conversion HL7 vers FHIR
+2. **Prometheus** - Système de surveillance pour collecter les métriques
+3. **Grafana** - Interface de visualisation des métriques avec tableaux de bord
+4. **Node Exporter** - Collecteur de métriques système pour la machine hôte
 
 ## Prérequis
 
 - Docker installé sur votre machine
 - Docker Compose installé sur votre machine
 
-## Configuration avec volumes persistants
+## Structure des volumes
 
-La configuration Docker de FHIRHub utilise des volumes pour conserver vos données entre les redémarrages et les mises à jour du conteneur. Cela garantit que vos informations importantes (base de données, logs, etc.) ne sont pas perdues lors des mises à jour.
+Les volumes suivants sont utilisés pour conserver vos données entre les redémarrages:
 
-### Structure des volumes
-
-Les volumes suivants sont utilisés :
-
-- **db** : Contient la base de données SQLite
-- **data** : Contient les données persistantes (conversions, workflows, etc.)
-- **logs** : Contient les fichiers journaux
-- **backups** : Contient les sauvegardes
-- **french_terminology** : Contient les fichiers de terminologie française
+- **volumes/db** : Contient la base de données SQLite
+- **volumes/data** : Contient les données persistantes (conversions, workflows, etc.)
+- **volumes/logs** : Contient les fichiers journaux
+- **volumes/backups** : Contient les sauvegardes
+- **volumes/french_terminology** : Contient les fichiers de terminologie française
+- **volumes/prometheus** : Contient les données historiques de Prometheus
+- **volumes/grafana** : Contient la configuration et les données de Grafana
 
 ## Installation et démarrage
 
-### Méthode simple (recommandée)
+### Installation avec le script d'initialisation (recommandée)
 
-1. Lancez le script d'initialisation pour créer la structure de dossiers et le fichier .env :
+1. Lancez le script d'initialisation pour créer la structure complète:
 
 ```bash
 ./docker-init.sh
 ```
 
-2. Démarrez l'application avec Docker Compose :
+2. Démarrez tous les services:
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
 
-3. Accédez à l'application à l'adresse : http://localhost:5000
+3. Accédez aux interfaces:
+   - FHIRHub: http://localhost:5000
+   - Prometheus: http://localhost:9090
+   - Grafana: http://localhost:3000
 
-### Méthode manuelle
-
-1. Créez les répertoires pour les volumes :
-
-```bash
-mkdir -p volumes/db volumes/data volumes/logs volumes/backups volumes/french_terminology
-mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volumes/data/test
-```
-
-2. Créez un fichier .env avec le contenu suivant :
-
-```
-PORT=5000
-JWT_SECRET=fhirhub-secure-jwt-secret-change-me
-DB_DIR=./volumes/db
-DATA_DIR=./volumes/data
-LOGS_DIR=./volumes/logs
-BACKUPS_DIR=./volumes/backups
-TERMINOLOGY_DIR=./volumes/french_terminology
-```
-
-3. Démarrez l'application avec Docker Compose :
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## Gestion du conteneur
+## Gestion des conteneurs
 
 ### Afficher les logs
 
 ```bash
-docker-compose -f docker-compose.prod.yml logs -f
+# Tous les services
+docker-compose logs -f
+
+# Un service spécifique
+docker-compose logs -f fhirhub
 ```
 
-### Arrêter le conteneur
+### Arrêter tous les services
 
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker-compose down
 ```
 
-### Redémarrer le conteneur
+### Redémarrer un service spécifique
 
 ```bash
-docker-compose -f docker-compose.prod.yml restart
+docker-compose restart fhirhub
 ```
 
 ### Mettre à jour vers une nouvelle version
 
 1. Récupérez la nouvelle version du code source
-2. Reconstruisez et redémarrez le conteneur :
+2. Reconstruisez et redémarrez les services:
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d --build
+docker-compose up -d --build
 ```
 
 ## Sauvegarde des données
 
-Vos données sont stockées dans le répertoire `volumes/` sur votre machine hôte. Pour sauvegarder les données, il suffit de copier ce répertoire.
-
-### Sauvegarde manuelle
+Vos données sont stockées dans le répertoire `volumes/`. Pour sauvegarder les données:
 
 ```bash
-# Arrêtez d'abord le conteneur
-docker-compose -f docker-compose.prod.yml down
+# Arrêtez d'abord les conteneurs
+docker-compose down
 
 # Créez une archive de sauvegarde
 tar -czf fhirhub_backup_$(date +%Y%m%d).tar.gz volumes/
 
-# Redémarrez le conteneur
-docker-compose -f docker-compose.prod.yml up -d
+# Redémarrez les conteneurs
+docker-compose up -d
 ```
 
 ## Restauration des données
 
-Pour restaurer les données à partir d'une sauvegarde :
+Pour restaurer à partir d'une sauvegarde:
 
 ```bash
-# Arrêtez d'abord le conteneur
-docker-compose -f docker-compose.prod.yml down
+# Arrêtez d'abord les conteneurs
+docker-compose down
 
 # Extrayez l'archive de sauvegarde
 tar -xzf fhirhub_backup_YYYYMMDD.tar.gz
 
-# Redémarrez le conteneur
-docker-compose -f docker-compose.prod.yml up -d
+# Redémarrez les conteneurs
+docker-compose up -d
 ```
-
-## Dépannage
-
-### Le conteneur ne démarre pas
-
-Vérifiez les logs pour comprendre le problème :
-
-```bash
-docker-compose -f docker-compose.prod.yml logs
-```
-
-### Problème de permissions
-
-Si vous rencontrez des problèmes de permissions, assurez-vous que les répertoires de volumes ont les bonnes permissions :
-
-```bash
-chmod -R 755 volumes/
-```
-
-### Port déjà utilisé
-
-Si le port 5000 est déjà utilisé par une autre application, modifiez le fichier .env pour utiliser un autre port.
 
 ## Identifiants par défaut
 
-- **Utilisateur** : admin
-- **Mot de passe** : adminfhirhub
+### FHIRHub
+- **Utilisateur**: admin
+- **Mot de passe**: adminfhirhub
+
+### Grafana
+- **Utilisateur**: admin
+- **Mot de passe**: fhirhub-admin
