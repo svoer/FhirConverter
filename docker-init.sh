@@ -30,7 +30,13 @@ mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volu
 
 # Configuration des permissions
 echo -e "${YELLOW}Configuration des permissions...${NC}"
-mkdir -p volumes/prometheus volumes/grafana
+mkdir -p volumes/prometheus volumes/grafana volumes/grafana/logs volumes/grafana/plugins
+# Permissions spéciales pour Prometheus et Grafana (important pour éviter les erreurs)
+# Utilisateur nobody pour Prometheus (65534) et utilisateur Grafana (472)
+# Si la commande sudo échoue (environnements contraints), on utilise les permissions larges
+sudo chown -R 65534:65534 volumes/prometheus 2>/dev/null || chmod -R 777 volumes/prometheus
+sudo chown -R 472:472 volumes/grafana 2>/dev/null || chmod -R 777 volumes/grafana
+# Double sécurité - s'assurer que les répertoires sont accessibles
 chmod -R 777 volumes/prometheus volumes/grafana
 chmod -R 755 volumes
 
