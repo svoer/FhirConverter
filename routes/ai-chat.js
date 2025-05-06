@@ -70,7 +70,7 @@ const axios = require('axios');
  *       500:
  *         description: Erreur serveur
  */
-router.post('/chat', async (req, res) => {
+router.post('/chat', jwtAuth, async (req, res) => {
   try {
     console.log('[AI] Nouvelle requête de chat reçue');
     const { provider, messages, max_tokens = 1000 } = req.body;
@@ -176,9 +176,17 @@ router.get('/providers/active', async (req, res) => {
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
   // Correction 2025-05-06: URL de l'API Mistral mise à jour vers le chemin exact
-  // Correction 2025-05-06: URL de base Mistral + endpoint spécifique
-  const baseUrl = provider.api_url || 'https://api.mistral.ai/v1';
-  let apiUrl = `${baseUrl}/chat/completions`;
+  // Correction 2025-05-07: URL complète pour API Mistral
+  let apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
+  
+  // S'assurer que l'URL se termine par chat/completions
+  if (!apiUrl.endsWith('/chat/completions')) {
+    if (apiUrl.endsWith('/')) {
+      apiUrl = `${apiUrl}chat/completions`;
+    } else {
+      apiUrl = `${apiUrl}/chat/completions`;
+    }
+  }
   
   // Correction 2025-05-06: Parsing plus robuste du modèle Mistral
   let models;

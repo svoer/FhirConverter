@@ -517,9 +517,17 @@ async function sendAIRequest(provider, messages) {
  * @returns {Promise<string>} La réponse générée
  */
 async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}) {
-  // Correction 2025-05-06: URL actualisée pour API Mistral (url de base + endpoint)
-  const baseUrl = apiUrl || 'https://api.mistral.ai/v1';
-  const url = `${baseUrl}/chat/completions`;
+  // Correction 2025-05-07: URL complète pour API Mistral
+  let url = apiUrl || 'https://api.mistral.ai/v1/chat/completions';
+  
+  // S'assurer que l'URL se termine par chat/completions
+  if (!url.endsWith('/chat/completions')) {
+    if (url.endsWith('/')) {
+      url = `${url}chat/completions`;
+    } else {
+      url = `${url}/chat/completions`;
+    }
+  }
   
   // Valeur par défaut du modèle si non spécifié
   const defaultModel = 'mistral-medium';
