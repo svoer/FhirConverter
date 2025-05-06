@@ -404,6 +404,7 @@
     // Charger les applications depuis l'API
     async function loadApplications() {
       try {
+        console.log("Chargement des applications...");
         const token = localStorage.getItem('token');
         const response = await fetch('/api/applications', {
           headers: {
@@ -416,25 +417,51 @@
         }
         
         const data = await response.json();
+        console.log("Données des applications reçues:", data);
         
         if (data.success && data.data && data.data.length > 0) {
-          // Récupérer les statistiques pour chaque application
-          const appsWithStats = [];
-          for (const app of data.data) {
-            // Récupérer les statistiques de l'application (conversions, clés API, etc.)
-            const statsData = await fetchApplicationStats(app.id);
-            appsWithStats.push({
-              ...app,
-              stats: statsData
-            });
-          }
+          // Afficher d'abord les applications sans statistiques pour une meilleure réactivité
+          renderApplications(data.data);
           
-          renderApplications(appsWithStats);
-          
+          // Cacher le message "Aucune application"
           const noAppsMessage = document.getElementById('noAppsMessage');
           if (noAppsMessage) {
             noAppsMessage.style.display = 'none';
           }
+          
+          // Récupérer les statistiques pour chaque application
+          const appsWithStats = [];
+          
+          for (const app of data.data) {
+            try {
+              console.log(`Récupération des statistiques pour l'application ${app.id}...`);
+              // Récupérer les statistiques de l'application (conversions, clés API, etc.)
+              const statsData = await fetchApplicationStats(app.id);
+              console.log(`Statistiques reçues pour l'application ${app.id}:`, statsData);
+              
+              appsWithStats.push({
+                ...app,
+                stats: statsData
+              });
+            } catch (statsError) {
+              console.warn(`Erreur lors de la récupération des statistiques pour l'application ${app.id}:`, statsError);
+              
+              // Continuer avec des statistiques vides plutôt que de bloquer
+              appsWithStats.push({
+                ...app,
+                stats: {
+                  conversionsToday: 0,
+                  totalConversions: 0,
+                  apiKeys: 0,
+                  errors: 0
+                }
+              });
+            }
+          }
+          
+          // Mettre à jour l'interface avec les statistiques complètes
+          console.log("Mise à jour de l'interface avec les statistiques:", appsWithStats);
+          renderApplications(appsWithStats);
         } else {
           // Afficher le message "Aucune application"
           const noAppsMessage = document.getElementById('noAppsMessage');
@@ -443,9 +470,14 @@
           }
         }
       } catch (error) {
-        console.error('Erreur:', error);
-        // Afficher un message d'erreur à l'utilisateur
-        alert('Erreur lors de la récupération des applications : ' + error.message);
+        console.error('Erreur lors de la récupération des applications:', error);
+        
+        // Gérer plus proprement l'affichage d'erreur
+        if (error instanceof Error) {
+          alert('Erreur lors de la récupération des applications : ' + error.message);
+        } else {
+          alert('Erreur inconnue lors de la récupération des applications');
+        }
       }
     }
     
@@ -457,6 +489,29 @@
       applications.forEach(app => {
         // Pas besoin de parser les paramètres, on utilise un objet vide par défaut
         let settings = {};
+        
+        // S'assurer que app.stats existe pour éviter l'erreur TypeError
+        if (!app.stats) {
+          app.stats = {
+            conversionsToday: 0,
+            totalConversions: 0,
+            apiKeys: 0,
+            errors: 0
+          };
+        }
+        
+        // Convertir les statistiques en nombres pour s'assurer qu'elles sont affichées correctement
+        const conversionsToday = parseInt(app.stats.conversionsToday) || 0;
+        const totalConversions = parseInt(app.stats.totalConversions) || 0;
+        const apiKeys = parseInt(app.stats.apiKeys) || 0;
+        const errors = parseInt(app.stats.errors) || 0;
+        
+        console.log(`Affichage des statistiques pour l'application ${app.id}:`, {
+          conversionsToday,
+          totalConversions,
+          apiKeys,
+          errors
+        });
         
         const appCard = document.createElement('div');
         appCard.className = 'app-card';
@@ -501,15 +556,15 @@
           
           <div class="app-stats">
             <div class="stat-item">
-              <div class="stat-value">${app.stats ? app.stats.conversionsToday : 0}</div>
+              <div class="stat-value">${conversionsToday}</div>
               <div class="stat-label">Conversions aujourd'hui</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">${app.stats ? app.stats.apiKeys : 0}</div>
+              <div class="stat-value">${apiKeys}</div>
               <div class="stat-label">Clés API</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">${app.stats ? app.stats.errors : 0}</div>
+              <div class="stat-value">${errors}</div>
               <div class="stat-label">Erreurs</div>
             </div>
             <div class="stat-item">
