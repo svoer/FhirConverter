@@ -128,6 +128,99 @@
         .back-link:hover {
             text-decoration: underline;
         }
+        
+        /* Styles pour le modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #555;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .detail-item {
+            border: 1px solid #f0f0f0;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .detail-value {
+            display: block;
+            color: #333;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+        }
+
+        .code-block {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+            margin: 0;
+            border: 1px solid #e9ecef;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .code-block.error {
+            background-color: #fff5f5;
+            border-color: #ffebeb;
+            color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -458,6 +551,19 @@
                         const conversion = data.data;
                         const modal = document.getElementById('conversion-details-modal');
                         const content = document.getElementById('conversion-details-content');
+                        const closeBtn = document.querySelector('.close');
+                        
+                        // Ajouter l'événement pour fermer la boîte de dialogue
+                        closeBtn.onclick = function() {
+                            modal.style.display = "none";
+                        }
+                        
+                        // Fermer la boîte de dialogue lors d'un clic en dehors
+                        window.onclick = function(event) {
+                            if (event.target == modal) {
+                                modal.style.display = "none";
+                            }
+                        }
                         
                         let detailsHtml = `
                             <div class="details-grid">
