@@ -48,6 +48,25 @@
     .app-stats {
       display: flex;
       justify-content: space-between;
+    }
+    .stat-updated {
+      animation: pulse 1s;
+    }
+    .refresh-button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #666;
+      transition: transform 0.3s ease;
+    }
+    .refresh-button:hover {
+      color: #e63946;
+      transform: rotate(180deg);
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); background-color: rgba(230, 57, 70, 0.1); }
+      100% { transform: scale(1); }
       margin-top: 15px;
       padding-top: 15px;
       border-top: 1px solid #eee;
@@ -364,6 +383,48 @@
   <script src="/js/footer-version.js"></script>
 
   <script>
+    // Fonction pour rafraîchir les statistiques d'une application spécifique
+    async function refreshAppStats(appId) {
+      try {
+        console.log(`Rafraîchissement manuel des statistiques pour l'application ${appId}...`);
+        
+        // Ajout d'une animation au bouton de rafraîchissement
+        const refreshBtn = document.querySelector(`.app-card[data-app-id="${appId}"] .refresh-button`);
+        if (refreshBtn) {
+          refreshBtn.style.transform = 'rotate(360deg)';
+          setTimeout(() => {
+            refreshBtn.style.transform = 'rotate(0deg)';
+          }, 1000);
+        }
+        
+        // Récupérer les statistiques actualisées
+        const stats = await fetchApplicationStats(appId);
+        
+        console.log(`Nouvelles statistiques reçues:`, stats);
+        
+        // Mettre à jour les compteurs dans l'interface
+        const appCard = document.querySelector(`.app-card[data-app-id="${appId}"]`);
+        if (appCard) {
+          // Mettre à jour chaque statistique
+          appCard.querySelector('.stat-conversions-today').textContent = stats.conversionsToday;
+          appCard.querySelector('.stat-total-conversions').textContent = stats.totalConversions;
+          appCard.querySelector('.stat-api-keys').textContent = stats.apiKeys;
+          appCard.querySelector('.stat-errors').textContent = stats.errors;
+          
+          // Ajouter une animation pour montrer que les données ont été mises à jour
+          appCard.classList.add('stat-updated');
+          setTimeout(() => {
+            appCard.classList.remove('stat-updated');
+          }, 1000);
+        }
+        
+        return stats;
+      } catch (error) {
+        console.error(`Erreur lors du rafraîchissement des statistiques pour l'application ${appId}:`, error);
+        return null;
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       // Vérifier l'authentification
       const token = localStorage.getItem('token');
@@ -641,19 +702,21 @@
           
           <div class="app-stats">
             <div class="stat-item">
-              <span class="refresh-stats" data-id="${app.id}" title="Rafraîchir les statistiques"><i class="fas fa-sync-alt"></i></span>
-              <div id="app-${app.id}-conversions" class="stat-value">${conversionsToday}</div>
+              <button class="refresh-button" onclick="refreshAppStats('${app.id}')" title="Rafraîchir les statistiques"><i class="fas fa-sync-alt"></i></button>
+              <div id="app-${app.id}-conversions" class="stat-value stat-conversions-today">${conversionsToday}</div>
               <div class="stat-label">Conversions aujourd'hui</div>
             </div>
             <div class="stat-item">
-              <div id="app-${app.id}-apikeys" class="stat-value">${apiKeys}</div>
+              <div id="app-${app.id}-apikeys" class="stat-value stat-api-keys">${apiKeys}</div>
               <div class="stat-label">Clés API</div>
             </div>
             <div class="stat-item">
-              <div id="app-${app.id}-errors" class="stat-value">${errors}</div>
+              <div id="app-${app.id}-errors" class="stat-value stat-errors">${errors}</div>
               <div class="stat-label">Erreurs</div>
             </div>
             <div class="stat-item">
+              <div id="app-${app.id}-totalconversions" class="stat-value stat-total-conversions" style="font-size: 16px;">${totalConversions}</div>
+              <div class="stat-label">Total conversions</div>
               <a href="/application-history.html?id=${app.id}" class="button-secondary" style="margin-top: 10px;">
                 <i class="fas fa-history"></i> Voir l'historique
               </a>
@@ -676,26 +739,6 @@
         button.addEventListener('click', function() {
           const appId = this.getAttribute('data-id');
           showDeleteModal(appId);
-        });
-      });
-      
-      // Ajouter l'événement pour rafraîchir les statistiques en temps réel
-      document.querySelectorAll('.refresh-stats').forEach(button => {
-        button.addEventListener('click', async function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          
-          // Obtenir l'ID de l'application
-          const appId = this.getAttribute('data-id');
-          
-          // Ajouter la classe de rotation pour indiquer le chargement
-          this.classList.add('rotating');
-          
-          // Mettre à jour les statistiques
-          await refreshAppStats(appId);
-          
-          // Retirer la classe de rotation
-          this.classList.remove('rotating');
         });
       });
       
