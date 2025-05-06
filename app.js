@@ -17,6 +17,7 @@ const fs = require('fs');
 const { setupSwagger } = require('./swagger');
 const documentationRoutes = require('./server/routes/documentation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const metrics = require('./src/metrics');
 
 // Importer le convertisseur avec cache intégré 
 const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
