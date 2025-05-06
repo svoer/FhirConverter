@@ -155,7 +155,7 @@ async function getConversionDetails(id, applicationId) {
     return await dbService.get(
       `SELECT *
       FROM conversion_logs
-      WHERE id = ? AND application_id = ?`,
+      WHERE id = ? AND (application_id = ? OR application_id IS NULL)`,
       [id, applicationId]
     );
   } catch (error) {

@@ -490,7 +490,7 @@
         function fetchConversionsForStats(appId) {
             console.log("Récupération des conversions pour le calcul des statistiques, appId:", appId);
             
-            fetch(`/api/applications/${appId}/conversions?limit=1000`)
+            fetch(`/api/applications/${appId}/conversions?limit=1000&include_null=true`)
                 .then(response => {
                     console.log("Réponse brute des conversions:", response);
                     return response.json();
@@ -628,7 +628,7 @@
 
         // Récupérer les conversions avec pagination
         function fetchConversions(appId, page, limit = 10) {
-            fetch(`/api/applications/${appId}/conversions?page=${page}&limit=${limit}`)
+            fetch(`/api/applications/${appId}/conversions?page=${page}&limit=${limit}&include_null=true`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
