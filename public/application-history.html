@@ -442,12 +442,24 @@
                     if (data.success) {
                         const stats = data.data;
                         console.log("Réponse des statistiques complète:", stats);
-                        displayStats(stats.general);
                         
-                        // Si le graphique d'activité existe
-                        if (document.getElementById('activity-chart')) {
-                            createActivityChart(stats.daily);
+                        // Vérifier si les statistiques générales sont à zéro
+                        const generalStats = stats.general || {};
+                        if (!generalStats.total || generalStats.total === 0) {
+                            console.log("Statistiques à zéro détectées, calcul depuis l'historique");
+                            // Si les statistiques sont à zéro, calculer à partir de l'historique
+                            fetchConversionsForStats(appId);
+                        } else {
+                            displayStats(generalStats);
+                            
+                            // Si le graphique d'activité existe
+                            if (document.getElementById('activity-chart')) {
+                                createActivityChart(stats.daily);
+                            }
                         }
+                    } else {
+                        // En cas d'erreur, calculer depuis l'historique
+                        fetchConversionsForStats(appId);
                     }
                 })
                 .catch(error => {
