@@ -27,6 +27,7 @@
       background-color: var(--bg-color);
       color: var(--text-color);
       line-height: 1.6;
+      padding-bottom: 50px;
     }
     
     .container {
@@ -36,11 +37,16 @@
       background: var(--card-bg);
       border-radius: var(--border-radius);
       box-shadow: var(--shadow);
-      text-align: center;
+    }
+    
+    .logo-section {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
     }
     
     .logo {
-      margin-bottom: 20px;
+      margin-right: 20px;
     }
     
     .logo img {
@@ -51,15 +57,24 @@
       height: 80px;
     }
     
+    .title-section {
+      flex: 1;
+    }
+    
     h1 {
       color: var(--text-color);
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     
     .description {
       color: var(--text-secondary);
       font-size: 18px;
-      margin-bottom: 30px;
+    }
+    
+    .btn-container {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
     }
     
     .btn {
@@ -72,7 +87,6 @@
       text-decoration: none;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
-      margin-bottom: 20px;
     }
     
     .btn:hover {
@@ -82,15 +96,16 @@
     
     .api-info {
       margin-top: 30px;
-      padding: 15px;
+      padding: 20px;
       background: #f8f9fa;
       border-radius: 4px;
-      text-align: left;
+      border-left: 4px solid #ffc107;
     }
     
     .api-info h3 {
       margin-top: 0;
       color: var(--text-color);
+      margin-bottom: 15px;
     }
     
     code {
@@ -100,53 +115,187 @@
       font-family: monospace;
     }
     
+    .endpoint-category {
+      margin-top: 40px;
+    }
+    
+    .category-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f1f1f1;
+    }
+    
+    .category-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      color: #ff5722;
+    }
+    
     .endpoints {
-      margin-top: 30px;
-      text-align: left;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
     }
     
     .endpoint {
-      margin-bottom: 15px;
-      padding: 15px;
+      padding: 20px;
       background: #f8f9fa;
-      border-radius: 4px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       border-left: 4px solid #ff5722;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     
-    .endpoint h4 {
+    .endpoint:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .endpoint-header {
       display: flex;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
     
     .method {
       background: #ff5722;
       color: white;
-      padding: 2px 6px;
-      border-radius: 3px;
+      padding: 4px 8px;
+      border-radius: 4px;
       font-size: 12px;
-      margin-right: 8px;
+      font-weight: bold;
+      margin-right: 10px;
+      min-width: 50px;
+      text-align: center;
+    }
+    
+    .method.get {
+      background: #42b983;
+    }
+    
+    .method.post {
+      background: #e74c3c;
+    }
+    
+    .method.put {
+      background: #f39c12;
+    }
+    
+    .method.delete {
+      background: #e74c3c;
     }
     
     .path {
       font-family: monospace;
-      font-weight: normal;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    .endpoint-description {
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+      padding-left: 60px;
+    }
+    
+    .endpoint-example {
+      margin-top: 15px;
+      background: #2d3748;
+      color: #fff;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    
+    .tabs {
+      display: flex;
+      margin-top: 30px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+    
+    .tab.active {
+      border-bottom-color: #ff5722;
+      color: #ff5722;
+      font-weight: bold;
+    }
+    
+    .tab-content {
+      display: none;
+      padding-top: 20px;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @media (min-width: 768px) {
+      .endpoints {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    .back-link {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .back-link:hover {
+      color: #ff5722;
+    }
+    
+    .back-icon {
+      margin-right: 8px;
+    }
+    
+    .note {
+      background-color: #e6f7ff;
+      border-left: 4px solid #1890ff;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    
+    .warning {
+      background-color: #fff7e6;
+      border-left: 4px solid #fa8c16;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo">
-      <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
+    <a href="/dashboard.html" class="back-link">
+      <span class="back-icon">←</span> Retour au tableau de bord
+    </a>
+    
+    <div class="logo-section">
+      <div class="logo">
+        <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo">
+      </div>
+      <div class="title-section">
+        <h1>Documentation API FHIRHub</h1>
+        <p class="description">
+          Documentation complète de l'API pour le convertisseur HL7 vers FHIR
+        </p>
+      </div>
     </div>
-    
-    <h1>Documentation API FHIRHub</h1>
-    
-    <p class="description">
-      Documentation complète de l'API pour le convertisseur HL7 vers FHIR
-    </p>
-    
-    <a href="/api-docs/" class="btn">Accéder à la Documentation Swagger</a>
     
     <div class="api-info">
       <h3>Informations d'authentification</h3>
@@ -155,24 +304,231 @@
       <p><strong>Header d'authentification:</strong> <code>X-API-KEY: dev-key</code></p>
     </div>
     
-    <div class="endpoints">
-      <h3>Endpoints Principaux</h3>
-      
-      <div class="endpoint">
-        <h4><span class="method">POST</span> <span class="path">/api/convert/hl7-to-fhir</span></h4>
-        <p>Convertit un message HL7 en ressources FHIR</p>
-      </div>
-      
-      <div class="endpoint">
-        <h4><span class="method">GET</span> <span class="path">/api/stats</span></h4>
-        <p>Récupère les statistiques du système</p>
-      </div>
-      
-      <div class="endpoint">
-        <h4><span class="method">GET</span> <span class="path">/api/terminologies</span></h4>
-        <p>Liste les terminologies disponibles</p>
+    <div class="tabs">
+      <div class="tab active" data-tab="conversion">Conversion</div>
+      <div class="tab" data-tab="terminologies">Terminologies</div>
+      <div class="tab" data-tab="system">Système</div>
+    </div>
+    
+    <div class="tab-content conversion active">
+      <div class="endpoint-category">
+        <div class="category-header">
+          <svg class="category-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
+          <h2>APIs de Conversion</h2>
+        </div>
+        
+        <div class="endpoints">
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert</span>
+            </div>
+            <div class="endpoint-description">
+              Convertit un message HL7 v2.5 en ressources FHIR R4 (format JSON)
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              POST /api/convert
+              X-API-KEY: dev-key
+              Content-Type: application/json
+              
+              {
+                "hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|..."
+              }
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert/raw</span>
+            </div>
+            <div class="endpoint-description">
+              Convertit un message HL7 v2.5 en ressources FHIR R4 (format texte brut)
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              POST /api/convert/raw
+              X-API-KEY: dev-key
+              Content-Type: text/plain
+              
+              MSH|^~\\&|SENDING_APP|SENDING_FACILITY|...
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert/mllp</span>
+            </div>
+            <div class="endpoint-description">
+              Convertit un message HL7 v2.5 encapsulé dans le protocole MLLP en ressources FHIR R4
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              POST /api/convert/mllp
+              X-API-KEY: dev-key
+              Content-Type: application/mllp
+              
+              [caractères MLLP]MSH|^~\\&|SENDING_APP|...[caractères MLLP]
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+    
+    <div class="tab-content terminologies">
+      <div class="endpoint-category">
+        <div class="category-header">
+          <svg class="category-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <h2>APIs de Terminologies</h2>
+        </div>
+        
+        <div class="endpoints">
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/terminology/french</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les informations sur les terminologies françaises utilisées pour la conversion
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/terminology/french
+              X-API-KEY: dev-key
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/terminology/systems</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les systèmes de terminologie disponibles
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/terminology/systems
+              X-API-KEY: dev-key
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content system">
+      <div class="endpoint-category">
+        <div class="category-header">
+          <svg class="category-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <h2>APIs Système</h2>
+        </div>
+        
+        <div class="endpoints">
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/stats</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les statistiques du système (conversions, performances)
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/stats
+              X-API-KEY: dev-key
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/applications</span>
+            </div>
+            <div class="endpoint-description">
+              Liste toutes les applications enregistrées dans le système
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/applications
+              X-API-KEY: dev-key
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/api-keys</span>
+            </div>
+            <div class="endpoint-description">
+              Liste toutes les clés API disponibles
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/api-keys
+              X-API-KEY: dev-key
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/workflows</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les workflows configurés
+            </div>
+            <div class="endpoint-example">
+              // Requête
+              GET /api/workflows
+              X-API-KEY: dev-key
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="warning">
+      <strong>Note de sécurité:</strong> Toutes les API requièrent une authentification via une clé API. Assurez-vous de protéger vos clés API et de ne pas les partager.
+    </div>
+    
+    <div class="btn-container">
+      <a href="/api-docs/" class="btn">Accéder à la documentation Swagger avancée</a>
+    </div>
   </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gestion des onglets
+      const tabs = document.querySelectorAll('.tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          // Désactiver tous les onglets
+          tabs.forEach(t => t.classList.remove('active'));
+          
+          // Désactiver tous les contenus d'onglet
+          const tabContents = document.querySelectorAll('.tab-content');
+          tabContents.forEach(content => content.classList.remove('active'));
+          
+          // Activer l'onglet cliqué
+          this.classList.add('active');
+          
+          // Activer le contenu correspondant
+          const tabName = this.getAttribute('data-tab');
+          document.querySelector(`.tab-content.${tabName}`).classList.add('active');
+        });
+      });
+    });
+  </script>
 </body>
 </html>
