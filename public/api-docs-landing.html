@@ -192,6 +192,7 @@
       font-family: monospace;
       font-weight: bold;
       font-size: 14px;
+      word-break: break-word;
     }
     
     .endpoint-description {
@@ -209,6 +210,9 @@
       font-family: monospace;
       overflow-x: auto;
       font-size: 13px;
+      max-width: 100%;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
     
     .tabs {
@@ -239,9 +243,39 @@
       display: block;
     }
     
-    @media (min-width: 768px) {
+    @media (min-width: 992px) {
       .endpoints {
         grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+        margin: 20px auto;
+      }
+      
+      .logo-section {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .logo {
+        margin-right: 0;
+        margin-bottom: 20px;
+      }
+      
+      .endpoint-description {
+        padding-left: 10px;
+      }
+      
+      .tabs {
+        flex-wrap: wrap;
+      }
+      
+      .tab {
+        padding: 8px 12px;
+        font-size: 14px;
       }
     }
     
