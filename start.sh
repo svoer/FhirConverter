@@ -88,31 +88,44 @@ if [ ! -f "./.env" ]; then
   cat > ./.env << EOF
 # Configuration FHIRHub
 PORT=5000
-DB_PATH=./data/fhirhub.db
+DB_PATH=${DB_DIR}/fhirhub.db
 LOG_LEVEL=info
 NODE_ENV=development
 JWT_SECRET=$(openssl rand -hex 16)
+METRICS_ENABLED=true
+METRICS_PORT=9091
 EOF
   echo -e "${GREEN}✅ Fichier .env créé avec succès${NC}"
 else
   # Vérifier que les variables essentielles sont définies
   env_missing=0
-  for var in PORT DB_PATH; do
+  for var in PORT DB_PATH METRICS_ENABLED METRICS_PORT; do
     if ! grep -q "^$var=" .env; then
       echo -e "${YELLOW}⚠️ Variable $var manquante dans .env, ajout...${NC}"
       if [ "$var" = "PORT" ]; then
         echo "PORT=5000" >> ./.env
       elif [ "$var" = "DB_PATH" ]; then
-        echo "DB_PATH=./data/fhirhub.db" >> ./.env
+        echo "DB_PATH=${DB_DIR}/fhirhub.db" >> ./.env
+      elif [ "$var" = "METRICS_ENABLED" ]; then
+        echo "METRICS_ENABLED=true" >> ./.env
+      elif [ "$var" = "METRICS_PORT" ]; then
+        echo "METRICS_PORT=9091" >> ./.env
       fi
       env_missing=$((env_missing+1))
     fi
   done
   
+  # Mise à jour du chemin de la base de données dans .env pour utiliser la nouvelle structure
+  if grep -q "^DB_PATH=./data" .env; then
+    echo -e "${YELLOW}Mise à jour du chemin de la base de données pour utiliser la nouvelle structure...${NC}"
+    sed -i "s|^DB_PATH=./data|DB_PATH=${DB_DIR}|g" ./.env
+    env_missing=$((env_missing+1))
+  fi
+  
   if [ $env_missing -eq 0 ]; then
     echo -e "${GREEN}✅ Fichier .env existant vérifié${NC}"
   else
-    echo -e "${GREEN}✅ Fichier .env mis à jour${NC}"
+    echo -e "${GREEN}✅ Fichier .env mis à jour pour la nouvelle structure${NC}"
   fi
 fi
 
@@ -255,14 +268,34 @@ if command -v dnf &> /dev/null; then
   fi
 fi
 
-# Vérification du dossier workflows
-if [ ! -d "./data/workflows" ]; then
-  echo -e "${YELLOW}⚠️ Dossier workflows non trouvé, création...${NC}"
-  mkdir -p ./data/workflows
-  echo -e "${GREEN}✅ Dossier workflows créé${NC}"
-else
-  echo -e "${GREEN}✅ Dossier workflows détecté${NC}"
+# Création des nouveaux dossiers avec la structure optimisée
+echo -e "${BLUE}Création de la nouvelle structure de répertoires optimisée...${NC}"
+STORAGE_DIR="./storage"
+DB_DIR="${STORAGE_DIR}/db"
+DATA_DIR="${STORAGE_DIR}/data"
+LOGS_DIR="${STORAGE_DIR}/logs"
+BACKUPS_DIR="${STORAGE_DIR}/backups"
+
+# Créer les répertoires de la nouvelle structure
+mkdir -p "${DB_DIR}" "${DATA_DIR}" "${DATA_DIR}/workflows" "${LOGS_DIR}" "${BACKUPS_DIR}"
+
+# Vérifier si la migration est nécessaire
+if [ -d "./data" ] && [ ! -f "${DB_DIR}/fhirhub.db" ] && [ -f "./data/fhirhub.db" ]; then
+  echo -e "${YELLOW}Migration de l'ancienne base de données vers la nouvelle structure...${NC}"
+  cp "./data/fhirhub.db" "${DB_DIR}/fhirhub.db" && 
+  echo -e "${GREEN}✅ Base de données migrée avec succès${NC}" ||
+  echo -e "${RED}❌ Échec de la migration de la base de données${NC}"
 fi
+
+# Migrer les workflows si nécessaire
+if [ -d "./data/workflows" ] && [ ! -z "$(ls -A ./data/workflows 2>/dev/null)" ]; then
+  echo -e "${YELLOW}Migration des workflows vers la nouvelle structure...${NC}"
+  rsync -a "./data/workflows/" "${DATA_DIR}/workflows/" &&
+  echo -e "${GREEN}✅ Workflows migrés avec succès${NC}" ||
+  echo -e "${RED}❌ Échec de la migration des workflows${NC}"
+fi
+
+echo -e "${GREEN}✅ Structure de répertoires optimisée pour Docker mise en place${NC}"
 
 # Vérification de l'installation Python pour les scripts auxiliaires
 echo -e "${BLUE}[5/6] Vérification de Python...${NC}"
@@ -380,10 +413,17 @@ else
   echo -e "${GREEN}✅ Port 5000 disponible${NC}"
 fi
 
+# Vérification du port des métriques
+METRICS_PORT=$(grep -oP "(?<=METRICS_PORT=).*" .env 2>/dev/null || echo "9091")
+METRICS_ENABLED=$(grep -oP "(?<=METRICS_ENABLED=).*" .env 2>/dev/null || echo "true")
+
 # Démarrage du serveur
 echo -e "${CYAN}=========================================================="
-echo -e "   Démarrage du serveur FHIRHub"
-echo -e "   http://localhost:5000"
+echo -e "   Démarrage du serveur FHIRHub v${APP_VERSION}"
+echo -e "   Application: http://localhost:5000"
+if [ "$METRICS_ENABLED" = "true" ]; then
+  echo -e "   Métriques Prometheus: http://localhost:${METRICS_PORT}/metrics"
+fi
 echo -e "==========================================================${NC}"
 
 # Démarrage avec le Node.js approprié
