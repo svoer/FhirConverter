@@ -475,11 +475,29 @@
       // Chargement des statistiques des terminologies
       async function loadTerminologyStats() {
         try {
-          const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/french');
-          if (!response.ok) throw new Error('Erreur lors du chargement des statistiques');
+          // Version améliorée avec gestion d'erreurs plus robuste
+          let response;
+          try {
+            response = await FHIRHubAuth.fetchWithAuth('/api/terminology/french');
+            if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+          } catch (fetchError) {
+            console.error('Erreur de requête fetch:', fetchError);
+            throw new Error(`Erreur de connexion: ${fetchError.message}`);
+          }
           
-          const data = await response.json();
-          if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+          let data;
+          try {
+            data = await response.json();
+            if (!data.success) throw new Error(data.message || 'Réponse non valide');
+            
+            // Vérifier que data.data existe et n'est pas null
+            if (!data.data) {
+              throw new Error('Données reçues non valides (data.data manquant)');
+            }
+          } catch (parseError) {
+            console.error('Erreur de parsing JSON:', parseError);
+            throw new Error(`Erreur de format: ${parseError.message}`);
+          }
           
           // Mettre à jour les compteurs avec animation pour rendre visible les changements
           terminologyVersionEl.textContent = data.data.version || 'N/A';
@@ -519,8 +537,8 @@
           terminologyOidsCountEl.textContent = 'Erreur';
           terminologyFilesCountEl.textContent = 'Erreur';
           
-          // Ajouter un log d'erreur
-          addLog(`Erreur lors du chargement des statistiques: ${err.message}`);
+          // Ajouter un log d'erreur avec plus de détails
+          addLog(`Erreur lors du chargement des statistiques: ${err.message || 'Erreur inconnue'}`);
           return null;
         }
       }
@@ -528,14 +546,20 @@
       // Mettre à jour le compteur de fichiers
       function updateFilesCount() {
         try {
-          // Utiliser le fetch asynchrone mais sans attendre le résultat
+          // Version améliorée avec plus de robustesse
           FHIRHubAuth.fetchWithAuth('/api/terminology/files')
             .then(response => {
-              if (!response.ok) throw new Error('Erreur lors du comptage des fichiers');
+              if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
               return response.json();
             })
             .then(data => {
-              if (!data.success) throw new Error('Erreur lors du comptage des fichiers');
+              if (!data.success) throw new Error(data.message || 'Réponse non valide');
+              
+              // Vérifier que data.data existe et est un tableau
+              if (!data.data || !Array.isArray(data.data)) {
+                throw new Error('Données reçues non valides (data.data n\'est pas un tableau)');
+              }
+              
               const filesCount = data.data.length;
               terminologyFilesCountEl.textContent = filesCount;
               highlightElement(terminologyFilesCountEl);
@@ -543,21 +567,43 @@
             .catch(err => {
               console.error('Erreur lors du comptage des fichiers:', err);
               terminologyFilesCountEl.textContent = 'Erreur';
+              
+              // Ajouter plus de détails au log d'erreur pour aider au débogage
+              addLog(`Erreur lors du comptage des fichiers: ${err.message || 'Erreur inconnue'}`);
             });
         } catch (err) {
           console.error('Erreur lors du comptage des fichiers:', err);
           terminologyFilesCountEl.textContent = 'Erreur';
+          addLog(`Erreur lors du comptage des fichiers: ${err.message || 'Erreur inconnue'}`);
         }
       }
 
       // Chargement des fichiers de terminologie
       async function loadTerminologyFiles() {
         try {
-          const response = await FHIRHubAuth.fetchWithAuth('/api/terminology/files');
-          if (!response.ok) throw new Error('Erreur lors du chargement des fichiers');
+          // Version améliorée avec gestion d'erreurs plus robuste
+          let response;
+          try {
+            response = await FHIRHubAuth.fetchWithAuth('/api/terminology/files');
+            if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+          } catch (fetchError) {
+            console.error('Erreur de requête fetch pour les fichiers:', fetchError);
+            throw new Error(`Erreur de connexion: ${fetchError.message}`);
+          }
           
-          const data = await response.json();
-          if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+          let data;
+          try {
+            data = await response.json();
+            if (!data.success) throw new Error(data.message || 'Réponse non valide');
+            
+            // Vérifier que data.data existe et est un tableau
+            if (!data.data || !Array.isArray(data.data)) {
+              throw new Error('Données reçues non valides (data.data n\'est pas un tableau)');
+            }
+          } catch (parseError) {
+            console.error('Erreur de parsing JSON pour les fichiers:', parseError);
+            throw new Error(`Erreur de format: ${parseError.message}`);
+          }
           
           // Mettre à jour le compteur de fichiers
           terminologyFilesCountEl.textContent = data.data.length;
