@@ -15,7 +15,8 @@ La configuration Docker de FHIRHub utilise des volumes pour conserver vos donné
 
 Les volumes suivants sont utilisés :
 
-- **data** : Contient la base de données SQLite et les données persistantes
+- **db** : Contient la base de données SQLite
+- **data** : Contient les données persistantes (conversions, workflows, etc.)
 - **logs** : Contient les fichiers journaux
 - **backups** : Contient les sauvegardes
 - **french_terminology** : Contient les fichiers de terminologie française
@@ -43,7 +44,7 @@ docker-compose -f docker-compose.prod.yml up -d
 1. Créez les répertoires pour les volumes :
 
 ```bash
-mkdir -p volumes/data volumes/logs volumes/backups volumes/french_terminology
+mkdir -p volumes/db volumes/data volumes/logs volumes/backups volumes/french_terminology
 mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volumes/data/test
 ```
 
@@ -52,6 +53,7 @@ mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volu
 ```
 PORT=5000
 JWT_SECRET=fhirhub-secure-jwt-secret-change-me
+DB_DIR=./volumes/db
 DATA_DIR=./volumes/data
 LOGS_DIR=./volumes/logs
 BACKUPS_DIR=./volumes/backups
