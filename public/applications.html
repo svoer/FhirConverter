@@ -801,14 +801,17 @@
           totalConversions = logs.length;
           console.log(`Nombre total de conversions trouvées: ${totalConversions}`);
           
-          // Obtenir la date d'aujourd'hui au format YYYY-MM-DD dans la timezone locale
+          // Obtenir la date d'aujourd'hui au format YYYY-MM-DD dans le fuseau horaire français (UTC+2)
           const now = new Date();
-          const todayYear = now.getFullYear();
-          const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
-          const todayDay = String(now.getDate()).padStart(2, '0');
+          // Ajouter 2 heures pour la France (UTC+2)
+          const nowInFrance = new Date(now.getTime() + (2 * 60 * 60 * 1000));
+          
+          const todayYear = nowInFrance.getFullYear();
+          const todayMonth = String(nowInFrance.getMonth() + 1).padStart(2, '0');
+          const todayDay = String(nowInFrance.getDate()).padStart(2, '0');
           const todayFormatted = `${todayYear}-${todayMonth}-${todayDay}`;
           
-          console.log(`Date d'aujourd'hui formatée: ${todayFormatted}`);
+          console.log(`Date d'aujourd'hui en France: ${todayFormatted}`);
           
           // Filtrer les conversions d'aujourd'hui et compter les erreurs
           logs.forEach(log => {
@@ -821,10 +824,13 @@
                 // Essayer d'extraire la date à partir de différents formats
                 const date = new Date(log.timestamp);
                 
+                // Ajuster pour le fuseau horaire français (UTC+2)
+                const dateInFrance = new Date(date.getTime() + (2 * 60 * 60 * 1000));
+                
                 // Formater la date dans le même format que notre date d'aujourd'hui
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
+                const year = dateInFrance.getFullYear();
+                const month = String(dateInFrance.getMonth() + 1).padStart(2, '0');
+                const day = String(dateInFrance.getDate()).padStart(2, '0');
                 logDate = `${year}-${month}-${day}`;
                 
                 // Alternative: utiliser directement la chaîne si elle contient une date au format YYYY-MM-DD
