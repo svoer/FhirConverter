@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Durée maximale d'une requête IA (en ms)
-const AI_REQUEST_TIMEOUT = 10000;
+const AI_REQUEST_TIMEOUT = 30000; // Augmenté à 30 secondes pour donner plus de temps à l'API
 
 // Configuration du mode hors ligne pour les analyses IA
 const OFFLINE_MODE_ENABLED = false; // Mode hors ligne désactivé suite à la demande de l'utilisateur

@@ -21,6 +21,13 @@
       --button-radius: 8px;
     }
     
+    /* Correction des problèmes de contraste pour le texte sur fond dégradé */
+    .card-header .card-title {
+      color: white;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      font-weight: bold;
+    }
+    
     /* Modernisation de l'interface selon les standards UX 2025 */
     .btn {
       border-radius: var(--button-radius);
