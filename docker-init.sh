@@ -24,6 +24,9 @@ else
   exit 1
 fi
 
+# Création des sous-répertoires french_terminology
+mkdir -p volumes/french_terminology/cache
+
 # Création des sous-répertoires de data
 echo -e "${YELLOW}Création des sous-répertoires de data...${NC}"
 mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volumes/data/test volumes/data/workflows
