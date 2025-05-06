@@ -436,6 +436,13 @@
             // Variable globale pour utilisation dans d'autres fonctions
             window.appId = appId;
             
+            console.log("Démarrage du calcul des statistiques pour l'application ID:", appId);
+            
+            // Aller directement chercher l'historique pour calculer les statistiques
+            // Cela contourne les problèmes d'API qui retournent des statistiques à zéro
+            fetchConversionsForStats(appId);
+            
+            /*
             fetch(`/api/applications/${appId}/stats`)
                 .then(response => response.json())
                 .then(data => {
@@ -468,20 +475,43 @@
                     // En cas d'erreur, essayons de récupérer les statistiques directement depuis l'historique
                     fetchConversionsForStats(appId);
                 });
+            */
         }
         
         // Récupérer toutes les conversions pour calculer les statistiques manuellement
         function fetchConversionsForStats(appId) {
+            console.log("Récupération des conversions pour le calcul des statistiques, appId:", appId);
+            
             fetch(`/api/applications/${appId}/conversions?limit=1000`)
-                .then(response => response.json())
+                .then(response => {
+                    console.log("Réponse brute des conversions:", response);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log("Données des conversions complètes:", data);
+                    
                     if (data.success && data.data && data.data.conversions) {
                         const conversions = data.data.conversions;
+                        console.log("Nombre de conversions trouvées:", conversions.length);
+                        
                         if (conversions.length > 0) {
                             // Calculer manuellement les statistiques
                             const total = conversions.length;
-                            const successCount = conversions.filter(c => c.status === 'success').length;
-                            const avgProcessingTime = conversions.reduce((sum, c) => sum + (c.processing_time || 0), 0) / total;
+                            // Force le statut à 'success' si undefined ou null
+                            // Cela assure la compatibilité avec d'anciens formats de données
+                            const successCount = conversions.filter(c => 
+                                c.status === 'success' || c.status === 'Succès' || c.status === undefined
+                            ).length;
+                            
+                            let avgProcessingTime = 0;
+                            if (total > 0) {
+                                const totalTime = conversions.reduce((sum, c) => {
+                                    const time = parseInt(c.processing_time) || 0;
+                                    console.log(`Conversion ID ${c.id}: temps de traitement = ${time}ms`);
+                                    return sum + time;
+                                }, 0);
+                                avgProcessingTime = totalTime / total;
+                            }
                             
                             const stats = {
                                 total: total,
@@ -491,8 +521,19 @@
                             };
                             
                             console.log("Statistiques calculées manuellement:", stats);
+                            
+                            // Mettre à jour directement les valeurs dans l'interface
+                            document.getElementById('total-conversions').textContent = stats.total;
+                            document.getElementById('success-rate').textContent = `${Math.round((stats.success_count / stats.total) * 100)}%`;
+                            document.getElementById('avg-time').textContent = `${Math.round(stats.avg_processing_time)}ms`;
+                            
+                            // Puis, appeler displayStats pour la mise à jour complète
                             displayStats(stats);
+                        } else {
+                            console.log("Aucune conversion trouvée pour cette application");
                         }
+                    } else {
+                        console.error("Format de données invalide dans la réponse des conversions:", data);
                     }
                 })
                 .catch(error => {
@@ -502,10 +543,14 @@
 
         // Afficher les statistiques générales
         function displayStats(generalStats) {
-            if (!generalStats) return;
+            if (!generalStats) {
+                console.warn("Aucune statistique générale reçue");
+                return;
+            }
             
             console.log("Statistiques générales reçues:", generalStats);
             
+            // Mise à jour directe des statistiques dans l'interface
             document.getElementById('total-conversions').textContent = generalStats.total || 0;
             
             const successRate = generalStats.total > 0 
@@ -517,34 +562,6 @@
                 ? Math.round(generalStats.avg_processing_time) 
                 : 0;
             document.getElementById('avg-time').textContent = `${avgTime}ms`;
-            
-            // Mise à jour directe des compteurs depuis l'historique si les statistiques sont à zéro
-            if (generalStats.total === 0) {
-                // Si les statistiques sont vides mais que l'historique existe, compter manuellement
-                fetch(`/api/applications/${appId}/conversions?limit=1000`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.data && data.data.conversions && data.data.conversions.length > 0) {
-                            const conversions = data.data.conversions;
-                            const total = conversions.length;
-                            const successCount = conversions.filter(c => c.status === 'success').length;
-                            const avgProcessingTime = conversions.reduce((sum, c) => sum + (c.processing_time || 0), 0) / total;
-                            
-                            console.log("Statistiques calculées depuis l'historique:", {
-                                total,
-                                successCount,
-                                avgProcessingTime
-                            });
-                            
-                            document.getElementById('total-conversions').textContent = total;
-                            document.getElementById('success-rate').textContent = `${Math.round((successCount / total) * 100)}%`;
-                            document.getElementById('avg-time').textContent = `${Math.round(avgProcessingTime)}ms`;
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Erreur lors du calcul des statistiques depuis l'historique:", error);
-                    });
-            }
         }
 
         // Créer le graphique d'activité
