@@ -1,0 +1,165 @@
+{
+  "identifier_systems": {
+    "INS-NIR": {
+      "oid": "1.2.250.1.213.1.4.8",
+      "uri": "urn:oid:1.2.250.1.213.1.4.8",
+      "description": "Identifiant National de Santé (INS) basé sur le NIR",
+      "authority": "ASIP Santé"
+    },
+    "INS-C": {
+      "oid": "1.2.250.1.213.1.4.2",
+      "uri": "urn:oid:1.2.250.1.213.1.4.2",
+      "description": "Identifiant National de Santé calculé (INS-C)",
+      "authority": "ASIP Santé"
+    },
+    "RPPS": {
+      "oid": "1.2.250.1.71.4.2.1",
+      "uri": "urn:oid:1.2.250.1.71.4.2.1",
+      "description": "Répertoire Partagé des Professionnels de Santé",
+      "authority": "ASIP Santé"
+    },
+    "ADELI": {
+      "oid": "1.2.250.1.71.4.2.2",
+      "uri": "urn:oid:1.2.250.1.71.4.2.2",
+      "description": "Automatisation DEs LIstes (des professionnels de santé)",
+      "authority": "Ministère de la Santé"
+    },
+    "FINESS": {
+      "oid": "1.2.250.1.71.4.2.3",
+      "uri": "urn:oid:1.2.250.1.71.4.2.3",
+      "description": "Fichier National des Établissements Sanitaires et Sociaux",
+      "authority": "Ministère de la Santé"
+    },
+    "SIRET": {
+      "oid": "1.2.250.1.71.4.2.4",
+      "uri": "urn:oid:1.2.250.1.71.4.2.4",
+      "description": "Système d'Identification du Répertoire des ETablissements",
+      "authority": "INSEE"
+    },
+    "IDNST": {
+      "oid": "1.2.250.1.71.4.2.5",
+      "uri": "urn:oid:1.2.250.1.71.4.2.5",
+      "description": "Identifiant National de Structure",
+      "authority": "ANS"
+    }
+  },
+  "terminology_systems": {
+    "TRE-R316-AutreCategorieEtablissement": {
+      "oid": "1.2.250.1.213.1.6.1.239",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R316-AutreCategorieEtablissement/FHIR/TRE-R316-AutreCategorieEtablissement",
+      "description": "Autres catégories d'établissement",
+      "authority": "ANS"
+    },
+    "TRE-R51-DESCGroupe2Diplome": {
+      "oid": "1.2.250.1.213.1.6.1.49",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R51-DESCGroupe2Diplome/FHIR/TRE-R51-DESCGroupe2Diplome",
+      "description": "DESC Groupe 2 Diplôme",
+      "authority": "ANS"
+    },
+    "TRE-G02-TypeProduit": {
+      "oid": "1.2.250.1.71.1.2.2",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_G02-TypeProduit/FHIR/TRE-G02-TypeProduit",
+      "description": "Type de produit",
+      "authority": "ANS"
+    },
+    "TRE-R217-ProtectionJuridique": {
+      "oid": "1.2.250.1.213.1.1.4.327",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R217-ProtectionJuridique/FHIR/TRE-R217-ProtectionJuridique",
+      "description": "Protection juridique",
+      "authority": "ANS"
+    },
+    "TRE-R302-ContexteCodeComplementaire": {
+      "oid": "1.2.250.1.213.3.3.70",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R302-ContexteCodeComplementaire/FHIR/TRE-R302-ContexteCodeComplementaire",
+      "description": "Contexte code complémentaire",
+      "authority": "ANS"
+    },
+    "TRE-R239-PublicPrisEnCharge": {
+      "oid": "1.2.250.1.213.3.3.29",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R239-PublicPrisEnCharge/FHIR/TRE-R239-PublicPrisEnCharge",
+      "description": "Public pris en charge",
+      "authority": "ANS"
+    },
+    "TRE-A01-CadreExercice": {
+      "oid": "1.2.250.1.213.1.1.4.9",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_A01-CadreExercice/FHIR/TRE-A01-CadreExercice",
+      "description": "Cadre d'exercice",
+      "authority": "ANS"
+    },
+    "TRE-R303-HL7v3AdministrativeGender": {
+      "oid": "1.2.250.1.213.1.1.5.1",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R303-HL7v3AdministrativeGender/FHIR/TRE-R303-HL7v3AdministrativeGender",
+      "description": "Genre administratif HL7v3",
+      "authority": "ANS"
+    },
+    "TRE-R283-Confidentiality": {
+      "oid": "1.2.250.1.213.1.1.4.13",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R283-Confidentiality/FHIR/TRE-R283-Confidentiality",
+      "description": "Niveaux de confidentialité",
+      "authority": "ANS"
+    },
+    "TRE-R287-FormatCode": {
+      "oid": "1.2.250.1.213.1.1.4.2.280",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R287-FormatCode/FHIR/TRE-R287-FormatCode",
+      "description": "Format de document",
+      "authority": "ANS"
+    },
+    "TRE-R305-TypeRencontre": {
+      "oid": "1.2.250.1.213.1.1.4.13",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R305-TypeRencontre/FHIR/TRE-R305-TypeRencontre",
+      "description": "Type de rencontre",
+      "authority": "ANS"
+    },
+    "TRE-R213-ModePriseEnCharge": {
+      "oid": "1.2.250.1.71.4.2.4",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R213-ModePriseEnCharge/FHIR/TRE-R213-ModePriseEnCharge",
+      "description": "Mode de prise en charge",
+      "authority": "ANS"
+    },
+    "NABM": {
+      "oid": "1.2.250.1.213.1.1.4.311",
+      "uri": "https://mos.esante.gouv.fr/NOS/NABM/FHIR/NABM",
+      "description": "Nomenclature des Actes de Biologie Médicale",
+      "authority": "CNAMTS"
+    },
+    "CCAM": {
+      "oid": "1.2.250.1.213.2.5",
+      "uri": "https://mos.esante.gouv.fr/NOS/TRE_R210-ActeSpecifique/FHIR/TRE-R210-ActeSpecifique",
+      "description": "Classification Commune des Actes Médicaux",
+      "authority": "ATIH/CNAMTS"
+    }
+  },
+  "extension_systems": {
+    "INS-NIR-Verifie": {
+      "uri": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-NIR-Verifie",
+      "description": "Indique si l'INS a été vérifié (true) ou est récupéré (false)",
+      "type": "boolean"
+    },
+    "INS-Source": {
+      "uri": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-Source",
+      "description": "Source de l'INS (RECUPERE, CALCULE)",
+      "type": "code"
+    },
+    "INS-DateConsultation": {
+      "uri": "https://apifhir.annuaire.sante.fr/ws-sync/exposed/structuredefinition/INS-DateConsultation",
+      "description": "Date de consultation ou de récupération de l'INS",
+      "type": "dateTime"
+    },
+    "FrenchPhone": {
+      "uri": "http://hl7.org/fhir/StructureDefinition/rendering-style",
+      "description": "Format d'affichage des numéros de téléphone français",
+      "type": "string",
+      "example": "+33 n nn nn nn nn"
+    }
+  },
+  "message_profiles": {
+    "HL7v2.5-FR": {
+      "uri": "https://mos.esante.gouv.fr/hl7-fr/v2.5",
+      "description": "Profil français pour HL7 v2.5"
+    },
+    "FHIR-R4-FR": {
+      "uri": "https://interop.esante.gouv.fr/ig/fhir/hl7/StructureDefinition/hl7-bundle",
+      "description": "Profil français pour FHIR R4"
+    }
+  }
+}

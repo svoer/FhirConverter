@@ -53,7 +53,10 @@ const upload = multer({
 });
 
 // Répertoire des terminologies
-const TERMINOLOGY_DIR = path.join(__dirname, '../french_terminology');
+// Utiliser le répertoire volumes/french_terminology pour la compatibilité avec Docker
+const TERMINOLOGY_DIR = fs.existsSync(path.join(__dirname, '../volumes/french_terminology')) ? 
+  path.join(__dirname, '../volumes/french_terminology') : 
+  path.join(__dirname, '../french_terminology');
 
 /**
  * @swagger
