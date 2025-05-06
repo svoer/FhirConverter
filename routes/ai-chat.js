@@ -189,36 +189,33 @@ async function handleMistralRequest(provider, messages, max_tokens) {
   }
   
   // Correction 2025-05-06: Parsing plus robuste du modèle Mistral
-  let models;
+  let modelToUse = 'mistral-medium';  // Modèle par défaut
   try {
     if (provider.models) {
       if (provider.models.startsWith('[') && provider.models.endsWith(']')) {
         // Format JSON array
         const modelsArray = JSON.parse(provider.models);
-        models = modelsArray[0] || 'mistral-medium';
+        modelToUse = modelsArray[0] || 'mistral-medium';
       } else if (provider.models.includes(',')) {
         // Format séparé par des virgules
-        models = provider.models.split(',')[0].trim();
+        modelToUse = provider.models.split(',')[0].trim();
       } else {
         // Format de modèle unique
-        models = provider.models.trim();
+        modelToUse = provider.models.trim();
       }
-    } else {
-      models = 'mistral-medium';
     }
   } catch (error) {
     console.warn('Erreur lors du parsing du modèle Mistral:', error);
-    models = 'mistral-medium';
   }
   
   console.log(`[AI] Envoi de requête Mistral à: ${apiUrl}`);
-  console.log(`[AI] Modèle utilisé: ${models}`);
+  console.log(`[AI] Modèle utilisé: ${modelToUse}`);
   
   try {
     const response = await axios.post(
       apiUrl,
       {
-        model: models,
+        model: modelToUse,
         messages: messages,
         max_tokens: max_tokens
       },
@@ -230,9 +227,20 @@ async function handleMistralRequest(provider, messages, max_tokens) {
       }
     );
     
-    return {
-      content: response.data.choices[0].message.content
-    };
+    // Ajout de débogage pour voir la structure de la réponse
+    console.log('[AI] Structure de la réponse Mistral:', 
+                Object.keys(response.data).join(', '),
+                'choices:', response.data.choices ? response.data.choices.length : 'none');
+    
+    // Vérification plus robuste des champs
+    if (response.data.choices && response.data.choices.length > 0 && response.data.choices[0].message) {
+      return {
+        content: response.data.choices[0].message.content
+      };
+    } else {
+      console.error('[AI] Format de réponse Mistral inattendu:', JSON.stringify(response.data).substring(0, 1000));
+      throw new Error('Format de réponse Mistral inattendu');
+    }
   } catch (error) {
     console.error('Erreur Mistral AI:', error.response?.data || error.message);
     throw new Error(`Erreur Mistral AI: ${error.response?.data?.error?.message || error.message}`);

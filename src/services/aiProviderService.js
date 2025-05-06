@@ -526,7 +526,18 @@ async function testMistral(apiKey, baseUrl) {
     }
     
     const data = await response.json();
-    const models = data.data.map(model => model.id);
+    
+    // Correction 2025-05-07: Gestion robuste de la réponse de l'API Mistral qui peut varier
+    let models = [];
+    if (data.data && Array.isArray(data.data)) {
+      models = data.data.map(model => model.id);
+    } else if (data.models && Array.isArray(data.models)) {
+      models = data.models;
+    } else {
+      // Si aucun format ne correspond, utiliser l'objet complet pour le débogage
+      console.log('[AI] Format de réponse Mistral inattendu:', JSON.stringify(data).substring(0, 1000));
+      models = Object.keys(data).includes('object') ? ['mistral-medium'] : [];
+    }
     
     return {
       success: true,

@@ -537,12 +537,16 @@ async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}
     model: model || defaultModel,
     messages: messages,
     temperature: settings.temperature || 0.2,
-    max_tokens: settings.max_tokens || 4000
+    max_tokens: settings.max_tokens || 1500  // Réduire à 1500 tokens pour accélérer la réponse
   };
   
   // Ajouter d'autres paramètres si présents
   if (settings.top_p) params.top_p = settings.top_p;
   if (settings.safe_mode !== undefined) params.safe_mode = settings.safe_mode;
+  
+  console.log(`[AI] Envoi de requête Mistral à: ${url}`);
+  console.log(`[AI] Modèle utilisé: ${params.model}`);
+  console.log(`[AI] Messages envoyés: ${messages.length}`);
   
   try {
     const headers = {
@@ -550,13 +554,24 @@ async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}
       'Authorization': `Bearer ${apiKey}`
     };
     
-    const response = await axios.post(url, params, { headers });
+    // Timeout plus court pour éviter les blocages
+    const response = await axios.post(url, params, { 
+      headers,
+      timeout: 15000  // 15 secondes de timeout
+    });
     
-    // Extraire et retourner le texte de la réponse
-    return response.data.choices[0].message.content;
+    console.log('[AI] Réponse Mistral reçue. Structure:', Object.keys(response.data).join(', '));
+    
+    // Vérification plus robuste du format de la réponse
+    if (response.data.choices && response.data.choices.length > 0 && response.data.choices[0].message) {
+      return response.data.choices[0].message.content;
+    } else {
+      console.error('[AI] Format de réponse Mistral inattendu:', JSON.stringify(response.data).substring(0, 500));
+      throw new Error('Format de réponse Mistral inattendu');
+    }
   } catch (error) {
     console.error('Erreur API Mistral:', error.response?.data || error.message);
-    throw new Error(`Erreur API Mistral: ${error.response?.data?.error?.message || error.message}`);
+    throw new Error(`Erreur API Mistral: ${error.response?.data?.message || error.message}`);
   }
 }
 
