@@ -158,25 +158,55 @@ async function createTables() {
       }
     }
     
-    // Création de l'application par défaut et de la clé API de développement
-    console.log('[DB] Création de l\'application par défaut et de la clé API de développement');
+    // Vérification et création de l'application par défaut et clé API de développement
+    console.log('[DB] Vérification de l\'application par défaut et de la clé API de développement');
     try {
-      await run(
-        'INSERT OR IGNORE INTO applications (name, description, created_by) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
-        ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
+      // Vérifier si une application par défaut existe déjà (avec différentes variations possibles du nom)
+      const defaultApp = await get(
+        'SELECT id FROM applications WHERE name IN (?, ?, ?) LIMIT 1',
+        ['Application par défaut', 'Default', 'Application par défaut pour le développement']
       );
       
-      // Requête utilisant les colonnes existantes dans la structure réelle de la table api_keys
-      const crypto = require('crypto');
-      const apiKey = 'dev-key';
-      const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+      if (!defaultApp) {
+        console.log('[DB] Aucune application par défaut trouvée, création...');
+        await run(
+          'INSERT INTO applications (name, description, created_by) SELECT ?, ?, (SELECT id FROM users WHERE username = ?)',
+          ['Application par défaut', 'Application générée automatiquement pour le développement', 'admin']
+        );
+      } else {
+        console.log('[DB] Application par défaut existante trouvée avec ID:', defaultApp.id);
+      }
       
-      await run(
-        'INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description, is_active, created_at) SELECT (SELECT id FROM applications WHERE name = ?), ?, ?, ?, 1, CURRENT_TIMESTAMP',
-        ['Application par défaut', apiKey, hashedKey, 'Clé de développement pour tests']
-      );
+      // Vérifier si la clé API de développement existe déjà
+      const devKey = await get('SELECT id FROM api_keys WHERE key = ? LIMIT 1', ['dev-key']);
+      
+      if (!devKey) {
+        console.log('[DB] Clé API de développement non trouvée, création...');
+        // Requête utilisant les colonnes existantes dans la structure réelle de la table api_keys
+        const crypto = require('crypto');
+        const apiKey = 'dev-key';
+        const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+        
+        // Récupérer l'ID de l'application par défaut (quelle que soit sa variation de nom)
+        const app = await get(
+          'SELECT id FROM applications WHERE name IN (?, ?, ?) LIMIT 1',
+          ['Application par défaut', 'Default', 'Application par défaut pour le développement']
+        );
+        
+        if (app) {
+          await run(
+            'INSERT INTO api_keys (application_id, key, hashed_key, description, is_active, created_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)',
+            [app.id, apiKey, hashedKey, 'Clé de développement pour tests']
+          );
+          console.log('[DB] Clé API de développement créée avec succès');
+        } else {
+          console.error('[DB] Impossible de créer la clé API : application par défaut non trouvée');
+        }
+      } else {
+        console.log('[DB] Clé API de développement existante trouvée avec ID:', devKey.id);
+      }
     } catch (appErr) {
-      console.error('[DB] Erreur lors de la création de l\'application par défaut:', appErr);
+      console.error('[DB] Erreur lors de la vérification/création de l\'application par défaut:', appErr);
     }
   } catch (error) {
     console.error('[DB] Erreur lors de la création des tables:', error);

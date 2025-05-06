@@ -204,20 +204,34 @@ function initDb() {
     // Récupérer l'ID de l'admin
     const adminId = db.prepare('SELECT id FROM users WHERE username = ?').get('admin').id;
     
-    // Créer l'application par défaut
-    const appId = db.prepare(`
-      INSERT INTO applications (
-        name, description, settings, created_at, updated_at, created_by
-      ) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
-    `).run(
+    // Vérifier si une application par défaut existe déjà (en vérifiant différentes variations du nom)
+    const existingApp = db.prepare('SELECT id FROM applications WHERE name IN (?, ?, ?) LIMIT 1').get(
+      'Application par défaut',
       'Default',
-      'Application par défaut pour le développement',
-      JSON.stringify({
-        max_conversions_per_day: 1000,
-        max_message_size: 100000
-      }),
-      adminId
-    ).lastInsertRowid;
+      'Application par défaut pour le développement'
+    );
+    
+    let appId;
+    // Créer l'application par défaut seulement si aucune n'existe
+    if (!existingApp) {
+      console.log('[DB] Aucune application par défaut trouvée, création...');
+      appId = db.prepare(`
+        INSERT INTO applications (
+          name, description, settings, created_at, updated_at, created_by
+        ) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?)
+      `).run(
+        'Default',
+        'Application par défaut pour le développement',
+        JSON.stringify({
+          max_conversions_per_day: 1000,
+          max_message_size: 100000
+        }),
+        adminId
+      ).lastInsertRowid;
+    } else {
+      console.log('[DB] Application par défaut existante trouvée avec ID:', existingApp.id);
+      appId = existingApp.id;
+    }
     
     // Créer une clé API de développement
     db.prepare(`

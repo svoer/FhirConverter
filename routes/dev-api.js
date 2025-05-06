@@ -184,11 +184,16 @@ router.get('/generate-temp-key', (req, res) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
     
-    // Vérifier si l'application par défaut existe
-    let defaultApp = db.prepare('SELECT id FROM applications WHERE name = ?').get('Application par défaut');
+    // Vérifier si l'application par défaut existe (rechercher toutes les variations possibles)
+    let defaultApp = db.prepare('SELECT id FROM applications WHERE name IN (?, ?, ?) LIMIT 1').get(
+      'Application par défaut', 
+      'Default', 
+      'Application par défaut pour le développement'
+    );
     
-    // Créer l'application par défaut si elle n'existe pas
+    // Créer l'application par défaut si aucune variation n'existe
     if (!defaultApp) {
+      console.log('[DEV API] Aucune application par défaut trouvée, création...');
       const result = db.prepare('INSERT INTO applications (name, description, created_at) VALUES (?, ?, datetime("now"))').run(
         'Application par défaut',
         'Application créée automatiquement pour les besoins de test'
