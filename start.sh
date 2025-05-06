@@ -2,7 +2,7 @@
 
 # Script de démarrage pour l'application FHIRHub
 # Convertisseur HL7 v2.5 vers FHIR R4 avec terminologies françaises
-# Version 1.2.0
+# Version 1.3.0
 
 # Définition des couleurs pour une meilleure lisibilité des logs
 RED='\033[0;31m'
@@ -12,10 +12,13 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Version fixe de l'application
+APP_VERSION="1.3.0"
+
 # Bannière de démarrage
 echo -e "${CYAN}=========================================================="
 echo -e "   FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4"
-echo -e "   Version 1.2.0 - Compatible ANS"
+echo -e "   Version ${APP_VERSION} - Compatible ANS"
 echo -e "   $(date '+%Y-%m-%d %H:%M:%S')"
 echo -e "==========================================================${NC}"
 

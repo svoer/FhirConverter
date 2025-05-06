@@ -37,6 +37,9 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(bodyParser.text({ limit: '10mb', type: 'text/plain' }));
 
+// Middleware pour les métriques Prometheus
+app.use(metrics.apiRequestCounter);
+
 // Middleware pour parser les trames MLLP
 app.use((req, res, next) => {
   if (req.headers['content-type'] === 'application/mllp' || req.headers['content-type'] === 'application/x-mllp') {
@@ -437,6 +440,10 @@ function processHL7Conversion(hl7Message, req, res) {
     const result = convertHL7ToFHIR(hl7Message);
     const conversionTime = Date.now() - startTime;
     const fromCache = result._meta && result._meta.fromCache;
+    
+    // Mise à jour des métriques
+    metrics.incrementConversionCount();
+    metrics.recordConversionDuration(conversionTime);
     
     console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées${fromCache ? ' (depuis le cache)' : ''}`);
     
@@ -995,6 +1002,25 @@ app.get('/api/system/version', (req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`[SERVER] FHIRHub démarré sur le port ${PORT} (0.0.0.0)`);
   console.log(`[SERVER] Accessible sur http://localhost:${PORT} et http://<ip-serveur>:${PORT}`);
+  
+  // Démarrer le serveur de métriques pour Prometheus si activé
+  const METRICS_PORT = process.env.METRICS_PORT || 9091;
+  if (metrics.startMetricsServer(METRICS_PORT)) {
+    console.log(`[METRICS] Serveur de métriques démarré sur le port ${METRICS_PORT}`);
+  }
+  
+  // Initialiser le compteur de connexions actives
+  let activeConnections = 0;
+  server.on('connection', () => {
+    activeConnections++;
+    metrics.updateActiveConnections(activeConnections);
+  });
+  
+  server.on('close', () => {
+    activeConnections--;
+    if (activeConnections < 0) activeConnections = 0;
+    metrics.updateActiveConnections(activeConnections);
+  });
 });
 
 // Gestion des erreurs de démarrage du serveur
