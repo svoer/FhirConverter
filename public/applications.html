@@ -544,6 +544,8 @@
       try {
         const token = localStorage.getItem('token');
         
+        console.log(`Récupération des statistiques pour l'application ${appId}`);
+        
         // Récupérer les clés API associées à l'application
         const appResponse = await fetch(`/api/applications/${appId}`, {
           headers: {
@@ -551,8 +553,8 @@
           }
         });
         
-        // Récupérer l'historique des conversions pour cette application
-        const conversionsResponse = await fetch(`/api/applications/${appId}/conversions`, {
+        // Récupérer TOUTES les conversions pour cette application (limite élevée) pour un calcul précis
+        const conversionsResponse = await fetch(`/api/applications/${appId}/conversions?limit=1000`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -565,40 +567,48 @@
         const appData = await appResponse.json();
         const conversionsData = await conversionsResponse.json();
         
+        console.log(`Données des conversions reçues:`, conversionsData);
+        
         // Nombre de clés API pour cette application
         let apiKeysCount = 0;
         if (appData.success && appData.data && appData.data.api_keys) {
           apiKeysCount = appData.data.api_keys.length;
         }
         
-        // Calculer les conversions d'aujourd'hui
+        // Calculer les conversions d'aujourd'hui et les erreurs
         let todayConversions = 0;
         let errorsCount = 0;
+        let totalConversions = 0;
         
         if (conversionsData.success && conversionsData.data && conversionsData.data.conversions) {
           const logs = conversionsData.data.conversions;
+          totalConversions = logs.length;
+          console.log(`Nombre total de conversions trouvées: ${totalConversions}`);
+          
           const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
           
-          // Filtrer les conversions d'aujourd'hui
+          // Filtrer les conversions d'aujourd'hui et compter les erreurs
           logs.forEach(log => {
-            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-            if (logDate === today) {
-              todayConversions++;
-              if (log.status === 'error') {
-                errorsCount++;
+            // Assurer que log.timestamp est une date valide
+            if (log.timestamp) {
+              const logDate = new Date(log.timestamp).toISOString().split('T')[0];
+              if (logDate === today) {
+                todayConversions++;
               }
+            }
+            
+            // Compter toutes les erreurs, pas seulement celles d'aujourd'hui
+            if (log.status === 'error' || log.status === 'échec') {
+              errorsCount++;
             }
           });
           
-          // Si nous n'avons pas pu filtrer les conversions d'aujourd'hui (par exemple, si le format de date est différent)
-          // utilisons le compteur total comme approximation
-          if (todayConversions === 0 && conversionsData.data.totalCount > 0) {
-            todayConversions = conversionsData.data.totalCount;
-          }
+          console.log(`Conversions aujourd'hui: ${todayConversions}, Erreurs: ${errorsCount}`);
         }
         
         return {
           conversionsToday: todayConversions,
+          totalConversions: totalConversions,
           apiKeys: apiKeysCount,
           errors: errorsCount
         };
@@ -606,6 +616,7 @@
         console.error('Erreur lors de la récupération des statistiques de l\'application:', error);
         return {
           conversionsToday: 0,
+          totalConversions: 0,
           apiKeys: 0,
           errors: 0
         };
