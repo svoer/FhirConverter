@@ -10,12 +10,17 @@
  * @returns {Promise} La promesse avec gestion de timeout
  */
 async function promiseWithTimeout(promise, timeoutMs, errorMessage = 'Operation timed out') {
+  // Limiter le timeout à un maximum raisonnable pour éviter les attentes trop longues
+  const effectiveTimeout = Math.min(timeoutMs, 15000); // Maximum 15 secondes
+  
+  console.log(`[UTILS] Définition d'un timeout de ${effectiveTimeout}ms pour la promesse`);
+  
   // Créer une promesse qui se résout après le délai spécifié
   const timeoutPromise = new Promise((_, reject) => {
     const timeoutId = setTimeout(() => {
       clearTimeout(timeoutId);
       reject(new Error(errorMessage));
-    }, timeoutMs);
+    }, effectiveTimeout);
   });
 
   // Utiliser Promise.race pour obtenir le résultat de la première promesse résolue

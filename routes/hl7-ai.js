@@ -62,20 +62,69 @@ router.post('/analyze-hl7', authCombined, apiRequestCounter, async (req, res) =>
       });
     }
 
-    const startTime = Date.now();
-    const analysis = await hl7AIService.analyzeHL7Message(hl7Message, provider);
-    const processingTime = Date.now() - startTime;
-
-    // Détecter le type de message pour les métadonnées
+    console.log('[HL7-AI] Début de l\'analyse du message HL7 avec le fournisseur:', provider);
+    
+    // Partie courte à exécuter immédiatement
     const messageType = hl7AIService.detectHL7MessageType(hl7Message);
+    console.log('[HL7-AI] Type de message détecté:', messageType);
+    
+    // Si le message est très long, le tronquer pour accélérer l'analyse
+    let messageToAnalyze = hl7Message;
+    if (hl7Message.length > 3000) {
+      console.log('[HL7-AI] Message HL7 tronqué pour l\'analyse (trop long)');
+      // Préserver l'en-tête MSH et quelques segments importants
+      const lines = hl7Message.split('\n');
+      const header = lines.find(line => line.startsWith('MSH|')) || '';
+      const patientInfo = lines.find(line => line.startsWith('PID|')) || '';
+      const eventInfo = lines.find(line => line.startsWith('EVN|')) || '';
+      
+      messageToAnalyze = [header, patientInfo, eventInfo].join('\n');
+      messageToAnalyze += '\n...\n(Message tronqué pour analyse rapide)';
+    }
 
-    res.json({
-      success: true,
-      analysis,
-      messageType,
-      timestamp: new Date().toISOString(),
-      processingTime
-    });
+    const startTime = Date.now();
+    try {
+      const analysis = await hl7AIService.analyzeHL7Message(messageToAnalyze, provider);
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`[HL7-AI] Analyse complétée en ${processingTime}ms`);
+
+      res.json({
+        success: true,
+        analysis,
+        messageType,
+        timestamp: new Date().toISOString(),
+        processingTime
+      });
+    } catch (analysisError) {
+      console.error('[HL7-AI] Erreur lors de l\'analyse avancée:', analysisError);
+      
+      // En cas d'erreur, fournir une analyse de base
+      const fallbackAnalysis = `
+# Analyse de base du message HL7 (${messageType})
+
+Le message semble être de type **${messageType}**.
+
+## Structure détectée
+- En-tête MSH présent
+${hl7Message.includes('PID|') ? '- Informations patient (PID) présentes' : ''}
+${hl7Message.includes('EVN|') ? '- Informations événement (EVN) présentes' : ''}
+${hl7Message.includes('PV1|') ? '- Informations visite (PV1) présentes' : ''}
+${hl7Message.includes('OBR|') ? '- Demande d\'observation (OBR) présente' : ''}
+${hl7Message.includes('OBX|') ? '- Résultats d\'observation (OBX) présents' : ''}
+
+*Note: Analyse de base générée automatiquement en raison d'une indisponibilité temporaire de l'analyse complète.*
+      `;
+      
+      res.json({
+        success: true,
+        analysis: fallbackAnalysis,
+        messageType,
+        timestamp: new Date().toISOString(),
+        processingTime: Date.now() - startTime,
+        fallback: true
+      });
+    }
   } catch (error) {
     console.error('Erreur lors de l\'analyse HL7:', error);
     res.status(500).json({
