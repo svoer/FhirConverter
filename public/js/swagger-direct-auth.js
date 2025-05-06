@@ -1,6 +1,6 @@
 /**
- * Script pour intégrer les champs d'authentification directement dans l'interface de Swagger
- * Élimine le besoin de cliquer sur le bouton d'authentification
+ * Script simplifié pour l'authentification Swagger - Version optimisée sans animations
+ * Ajoute automatiquement la clé API et le token JWT sans effets visuels
  */
 (function() {
   // Attendre que Swagger UI soit chargé

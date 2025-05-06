@@ -93,27 +93,13 @@ function setupSwagger(app) {
   // Interface Swagger avec CSS minimaliste (notre fichier externe fait le reste)
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
-    customCss: `
-      /* Masquer complètement la topbar et désactiver TOUTES les animations */
-      .swagger-ui .topbar { display: none }
-      .swagger-ui * { 
-        animation: none !important; 
-        transition: none !important;
-        animation-duration: 0s !important;
-        animation-delay: 0s !important;
-        transition-duration: 0s !important;
-        transition-delay: 0s !important;
-      }
-    `,
+    customCss: `.swagger-ui .topbar { display: none }`,
     customCssUrl: '/css/swagger-fix.css',
-    customJs: ['/js/swagger-helper.js', '/js/swagger-direct-auth.js.min'],
+    customJs: ['/js/swagger-helper.js', '/js/swagger-direct-auth.js'],
     customSiteTitle: 'FHIRHub API Documentation',
     customfavIcon: '/favicon.ico',
     swaggerOptions: {
-      persistAuthorization: true,
-      docExpansion: 'none', // Réduire tous les endpoints par défaut pour améliorer la performance
-      filter: true,  // Activer la barre de recherche
-      displayRequestDuration: true // Afficher la durée des requêtes
+      persistAuthorization: true
     }
   }));
 
