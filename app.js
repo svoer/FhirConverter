@@ -933,7 +933,7 @@ app.use('/api/dev', devApiRoutes);
 app.use('/api/cache', cacheRoutes);
 app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
-app.use('/api/ai-chat', aiChatRoutes);
+app.use('/api', aiChatRoutes);  // Montée directement sous /api pour permettre /api/ai/chat
 app.use('/api/ai', aiRoutes);
 app.use('/api/hl7-ai', hl7AIRoutes);
 app.use('/api/workflows', workflowsRoutes);
