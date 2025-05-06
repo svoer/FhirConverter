@@ -16,6 +16,12 @@
   
   <!-- Font Awesome pour les icônes -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Bibliothèque HTML2PDF pour la génération de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  
+  <!-- Script de génération de PDF -->
+  <script src="/js/generate-pdf.js" defer></script>
 </head>
 <body>
   <!-- Le menu latéral sera chargé par include-sidebar.js -->
@@ -28,8 +34,17 @@
     </a>
     
     <div class="container">
-      <h1 style="margin-bottom: 20px;">Documentation Technique FHIRHub</h1>
-      <p class="subtitle">Guide complet pour les développeurs et ingénieurs d'intégration</p>
+      <div class="doc-header">
+        <div>
+          <h1 style="margin-bottom: 20px;">Documentation Technique FHIRHub</h1>
+          <p class="subtitle">Guide complet pour les développeurs et ingénieurs d'intégration</p>
+        </div>
+        <div class="doc-actions">
+          <a href="/documentation.pdf" download class="download-pdf-btn">
+            <i class="fas fa-file-pdf"></i> Télécharger PDF
+          </a>
+        </div>
+      </div>
       
       <div class="section-nav">
         <a href="#introduction" class="nav-item active"><i class="fas fa-home"></i> Introduction</a>
