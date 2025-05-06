@@ -2,8 +2,11 @@
  * Application FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
  * Compatible avec les terminologies françaises
  * @author Équipe FHIRHub
- * @version 1.1.0
+ * @version 1.2.0
  */
+
+// Définir la version de l'application globalement
+global.APP_VERSION = '1.2.0';
 
 const express = require('express');
 const cors = require('cors');
@@ -869,6 +872,7 @@ app.locals.db = db;
 
 // Importation des routes
 const applicationsRoutes = require('./routes/applications');
+const applicationViewsRoutes = require('./routes/applicationViews');
 const apiKeysRoutes = require('./routes/api-keys');
 const usersRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
@@ -882,6 +886,7 @@ const adminRoutes = require('./routes/adminRoutes');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
+app.use('/applications', applicationViewsRoutes);  // Nouveau router pour les vues des applications
 app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth', authRoutes);
@@ -901,6 +906,58 @@ console.log('[WORKFLOW] Accessible via /workflows.html');
 // Route pour la page d'accueil de la documentation API (sans animation/clignotement)
 app.get('/api-documentation', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/api-docs-landing.html'));
+});
+
+/**
+ * @swagger
+ * /api/system/version:
+ *   get:
+ *     summary: Obtenir la version du système
+ *     description: Retourne la version actuelle du système FHIRHub
+ *     tags:
+ *       - Système
+ *     responses:
+ *       200:
+ *         description: Version du système récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     version:
+ *                       type: string
+ *                       description: Version actuelle du système
+ *                     build_date:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Date de compilation
+ */
+app.get('/api/system/version', (req, res) => {
+  try {
+    const versionData = {
+      version: global.APP_VERSION || '1.0.0',
+      build_date: new Date().toISOString()
+    };
+    
+    res.json({
+      success: true,
+      data: versionData
+    });
+  } catch (error) {
+    console.error('[VERSION ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: error.message || 'Erreur lors de la récupération de la version'
+    });
+  }
 });
 
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé

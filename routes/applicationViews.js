@@ -5,10 +5,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../src/services/dbService');
 const conversionLogService = require('../src/services/conversionLogService');
-const { checkAuthenticated } = require('../middleware/authCombined');
+const authCombined = require('../middleware/authCombined');
 
 // Toutes les routes nécessitent une authentification
-router.use(checkAuthenticated);
+router.use(authCombined);
 
 /**
  * GET /applications

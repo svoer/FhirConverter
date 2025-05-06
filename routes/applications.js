@@ -416,4 +416,218 @@ router.delete('/:id', authCombined, (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/applications/{id}/stats:
+ *   get:
+ *     summary: Obtenir les statistiques de conversion d'une application
+ *     description: Récupère les statistiques des conversions effectuées pour une application spécifique
+ *     tags: [Applications]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'application
+ *     responses:
+ *       200:
+ *         description: Statistiques récupérées avec succès
+ *       404:
+ *         description: Application non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/stats', authCombined, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = req.app.locals.db;
+    
+    // Vérifier si l'application existe
+    const application = db.prepare('SELECT * FROM applications WHERE id = ?').get(id);
+    
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Application non trouvée'
+      });
+    }
+    
+    // Récupérer les statistiques de conversion
+    const conversionLogService = require('../src/services/conversionLogService');
+    const stats = await conversionLogService.getAppStats(id);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('[APPLICATIONS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: error.message || 'Erreur lors de la récupération des statistiques'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/applications/{id}/conversions:
+ *   get:
+ *     summary: Obtenir l'historique des conversions d'une application
+ *     description: Récupère la liste des conversions effectuées pour une application spécifique avec pagination
+ *     tags: [Applications]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'application
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *     responses:
+ *       200:
+ *         description: Conversions récupérées avec succès
+ *       404:
+ *         description: Application non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/conversions', authCombined, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+    const db = req.app.locals.db;
+    
+    // Vérifier si l'application existe
+    const application = db.prepare('SELECT * FROM applications WHERE id = ?').get(id);
+    
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Application non trouvée'
+      });
+    }
+    
+    // Récupérer les conversions avec pagination
+    const conversionLogService = require('../src/services/conversionLogService');
+    const conversions = await conversionLogService.getConversions(id, parseInt(limit), parseInt(page));
+    
+    // Récupérer le nombre total de conversions pour la pagination
+    const totalCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ?').get(id);
+    const totalPages = Math.ceil(totalCount.count / parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: {
+        conversions,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages,
+        totalCount: totalCount.count
+      }
+    });
+  } catch (error) {
+    console.error('[APPLICATIONS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: error.message || 'Erreur lors de la récupération des conversions'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/applications/{id}/conversions/{conversionId}:
+ *   get:
+ *     summary: Obtenir les détails d'une conversion
+ *     description: Récupère les détails complets d'une conversion spécifique d'une application
+ *     tags: [Applications]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'application
+ *       - in: path
+ *         name: conversionId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de la conversion
+ *     responses:
+ *       200:
+ *         description: Détails de la conversion récupérés avec succès
+ *       404:
+ *         description: Application ou conversion non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/:id/conversions/:conversionId', authCombined, async (req, res) => {
+  try {
+    const { id, conversionId } = req.params;
+    const db = req.app.locals.db;
+    
+    // Vérifier si l'application existe
+    const application = db.prepare('SELECT * FROM applications WHERE id = ?').get(id);
+    
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Application non trouvée'
+      });
+    }
+    
+    // Récupérer les détails de la conversion
+    const conversionLogService = require('../src/services/conversionLogService');
+    const conversion = await conversionLogService.getConversionDetails(conversionId, id);
+    
+    if (!conversion) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Conversion non trouvée'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: conversion
+    });
+  } catch (error) {
+    console.error('[APPLICATIONS ERROR]', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Server Error',
+      message: error.message || 'Erreur lors de la récupération des détails de la conversion'
+    });
+  }
+});
+
 module.exports = router;
