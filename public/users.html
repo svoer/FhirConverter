@@ -25,14 +25,11 @@
           <p class="subtitle">Gérez les comptes utilisateurs et leurs droits d'accès à l'application FHIRHub</p>
         </div>
         <div class="btn-container" id="adminOnlyButtons">
-          <button id="createUserBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Créer un utilisateur</button>
+          <button id="createUserBtn" class="btn-modern create-btn"><i class="fas fa-plus"></i> Créer un utilisateur</button>
         </div>
       </div>
       
-      <div class="doc-intro">
-        <h2><i class="fas fa-shield-alt"></i> Gestion des accès sécurisés</h2>
-        <p>Cette page vous permet de gérer les utilisateurs de FHIRHub, de créer des comptes avec différents niveaux de privilèges, et de mettre à jour les informations des utilisateurs existants.</p>
-      </div>
+
       
       <div class="modern-card">
         <div class="modern-card-header">
@@ -399,6 +396,37 @@
       gap: 12px;
     }
     
+    /* Bouton moderne de création */
+    .btn-modern {
+      padding: 10px 18px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .create-btn {
+      background: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+      color: white;
+      box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+      padding: 12px 20px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+    }
+    
+    .create-btn:hover {
+      box-shadow: 0 4px 8px rgba(231, 76, 60, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .create-btn i {
+      font-size: 0.85rem;
+    }
+    
     .form-actions button {
       padding: 10px 18px;
       border-radius: 6px;
@@ -509,7 +537,7 @@
       </div>
       <ul class="footer-links">
         <li><a href="/documentation.html">Documentation</a></li>
-        <li><a href="/api-docs">API</a></li>
+        <li><a href="/api-reference.html">API Reference</a></li>
       </ul>
     </div>
   </footer>
@@ -546,7 +574,7 @@
         
         // Masquer les boutons d'administration et la table
         document.getElementById('adminOnlyButtons').style.display = 'none';
-        const userTable = document.querySelector('.card');
+        const userTable = document.querySelector('.modern-card');
         if (userTable) {
           userTable.style.display = 'none';
         }
