@@ -402,8 +402,8 @@
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${conversion.id}</td>
-                    <td>${formatDate(conversion.created_at)}</td>
-                    <td>${conversion.source_type || 'API'}</td>
+                    <td>${formatDate(conversion.timestamp || conversion.created_at)}</td>
+                    <td>${conversion.input_message ? 'HL7' : 'API'}</td>
                     <td>
                         <span class="status-badge ${conversion.status === 'success' ? 'status-success' : 'status-error'}">
                             ${conversion.status === 'success' ? 'Succès' : 'Échec'}
@@ -461,11 +461,11 @@
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">Date:</span>
-                                    <span class="detail-value">${formatDate(conversion.created_at)}</span>
+                                    <span class="detail-value">${formatDate(conversion.timestamp || conversion.created_at)}</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">Type:</span>
-                                    <span class="detail-value">${conversion.source_type || 'API'}</span>
+                                    <span class="detail-value">${conversion.input_message ? 'HL7' : 'API'}</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">Statut:</span>
@@ -480,15 +480,15 @@
                             </div>
                             <div class="detail-section">
                                 <h3>Message HL7 d'entrée</h3>
-                                <pre class="code-block">${conversion.hl7_content || 'Non disponible'}</pre>
+                                <pre class="code-block">${conversion.input_message || conversion.hl7_content || 'Non disponible'}</pre>
                             </div>
                         `;
                         
-                        if (conversion.fhir_content) {
+                        if (conversion.output_message || conversion.fhir_content) {
                             detailsHtml += `
                                 <div class="detail-section">
                                     <h3>Ressources FHIR générées</h3>
-                                    <pre class="code-block">${formatJSON(conversion.fhir_content)}</pre>
+                                    <pre class="code-block">${formatJSON(conversion.output_message || conversion.fhir_content)}</pre>
                                 </div>
                             `;
                         }
