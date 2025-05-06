@@ -1821,7 +1821,7 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
  * Recherche un code dans la terminologie spécifiée
  * @param {string} system - Système de terminologie (ex: "CIM-10", "CCAM")
  * @param {string} code - Code à rechercher
- * @returns {Promise<Object>} Informations sur le code trouvé
+ * @returns {Promise} Informations sur le code trouvé
  */
 async function findCodeInTerminology(system, code) {
   // Vérifier dans le cache d'abord
@@ -1857,10 +1857,8 @@ async function findCodeInTerminology(system, code) {
         <h3>Mise à jour des terminologies</h3>
         <p>Le système inclut des scripts de mise à jour des terminologies qui peuvent être exécutés pour mettre à jour les données sans nécessiter une réinstallation complète :</p>
         
-        <div class="code-block">
-          <p><span class="code-keyword">python</span> get_french_terminology.py <span class="code-comment"># Télécharge les dernières versions des terminologies</span></p>
-          <p><span class="code-keyword">python</span> extract_french_systems.py <span class="code-comment"># Extrait et formate les données pour l'utilisation dans FHIRHub</span></p>
-        </div>
+        <pre class="code-block"><span class="code-keyword">python</span> get_french_terminology.py <span class="code-comment"># Télécharge les dernières versions des terminologies</span>
+<span class="code-keyword">python</span> extract_french_systems.py <span class="code-comment"># Extrait et formate les données pour l'utilisation dans FHIRHub</span></pre>
         
         <div class="tip-box">
           <p><strong>Astuce :</strong> Pour les déploiements en environnement sécurisé sans accès Internet, vous pouvez précharger les fichiers de terminologie et les inclure dans votre package d'installation.</p>
