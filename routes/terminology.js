@@ -785,8 +785,14 @@ router.put('/files/:filename/metadata', adminAuthMiddleware, async (req, res) =>
 function getJsonFileContent(filename) {
   try {
     const filePath = path.join(TERMINOLOGY_DIR, filename);
+    
     if (!fs.existsSync(filePath)) {
-      console.warn(`[TERMINOLOGY] Fichier non trouvé: ${filename}`);
+      console.warn(`[TERMINOLOGY] Fichier non trouvé: ${filename} (chemin: ${filePath})`);
+      
+      // Log additionnel pour faciliter le débogage
+      console.log(`[TERMINOLOGY] Répertoire courant: ${TERMINOLOGY_DIR}`);
+      console.log(`[TERMINOLOGY] Fichiers disponibles: ${fs.readdirSync(TERMINOLOGY_DIR).join(', ')}`);
+      
       return null;
     }
     
@@ -794,6 +800,14 @@ function getJsonFileContent(filename) {
     return JSON.parse(content);
   } catch (error) {
     console.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier ${filename} :`, error);
+    
+    // Log supplémentaire pour débogage
+    if (error.code === 'ENOENT') {
+      console.error(`[TERMINOLOGY] Fichier introuvable (ENOENT): ${filePath}`);
+    } else if (error instanceof SyntaxError) {
+      console.error(`[TERMINOLOGY] Erreur de parsing JSON pour le fichier: ${filename}`);
+    }
+    
     return null;
   }
 }
