@@ -105,77 +105,25 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.08);
   backdrop-filter: blur(5px);
   transition: all 0.4s ease;
-  max-height: 70px;
-  overflow: hidden;
-}
-
-.section-nav.expanded {
   max-height: 500px;
   overflow-y: auto;
 }
 
-.section-nav.collapsed {
-  padding: 5px;
-  width: 45px;
-  height: 45px;
-  position: fixed;
-  right: 20px;
-  top: 70px;
-  border-radius: 50%;
-  max-height: 45px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #e74c3c, #ff5722);
-  box-shadow: 0 3px 15px rgba(231, 76, 60, 0.4);
-  cursor: pointer;
-  transition: all 0.3s ease-out;
-  z-index: 1001; /* Au-dessus des autres éléments */
+/* État de section-nav lorsqu'il est caché lors du défilement */
+.section-nav.hidden {
+  opacity: 0;
+  transform: translateY(-30px);
+  pointer-events: none;
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  transition: all 0.4s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
 }
 
-.section-nav.collapsed:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 20px rgba(231, 76, 60, 0.5);
-}
-
+/* Supprimer les classes inutiles */
 .section-nav .toggle-menu {
-  position: absolute;
-  top: 5px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
-  background: linear-gradient(135deg, #e74c3c, #ff5722);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 5;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  font-size: 0.8rem;
-  transition: all 0.3s ease;
-}
-
-.section-nav.collapsed .toggle-menu {
-  position: static;
-  width: 100%;
-  height: 100%;
-  box-shadow: none;
-  background: none;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
+  display: none;
 }
 
 .section-nav .nav-items-container {
