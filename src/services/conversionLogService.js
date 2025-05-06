@@ -13,39 +13,39 @@ const dbService = require('./dbService');
 async function logConversion(logData) {
   try {
     // S'assurer que les champs obligatoires sont présents
-    if (!logData.application_id || !logData.source_type || !logData.status) {
+    if (!logData.application_id || !logData.status) {
       throw new Error('Données de journal incomplètes');
     }
     
-    // Préparer les données d'insertion
+    // Préparer les données d'insertion adaptées au schéma réel de la table
     const insertData = {
       api_key_id: logData.api_key_id || null,
       application_id: logData.application_id,
-      source_type: logData.source_type,
-      hl7_content: logData.hl7_content || '',
-      fhir_content: logData.fhir_content || null,
+      input_message: logData.hl7_content || logData.input_message || '',
+      output_message: logData.fhir_content || logData.output_message || null,
       status: logData.status,
-      processing_time: logData.processing_time || null,
-      error_message: logData.error_message || null,
-      ip_address: logData.ip_address || null
+      timestamp: new Date().toISOString(),
+      processing_time: logData.processing_time || 0,
+      resource_count: logData.resource_count || 0,
+      user_id: logData.user_id || null
     };
     
     // Insérer le journal dans la base de données
     const result = await dbService.run(
       `INSERT INTO conversion_logs (
-        api_key_id, application_id, source_type, hl7_content, fhir_content,
-        status, processing_time, error_message, ip_address
+        api_key_id, application_id, input_message, output_message,
+        status, timestamp, processing_time, resource_count, user_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         insertData.api_key_id,
         insertData.application_id,
-        insertData.source_type,
-        insertData.hl7_content,
-        insertData.fhir_content,
+        insertData.input_message,
+        insertData.output_message,
         insertData.status,
+        insertData.timestamp,
         insertData.processing_time,
-        insertData.error_message,
-        insertData.ip_address
+        insertData.resource_count,
+        insertData.user_id
       ]
     );
     
@@ -67,9 +67,9 @@ async function getConversion(id, applicationId) {
   try {
     return await dbService.get(
       `SELECT 
-        c.id, c.api_key_id, c.application_id, c.source_type,
-        c.status, c.processing_time, c.error_message, c.created_at,
-        a.name as application_name, k.name as api_key_name
+        c.id, c.api_key_id, c.application_id, c.input_message,
+        c.status, c.processing_time, c.timestamp,
+        a.name as application_name, k.description as api_key_name
       FROM conversion_logs c
       LEFT JOIN applications a ON c.application_id = a.id
       LEFT JOIN api_keys k ON c.api_key_id = k.id
@@ -95,14 +95,14 @@ async function getConversions(applicationId, limit = 20, page = 1) {
     
     return await dbService.query(
       `SELECT 
-        c.id, c.api_key_id, c.application_id, c.source_type,
-        c.status, c.processing_time, c.error_message, c.created_at,
-        a.name as application_name, k.name as api_key_name
+        c.id, c.api_key_id, c.application_id, c.input_message,
+        c.status, c.processing_time, c.resource_count, c.timestamp,
+        a.name as application_name, k.description as api_key_name
       FROM conversion_logs c
       LEFT JOIN applications a ON c.application_id = a.id
       LEFT JOIN api_keys k ON c.api_key_id = k.id
       WHERE c.application_id = ?
-      ORDER BY c.created_at DESC
+      ORDER BY c.timestamp DESC
       LIMIT ? OFFSET ?`,
       [applicationId, limit, offset]
     );
@@ -179,7 +179,7 @@ async function cleanupOldConversions() {
   try {
     const result = await dbService.run(
       `DELETE FROM conversion_logs 
-      WHERE created_at < datetime('now', '-1 month')`
+      WHERE timestamp < datetime('now', '-1 month')`
     );
     
     return result.changes;
@@ -211,27 +211,27 @@ async function getAppStats(applicationId) {
     // Récupérer les statistiques quotidiennes des 30 derniers jours
     const daily = await dbService.query(
       `SELECT 
-        date(created_at) as date,
+        date(timestamp) as date,
         COUNT(*) as total,
         SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
         SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as error_count,
         AVG(processing_time) as avg_processing_time
       FROM conversion_logs
-      WHERE application_id = ? AND created_at > datetime('now', '-30 days')
-      GROUP BY date(created_at)
-      ORDER BY date(created_at) DESC`,
+      WHERE application_id = ? AND timestamp > datetime('now', '-30 days')
+      GROUP BY date(timestamp)
+      ORDER BY date(timestamp) DESC`,
       [applicationId]
     );
     
     // Récupérer les 10 conversions les plus récentes
     const recent = await dbService.query(
       `SELECT 
-        c.id, c.source_type, c.status, c.processing_time, c.created_at,
-        k.name as api_key_name
+        c.id, c.input_message as source_type, c.status, c.processing_time, c.timestamp as created_at,
+        k.description as api_key_name
       FROM conversion_logs c
       LEFT JOIN api_keys k ON c.api_key_id = k.id
       WHERE c.application_id = ?
-      ORDER BY c.created_at DESC
+      ORDER BY c.timestamp DESC
       LIMIT 10`,
       [applicationId]
     );
