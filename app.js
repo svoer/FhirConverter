@@ -2,11 +2,11 @@
  * Application FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
  * Compatible avec les terminologies françaises
  * @author Équipe FHIRHub
- * @version 1.2.0
+ * @version 1.3.0
  */
 
 // Définir la version de l'application globalement
-global.APP_VERSION = '1.2.0';
+global.APP_VERSION = '1.3.0';
 
 const express = require('express');
 const cors = require('cors');
