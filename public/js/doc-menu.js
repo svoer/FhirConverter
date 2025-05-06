@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let lastScrollY = window.scrollY;
   let menuState = 'expanded'; // 'expanded', 'normal', 'collapsed'
   let activeSection = 'introduction';
+  let hasScrolled = false; // Pour détecter si l'utilisateur a déjà fait défiler la page
   
   // Initialiser le suivi de la section active
   const sections = {};
@@ -44,16 +45,15 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Gestionnaire de clic sur le bouton de toggle
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', function() {
+    toggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation(); // Empêcher la propagation pour éviter les conflits
+      
       if (menuState === 'collapsed') {
         // Si menu réduit, on l'étend complètement
         expandMenu();
-      } else if (menuState === 'expanded') {
-        // Si menu développé, on le réduit complètement
-        collapseMenu();
       } else {
-        // Si menu normal, on alterne
-        menuState === 'normal' ? expandMenu() : normalMenu();
+        // Si menu non réduit, on le réduit
+        collapseMenu();
       }
     });
   }
@@ -61,13 +61,22 @@ document.addEventListener('DOMContentLoaded', function() {
   // Gestionnaire de clic sur les liens de navigation
   navItems.forEach(item => {
     item.addEventListener('click', function(e) {
+      // Si le menu est effondré, on empêche le clic pour permettre l'expansion d'abord
+      if (menuState === 'collapsed') {
+        e.preventDefault();
+        expandMenu();
+        return;
+      }
+      
       // Mettre à jour l'état actif
       navItems.forEach(link => link.classList.remove('active'));
       this.classList.add('active');
       
-      // Réduire complètement le menu après la sélection
+      // Réduire complètement le menu après un délai
       setTimeout(() => {
-        collapseMenu();
+        if (hasScrolled) { // Ne réduire que si l'utilisateur a déjà fait défiler la page
+          collapseMenu();
+        }
       }, 500);
       
       // Mise à jour de la section active
@@ -79,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function() {
   window.addEventListener('scroll', function() {
     const scrollY = window.scrollY;
     
+    // Marquer que l'utilisateur a fait défiler la page
+    if (!hasScrolled && scrollY > 100) {
+      hasScrolled = true;
+    }
+    
     // Afficher/masquer le bouton retour en haut
     if (scrollY > 300) {
       backToTopBtn.classList.add('visible');
@@ -86,8 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
       backToTopBtn.classList.remove('visible');
     }
     
-    // Réduire complètement le menu lors du défilement vers le bas
-    if (scrollY > lastScrollY + 30) {
+    // Réduire complètement le menu lors du défilement vers le bas si on a déjà scrollé
+    if (scrollY > lastScrollY + 30 && hasScrolled) {
       collapseMenu();
       lastScrollY = scrollY;
     }
@@ -118,9 +132,22 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Initialiser l'état du menu au chargement
-  if (window.innerWidth < 768) {
-    collapseMenu();
-  } else {
-    normalMenu();
-  }
+  expandMenu(); // Toujours démarrer avec le menu étendu
+  
+  // Gestionnaire d'événements pour gérer les clics sur le body
+  document.addEventListener('click', function(e) {
+    // Si l'utilisateur clique en dehors du menu et que le menu est en état étendu
+    // et que l'utilisateur a déjà fait défiler la page, réduire le menu
+    if (!sectionNav.contains(e.target) && menuState === 'expanded' && hasScrolled) {
+      collapseMenu();
+    }
+  });
+  
+  // Empêcher que le clic sur le menu réduit ferme le menu
+  sectionNav.addEventListener('click', function(e) {
+    if (menuState === 'collapsed') {
+      e.stopPropagation();
+      expandMenu();
+    }
+  });
 });
