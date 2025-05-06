@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Variables pour suivre l'état
   let lastScrollY = window.scrollY;
-  let isExpanded = true;
+  let menuState = 'expanded'; // 'expanded', 'normal', 'collapsed'
   let activeSection = 'introduction';
   
   // Initialiser le suivi de la section active
@@ -19,29 +19,41 @@ document.addEventListener('DOMContentLoaded', function() {
     sections[section.id] = section.offsetTop - 100;
   });
   
-  // Fonction pour compacter le menu en mode scroll
-  function compactMenu() {
-    if (isExpanded) {
+  // Fonction pour complètement réduire le menu (juste l'icône hamburger)
+  function collapseMenu() {
+    if (menuState !== 'collapsed') {
       sectionNav.classList.remove('expanded');
-      isExpanded = false;
+      sectionNav.classList.add('collapsed');
+      menuState = 'collapsed';
     }
+  }
+  
+  // Fonction pour le menu en mode normal (non développé, non réduit)
+  function normalMenu() {
+    sectionNav.classList.remove('expanded');
+    sectionNav.classList.remove('collapsed');
+    menuState = 'normal';
   }
   
   // Fonction pour développer le menu
   function expandMenu() {
-    if (!isExpanded) {
-      sectionNav.classList.add('expanded');
-      isExpanded = true;
-    }
+    sectionNav.classList.remove('collapsed');
+    sectionNav.classList.add('expanded');
+    menuState = 'expanded';
   }
   
   // Gestionnaire de clic sur le bouton de toggle
   if (toggleBtn) {
     toggleBtn.addEventListener('click', function() {
-      if (isExpanded) {
-        compactMenu();
-      } else {
+      if (menuState === 'collapsed') {
+        // Si menu réduit, on l'étend complètement
         expandMenu();
+      } else if (menuState === 'expanded') {
+        // Si menu développé, on le réduit complètement
+        collapseMenu();
+      } else {
+        // Si menu normal, on alterne
+        menuState === 'normal' ? expandMenu() : normalMenu();
       }
     });
   }
@@ -53,9 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
       navItems.forEach(link => link.classList.remove('active'));
       this.classList.add('active');
       
-      // Compacter automatiquement le menu après la sélection
+      // Réduire complètement le menu après la sélection
       setTimeout(() => {
-        compactMenu();
+        collapseMenu();
       }, 500);
       
       // Mise à jour de la section active
@@ -74,15 +86,15 @@ document.addEventListener('DOMContentLoaded', function() {
       backToTopBtn.classList.remove('visible');
     }
     
-    // Compacter le menu lors du défilement vers le bas
-    if (scrollY > lastScrollY + 50) {
-      compactMenu();
+    // Réduire complètement le menu lors du défilement vers le bas
+    if (scrollY > lastScrollY + 30) {
+      collapseMenu();
       lastScrollY = scrollY;
     }
     
-    // Développer le menu lors du défilement vers le haut
-    if (scrollY < lastScrollY - 150) {
-      expandMenu();
+    // Restaurer le menu à son état normal lors du défilement vers le haut
+    if (scrollY < lastScrollY - 100 && menuState === 'collapsed') {
+      normalMenu();
       lastScrollY = scrollY;
     }
     
@@ -107,8 +119,8 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialiser l'état du menu au chargement
   if (window.innerWidth < 768) {
-    compactMenu();
+    collapseMenu();
   } else {
-    expandMenu();
+    normalMenu();
   }
 });
