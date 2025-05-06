@@ -1854,11 +1854,148 @@ async function findCodeInTerminology(system, code) {
   }
 }</pre>
         
-        <h3>Mise à jour des terminologies</h3>
-        <p>Le système inclut des scripts de mise à jour des terminologies qui peuvent être exécutés pour mettre à jour les données sans nécessiter une réinstallation complète :</p>
+        <h3>Interface de gestion des terminologies</h3>
+        <p>L'interface web <strong>terminologies.html</strong> offre une gestion complète des nomenclatures médicales directement via le navigateur. Cette interface présente les fonctionnalités suivantes :</p>
         
-        <pre class="code-block"><span class="code-keyword">python</span> get_french_terminology.py <span class="code-comment"># Télécharge les dernières versions des terminologies</span>
-<span class="code-keyword">python</span> extract_french_systems.py <span class="code-comment"># Extrait et formate les données pour l'utilisation dans FHIRHub</span></pre>
+        <div class="tech-spec">
+          <div class="tech-spec-title">Fonctionnalités de l'interface de terminologies</div>
+          <ul>
+            <li><strong>Consultation</strong> de toutes les terminologies chargées avec nombre d'entrées et date de mise à jour</li>
+            <li><strong>Recherche</strong> de codes spécifiques dans chaque terminologie avec affichage des libellés</li>
+            <li><strong>Import</strong> de nouvelles terminologies par glisser-déposer de fichiers JSON</li>
+            <li><strong>Export</strong> des terminologies existantes au format JSON pour sauvegarde ou partage</li>
+            <li><strong>Mise à jour</strong> des terminologies existantes avec conservation de l'historique des versions</li>
+          </ul>
+        </div>
+        
+        <h3>Architecture technique des terminologies</h3>
+        <p>Le système de gestion des terminologies est basé sur une architecture en plusieurs couches :</p>
+        
+        <ol>
+          <li><strong>Stockage des fichiers</strong> : Les fichiers JSON dans le répertoire <span class="code-highlight">french_terminology/</span> contiennent les mappings.</li>
+          <li><strong>Base de données SQLite</strong> : Table <span class="code-highlight">terminology_versions</span> qui trace l'historique des mises à jour.</li>
+          <li><strong>Cache en mémoire</strong> : Structure de données optimisée pour les recherches fréquentes.</li>
+          <li><strong>API REST</strong> : Endpoints pour manipuler les terminologies via <span class="code-highlight">/api/terminology/</span>.</li>
+        </ol>
+        
+        <h3>Traitement des fichiers de terminologie</h3>
+        <p>Lorsqu'un fichier de terminologie est importé depuis l'interface, le processus suivant s'exécute :</p>
+        
+        <pre class="code-block">/**
+ * Traite un fichier de terminologie importé via l'interface web
+ * @param {File} file - Fichier JSON importé
+ * @param {string} system - Système de terminologie (ex: "CIM-10")
+ * @returns {Promise} Résultat du traitement
+ */
+async function processTerminologyFile(file, system) {
+  try {
+    // 1. Validation du format du fichier
+    const content = await readFileAsText(file);
+    const terminologyData = JSON.parse(content);
+    
+    if (!validateTerminologyFormat(terminologyData)) {
+      throw new Error("Format de fichier invalide");
+    }
+    
+    // 2. Extraction des métadonnées
+    const metadata = {
+      system: system,
+      version: terminologyData.version || "1.0.0",
+      count: terminologyData.concepts?.length || 0,
+      lastUpdated: new Date().toISOString(),
+      description: terminologyData.description || ""
+    };
+    
+    // 3. Sauvegarde dans le système de fichiers
+    const fileName = getSystemFileName(system);
+    const filePath = path.join(TERMINOLOGY_DIR, fileName);
+    
+    // 4. Sauvegarde de la version précédente
+    if (fs.existsSync(filePath)) {
+      const backupPath = filePath + '.bak';
+      fs.copyFileSync(filePath, backupPath);
+    }
+    
+    // 5. Écriture du nouveau fichier
+    await fs.promises.writeFile(filePath, JSON.stringify(terminologyData, null, 2));
+    
+    // 6. Mise à jour des métadonnées en base
+    await updateTerminologyMetadata(metadata);
+    
+    // 7. Invalidation du cache
+    terminologyCache.clear();
+    
+    return { success: true, metadata };
+  } catch (error) {
+    console.error(`Erreur lors du traitement du fichier: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}</pre>
+        
+        <div class="info-box">
+          <p><strong>Sécurité :</strong> Le système vérifie l'intégrité de chaque fichier importé pour garantir la conformité avec le schéma requis. Si le fichier est corrompu ou mal formaté, l'import est rejeté avec un message d'erreur explicite.</p>
+        </div>
+        
+        <h3>Structure des fichiers de terminologie</h3>
+        <p>Les fichiers de terminologie suivent une structure JSON standardisée :</p>
+        
+        <pre class="code-block">{
+  "system": "CIM-10",               // Identifiant du système de terminologie
+  "version": "2021",                // Version de la terminologie
+  "description": "Classification Internationale des Maladies", // Description
+  "url": "http://hl7.org/fhir/sid/icd-10-fr", // URL canonique FHIR
+  "lastUpdated": "2023-05-15T14:30:00Z", // Date de mise à jour
+  "concepts": [                     // Liste des concepts
+    {
+      "code": "A01.0",              // Code unique
+      "display": "Fièvre typhoïde", // Libellé principal
+      "definition": "Infection due à Salmonella typhi", // Définition détaillée
+      "category": "infectious",     // Catégorie (facultatif)
+      "properties": {               // Propriétés spécifiques (facultatif)
+        "billable": true,
+        "severity": "moderate"
+      }
+    },
+    // Autres concepts...
+  ]
+}</pre>
+        
+        <h3>Comportement en cas de modification</h3>
+        <p>Le système gère différents scénarios lors de la manipulation des terminologies :</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Mise à jour d'une terminologie existante</div>
+            <div class="step-description">
+              La version précédente est automatiquement sauvegardée avec l'extension .bak, les références dans la base de données sont mises à jour, et le cache est invalidé pour prendre en compte les nouvelles données.
+            </div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Suppression d'une terminologie</div>
+            <div class="step-description">
+              Une suppression ne détruit jamais définitivement une terminologie système. Pour les terminologies protégées (ANS, CIM-10, CCAM, etc.), un message d'erreur est affiché. Pour les terminologies personnalisées, le fichier est désactivé mais conservé avec un suffixe .disabled.
+            </div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Restauration d'une version précédente</div>
+            <div class="step-description">
+              L'interface permet de restaurer des versions précédentes à partir des sauvegardes automatiques, avec un historique complet des modifications accessibles dans la table terminology_versions.
+            </div>
+          </div>
+        </div>
+        
+        <div class="warning-box">
+          <p><strong>Important :</strong> Les terminologies système (CIM-10, CCAM, LOINC, etc.) sont protégées contre la suppression définitive. Même en cas de tentative de suppression via l'API, ces fichiers sont automatiquement restaurés au prochain démarrage de l'application à partir des fichiers .protected conservés dans le répertoire de sauvegarde.</p>
+        </div>
         
         <div class="tip-box">
           <p><strong>Astuce :</strong> Pour les déploiements en environnement sécurisé sans accès Internet, vous pouvez précharger les fichiers de terminologie et les inclure dans votre package d'installation.</p>
