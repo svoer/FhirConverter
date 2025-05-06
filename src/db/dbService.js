@@ -393,6 +393,14 @@ initDatabase();
 // Mettre à jour les temps de traitement existants pour qu'ils soient réalistes
 updateProcessingTimes();
 
+/**
+ * Récupérer l'instance de la base de données pour un accès direct
+ * @returns {Object} L'instance de la base de données
+ */
+function getDb() {
+  return db;
+}
+
 module.exports = {
   validateApiKey,
   getConversionHistory,
@@ -402,5 +410,6 @@ module.exports = {
   getSystemInfo,
   cleanupHistory,
   fixHistory,
-  updateProcessingTimes
+  updateProcessingTimes,
+  getDb
 };
