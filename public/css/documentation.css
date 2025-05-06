@@ -9,6 +9,14 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+.subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 30px;
+  margin-top: -10px;
+  font-weight: 300;
+}
+
 .documentation-section h2 {
   font-size: 1.8rem;
   margin-bottom: 1.2rem;
@@ -61,6 +69,15 @@
   transition: all 0.3s ease;
   border: 1px solid transparent;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+}
+
+.section-nav a i {
+  margin-right: 8px;
+  font-size: 1rem;
+  color: #ff5722;
+  transition: all 0.3s ease;
 }
 
 .section-nav a:hover, .section-nav a.active {
@@ -68,6 +85,10 @@
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 3px 8px rgba(231, 76, 60, 0.3);
+}
+
+.section-nav a:hover i, .section-nav a.active i {
+  color: white;
 }
 
 /* Bloc de code amélioré */
@@ -243,6 +264,19 @@
   padding: 2px 5px;
   font-family: monospace;
   font-size: 0.9em;
+}
+
+/* Ancres des titres */
+.header-anchor {
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  margin-left: 0.5rem;
+}
+
+h2:hover .header-anchor,
+h3:hover .header-anchor {
+  opacity: 1;
 }
 
 /* Style responsive */
