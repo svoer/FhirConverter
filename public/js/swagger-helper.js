@@ -212,119 +212,144 @@ document.addEventListener('DOMContentLoaded', function() {
     // Exécuter immédiatement
     addButtonsDirectly();
     
-    // Ajoutons d'abord des styles spécifiques pour complètement désactiver les animations de Swagger
+    // Solution radicale - Suppression complète de toutes les animations Swagger
     const noFlickerStyles = document.createElement('style');
     noFlickerStyles.textContent = `
-      /* Désactiver toutes les animations et transitions de Swagger UI qui causent le clignotement */
+      /* SOLUTION RADICALE - DÉSACTIVATION COMPLÈTE DE TOUTES LES ANIMATIONS ET TRANSITIONS */
       .swagger-ui * {
+        animation: none !important;
+        transition: none !important;
         animation-duration: 0s !important;
+        animation-delay: 0s !important;
         transition-duration: 0s !important;
-      }
-      
-      /* Masquer complètement le fond modal pendant l'animation */
-      .swagger-ui .dialog-ux .backdrop-container {
-        transition: none !important;
-        animation: none !important;
-      }
-      
-      /* Priorité maximale pour le conteneur modal */
-      .swagger-ui .dialog-ux .modal-ux {
-        animation: none !important;
-        transition: none !important;
+        transition-delay: 0s !important;
+        animation-iteration-count: 0 !important;
+        animation-fill-mode: none !important;
+        animation-play-state: paused !important;
         opacity: 1 !important;
-      }
-      
-      /* Le contenu du modal ne doit pas avoir d'animation */
-      .swagger-ui .dialog-ux .modal-ux-inner {
         transform: none !important;
-        transition: none !important;
-        animation: none !important;
       }
       
-      /* Corrections spécifiques pour les composants auth */
-      .swagger-ui .auth-container {
+      /* Stabilisation forcée du DOM pour éviter les clignotements */
+      .swagger-ui .dialog-ux .backdrop-container,
+      .swagger-ui .dialog-ux .modal-ux,
+      .swagger-ui .dialog-ux .modal-ux-inner,
+      .swagger-ui .auth-container,
+      .swagger-ui .opblock-body pre.microlight,
+      .swagger-ui .dialog-ux .modal-ux-content,
+      .swagger-ui .model-box,
+      .swagger-ui .model,
+      .swagger-ui .model-toggle,
+      .swagger-ui .highlight-code,
+      .swagger-ui .expand-operation,
+      .swagger-ui table tbody tr td {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
         opacity: 1 !important;
-        animation: none !important;
+      }
+      
+      /* Forcer le rendu immédiat sans délai */
+      .swagger-ui .loading-container {
+        display: none !important;
+      }
+      
+      /* Garder le modal en position fixe et visible */
+      .swagger-ui .dialog-ux {
+        position: fixed !important;
+        display: block !important;
+      }
+      
+      /* Supprimer complètement les effets de survol transitionnels */
+      .swagger-ui .opblock:hover {
+        transform: none !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08) !important;
+      }
+      
+      /* Stabiliser l'affichage des endpoints */
+      .swagger-ui .opblock-summary {
         transition: none !important;
       }
       
-      /* Appliquer des styles propres après le chargement complet */
-      .swagger-ui .opblock-body pre.microlight {
-        transition: none !important;
-      }
-      
-      /* Fenêtre modale doit rester stable */
-      .swagger-ui .dialog-ux .modal-ux-content {
-        animation: none !important;
-        transition: none !important;
+      /* Désactiver complètement les slideshows et fades */
+      @keyframes none {
+        from { opacity: 1; }
+        to { opacity: 1; }
       }
     `;
     document.head.appendChild(noFlickerStyles);
     
-    // Réduire le clignotement de l'autorisation par une approche plus agressive
+    // Injection directe de code JavaScript pour supprimer les animations du runtime
     const preventFlickerScript = document.createElement('script');
     preventFlickerScript.textContent = `
       (function() {
-        // Remplacer complètement les animations Swagger
-        const overrideSwaggerAnims = setInterval(() => {
-          // Cibler les éléments qui causent des clignotements
-          const backdrop = document.querySelector('.swagger-ui .dialog-ux .backdrop-container');
-          const modal = document.querySelector('.swagger-ui .dialog-ux .modal-ux');
-          const modalInner = document.querySelector('.swagger-ui .dialog-ux .modal-ux-inner');
-          const authContainer = document.querySelector('.swagger-ui .auth-container');
+        // Remplacer les fonctions d'animation natives
+        window.requestAnimationFrame = function(callback) {
+          return setTimeout(callback, 0);
+        };
+        
+        // Nettoyer toutes les animations en cours
+        const existingAnimations = document.getAnimations 
+          ? document.getAnimations() 
+          : [];
           
-          // Appliquer des styles directs à ces éléments
-          if (backdrop) {
-            backdrop.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
+        existingAnimations.forEach(anim => {
+          if (anim.cancel) anim.cancel();
+        });
+        
+        // Désactiver complètement l'API d'animation
+        CSSStyleDeclaration.prototype.setProperty = function(propertyName, value, priority) {
+          if (propertyName.includes('animation') || propertyName.includes('transition')) {
+            return;
           }
           
-          if (modal) {
-            modal.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
-          }
-          
-          if (modalInner) {
-            modalInner.style.cssText = "animation: none !important; transition: none !important; transform: none !important;";
-          }
-          
-          if (authContainer) {
-            authContainer.style.cssText = "animation: none !important; transition: none !important; opacity: 1 !important;";
-          }
-          
-          // Observer toute modification du DOM pour agir immédiatement
-          const targetNode = document.body;
-          const config = { childList: true, subtree: true, attributes: true };
-          
-          const callback = function(mutationsList, observer) {
-            for (const mutation of mutationsList) {
-              // Cibler spécifiquement les modifications des dialogs
-              if (document.querySelector('.swagger-ui .dialog-ux')) {
-                // Désactiver toute animation
-                const dialogElements = document.querySelectorAll('.swagger-ui .dialog-ux *');
-                dialogElements.forEach(el => {
-                  el.style.animation = 'none';
-                  el.style.transition = 'none';
-                  
-                  // Forcer l'opacité pour les conteneurs
-                  if (el.classList.contains('modal-ux') || 
-                      el.classList.contains('backdrop-container') ||
-                      el.classList.contains('auth-container') ||
-                      el.classList.contains('modal-ux-inner')) {
-                    el.style.opacity = '1';
-                    el.style.transform = 'none';
-                  }
-                });
-              }
+          return this._native_setProperty 
+            ? this._native_setProperty(propertyName, value, priority)
+            : null;
+        };
+        
+        // Désactiver les transitions CSS
+        document.addEventListener('transitionstart', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }, true);
+        
+        // Supprimer immédiatement toutes les animations sur les éléments Swagger
+        function killAllAnimations() {
+          const swaggerElements = document.querySelectorAll('.swagger-ui *');
+          swaggerElements.forEach(el => {
+            el.style.animation = 'none';
+            el.style.transition = 'none';
+            el.style.animationDuration = '0s';
+            el.style.transitionDuration = '0s';
+            el.style.animationDelay = '0s';
+            el.style.transitionDelay = '0s';
+            
+            // Forcer l'opacité sur tous les éléments
+            if (el.classList.contains('modal-ux') || 
+                el.classList.contains('backdrop-container') ||
+                el.classList.contains('auth-container') ||
+                el.classList.contains('modal-ux-inner') ||
+                el.classList.contains('model-box') ||
+                el.classList.contains('model')) {
+              el.style.opacity = '1';
+              el.style.transform = 'none';
             }
-          };
-          
-          const observer = new MutationObserver(callback);
-          observer.observe(targetNode, config);
-          
-          // Nettoyer après 5 secondes (quand tout est chargé)
-          setTimeout(() => {
-            clearInterval(overrideSwaggerAnims);
-          }, 5000);
-        }, 100);
+          });
+        }
+        
+        // Exécuter immédiatement et périodiquement (pour les nouveaux éléments)
+        killAllAnimations();
+        setInterval(killAllAnimations, 100);
+        
+        // Observer toutes les modifications du DOM et tuer les animations
+        const observer = new MutationObserver(killAllAnimations);
+        observer.observe(document.body, { 
+          childList: true, 
+          subtree: true, 
+          attributes: true,
+          attributeFilter: ['style', 'class']
+        });
       })();
     `;
     document.head.appendChild(preventFlickerScript);
