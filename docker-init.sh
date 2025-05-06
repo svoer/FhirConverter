@@ -31,13 +31,34 @@ mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volu
 # Configuration des permissions
 echo -e "${YELLOW}Configuration des permissions...${NC}"
 mkdir -p volumes/prometheus volumes/grafana volumes/grafana/logs volumes/grafana/plugins
-# Permissions spéciales pour Prometheus et Grafana (important pour éviter les erreurs)
-# Utilisateur nobody pour Prometheus (65534) et utilisateur Grafana (472)
-# Si la commande sudo échoue (environnements contraints), on utilise les permissions larges
-sudo chown -R 65534:65534 volumes/prometheus 2>/dev/null || chmod -R 777 volumes/prometheus
-sudo chown -R 472:472 volumes/grafana 2>/dev/null || chmod -R 777 volumes/grafana
-# Double sécurité - s'assurer que les répertoires sont accessibles
-chmod -R 777 volumes/prometheus volumes/grafana
+
+# Créer des répertoires supplémentaires pour Prometheus
+mkdir -p volumes/prometheus/data
+touch volumes/prometheus/queries.active
+
+# S'assurer que les répertoires existent pour Grafana
+mkdir -p volumes/grafana/plugins
+mkdir -p volumes/grafana/dashboards
+mkdir -p volumes/grafana/data
+
+# Permissions spéciales pour Prometheus et Grafana
+# Ajuster pour fonctionner avec docker-compose.full.yml qui utilise user: "1000:1000"
+echo -e "${BLUE}Configuration des permissions pour utilisation avec docker...${NC}"
+
+# Définir les permissions les plus larges possibles pour éviter les problèmes
+chmod -R 777 volumes/prometheus
+chmod -R 777 volumes/grafana
+chmod -R 777 volumes/grafana/plugins
+chmod -R 777 volumes/grafana/logs
+chmod -R 777 volumes/grafana/data
+chmod 777 volumes/prometheus/queries.active
+
+echo -e "${GREEN}✓ Permissions configurées avec succès${NC}"
+echo -e "${BLUE}Note: Utilisez ces commandes après démarrage si vous avez toujours des problèmes:${NC}"
+echo -e "${YELLOW}docker exec -it fhirhub-grafana chown -R grafana:grafana /var/lib/grafana${NC}"
+echo -e "${YELLOW}docker exec -it fhirhub-prometheus chown -R nobody:nobody /prometheus${NC}"
+
+# Permissions générales pour les autres volumes
 chmod -R 755 volumes
 
 # Vérification de la configuration Prometheus

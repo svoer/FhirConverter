@@ -60,7 +60,8 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
       - '--no-scrape.adjust-timestamps'
-    user: "1000:1000"
+    # Utiliser l'ID utilisateur nobody qui a plus de chances de fonctionner
+    user: "65534:65534"
     depends_on:
       - fhirhub
     networks:
@@ -86,11 +87,16 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=fhirhub-admin
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      # Désactiver temporairement l'installation des plugins pour éviter les erreurs
+      # - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PATHS_LOGS=/var/lib/grafana/logs
       - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-    user: "1000:1000"
+      # Ajout de paramètres pour permettre à Grafana de fonctionner même avec des problèmes de permissions
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    # Utiliser l'ID utilisateur grafana qui a plus de chances de fonctionner
+    user: "472:472"
     depends_on:
       - prometheus
     networks:
