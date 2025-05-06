@@ -541,7 +541,7 @@
     // Attendre que le DOM soit chargé
     document.addEventListener('DOMContentLoaded', function() {
       // Vérifier l'authentification
-      FHIRHubAuth.checkAuth();
+      FHIRHubAuth.checkAuthentication(); // Utiliser la fonction correcte pour la vérification d'authentification
       
       // Variables globales
       let activeTab = 'hl7-tab';
