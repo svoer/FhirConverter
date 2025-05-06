@@ -30,6 +30,8 @@ mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volu
 
 # Configuration des permissions
 echo -e "${YELLOW}Configuration des permissions...${NC}"
+mkdir -p volumes/prometheus volumes/grafana
+chmod -R 777 volumes/prometheus volumes/grafana
 chmod -R 755 volumes
 
 # Vérification de la configuration Prometheus
