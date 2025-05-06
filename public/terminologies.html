@@ -14,6 +14,9 @@
   <!-- Inclusion du menu latéral -->
   <script src="/js/include-sidebar.js" defer></script>
   <script src="/js/sidebar-menu-new.js" defer></script>
+  
+  <!-- Boîtes de dialogue modernes -->
+  <script src="/js/modern-dialogs.js" defer></script>
 </head>
 <body>
   <!-- Le menu latéral sera chargé par include-sidebar.js -->
@@ -926,7 +929,7 @@
             
             if (totalDuplicates === 0) {
               addLog('Aucun doublon trouvé dans les fichiers de terminologie.');
-              alert('Aucun doublon trouvé dans les fichiers de terminologie.');
+              await ModernDialogs.alert('Aucun doublon trouvé dans les fichiers de terminologie.', 'Vérification terminée');
             } else {
               // Nouvelle structure d'API a un format différent
               let message = `${totalDuplicates} fichiers en doublon détectés:\n\n`;
@@ -1029,9 +1032,42 @@
                 addLog(`${totalDuplicates} fichiers en doublon identifiés.`);
               }
               
-              message += `Souhaitez-vous supprimer les doublons les plus anciens?`;
+              // Préparation des données pour l'affichage moderne
+              const duplicatesData = {
+                totalDuplicates,
+                groups: []
+              };
               
-              if (confirm(message)) {
+              // Ajouter des informations sur les doublons potentiels
+              if (result.data.duplicates && result.data.duplicates.byName) {
+                result.data.duplicates.byName.forEach((group, i) => {
+                  if (group && typeof group === 'object') {
+                    const groupFiles = [];
+                    group.allFiles.forEach(file => {
+                      if (file && typeof file === 'object') {
+                        groupFiles.push({
+                          name: file.name || 'Sans nom',
+                          date: formatDate(new Date(file.modified || Date.now()))
+                        });
+                      } else if (typeof file === 'string') {
+                        groupFiles.push({
+                          name: file,
+                          date: 'Date inconnue'
+                        });
+                      }
+                    });
+                    
+                    duplicatesData.groups.push({
+                      name: `${group.count || '?'} fichiers avec le motif "${group.basePattern || 'inconnu'}"`,
+                      files: groupFiles
+                    });
+                  }
+                });
+              }
+              
+              // Utiliser la boîte de dialogue moderne pour les doublons
+              const shouldDelete = await ModernDialogs.showDuplicatesDialog(duplicatesData);
+              if (shouldDelete) {
                 // Envoyer la demande de suppression
                 const deleteResponse = await FHIRHubAuth.fetchWithAuth('/api/terminology/remove-duplicates', {
                   method: 'POST'
@@ -1061,7 +1097,7 @@
           }
         } catch (error) {
           console.error('Erreur lors de la vérification des doublons:', error);
-          alert(`Erreur lors de la vérification des doublons: ${error.message}`);
+          await ModernDialogs.alert(`Erreur lors de la vérification des doublons: ${error.message}`, 'Erreur');
           addLog(`Erreur lors de la vérification des doublons: ${error.message}`);
         }
       });
