@@ -2,12 +2,17 @@
  * Correctifs pour empêcher le clignotement dans Swagger UI
  * Ce fichier désactive complètement les animations et transitions
  * qui causent des problèmes visuels dans l'interface Swagger
+ * Version stabilisée - Correction des problèmes de clignotement
  */
 
-/* Désactiver globalement les animations */
+/* Désactiver strictement toutes les animations pour empêcher le clignotement */
 .swagger-ui * {
   animation: none !important;
   transition: none !important;
+  animation-delay: 0 !important;
+  animation-duration: 0 !important;
+  transition-delay: 0 !important;
+  transition-duration: 0 !important;
 }
 
 /* Réglages spécifiques pour le modal d'authentification */

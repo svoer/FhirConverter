@@ -433,18 +433,9 @@
         padding: 10px 15px;
         border-radius: 4px;
         margin-top: 10px;
-        animation: fadeOut 3s forwards 1s;
       `;
       
-      // Ajouter une animation de disparition
-      const styleElement = document.createElement('style');
-      styleElement.textContent = `
-        @keyframes fadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
-        }
-      `;
-      document.head.appendChild(styleElement);
+      // Suppression de l'animation de disparition qui causait des clignotements
       
       // Ajouter le message au conteneur
       authContainer.appendChild(msgElement);
