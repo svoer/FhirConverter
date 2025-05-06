@@ -30,12 +30,18 @@ async function logConversion(logData) {
       user_id: logData.user_id || null
     };
     
+    console.log('[CONVERSION-LOG] Enregistrement d\'une nouvelle conversion:', {
+      application_id: insertData.application_id,
+      status: insertData.status,
+      processing_time: insertData.processing_time
+    });
+    
     // Insérer le journal dans la base de données
     const result = await dbService.run(
       `INSERT INTO conversion_logs (
         api_key_id, application_id, input_message, output_message,
-        status, timestamp, processing_time, resource_count, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, timestamp, processing_time, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         insertData.api_key_id,
         insertData.application_id,
@@ -44,7 +50,6 @@ async function logConversion(logData) {
         insertData.status,
         insertData.timestamp,
         insertData.processing_time,
-        insertData.resource_count,
         insertData.user_id
       ]
     );
@@ -68,7 +73,7 @@ async function getConversion(id, applicationId) {
     return await dbService.get(
       `SELECT 
         c.id, c.api_key_id, c.application_id, c.input_message,
-        c.status, c.processing_time, c.timestamp,
+        c.output_message, c.status, c.processing_time, c.timestamp,
         a.name as application_name, k.description as api_key_name
       FROM conversion_logs c
       LEFT JOIN applications a ON c.application_id = a.id
@@ -95,8 +100,8 @@ async function getConversions(applicationId, limit = 20, page = 1) {
     
     return await dbService.query(
       `SELECT 
-        c.id, c.api_key_id, c.application_id, c.input_message,
-        c.status, c.processing_time, c.resource_count, c.timestamp,
+        c.id, c.api_key_id, c.application_id, SUBSTR(c.input_message, 1, 50) as input_preview,
+        c.status, c.processing_time, c.timestamp,
         a.name as application_name, k.description as api_key_name
       FROM conversion_logs c
       LEFT JOIN applications a ON c.application_id = a.id
@@ -233,7 +238,11 @@ async function getAppStats(applicationId) {
     try {
       recent = await dbService.query(
         `SELECT 
-          c.id, c.input_message as source_type, c.status, c.processing_time, c.timestamp as created_at,
+          c.id, 
+          SUBSTR(c.input_message, 1, 50) as source_type, 
+          c.status, 
+          c.processing_time, 
+          c.timestamp as created_at,
           k.description as api_key_name
         FROM conversion_logs c
         LEFT JOIN api_keys k ON c.api_key_id = k.id
