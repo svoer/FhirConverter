@@ -579,55 +579,55 @@
             let itemCount = file.itemCount || getEstimatedItemCount(file.name, file.size);
             
             row.innerHTML = `
-              <td>${file.name}</td>
               <td>
-                <span class="file-type badge badge-${getFileTypeBadgeClass(fileType)}" title="${getFileTypeLabel(fileType)}">
-                  <i class="${fileIcon}"></i> ${fileType}
+                <div class="file-name-wrapper">
+                  <span class="file-name">${file.name}</span>
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-${getFileTypeBadgeClass(fileType)}" title="${getFileTypeLabel(fileType)}">
+                  ${fileType}
                 </span>
               </td>
               <td>
                 <span class="file-description" data-file="${file.name}">${getFileDescription(file.name)}</span>
-                <button class="btn-action btn-icon edit-description" data-file="${file.name}" title="Modifier la description"><i class="fas fa-edit"></i></button>
               </td>
               <td>${formatDate(file.lastModified)}</td>
               <td>
                 <span class="file-items-count">
-                  ${itemCount > 0 ? `<b>${itemCount}</b> élément${itemCount > 1 ? 's' : ''}` : 'Inconnu'}
+                  ${itemCount > 0 ? `${itemCount} élément${itemCount > 1 ? 's' : ''}` : 'Inconnu'}
                 </span>
               </td>
-              <td class="actions-cell">
-                <button class="btn-action preview-file" data-file="${file.name}" title="Voir le contenu"><i class="fas fa-eye"></i></button>
-                <button class="btn-action download-file" data-file="${file.name}" title="Télécharger le fichier"><i class="fas fa-download"></i></button>
-                ${isSystemFile ? 
-                  `<button class="btn-action delete-file disabled" title="Fichier système non supprimable"><i class="fas fa-trash-alt"></i></button>` : 
-                  `<button class="btn-action delete-file" data-file="${file.name}" title="Supprimer le fichier"><i class="fas fa-trash-alt"></i></button>`
-                }
+              <td>
+                <div class="action-buttons">
+                  <button class="action-button view" data-file="${file.name}" title="Voir le contenu"><i class="fas fa-eye"></i></button>
+                  <button class="action-button download" data-file="${file.name}" title="Télécharger le fichier"><i class="fas fa-download"></i></button>
+                  ${isSystemFile ? 
+                    `<button class="action-button delete disabled" title="Fichier système non supprimable"><i class="fas fa-trash-alt"></i></button>` : 
+                    `<button class="action-button delete" data-file="${file.name}" title="Supprimer le fichier"><i class="fas fa-trash-alt"></i></button>`
+                  }
+                </div>
               </td>
             `;
             terminologyFilesTableEl.appendChild(row);
             
             // Ajouter les gestionnaires d'événements
-            row.querySelector('.preview-file').addEventListener('click', () => {
+            row.querySelector('.action-button.view').addEventListener('click', () => {
               previewTerminologyFile(file.name);
             });
             
-            row.querySelector('.download-file').addEventListener('click', () => {
+            row.querySelector('.action-button.download').addEventListener('click', () => {
               downloadTerminologyFile(file.name);
             });
             
             // Ajouter les gestionnaires pour les nouvelles actions
             if (!isSystemFile) {
-              row.querySelector('.delete-file').addEventListener('click', () => {
+              row.querySelector('.action-button.delete').addEventListener('click', () => {
                 if (confirm(`Êtes-vous sûr de vouloir supprimer le fichier ${file.name}? Cette action est irréversible.`)) {
                   deleteTerminologyFile(file.name);
                 }
               });
             }
-            
-            // Gestionnaire pour l'édition de description
-            row.querySelector('.edit-description').addEventListener('click', () => {
-              editFileDescription(file.name);
-            });
           });
           
           // Ajouter un log de succès
@@ -1200,22 +1200,23 @@
       function getFileTypeBadgeClass(fileType) {
         switch(fileType) {
           case 'OID':
-            return 'info';
+            return 'oid';
           case 'CODE':
-            return 'success';
+            return 'code';
           case 'VALUESET':
-            return 'primary';
+            return 'valueset';
           case 'CODESYSTEM':
-            return 'warning';
+            return 'codesystem';
           case 'SYSTEM':
-            return 'secondary';
+            return 'system';
           case 'R4':
+            return 'r4';
           case 'R5':
-            return 'danger';
+            return 'r5';
           case 'RAPPORT':
-            return 'dark';
+            return 'rapport';
           default:
-            return 'light';
+            return 'autre';
         }
       }
       
@@ -1404,63 +1405,7 @@
       opacity: 1;
     }
     
-    /* Style pour les badges de type de fichier */
-    .badge {
-      display: inline-block;
-      padding: 0.25em 0.6em;
-      font-size: 75%;
-      font-weight: 700;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
-      vertical-align: baseline;
-      border-radius: 0.25rem;
-      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
-    }
-    
-    .badge i {
-      margin-right: 5px;
-    }
-    
-    .badge-primary {
-      color: #fff;
-      background-color: #007bff;
-    }
-    
-    .badge-secondary {
-      color: #fff;
-      background-color: #6c757d;
-    }
-    
-    .badge-success {
-      color: #fff;
-      background-color: #28a745;
-    }
-    
-    .badge-danger {
-      color: #fff;
-      background-color: #dc3545;
-    }
-    
-    .badge-warning {
-      color: #1f2d3d;
-      background-color: #ffc107;
-    }
-    
-    .badge-info {
-      color: #fff;
-      background-color: #17a2b8;
-    }
-    
-    .badge-light {
-      color: #1f2d3d;
-      background-color: #f8f9fa;
-    }
-    
-    .badge-dark {
-      color: #fff;
-      background-color: #343a40;
-    }
+    /* Le style pour les badges est défini dans le fichier CSS global admin.css */
     
     .file-items-count {
       color: #666;
