@@ -640,15 +640,52 @@
           totalConversions = logs.length;
           console.log(`Nombre total de conversions trouvées: ${totalConversions}`);
           
-          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+          // Obtenir la date d'aujourd'hui au format YYYY-MM-DD dans la timezone locale
+          const now = new Date();
+          const todayYear = now.getFullYear();
+          const todayMonth = String(now.getMonth() + 1).padStart(2, '0');
+          const todayDay = String(now.getDate()).padStart(2, '0');
+          const todayFormatted = `${todayYear}-${todayMonth}-${todayDay}`;
+          
+          console.log(`Date d'aujourd'hui formatée: ${todayFormatted}`);
           
           // Filtrer les conversions d'aujourd'hui et compter les erreurs
           logs.forEach(log => {
-            // Assurer que log.timestamp est une date valide
+            // Vérifier si le log a un timestamp valide
             if (log.timestamp) {
-              const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-              if (logDate === today) {
-                todayConversions++;
+              // Extraire la date du timestamp du log, quelle que soit sa forme
+              let logDate;
+              
+              try {
+                // Essayer d'extraire la date à partir de différents formats
+                const date = new Date(log.timestamp);
+                
+                // Formater la date dans le même format que notre date d'aujourd'hui
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                logDate = `${year}-${month}-${day}`;
+                
+                // Alternative: utiliser directement la chaîne si elle contient une date au format YYYY-MM-DD
+                if (log.timestamp.includes('-')) {
+                  const dateParts = log.timestamp.split(' ')[0].split('-');
+                  if (dateParts.length === 3) {
+                    const [dbYear, dbMonth, dbDay] = dateParts;
+                    // Si c'est au format YYYY-MM-DD, l'utiliser directement
+                    if (dbYear.length === 4) {
+                      logDate = `${dbYear}-${dbMonth}-${dbDay}`;
+                    }
+                  }
+                }
+                
+                console.log(`Log ID ${log.id}, date: ${logDate}, aujourd'hui: ${todayFormatted}, égal: ${logDate === todayFormatted}`);
+                
+                // Comparer avec la date d'aujourd'hui
+                if (logDate === todayFormatted) {
+                  todayConversions++;
+                }
+              } catch (dateError) {
+                console.warn(`Impossible de parser la date pour le log ${log.id}:`, dateError);
               }
             }
             
