@@ -822,7 +822,7 @@ function processADTMessage(parsedMessage, bundle) {
         <h2>APIs disponibles</h2>
         <p>FHIRHub expose plusieurs API RESTful pour permettre l'intégration et l'automatisation. Cette documentation complète liste toutes les APIs disponibles dans le système, groupées par catégorie.</p>
         
-        <p>Une documentation interactive de l'API est disponible à l'adresse <a href="/api-docs" target="_blank">/api-docs</a> (Swagger UI). Pour tester les API, utilisez le bouton vert ⚡ Autoriser avec clé de test: dev-key.</p>
+        <p>Une documentation interactive de l'API est disponible à l'adresse <a href="/api-reference.html" target="_blank">/api-reference.html</a>. Pour tester les API, utilisez la clé de développement par défaut: dev-key.</p>
         
         <div class="tech-spec">
           <div class="tech-spec-title">API d'Authentification</div>
@@ -927,8 +927,8 @@ function processADTMessage(parsedMessage, bundle) {
         <div class="tech-spec">
           <div class="tech-spec-title">API de Documentation</div>
           <ul>
-            <li><strong>GET /api-docs</strong> - Documentation Swagger des APIs disponibles</li>
-            <li><strong>GET /api-docs.json</strong> - Spécification OpenAPI au format JSON</li>
+            <li><strong>GET /api-reference.html</strong> - Documentation interactive des APIs disponibles</li>
+            <li><strong>GET /api/openapi.json</strong> - Spécification OpenAPI au format JSON</li>
           </ul>
         </div>
         
@@ -942,7 +942,7 @@ function processADTMessage(parsedMessage, bundle) {
         </ul>
         
         <div class="tip-box">
-          <p><strong>Conseil :</strong> Pour tester les API via la documentation Swagger, utilisez le bouton <strong>Autoriser</strong> et saisissez la clé de test : <code>dev-key</code> dans le champ apiKey.</p>
+          <p><strong>Conseil :</strong> Pour tester les API via la documentation interactive, utilisez la clé de développement par défaut : <code>dev-key</code> pour vos requêtes.</p>
         </div>
         
         <h3>Exemples d'utilisation</h3>
