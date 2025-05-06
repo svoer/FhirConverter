@@ -1,4 +1,135 @@
 /* Styles pour les pages d'administration */
+
+/* Styles pour les tables de données - Design moderne 2025 */
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  background-color: white;
+}
+
+.data-table thead {
+  background: white;
+}
+
+.data-table th {
+  padding: 1.2rem 1.5rem;
+  text-align: left;
+  font-weight: 500;
+  color: #333;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 0.95rem;
+}
+
+.data-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background-color: rgba(245, 247, 250, 0.8);
+}
+
+/* Type badges pour les fichiers de terminologie */
+.data-table .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.data-table .badge-code {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.data-table .badge-oid {
+  background: linear-gradient(135deg, #2980b9, #3498db);
+}
+
+.data-table .badge-system {
+  background: linear-gradient(135deg, #8e44ad, #9b59b6);
+}
+
+.data-table .badge-codesystem {
+  background: linear-gradient(135deg, #f39c12, #f1c40f);
+}
+
+.data-table .badge-valueset {
+  background: linear-gradient(135deg, #16a085, #1abc9c);
+}
+
+.data-table .badge-r4 {
+  background: linear-gradient(135deg, #c0392b, #e74c3c);
+}
+
+.data-table .badge-r5 {
+  background: linear-gradient(135deg, #d35400, #e67e22);
+}
+
+.data-table .badge-autre {
+  background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+}
+
+.data-table .badge-rapport {
+  background: linear-gradient(135deg, #34495e, #2c3e50);
+}
+
+/* Actions buttons */
+.data-table .action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.data-table .action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: #666;
+}
+
+.data-table .action-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+}
+
+.data-table .action-button.view:hover {
+  color: #3498db;
+}
+
+.data-table .action-button.download:hover {
+  color: #27ae60;
+}
+
+.data-table .action-button.delete:hover {
+  color: #e74c3c;
+}
 .admin-header {
   display: flex;
   justify-content: space-between;
