@@ -176,9 +176,32 @@ router.get('/providers/active', async (req, res) => {
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
   // Correction 2025-05-06: URL de l'API Mistral mise à jour vers le chemin exact
-  let apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
+  // Correction 2025-05-06: URL de base Mistral + endpoint spécifique
+  const baseUrl = provider.api_url || 'https://api.mistral.ai/v1';
+  let apiUrl = `${baseUrl}/chat/completions`;
   
-  const models = provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-2402';
+  // Correction 2025-05-06: Parsing plus robuste du modèle Mistral
+  let models;
+  try {
+    if (provider.models) {
+      if (provider.models.startsWith('[') && provider.models.endsWith(']')) {
+        // Format JSON array
+        const modelsArray = JSON.parse(provider.models);
+        models = modelsArray[0] || 'mistral-medium';
+      } else if (provider.models.includes(',')) {
+        // Format séparé par des virgules
+        models = provider.models.split(',')[0].trim();
+      } else {
+        // Format de modèle unique
+        models = provider.models.trim();
+      }
+    } else {
+      models = 'mistral-medium';
+    }
+  } catch (error) {
+    console.warn('Erreur lors du parsing du modèle Mistral:', error);
+    models = 'mistral-medium';
+  }
   
   console.log(`[AI] Envoi de requête Mistral à: ${apiUrl}`);
   console.log(`[AI] Modèle utilisé: ${models}`);

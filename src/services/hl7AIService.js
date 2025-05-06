@@ -462,9 +462,9 @@ async function sendAIRequest(provider, messages) {
       }
     }
     
-    // Sélectionner le modèle par défaut (premier de la liste ou valeur par défaut)
-    // Correction 2025-05-06: modèle par défaut mis à jour pour Mistral AI
-    const model = modelsList[0] || (providerName.toLowerCase() === 'mistral' ? 'mistral-large-2407' : 'mistral-large-latest');
+    // Sélectionner le modèle par défaut (premier de la liste ou null - sera géré par chaque provider)
+    // Éviter les valeurs en dur pour être compatible avec toutes les IA
+    const model = modelsList[0] || null;
     
     // Adaptations spécifiques aux fournisseurs
     let response = null;
@@ -517,12 +517,16 @@ async function sendAIRequest(provider, messages) {
  * @returns {Promise<string>} La réponse générée
  */
 async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}) {
-  // Correction 2025-05-06: URL actualisée pour API Mistral
-  const url = apiUrl || 'https://api.mistral.ai/v1/chat/completions';
+  // Correction 2025-05-06: URL actualisée pour API Mistral (url de base + endpoint)
+  const baseUrl = apiUrl || 'https://api.mistral.ai/v1';
+  const url = `${baseUrl}/chat/completions`;
+  
+  // Valeur par défaut du modèle si non spécifié
+  const defaultModel = 'mistral-medium';
   
   // Paramètres de base
   const params = {
-    model: model,
+    model: model || defaultModel,
     messages: messages,
     temperature: settings.temperature || 0.2,
     max_tokens: settings.max_tokens || 4000
