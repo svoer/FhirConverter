@@ -514,7 +514,7 @@ router.get('/:id/stats', authCombined, async (req, res) => {
 router.get('/:id/conversions', authCombined, async (req, res) => {
   try {
     const { id } = req.params;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, include_null = 'false' } = req.query;
     const db = req.app.locals.db;
     
     // Vérifier si l'application existe
@@ -530,10 +530,15 @@ router.get('/:id/conversions', authCombined, async (req, res) => {
     
     // Récupérer les conversions avec pagination
     const conversionLogService = require('../src/services/conversionLogService');
-    const conversions = await conversionLogService.getConversions(id, parseInt(limit), parseInt(page));
+    const conversions = await conversionLogService.getConversions(id, parseInt(limit), parseInt(page), include_null === 'true');
     
     // Récupérer le nombre total de conversions pour la pagination
-    const totalCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ?').get(id);
+    let totalCount;
+    if (include_null === 'true') {
+      totalCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ? OR application_id IS NULL').get(id);
+    } else {
+      totalCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ?').get(id);
+    }
     const totalPages = Math.ceil(totalCount.count / parseInt(limit));
     
     res.json({

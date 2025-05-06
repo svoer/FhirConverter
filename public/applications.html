@@ -726,7 +726,8 @@
         });
         
         // Récupérer TOUTES les conversions pour cette application (limite élevée) pour un calcul précis
-        const conversionsResponse = await fetch(`/api/applications/${appId}/conversions?limit=1000`, {
+        // Récupérer à la fois les conversions associées à l'application et celles sans application_id
+        const conversionsResponse = await fetch(`/api/applications/${appId}/conversions?limit=1000&include_null=true`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

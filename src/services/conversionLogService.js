@@ -99,12 +99,32 @@ async function getConversion(id, applicationId) {
  * @param {number} applicationId - ID de l'application
  * @param {number} limit - Nombre de journaux à récupérer
  * @param {number} page - Numéro de page
+ * @param {boolean} includeNull - Inclure également les conversions sans application_id
  * @returns {Promise<Array>} Journaux de conversion
  */
-async function getConversions(applicationId, limit = 20, page = 1) {
+async function getConversions(applicationId, limit = 20, page = 1, includeNull = false) {
   try {
     const offset = (page - 1) * limit;
     
+    // Si includeNull est true, inclure aussi les conversions sans application_id
+    if (includeNull) {
+      console.log('[CONVERSION-LOG] Récupération des conversions avec application_id=NULL incluses');
+      return await dbService.query(
+        `SELECT 
+          c.id, c.api_key_id, c.application_id, SUBSTR(c.input_message, 1, 50) as input_preview,
+          c.status, c.processing_time, c.timestamp,
+          a.name as application_name, k.description as api_key_name
+        FROM conversion_logs c
+        LEFT JOIN applications a ON c.application_id = a.id
+        LEFT JOIN api_keys k ON c.api_key_id = k.id
+        WHERE c.application_id = ? OR c.application_id IS NULL
+        ORDER BY c.timestamp DESC
+        LIMIT ? OFFSET ?`,
+        [applicationId, limit, offset]
+      );
+    }
+    
+    // Comportement par défaut: uniquement les conversions avec l'application_id spécifié
     return await dbService.query(
       `SELECT 
         c.id, c.api_key_id, c.application_id, SUBSTR(c.input_message, 1, 50) as input_preview,
