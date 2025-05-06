@@ -12,6 +12,9 @@
   <!-- Inclusion du menu latéral -->
   <script src="/js/include-sidebar.js" defer></script>
   <script src="/js/sidebar-menu-new.js" defer></script>
+  
+  <!-- Boîtes de dialogue modernes -->
+  <script src="/js/modern-dialogs.js" defer></script>
   <style>
     .api-keys-header {
       display: flex;
@@ -616,10 +619,10 @@
       });
       
       document.querySelectorAll('.copy-btn').forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', async function() {
           const key = this.getAttribute('data-key');
           copyToClipboard(key);
-          alert('Clé API copiée dans le presse-papier');
+          await ModernDialogs.alert('Clé API copiée dans le presse-papier', 'Succès');
         });
       });
     }
@@ -652,7 +655,7 @@
           
           document.getElementById('keyModal').style.display = 'flex';
         } else {
-          alert('Vous devez d\'abord créer une application avant de pouvoir générer une clé API');
+          await ModernDialogs.alert('Vous devez d\'abord créer une application avant de pouvoir générer une clé API', 'Information');
         }
       } catch (error) {
         console.error('Erreur:', error);
