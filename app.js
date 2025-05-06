@@ -884,6 +884,11 @@ app.use('/api/admin', adminRoutes);
 console.log('[WORKFLOW] Utilisation de l\'éditeur de workflow visuel personnalisé');
 console.log('[WORKFLOW] Accessible via /workflows.html');
 
+// Route pour la page d'accueil de la documentation API (sans animation/clignotement)
+app.get('/api-documentation', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/api-docs-landing.html'));
+});
+
 // Démarrage du serveur avec gestion d'erreur pour le port déjà utilisé
 // Écouter sur toutes les interfaces (0.0.0.0) pour permettre l'accès externe
 const server = app.listen(PORT, '0.0.0.0', () => {
