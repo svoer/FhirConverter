@@ -70,7 +70,7 @@ const axios = require('axios');
  *       500:
  *         description: Erreur serveur
  */
-router.post('/chat', jwtAuth, async (req, res) => {
+router.post('/ai/chat', jwtAuth, async (req, res) => {
   try {
     console.log('[AI] Nouvelle requête de chat reçue');
     const { provider, messages, max_tokens = 1000 } = req.body;
