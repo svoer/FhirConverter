@@ -175,14 +175,10 @@ router.get('/providers/active', async (req, res) => {
  * Gestion des requêtes pour Mistral AI
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
-  // Construire l'URL complète en s'assurant que le chemin /chat/completions est présent
-  let apiUrl = provider.api_url || 'https://api.mistral.ai/v1';
-  if (!apiUrl.endsWith('/chat/completions')) {
-    // S'assurer qu'il n'y a pas de double slash
-    apiUrl = apiUrl.endsWith('/') ? `${apiUrl}chat/completions` : `${apiUrl}/chat/completions`;
-  }
+  // Correction 2025-05-06: URL de l'API Mistral mise à jour vers le chemin exact
+  let apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
   
-  const models = provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-latest';
+  const models = provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-2402';
   
   console.log(`[AI] Envoi de requête Mistral à: ${apiUrl}`);
   console.log(`[AI] Modèle utilisé: ${models}`);

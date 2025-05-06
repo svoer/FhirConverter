@@ -449,7 +449,8 @@ async function sendAIRequest(provider, messages) {
     }
     
     // Sélectionner le modèle par défaut (premier de la liste ou valeur par défaut)
-    const model = modelsList[0] || 'mistral-large-latest';
+    // Correction 2025-05-06: modèle par défaut mis à jour pour Mistral AI
+    const model = modelsList[0] || (providerName.toLowerCase() === 'mistral' ? 'mistral-large-2402' : 'mistral-large-latest');
     
     // Adaptations spécifiques aux fournisseurs
     let response = null;
