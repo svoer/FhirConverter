@@ -15,28 +15,36 @@
   transition-duration: 0 !important;
 }
 
-/* Réglages spécifiques pour le modal d'authentification */
+/* Réglages spécifiques pour le modal d'authentification - Solution renforcée contre le clignotement */
 .swagger-ui .dialog-ux .backdrop-container {
   animation: none !important;
   transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
   opacity: 0.8 !important;
 }
 
 .swagger-ui .dialog-ux .modal-ux {
   animation: none !important;
   transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
   opacity: 1 !important;
 }
 
 .swagger-ui .dialog-ux .modal-ux-inner {
   animation: none !important;
   transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
   transform: none !important;
 }
 
 .swagger-ui .auth-container {
   animation: none !important;
   transition: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
   opacity: 1 !important;
 }
 
