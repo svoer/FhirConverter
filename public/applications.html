@@ -439,13 +439,8 @@
       appsList.innerHTML = '';
       
       applications.forEach(app => {
+        // Pas besoin de parser les paramètres, on utilise un objet vide par défaut
         let settings = {};
-        try {
-          settings = JSON.parse(app.settings || '{}');
-        } catch (error) {
-          console.error('Erreur de parsing des paramètres:', error);
-          // Continuer avec un objet vide en cas d'erreur
-        }
         
         const appCard = document.createElement('div');
         appCard.className = 'app-card';
@@ -549,7 +544,8 @@
         
         if (data.success && data.data) {
           const app = data.data;
-          const settings = JSON.parse(app.settings || '{}');
+          // La propriété settings est déjà parsée par le serveur, pas besoin de parser à nouveau
+          const settings = app.settings || {};
           
           document.getElementById('modalTitle').textContent = 'Modifier l\'application';
           document.getElementById('appId').value = app.id;
