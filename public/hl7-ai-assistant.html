@@ -953,14 +953,16 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
             headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
           }
 
+          console.log('Chargement des fournisseurs d\'IA depuis', '/api/ai/providers/active');
           const response = await fetch('/api/ai/providers/active', { headers });
           
           if (!response.ok) {
-            console.error('Erreur lors du chargement des fournisseurs d\'IA actifs');
+            console.error('Erreur lors du chargement des fournisseurs d\'IA actifs:', response.statusText);
             return;
           }
           
           aiProviders = await response.json();
+          console.log('Fournisseur d\'IA chargé:', aiProviders.length > 0 ? aiProviders[0].provider_name : 'aucun');
           
           // Mettre à jour le sélecteur avec les fournisseurs disponibles
           if (aiProviders.length > 0) {
