@@ -8,201 +8,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/sidebar-menu.css">
+  <link rel="stylesheet" href="/css/documentation.css">
   
   <!-- Inclusion du menu latéral -->
   <script src="/js/include-sidebar.js" defer></script>
   <script src="/js/sidebar-menu-new.js" defer></script>
-  <style>
-    .documentation-section {
-      margin-bottom: 40px;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .code-block {
-      background-color: #272822;
-      color: #f8f8f2;
-      padding: 15px;
-      border-radius: 4px;
-      font-family: monospace;
-      overflow-x: auto;
-      margin: 15px 0;
-    }
-    
-    .workflow-diagram {
-      width: 100%;
-      max-width: 800px;
-      margin: 20px auto;
-      display: block;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .section-nav {
-      position: sticky;
-      top: 60px; /* Ajusté pour aligner parfaitement avec le bandeau vert */
-      z-index: 100;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      background-color: rgba(255, 255, 255, 0.98);
-      padding: 12px 5px;
-      margin-top: 0;
-      margin-bottom: 25px;
-      border-bottom: 1px solid #eee;
-      border-radius: 0 0 8px 8px; /* Coins arrondis uniquement en bas */
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      backdrop-filter: blur(5px);
-      max-width: 100%;
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-    
-    .section-nav a {
-      display: inline-block;
-      margin: 5px 10px;
-      color: #555;
-      text-decoration: none;
-      padding: 8px 12px;
-      font-weight: 500;
-      border-radius: 20px;
-      transition: all 0.2s ease;
-      font-size: 0.9em;
-      background-color: #f9f9f9;
-      white-space: nowrap;
-    }
-    
-    .section-nav a:hover {
-      background-color: #f1f1f1;
-      color: #ff5722;
-    }
-    
-    .section-nav a:hover, .section-nav a.active {
-      color: #e74c3c;
-      border-bottom-color: #e74c3c;
-    }
-    
-    .workflow-step {
-      display: flex;
-      margin-bottom: 15px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border-left: 4px solid #3498db;
-    }
-    
-    .step-number {
-      flex: 0 0 30px;
-      height: 30px;
-      border-radius: 50%;
-      background-color: #3498db;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      margin-right: 15px;
-    }
-    
-    .step-content {
-      flex: 1;
-    }
-    
-    .step-title {
-      font-weight: 600;
-      margin-bottom: 5px;
-    }
-    
-    .step-description {
-      color: #555;
-      line-height: 1.5;
-    }
-    
-    .terminology-mapping {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-    }
-    
-    .terminology-mapping th {
-      text-align: left;
-      padding: 10px;
-      background-color: #f1f1f1;
-      border-bottom: 2px solid #ddd;
-    }
-    
-    .terminology-mapping td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-    }
-    
-    .terminology-mapping tr:hover {
-      background-color: #f9f9f9;
-    }
-    
-    .back-to-top {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 40px;
-      height: 40px;
-      background-color: #e74c3c;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      opacity: 0;
-      transition: opacity 0.3s;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      z-index: 1000;
-    }
-    
-    .back-to-top.visible {
-      opacity: 1;
-    }
-    
-    .warning-box {
-      background-color: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    
-    .info-box {
-      background-color: #d1ecf1;
-      border-left: 4px solid #17a2b8;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    
-    .tip-box {
-      background: linear-gradient(135deg, rgba(255,160,90,0.15) 0%, rgba(255,90,90,0.15) 100%);
-      border-left: 4px solid #ff5722;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    
-    .tech-spec {
-      background-color: #f8f9fa;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-      border: 1px solid #dee2e6;
-    }
-    
-    .tech-spec-title {
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: #495057;
-    }
-  </style>
+  
+  <!-- Font Awesome pour les icônes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
   <!-- Le menu latéral sera chargé par include-sidebar.js -->
@@ -819,133 +632,357 @@ function processADTMessage(parsedMessage, bundle) {
       </div>
       
       <div id="api" class="documentation-section">
-        <h2>APIs disponibles</h2>
-        <p>FHIRHub expose plusieurs API RESTful pour permettre l'intégration et l'automatisation. Cette documentation complète liste toutes les APIs disponibles dans le système, groupées par catégorie.</p>
+        <h2>Architecture et Implémentation des APIs</h2>
+        <p>FHIRHub expose un ensemble complet d'APIs RESTful pour l'intégration et l'automatisation. Cette documentation présente l'architecture technique et l'implémentation des APIs du système, avec des exemples de code pour les développeurs.</p>
         
-        <p>Une documentation interactive de l'API est disponible à l'adresse <a href="/api-reference.html" target="_blank">/api-reference.html</a>. Pour tester les API, utilisez la clé de développement par défaut: dev-key.</p>
+        <div class="info-box">
+          <p><strong>Documentation interactive :</strong> Une documentation API interactive détaillée est disponible à l'adresse <a href="/api-reference.html" target="_blank">/api-reference.html</a>. Les exemples de code ci-dessous sont disponibles pour référence rapide.</p>
+        </div>
+        
+        <h3>Architecture des APIs</h3>
+        <p>L'ensemble des APIs de FHIRHub est construit sur une architecture modulaire utilisant Express.js. Voici les principales caractéristiques techniques :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Caractéristiques techniques des APIs</div>
+          <ul>
+            <li><strong>Framework :</strong> Express.js avec routage modularisé</li>
+            <li><strong>Format d'échange :</strong> JSON avec support des erreurs standardisées</li>
+            <li><strong>Authentification :</strong> Double mécanisme JWT + API Keys</li>
+            <li><strong>Validation :</strong> Validation des entrées via middleware</li>
+            <li><strong>Documentation :</strong> Spécification OpenAPI/Swagger intégrée</li>
+            <li><strong>Rate limiting :</strong> Limitation de débit configurable par application</li>
+            <li><strong>CORS :</strong> Configuration avancée avec support des origins personnalisés</li>
+            <li><strong>Journalisation :</strong> Traçage et métriques précises des appels</li>
+          </ul>
+        </div>
+        
+        <h3>Structure du middleware d'authentification</h3>
+        <p>Le code ci-dessous montre l'implémentation du middleware d'authentification combiné qui supporte à la fois les clés API et les jetons JWT :</p>
+        
+        <pre class="code-block">/**
+ * Middleware d'authentification combiné supportant JWT et clés API
+ * Peut être configuré pour exiger l'un, l'autre ou les deux
+ */
+const combinedAuthMiddleware = (options = {}) => {
+  // Options par défaut
+  const config = {
+    requireJWT: false,         // Exiger un JWT valide
+    requireApiKey: false,      // Exiger une clé API valide
+    requireEither: true,       // Exiger au moins l'un des deux
+    requireAdmin: false,       // Exiger le rôle admin
+    allowedRoles: []           // Rôles autorisés
+  };
+  
+  // Fusionner avec les options fournies
+  Object.assign(config, options);
+  
+  return async (req, res, next) => {
+    let jwtValid = false;
+    let apiKeyValid = false;
+    
+    // Vérification du JWT (token)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre-clé-secrète');
+        
+        // Récupérer les infos utilisateur
+        const user = await dbService.get('SELECT * FROM users WHERE id = ?', [decoded.userId]);
+        if (user) {
+          req.user = user;
+          jwtValid = true;
+          
+          // Vérifier les rôles si nécessaire
+          if (config.requireAdmin && user.role !== 'admin') {
+            return res.status(403).json({
+              success: false,
+              message: 'Accès réservé aux administrateurs'
+            });
+          }
+          
+          if (config.allowedRoles.length > 0 && !config.allowedRoles.includes(user.role)) {
+            return res.status(403).json({
+              success: false,
+              message: 'Rôle utilisateur non autorisé'
+            });
+          }
+        }
+      } catch (error) {
+        // Ne pas retourner d'erreur ici, on va vérifier la clé API ensuite
+      }
+    }
+    
+    // Vérification de la clé API
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey) {
+      try {
+        // Requête complexe pour récupérer toutes les infos en une seule fois
+        const keyData = await dbService.get(`
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = ? AND ak.is_active = 1
+        `, [apiKey]);
+        
+        if (keyData) {
+          // La clé existe et est active
+          req.apiKey = keyData;
+          req.application = { 
+            id: keyData.application_id, 
+            name: keyData.app_name 
+          };
+          apiKeyValid = true;
+          
+          // Si pas d'user via JWT, associer l'user de l'application
+          if (!jwtValid && keyData.application_id) {
+            const appCreator = await dbService.get('SELECT created_by FROM applications WHERE id = ?', [keyData.application_id]);
+            if (appCreator && appCreator.created_by) {
+              const appUser = await dbService.get('SELECT * FROM users WHERE id = ?', [appCreator.created_by]);
+              if (appUser) {
+                req.user = appUser;
+                console.log('[AUTH] API Key associée à l\'utilisateur', appUser.username, '(ID:', appUser.id, ')');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[AUTH] Erreur de vérification de clé API:', error);
+      }
+    }
+    
+    // Appliquer la logique d'autorisation selon la configuration
+    if (config.requireJWT && !jwtValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token JWT valide requis'
+      });
+    }
+    
+    if (config.requireApiKey && !apiKeyValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Clé API valide requise'
+      });
+    }
+    
+    if (config.requireEither && !jwtValid && !apiKeyValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise (JWT ou clé API)'
+      });
+    }
+    
+    // Tout est bon, continuer
+    next();
+  };
+};</pre>
+        
+        <h3>Catalogue des APIs par catégorie</h3>
+        <p>Nous organisons les APIs en catégories fonctionnelles pour une meilleure clarté :</p>
         
         <div class="tech-spec">
           <div class="tech-spec-title">API d'Authentification</div>
           <ul>
-            <li><strong>POST /api/login</strong> - Authentification des utilisateurs</li>
-            <li><strong>POST /api/logout</strong> - Déconnexion des utilisateurs</li>
-            <li><strong>GET /api/user</strong> - Récupération des informations de l'utilisateur connecté</li>
+            <li><strong>POST /api/login</strong> - Authentification des utilisateurs et génération de JWT</li>
+            <li><strong>POST /api/logout</strong> - Invalidation des jetons actifs</li>
+            <li><strong>GET /api/user</strong> - Récupération des informations de l'utilisateur authentifié</li>
           </ul>
         </div>
         
         <div class="tech-spec">
-          <div class="tech-spec-title">API de Conversion</div>
+          <div class="tech-spec-title">API de Conversion - Core</div>
           <ul>
-            <li><strong>POST /api/convert</strong> - Convertit un message HL7 v2.5 en FHIR R4</li>
-            <li><strong>POST /api/convert/validate</strong> - Valide la syntaxe d'un message HL7 v2.5</li>
+            <li><strong>POST /api/convert</strong> - Conversion HL7 v2.5 → FHIR R4 (format JSON)</li>
+            <li><strong>POST /api/convert/raw</strong> - Conversion de texte HL7 pur (format text/plain)</li>
+            <li><strong>POST /api/convert/validate</strong> - Validation syntaxique des messages HL7</li>
+            <li><strong>POST /api/convert/file</strong> - Conversion de fichiers HL7 (multipart/form-data)</li>
+            <li><strong>GET /api/convert/options</strong> - Options de conversion disponibles</li>
           </ul>
         </div>
         
         <div class="tech-spec">
           <div class="tech-spec-title">API de Terminologie</div>
           <ul>
-            <li><strong>GET /api/terminology/french</strong> - Obtient les informations sur les terminologies françaises</li>
-            <li><strong>GET /api/terminology/files</strong> - Liste les fichiers de terminologie disponibles</li>
-            <li><strong>POST /api/terminology/refresh</strong> - Rafraîchit les statistiques des terminologies</li>
-            <li><strong>POST /api/terminology/analyze</strong> - Analyse le contenu des fichiers de terminologie</li>
-            <li><strong>GET /api/terminology/check-duplicates</strong> - Vérifie les doublons dans les fichiers de terminologie</li>
-            <li><strong>POST /api/terminology/remove-duplicates</strong> - Supprime les fichiers de terminologie en doublon</li>
-            <li><strong>POST /api/terminology/import</strong> - Importe un nouveau fichier de terminologie</li>
-            <li><strong>GET /api/terminology/files/:filename</strong> - Récupère un fichier de terminologie spécifique</li>
-            <li><strong>DELETE /api/terminology/files/:filename</strong> - Supprime un fichier de terminologie</li>
-            <li><strong>POST /api/terminology/export</strong> - Exporte tous les fichiers de terminologie en ZIP</li>
+            <li><strong>GET /api/terminology/french</strong> - Nomenclatures françaises disponibles</li>
+            <li><strong>GET /api/terminology/files</strong> - Fichiers de terminologie chargés</li>
+            <li><strong>POST /api/terminology/refresh</strong> - Rafraîchir le cache de terminologies</li>
+            <li><strong>POST /api/terminology/analyze</strong> - Analyse statistique des terminologies</li>
+            <li><strong>POST /api/terminology/import</strong> - Import de nouveaux fichiers</li>
+            <li><strong>GET /api/terminology/files/:filename</strong> - Accès à un fichier spécifique</li>
+            <li><strong>DELETE /api/terminology/files/:filename</strong> - Suppression de fichier</li>
+            <li><strong>POST /api/terminology/export</strong> - Export au format ZIP</li>
           </ul>
         </div>
         
         <div class="tech-spec">
-          <div class="tech-spec-title">API d'Administration</div>
+          <div class="tech-spec-title">API de Gestion des Applications</div>
           <ul>
-            <li><strong>GET /api/applications</strong> - Liste toutes les applications enregistrées</li>
-            <li><strong>POST /api/applications</strong> - Crée une nouvelle application</li>
-            <li><strong>GET /api/applications/:id</strong> - Récupère les détails d'une application</li>
-            <li><strong>PUT /api/applications/:id</strong> - Met à jour une application</li>
-            <li><strong>DELETE /api/applications/:id</strong> - Supprime une application</li>
+            <li><strong>GET /api/applications</strong> - Liste des applications</li>
+            <li><strong>POST /api/applications</strong> - Création d'application</li>
+            <li><strong>GET /api/applications/:id</strong> - Détails d'une application</li>
+            <li><strong>PUT /api/applications/:id</strong> - Mise à jour d'application</li>
+            <li><strong>DELETE /api/applications/:id</strong> - Suppression d'application</li>
+            <li><strong>GET /api/applications/:id/stats</strong> - Statistiques d'utilisation</li>
           </ul>
         </div>
         
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Gestion des Clés API</div>
-          <ul>
-            <li><strong>GET /api/api-keys</strong> - Liste toutes les clés API</li>
-            <li><strong>POST /api/api-keys</strong> - Crée une nouvelle clé API</li>
-            <li><strong>GET /api/api-keys/:id</strong> - Récupère les détails d'une clé API</li>
-            <li><strong>PUT /api/api-keys/:id</strong> - Met à jour une clé API (active/inactive)</li>
-            <li><strong>DELETE /api/api-keys/:id</strong> - Supprime une clé API</li>
-          </ul>
-        </div>
+        <h3>Implémentation d'API : Exemple du convertisseur HL7</h3>
+        <p>L'implémentation de l'API de conversion montre l'architecture en couches et la gestion d'erreurs :</p>
         
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Gestion des Utilisateurs</div>
-          <ul>
-            <li><strong>GET /api/users</strong> - Liste tous les utilisateurs</li>
-            <li><strong>POST /api/users</strong> - Crée un nouvel utilisateur</li>
-            <li><strong>GET /api/users/:id</strong> - Récupère les détails d'un utilisateur</li>
-            <li><strong>PUT /api/users/:id</strong> - Met à jour un utilisateur</li>
-            <li><strong>DELETE /api/users/:id</strong> - Supprime un utilisateur</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Statistiques et Monitoring</div>
-          <ul>
-            <li><strong>GET /api/stats</strong> - Récupère les statistiques du système (conversions, temps de traitement, etc.)</li>
-            <li><strong>GET /api/cache/status</strong> - Récupère les informations sur l'état du cache de conversion</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Workflows</div>
-          <ul>
-            <li><strong>GET /api/workflows</strong> - Liste tous les workflows</li>
-            <li><strong>POST /api/workflows</strong> - Crée un nouveau workflow</li>
-            <li><strong>GET /api/workflows/:id</strong> - Récupère un workflow spécifique</li>
-            <li><strong>PUT /api/workflows/:id</strong> - Met à jour un workflow existant</li>
-            <li><strong>DELETE /api/workflows/:id</strong> - Supprime un workflow</li>
-            <li><strong>GET /api/workflows/application/:applicationId</strong> - Récupère les workflows associés à une application</li>
-            <li><strong>POST /api/workflows/execute/:id</strong> - Exécute manuellement un workflow</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API d'IA et d'Assistance</div>
-          <ul>
-            <li><strong>GET /api/ai-providers</strong> - Liste tous les fournisseurs d'IA configurés</li>
-            <li><strong>POST /api/ai-providers</strong> - Configure un nouveau fournisseur d'IA</li>
-            <li><strong>GET /api/ai-providers/:id</strong> - Récupère les détails d'un fournisseur d'IA</li>
-            <li><strong>PUT /api/ai-providers/:id</strong> - Met à jour la configuration d'un fournisseur d'IA</li>
-            <li><strong>DELETE /api/ai-providers/:id</strong> - Supprime un fournisseur d'IA</li>
-            <li><strong>POST /api/ai-chat/message</strong> - Envoie un message au chatbot de support</li>
-            <li><strong>GET /api/ai-chat/history</strong> - Récupère l'historique des conversations avec le chatbot</li>
-          </ul>
-        </div>
-        
-        <div class="tech-spec">
-          <div class="tech-spec-title">API de Documentation</div>
-          <ul>
-            <li><strong>GET /api-reference.html</strong> - Documentation interactive des APIs disponibles</li>
-            <li><strong>GET /api/openapi.json</strong> - Spécification OpenAPI au format JSON</li>
-          </ul>
-        </div>
-        
+        <pre class="code-block">/**
+ * Contrôleur de l'API de conversion HL7 → FHIR
+ * Route: POST /api/convert
+ */
+async function convertHL7ToFHIRHandler(req, res) {
+  const startTime = performance.now();
+  const { hl7Message, options = {} } = req.body;
+  
+  // Valider l'entrée
+  if (!hl7Message) {
+    return res.status(400).json({
+      success: false, 
+      message: 'Le message HL7 est requis'
+    });
+  }
+  
+  // Fusionner avec les options par défaut
+  const conversionOptions = {
+    includeOriginalMessage: false,  // Ne pas inclure le message d'origine dans la réponse
+    outputFormat: 'R4',             // Format FHIR R4 par défaut
+    useFrenchTerminology: true,     // Utiliser les terminologies françaises
+    validateOutput: true,           // Valider la conformité FHIR du résultat
+    ...options
+  };
+  
+  try {
+    // 1. Vérifier le cache
+    const messageHash = createHash('sha256').update(hl7Message).digest('hex');
+    const cachedResult = await conversionCache.get(messageHash);
+    
+    if (cachedResult) {
+      // Enregistrer l'utilisation du cache pour les statistiques
+      await logConversionStats({
+        source: req.user ? 'user' : 'api',
+        user_id: req.user ? req.user.id : null,
+        application_id: req.application ? req.application.id : null,
+        api_key_id: req.apiKey ? req.apiKey.id : null,
+        is_cached: true,
+        processing_time: 0,
+        resource_count: cachedResult.entry ? cachedResult.entry.length : 0
+      });
+      
+      return res.json({
+        success: true,
+        message: 'Conversion réussie (depuis cache)',
+        data: cachedResult,
+        metadata: {
+          fromCache: true,
+          processingTime: 0,
+          resourceCount: cachedResult.entry ? cachedResult.entry.length : 0
+        }
+      });
+    }
+    
+    // 2. Parser le message HL7
+    const parsedMessage = hl7Parser.parseHL7(hl7Message);
+    
+    // 3. Identifier le type de message
+    const messageType = hl7Parser.getMessageType(parsedMessage);
+    if (!messageType) {
+      throw new Error('Type de message HL7 non reconnu ou non supporté');
+    }
+    
+    // 4. Convertir en FHIR selon le type de message
+    const converter = getConverterForMessageType(messageType);
+    const fhirBundle = await converter.convert(parsedMessage, conversionOptions);
+    
+    // 5. Valider le bundle FHIR produit si demandé
+    if (conversionOptions.validateOutput) {
+      const validationResult = validateFHIRBundle(fhirBundle);
+      if (!validationResult.valid) {
+        console.warn('Avertissements de validation FHIR:', validationResult.warnings);
+      }
+    }
+    
+    // 6. Mettre en cache le résultat
+    await conversionCache.set(messageHash, fhirBundle);
+    
+    // 7. Enregistrer les statistiques
+    const endTime = performance.now();
+    const processingTime = Math.round(endTime - startTime);
+    
+    await logConversionStats({
+      source: req.user ? 'user' : 'api',
+      user_id: req.user ? req.user.id : null,
+      application_id: req.application ? req.application.id : null,
+      api_key_id: req.apiKey ? req.apiKey.id : null,
+      is_cached: false,
+      processing_time: processingTime,
+      resource_count: fhirBundle.entry ? fhirBundle.entry.length : 0,
+      message_type: messageType
+    });
+    
+    // 8. Envoyer la réponse
+    return res.json({
+      success: true,
+      message: 'Conversion réussie',
+      data: fhirBundle,
+      metadata: {
+        fromCache: false,
+        processingTime: processingTime,
+        messageType: messageType,
+        resourceCount: fhirBundle.entry ? fhirBundle.entry.length : 0
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors de la conversion HL7 → FHIR:', error);
+    
+    // Journaliser l'erreur pour analyse
+    await logConversionError({
+      source: req.user ? 'user' : 'api',
+      user_id: req.user ? req.user.id : null,
+      application_id: req.application ? req.application.id : null,
+      error_message: error.message,
+      stack_trace: error.stack,
+      input_sample: hl7Message.substring(0, 200) // Ne stocker qu'un extrait
+    });
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la conversion',
+      error: error.message,
+      errorType: error.name,
+      errorDetails: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+}</pre>
 
+        <h3>Authentification et Sécurité</h3>
+        <p>FHIRHub implémente deux mécanismes d'authentification complémentaires :</p>
         
-        <h3>Authentification</h3>
-        <p>Les API nécessitent une authentification, qui peut se faire de deux manières :</p>
-        <ul>
-          <li><strong>Clé API</strong> : Envoyée dans l'en-tête HTTP <code>X-API-KEY</code></li>
-          <li><strong>JWT Token</strong> : Envoyé dans l'en-tête HTTP <code>Authorization: Bearer &lt;token&gt;</code></li>
-        </ul>
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Authentification par clé API</div>
+            <div class="step-description">Les clés API sont générées de manière cryptographiquement sécurisée (UUID v4), puis hachées (bcrypt) pour un stockage sécurisé. Chaque clé est associée à une application et peut avoir des quotas d'utilisation personnalisés.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Authentification par JWT</div>
+            <div class="step-description">Les jetons JWT sont générés lors de la connexion utilisateur et contiennent l'ID utilisateur et les rôles. Ils sont signés avec un secret sécurisé et ont une durée de validité configurable.</div>
+          </div>
+        </div>
         
         <div class="tip-box">
-          <p><strong>Conseil :</strong> Pour tester les API via la documentation interactive, utilisez la clé de développement par défaut : <code>dev-key</code> pour vos requêtes.</p>
+          <p><strong>Conseil pour les développeurs:</strong> Pour bénéficier d'une meilleure traçabilité, utilisez la combinaison des deux méthodes d'authentification : le JWT pour identifier l'utilisateur et la clé API pour identifier l'application cliente.</p>
         </div>
         
-        <h3>Exemples d'utilisation</h3>
+        <h3>Exemples d'utilisation des API</h3>
         
         <div class="code-tabs">
           <div class="tab-buttons">
@@ -955,127 +992,503 @@ function processADTMessage(parsedMessage, bundle) {
           </div>
           
           <div id="curl-tab" class="tab-content" style="display: block;">
-            <h4>Conversion avec JSON (POST /api/convert)</h4>
+            <h4>Conversion avec options avancées (POST /api/convert)</h4>
             <pre class="code-block">curl -X POST "http://localhost:5000/api/convert" \
      -H "Content-Type: application/json" \
      -H "X-API-KEY: your-api-key" \
-     -d '{"hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"}'</pre>
+     -d '{
+  "hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F",
+  "options": {
+    "useFrenchTerminology": true,
+    "includeOriginalMessage": true,
+    "validateOutput": true,
+    "includeMessageHeader": true
+  }
+}'</pre>
             
-            <h4>Conversion avec texte brut (POST /api/convert/raw)</h4>
-            <pre class="code-block">curl -X POST "http://localhost:5000/api/convert/raw" \
-     -H "Content-Type: text/plain" \
+            <h4>Authentification et accès à une API protégée</h4>
+            <pre class="code-block">curl -X POST "http://localhost:5000/api/login" \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "admin123"}' \
+     -s | jq -r '.token' > token.txt
+
+TOKEN=$(cat token.txt)
+
+curl -X GET "http://localhost:5000/api/users" \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "X-API-KEY: dev-key"</pre>
+            
+            <h4>Exécuter un workflow (POST /api/workflows/execute/:id)</h4>
+            <pre class="code-block">curl -X POST "http://localhost:5000/api/workflows/execute/1" \
+     -H "Content-Type: application/json" \
      -H "X-API-KEY: your-api-key" \
-     -d 'MSH|^~\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
-PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F'</pre>
-            
-            <h4>Statistiques du système (GET /api/stats)</h4>
-            <pre class="code-block">curl -X GET "http://localhost:5000/api/stats" \
-     -H "X-API-KEY: your-api-key"</pre>
+     -d '{
+  "input": {
+    "hl7Message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2\nPID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"
+  },
+  "params": {
+    "destination": "http://fhir-server.example.com/fhir"
+  }
+}'</pre>
           </div>
           
           <div id="js-tab" class="tab-content" style="display: none;">
-            <h4>Conversion avec fetch API</h4>
-            <pre class="code-block">const convertHL7ToFHIR = async (hl7Message) => {
-  try {
-    const response = await fetch('http://localhost:5000/api/convert', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': 'your-api-key'
-      },
-      body: JSON.stringify({ hl7Message })
-    });
+            <h4>Client API complet</h4>
+            <pre class="code-block">/**
+ * Client API FHIRHub pour JavaScript
+ * Implémentation complète avec gestion des jetons et options avancées
+ */
+class FHIRHubClient {
+  constructor(options = {}) {
+    this.baseUrl = options.baseUrl || 'http://localhost:5000';
+    this.apiKey = options.apiKey;
+    this.token = options.token;
+    this.autoRefresh = options.autoRefresh !== false;
+    this.onTokenRefresh = options.onTokenRefresh || null;
+  }
+  
+  // Définir la clé API
+  setApiKey(apiKey) {
+    this.apiKey = apiKey;
+  }
+  
+  // Définir le token JWT
+  setToken(token) {
+    this.token = token;
+  }
+  
+  // Obtenir les headers d'authentification
+  getAuthHeaders() {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
     
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur de conversion');
+    if (this.apiKey) {
+      headers['X-API-KEY'] = this.apiKey;
     }
     
-    return result.data;
-  } catch (error) {
-    console.error('Erreur lors de la conversion:', error);
-    throw error;
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    return headers;
   }
-};
+  
+  // Login et génération de token
+  async login(username, password) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.token) {
+        this.token = result.token;
+        if (this.onTokenRefresh) {
+          this.onTokenRefresh(this.token);
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
+      throw error;
+    }
+  }
+  
+  // Conversion HL7 vers FHIR
+  async convertHL7ToFHIR(hl7Message, options = {}) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/convert`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ hl7Message, options })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Erreur lors de la conversion:', error);
+      throw error;
+    }
+  }
+  
+  // Récupération des statistiques
+  async getStats() {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/stats`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      throw error;
+    }
+  }
+  
+  // Exemple d'utilisation des workflows
+  async executeWorkflow(workflowId, input, params = {}) {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/workflows/execute/${workflowId}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ input, params })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Erreur lors de l'exécution du workflow ${workflowId}:`, error);
+      throw error;
+    }
+  }
+}
 
 // Exemple d'utilisation
-const hl7Message = `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
-PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F`;
+const client = new FHIRHubClient({
+  baseUrl: 'http://localhost:5000',
+  apiKey: 'your-api-key',
+  onTokenRefresh: (token) => localStorage.setItem('jwt_token', token)
+});
 
-convertHL7ToFHIR(hl7Message)
-  .then(fhirBundle => {
-    console.log('Bundle FHIR généré:', fhirBundle);
-  })
-  .catch(error => {
-    console.error('Erreur:', error);
-  });</pre>
+// Connexion et conversion
+async function demoUsage() {
+  try {
+    // Se connecter
+    await client.login('admin', 'admin123');
+    console.log('Connecté avec succès!');
+    
+    // Convertir un message HL7
+    const hl7Message = `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
+PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F`;
+    
+    const result = await client.convertHL7ToFHIR(hl7Message, {
+      useFrenchTerminology: true,
+      includeOriginalMessage: true
+    });
+    
+    console.log(`Conversion réussie: ${result.data.entry.length} ressources FHIR générées`);
+    console.log('Patient ID:', result.data.entry[0].resource.id);
+    
+    // Statistiques du système
+    const stats = await client.getStats();
+    console.log(`Total des conversions: ${stats.conversions}`);
+    console.log(`Temps moyen de traitement: ${stats.conversionStats.avgTime}ms`);
+    
+  } catch (error) {
+    console.error('Erreur dans la démonstration:', error);
+  }
+}
+
+// Exécuter la démo
+demoUsage();</pre>
           </div>
           
           <div id="python-tab" class="tab-content" style="display: none;">
-            <h4>Conversion avec requests</h4>
+            <h4>Client API Python avec contexte</h4>
             <pre class="code-block">import requests
 import json
+from typing import Dict, Any, Optional, List, Union
+import logging
+from datetime import datetime
 
-def convert_hl7_to_fhir(hl7_message, api_key, base_url='http://localhost:5000'):
+class FHIRHubClient:
     """
-    Convertit un message HL7 en FHIR à l'aide de l'API FHIRHub
+    Client Python pour l'API FHIRHub
     
-    Args:
-        hl7_message (str): Message HL7 à convertir
-        api_key (str): Clé API pour l'authentification
-        base_url (str): URL de base de l'API
-        
-    Returns:
-        dict: Bundle FHIR résultant
+    Fournit une interface Pythonique pour interagir avec l'API FHIRHub,
+    avec gestion de l'authentification et journalisation.
     """
-    url = f"{base_url}/api/convert"
     
-    headers = {
-        'Content-Type': 'application/json',
-        'X-API-KEY': api_key
-    }
-    
-    payload = {
-        'hl7Message': hl7_message
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Lève une exception pour les codes d'erreur HTTP
+    def __init__(self, base_url: str = "http://localhost:5000", 
+                 api_key: Optional[str] = None,
+                 token: Optional[str] = None,
+                 log_level: int = logging.INFO):
+        """
+        Initialise le client API
         
-        result = response.json()
+        Args:
+            base_url: URL de base de l'API FHIRHub
+            api_key: Clé API optionnelle
+            token: Token JWT optionnel
+            log_level: Niveau de journalisation (logging.INFO par défaut)
+        """
+        self.base_url = base_url.rstrip('/')
+        self.api_key = api_key
+        self.token = token
         
-        if not result.get('success'):
-            raise ValueError(result.get('message', 'Erreur inconnue lors de la conversion'))
+        # Configuration de la journalisation
+        self.logger = logging.getLogger("fhirhub_client")
+        self.logger.setLevel(log_level)
+        
+        # Créer un handler si aucun n'existe
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """
+        Construit les en-têtes HTTP avec authentification
+        
+        Returns:
+            Dict[str, str]: En-têtes HTTP
+        """
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        if self.api_key:
+            headers['X-API-KEY'] = self.api_key
             
-        return result['data']
-    except requests.exceptions.RequestException as e:
-        print(f"Erreur réseau: {e}")
-        raise
-    except ValueError as e:
-        print(f"Erreur de traitement: {e}")
-        raise
-    except Exception as e:
-        print(f"Erreur inattendue: {e}")
-        raise
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
+            
+        return headers
+    
+    def login(self, username: str, password: str) -> Dict[str, Any]:
+        """
+        S'authentifie auprès de l'API et récupère un token JWT
+        
+        Args:
+            username: Nom d'utilisateur
+            password: Mot de passe
+            
+        Returns:
+            Dict[str, Any]: Résultat contenant le token JWT
+            
+        Raises:
+            requests.HTTPError: En cas d'erreur HTTP
+            ValueError: En cas d'erreur d'authentification
+        """
+        self.logger.info(f"Tentative de connexion pour l'utilisateur {username}")
+        
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/login",
+                json={"username": username, "password": password}
+            )
+            response.raise_for_status()
+            
+            result = response.json()
+            if "token" in result:
+                self.token = result["token"]
+                self.logger.info("Authentification réussie")
+            
+            return result
+        
+        except requests.HTTPError as e:
+            self.logger.error(f"Erreur HTTP lors de la connexion: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Erreur lors de la connexion: {e}")
+            raise ValueError(f"Erreur d'authentification: {str(e)}")
+    
+    def convert_hl7_to_fhir(self, hl7_message: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Convertit un message HL7 en FHIR
+        
+        Args:
+            hl7_message: Message HL7 à convertir
+            options: Options de conversion
+            
+        Returns:
+            Dict[str, Any]: Bundle FHIR et métadonnées
+            
+        Raises:
+            requests.HTTPError: En cas d'erreur HTTP
+            ValueError: En cas d'erreur de conversion
+        """
+        url = f"{self.base_url}/api/convert"
+        headers = self._get_headers()
+        payload = {"hl7Message": hl7_message}
+        
+        if options:
+            payload["options"] = options
+        
+        self.logger.info("Envoi d'une requête de conversion HL7→FHIR")
+        self.logger.debug(f"Payload: {json.dumps(payload)[:200]}...")
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get("success"):
+                metadata = result.get("metadata", {})
+                self.logger.info(f"Conversion réussie en {metadata.get('processingTime', '?')}ms")
+                self.logger.info(f"Ressources générées: {metadata.get('resourceCount', '?')}")
+                return result
+            else:
+                error_msg = result.get("message", "Erreur inconnue")
+                self.logger.error(f"Échec de conversion: {error_msg}")
+                raise ValueError(error_msg)
+                
+        except requests.HTTPError as e:
+            self.logger.error(f"Erreur HTTP lors de la conversion: {e}")
+            
+            # Essayer d'extraire les détails d'erreur
+            try:
+                error_details = e.response.json()
+                self.logger.error(f"Détails de l'erreur: {error_details}")
+            except:
+                pass
+                
+            raise
+        except Exception as e:
+            self.logger.error(f"Erreur lors de la conversion: {e}")
+            raise
+    
+    def get_workflows(self) -> List[Dict[str, Any]]:
+        """
+        Récupère la liste des workflows disponibles
+        
+        Returns:
+            List[Dict[str, Any]]: Liste des workflows
+            
+        Raises:
+            requests.HTTPError: En cas d'erreur HTTP
+        """
+        url = f"{self.base_url}/api/workflows"
+        headers = self._get_headers()
+        
+        self.logger.info("Récupération des workflows")
+        
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            result = response.json()
+            workflows = result.get("data", [])
+            
+            self.logger.info(f"{len(workflows)} workflows récupérés")
+            return workflows
+            
+        except requests.HTTPError as e:
+            self.logger.error(f"Erreur HTTP lors de la récupération des workflows: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Erreur lors de la récupération des workflows: {e}")
+            raise
+    
+    def execute_workflow(self, workflow_id: int, 
+                         input_data: Dict[str, Any], 
+                         params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Exécute un workflow spécifique
+        
+        Args:
+            workflow_id: ID du workflow à exécuter
+            input_data: Données d'entrée pour le workflow
+            params: Paramètres supplémentaires
+            
+        Returns:
+            Dict[str, Any]: Résultat de l'exécution
+            
+        Raises:
+            requests.HTTPError: En cas d'erreur HTTP
+            ValueError: En cas d'erreur d'exécution
+        """
+        url = f"{self.base_url}/api/workflows/execute/{workflow_id}"
+        headers = self._get_headers()
+        
+        payload = {
+            "input": input_data
+        }
+        
+        if params:
+            payload["params"] = params
+        
+        self.logger.info(f"Exécution du workflow {workflow_id}")
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get("success"):
+                self.logger.info(f"Workflow {workflow_id} exécuté avec succès")
+                return result
+            else:
+                error_msg = result.get("message", "Erreur inconnue")
+                self.logger.error(f"Échec d'exécution du workflow: {error_msg}")
+                raise ValueError(error_msg)
+                
+        except requests.HTTPError as e:
+            self.logger.error(f"Erreur HTTP lors de l'exécution du workflow: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Erreur lors de l'exécution du workflow: {e}")
+            raise
 
 # Exemple d'utilisation
 if __name__ == "__main__":
+    # Configurer la journalisation
+    logging.basicConfig(level=logging.INFO)
+    
+    # Message HL7 de test
     hl7_message = """MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20230801101530||ADT^A01|20230801101530|P|2.5|||||FRA|UNICODE UTF-8|||LAB_HL7_V2
 PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19830711|F"""
     
     try:
-        fhir_bundle = convert_hl7_to_fhir(hl7_message, api_key="your-api-key")
-        print(f"Bundle FHIR généré avec {len(fhir_bundle['entry'])} ressources")
+        # Créer le client
+        client = FHIRHubClient(api_key="your-api-key")
         
-        # Sauvegarder le résultat dans un fichier
-        with open('fhir_bundle.json', 'w', encoding='utf-8') as f:
+        # Exemple de connexion
+        # user_data = client.login("admin", "admin123")
+        # print(f"Token JWT: {client.token[:20]}...")
+        
+        # Conversion HL7 vers FHIR
+        result = client.convert_hl7_to_fhir(hl7_message, {
+            "useFrenchTerminology": True,
+            "validateOutput": True
+        })
+        
+        # Afficher des informations sur le bundle
+        fhir_bundle = result["data"]
+        print(f"Bundle généré avec {len(fhir_bundle['entry'])} ressources")
+        
+        # Identifiant du patient
+        patient_resource = next((entry["resource"] for entry in fhir_bundle["entry"] 
+                               if entry["resource"]["resourceType"] == "Patient"), None)
+        if patient_resource:
+            print(f"Patient ID: {patient_resource['id']}")
+            
+        # Sauvegarder le résultat
+        output_file = f"fhir_bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(fhir_bundle, f, ensure_ascii=False, indent=2)
             
-        print("Résultat sauvegardé dans fhir_bundle.json")
+        print(f"Bundle FHIR sauvegardé dans {output_file}")
+            
     except Exception as e:
-        print(f"Échec de la conversion: {e}")</pre>
+        print(f"Erreur: {e}")</pre>
           </div>
         </div>
         
@@ -1098,49 +1511,6 @@ PID|1||458722781^^^CENTRE_HOSPITALIER_DE_TEST^PI||SECLET^MARYSE BERTHE ALICE||19
             event.currentTarget.className += " active";
           }
         </script>
-        
-        <style>
-          .code-tabs {
-            margin: 20px 0;
-          }
-          
-          .tab-buttons {
-            display: flex;
-            margin-bottom: -1px;
-          }
-          
-          .tab-button {
-            padding: 10px 15px;
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            border-bottom: none;
-            cursor: pointer;
-            margin-right: 5px;
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
-          }
-          
-          .tab-button.active {
-            background-color: #fff;
-            border-bottom: 1px solid #fff;
-            position: relative;
-            z-index: 1;
-            font-weight: bold;
-            color: #ff5722;
-          }
-          
-          .tab-content {
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #fff;
-          }
-          
-          .tab-content h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #ff5722;
-          }
-        </style>
       </div>
       
       <div id="cache" class="documentation-section">
