@@ -354,7 +354,7 @@ echo -e "${YELLOW}- Utilisateur: admin${NC}"
 echo -e "${YELLOW}- Mot de passe: fhirhub-admin${NC}"
 echo -e "${BLUE}Identifiants FHIRHub par défaut:${NC}"
 echo -e "${YELLOW}- Utilisateur: admin${NC}"
-echo -e "${YELLOW}- Mot de passe: adminfhirhub${NC}"
+echo -e "${YELLOW}- Mot de passe: admin123${NC}"
 echo -e "${BLUE}=== Fin de l'initialisation ===${NC}"
 
 # Rendre le script exécutable
