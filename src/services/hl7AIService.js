@@ -14,7 +14,7 @@ const path = require('path');
 const AI_REQUEST_TIMEOUT = 10000;
 
 // Configuration du mode hors ligne pour les analyses IA
-const OFFLINE_MODE_ENABLED = true; // Activer le mode hors ligne par défaut
+const OFFLINE_MODE_ENABLED = false; // Mode hors ligne désactivé suite à la demande de l'utilisateur
 const OFFLINE_DATA_PATH = path.join(__dirname, '../../data/ai_responses');
 
 /**
