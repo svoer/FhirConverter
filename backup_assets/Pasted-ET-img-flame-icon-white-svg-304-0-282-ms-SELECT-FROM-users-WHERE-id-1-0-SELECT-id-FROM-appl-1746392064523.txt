@@ -1,0 +1,56 @@
+ET /img/flame-icon-white.svg 304 0.282 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT id FROM applications WHERE name = 'App test'
+SELECT id FROM users WHERE username = 'admin'
+
+      INSERT INTO applications (
+        name, description, cors_origins, settings, created_at, updated_at, created_by
+      ) VALUES ('App test', NULL, NULL, '"{\"max_conversions_per_day\":10'/*+32 bytes*/, datetime('now'), datetime('now'), 1.0)
+    
+SELECT * FROM applications WHERE id = 4.0
+POST /api/applications 201 31.133 ms - 250
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 1.299 ms - 161
+GET /api-keys.html 304 0.662 ms - -
+GET /css/styles.css 304 0.269 ms - -
+GET /css/sidebar-menu.css 304 0.630 ms - -
+GET /js/include-sidebar.js 304 0.462 ms - -
+GET /js/sidebar-menu-new.js 304 0.269 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      ORDER BY ak.created_at DESC
+    
+GET /api/api-keys 304 1.445 ms - -
+GET /includes/sidebar.html 304 1.496 ms - -
+GET /img/flame-icon-white.svg 304 0.256 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 2.230 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT id FROM applications WHERE id = 4.0
+[API KEYS ERROR] SqliteError: table api_keys has no column named name
+    at Database.prepare (/home/sv/FhirConverter/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at /home/sv/FhirConverter/routes/api-keys.js:182:23
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at authCombinedMiddleware (/home/sv/FhirConverter/middleware/authCombined.js:105:7)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at /home/sv/FhirConverter/node_modules/express/lib/router/index.js:284:15 {
+  code: 'SQLITE_ERROR'
+}
+POST /api/api-keys 500 4.228 ms - 92

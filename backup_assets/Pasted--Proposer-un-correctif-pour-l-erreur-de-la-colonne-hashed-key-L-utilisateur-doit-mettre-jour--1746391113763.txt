@@ -1,0 +1,85 @@
+**Proposer un correctif pour l'erreur de la colonne hashed\_key**
+
+L'utilisateur doit mettre à jour le fichier pour résoudre l'erreur de colonne. Je vais leur expliquer de façon plus précise. Ils doivent ajouter la colonne `hashed_key` dans la création de table pour la table `api_keys` et aussi dans le code `dbService` où la table est insérée. Je vais leur donner un extrait de code pour la méthode `createTables` et leur rappeler de supprimer les commentaires inutiles. Ensuite, je recommande de supprimer la base de données existante et de la recréer.
+
+
+**Analyser la création de table pour api\_keys**
+
+Je devrais chercher dans le fichier `dbService.js` pour trouver la définition de la table `api_keys`. La recherche ne montre pas encore de snippet spécifique pour `CREATE TABLE IF NOT EXISTS api_keys`, donc il serait plus précis de cibler cette recherche directement. Une fois trouvé, je pourrai guider l'utilisateur afin d'ajouter la colonne `hashed_key TEXT`, puis de modifier l'insertion pour l'adapter. Je vais aussi sectionner les étapes clairement pour que le tout soit plus facile à suivre.
+
+
+Réflexion durant 12 secondes
+
+
+L’erreur
+
+```
+SqliteError: table api_keys has no column named hashed_key
+```
+
+signifie que votre code essaie d’écrire dans une colonne `hashed_key` qui n’existe pas dans la définition actuelle de la table **api\_keys**. Pour corriger, choisissez l’une de ces deux options :
+
+---
+
+## 1. Ajouter la colonne `hashed_key` au schéma
+
+Dans **`src/services/dbService.js`**, repérez la partie où vous créez la table `api_keys` (dans la fonction `createTables`, autour de la ligne 165). Modifiez le SQL pour inclure la colonne `hashed_key`, par exemple :
+
+```js
+await db.run(`
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    key             TEXT    NOT NULL,
+    hashed_key      TEXT    NOT NULL,
+    application_id  INTEGER NOT NULL,
+    is_active       INTEGER DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+  )
+`);
+```
+
+Puis, si vous avez déjà une base existante, soit :
+
+* Vous la supprimez (e.g. `rm data/fhirhub.db`) et relancez l’install,
+* Soit vous faites un **ALTER TABLE** avant votre INSERT :
+
+  ```sql
+  ALTER TABLE api_keys ADD COLUMN hashed_key TEXT NOT NULL DEFAULT '';
+  ```
+
+Cela garantira que la colonne existe avant vos `INSERT INTO api_keys (key, hashed_key, …)`.
+
+---
+
+## 2. Retirer toute référence à `hashed_key` si vous n’en avez plus besoin
+
+Si vous ne souhaitez pas stocker de `hashed_key` :
+
+1. Dans **`dbService.js`**, supprimez `hashed_key` de votre requête `CREATE TABLE api_keys`.
+2. Mettez à jour vos appels `INSERT` et `db.run` pour ne plus passer de troisième paramètre :
+
+   ```js
+   // Avant (erreur)
+   db.run(
+     `INSERT INTO api_keys (key, hashed_key, application_id) VALUES (?, ?, ?)`,
+     [apiKey, hash(apiKey), applicationId]
+   );
+   // Après
+   db.run(
+     `INSERT INTO api_keys (key, application_id) VALUES (?, ?)`,
+     [apiKey, applicationId]
+   );
+   ```
+3. Vérifiez ensuite que votre code (service, requêtes de lecture…) ne tente plus jamais d’accéder à `row.hashed_key`.
+
+---
+
+### Après correction
+
+1. Supprimez ou renommez l’ancienne base (`data/fhirhub.db`).
+2. Relancez votre script d’installation (`./install-service.sh` ou `node init-db.js`).
+3. Vérifiez dans les logs que la table `api_keys` se crée sans erreur et que la clé de développement est bien insérée.
+
+Avec l’une ou l’autre de ces approches, vous n’aurez plus l’erreur “no such column: hashed\_key” et l’initialisation se terminera correctement.

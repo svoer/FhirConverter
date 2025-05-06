@@ -1,0 +1,121 @@
+**Vérification du code**
+
+Je vois que le fichier a été partiellement lu, probablement à cause d'un problème d'encodage. Je vais ouvrir le fichier en brut pour examiner le contenu complet. Le code de "saveWorkflow" est tronqué, et je soupçonne que le fetch est à l'intérieur d'un bloc try. Je vais chercher le fetch dans ce bloc. Il semble que workflowData soit une variable construite avec JSON.stringify(flowData), mais flowData est utilisé plus tôt dans le code. Je vais vérifier la construction de workflowData pour mieux comprendre.
+
+
+**Vérification du JSON dans l'API**
+
+Il semble que l'API attend probablement que flow\_json soit un champ texte. Mais peut-être que l'API préfère un objet JSON non transformé, pas une chaîne JSON. Cela me fait penser que le backend pourrait attendre du JSON déjà parsé. En inspectant la fonction loadWorkflow, je vais vérifier comment elle gère la réponse. Je vais extraire les lignes après "response.ok" pour voir exactement comment elle lit la réponse JSON, en me concentrant sur "response.json".
+
+
+**Inspection de la réponse JSON**
+
+Il semble que l'API attend flow\_json comme un champ texte, mais peut-être qu'elle préfère un objet JSON au lieu de la chaîne. Lors de la récupération, la fonction loadWorkflow utilise fetch pour obtenir la réponse JSON. Je vais examiner loadWorkflow, en particulier la ligne 4085, afin de voir comment elle gère la réponse après "response.ok". Ensuite, je vais vérifier la classe des données et effectuer des logs pour voir pourquoi le tableau nodes est vide après avoir lancé loadWorkflow. Il manque aussi les impressions de débogage dans les logs partagés.
+
+**Problème de double sérialisation**
+
+Il semble qu'il y ait un problème avec la double sérialisation de `flow_json`. Si le backend attend un objet et non une chaîne de caractères, envoyer un JSON.stringify(flowData) pourrait entraîner une double échappée des guillemets. Cela signifie que lors du chargement, `JSON.parse` pourrait renvoyer une chaîne au lieu d'un objet, rendant l'accès aux `nodes` impossible. Pour résoudre cela, soit on envoie directement `flowData` sans utilisation de `JSON.stringify`, soit on ajuste le backend pour gérer la chaîne correctement.
+
+
+Réflexion durant 1m 17s
+
+
+Le fait que ton modal se ferme et se rouvre sans rien avoir sauvegardé vient en général de deux causes :
+
+1. **On envoie un JSON `flow_json` encodé en string** (double-encodage)
+2. **On ferme la modal avant que la requête PUT ne soit terminée**
+
+---
+
+## 1. Envoyer `flow_json` comme objet, pas comme chaîne
+
+Dans **workflow-editor (1).js**, tu as :
+
+```js
+const flowData = {
+  nodes: this.nodes,
+  edges: this.edges
+};
+
+const workflowData = {
+  name: this.workflowName,
+  description: this.workflowDescription,
+  flow_json: JSON.stringify(flowData)   // ← ici on stringify…
+};
+```
+
+Le back-end stocke donc la chaîne JSON littérale (avec des guillemets échappés), et à la relecture, `JSON.parse` ne donne pas un objet `{nodes:…, edges:…}` mais… une chaîne, donc pas de .nodes ni .edges → rien n’est recréé.
+
+**Solution** : n’encode plus `flowData` en string, laisse-le tel quel :
+
+```diff
+-  flow_json: JSON.stringify(flowData)
++  flow_json: flowData
+```
+
+Le `body: JSON.stringify(workflowData)` continuera de générer un JSON correct :
+
+```js
+const workflowData = {
+  name: this.workflowName,
+  description: this.workflowDescription,
+  flow_json: flowData       // ← on passe l’objet directement
+};
+
+await fetch(`/api/workflows/${this.workflowId}`, {
+  method: 'PUT',
+  headers,
+  body: JSON.stringify(workflowData)
+});
+```
+
+À la lecture, comme `typeof workflow.flow_json === 'object'`, le code fera :
+
+```js
+flowData = workflow.flow_json;  // un vrai objet nodes/edges
+```
+
+et tes nœuds/arêtes seront recréés normalement.
+
+---
+
+## 2. Attendre la fin de la sauvegarde avant de fermer la modal
+
+Si tu fermes ta modal immédiatement après avoir lancé `saveWorkflow()`, la requête peut être coupée ou arriver **après** le rechargement, donc tu retrouves l’ancien état vide.
+
+Assure-toi d’**await**er l’appel et de ne fermer la modal qu’à la réception de l’événement `workflowSaved` :
+
+```js
+// Exemple dans workflows.html, au listener du bouton “Sauvegarder”
+saveWorkflowEditor.addEventListener('click', async () => {
+  if (!window.workflowEditor) return;
+  try {
+    await window.workflowEditor.saveWorkflow();        // on attend la fin
+    // seulement une fois le succès confirmé :
+    closeModal();                                      // ta fonction de fermeture
+  } catch (err) {
+    console.error('Échec de la sauvegarde', err);
+    // la notif d’erreur est déjà gérée par saveWorkflow()
+  }
+});
+```
+
+Ou, si tu préfères t’appuyer sur l’événement interne :
+
+```js
+window.workflowEditor.on('workflowSaved', () => {
+  closeModal();
+});
+saveWorkflowEditor.addEventListener('click', () => {
+  window.workflowEditor.saveWorkflow();
+});
+```
+
+---
+
+### En résumé
+
+1. **Ne plus faire** `flow_json: JSON.stringify(flowData)`, mais **`flow_json: flowData`**.
+2. **Await** la fin de `saveWorkflow()` (ou écoute `workflowSaved`) avant de fermer la modal.
+
+Avec ces deux adjusts, ton PUT enverra un vrai JSON d’arêtes/nœuds, et tu le réouvriras **une fois** le back-end à jour, donc tu verras ton workflow restauré.

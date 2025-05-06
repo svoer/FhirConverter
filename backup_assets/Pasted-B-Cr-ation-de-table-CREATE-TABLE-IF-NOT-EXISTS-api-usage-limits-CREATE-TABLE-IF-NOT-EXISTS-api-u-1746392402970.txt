@@ -1,0 +1,850 @@
+B] Création de table: CREATE TABLE IF NOT EXISTS api_usage_limits (
+CREATE TABLE IF NOT EXISTS api_usage_limits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL,
+    api_key_id INTEGER,
+    daily_limit INTEGER DEFAULT 1000,
+    monthly_limit INTEGER DEFAULT 10000,
+    current_daily_usage INTEGER DEFAULT 0,
+    current_monthly_usage INTEGER DEFAULT 0,
+    last_reset_daily DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_reset_monthly DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+  )
+[DB] Création de table: CREATE TABLE IF NOT EXISTS ai_providers (
+CREATE TABLE IF NOT EXISTS ai_providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_name TEXT NOT NULL,
+    api_key TEXT NOT NULL,
+    api_url TEXT,
+    models TEXT, 
+    status TEXT NOT NULL DEFAULT 'active',
+    enabled BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_used_at DATETIME,
+    usage_count INTEGER DEFAULT 0,
+    monthly_quota INTEGER,
+    current_usage INTEGER DEFAULT 0,
+    settings TEXT,
+    test_result TEXT,
+    UNIQUE(provider_name)
+  )
+[DB] Création de table: CREATE TABLE IF NOT EXISTS workflows (
+CREATE TABLE IF NOT EXISTS workflows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_active INTEGER DEFAULT 1,
+    flow_json TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+  )
+[DB] Création de table: CREATE TABLE IF NOT EXISTS system_logs (
+CREATE TABLE IF NOT EXISTS system_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    details TEXT,
+    severity TEXT NOT NULL DEFAULT 'INFO',
+    user_id INTEGER,
+    ip_address TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  )
+SELECT name FROM sqlite_master WHERE type='table' AND name='users'
+[DB] Vérification des tables créées: { lastID: 0, changes: 0 }
+SELECT id FROM users WHERE username = 'admin'
+[DB] Création de l'application par défaut et de la clé API de développement
+INSERT OR IGNORE INTO applications (name, description, created_by) SELECT 'Application par défaut', 'Application générée automatiq'/*+29 bytes*/, (SELECT id FROM users WHERE username = 'admin')
+INSERT OR IGNORE INTO api_keys (application_id, key, hashed_key, description, is_active, created_at) SELECT (SELECT id FROM applications WHERE name = 'Application par défaut'), 'dev-key', '7e9f8fd111802be56c379d597842e29b'/*+32 bytes*/, 'Clé de développement pour test'/*+1 bytes*/, 1, CURRENT_TIMESTAMP
+[DB] Structure de la base de données vérifiée
+[WORKFLOW] Initialisation de l'éditeur de workflow visuel personnalisé
+[WORKFLOW] Service de workflow initialisé avec succès
+GET /convert.html 200 5.070 ms - 7339
+GET /css/styles.css 200 0.949 ms - 10799
+GET /css/sidebar-menu.css 200 2.759 ms - 8958
+GET /css/support-chatbot.css 200 2.694 ms - 6266
+GET /js/support-chatbot.js 200 2.674 ms - 13123
+GET /js/include-sidebar.js 200 2.672 ms - 11764
+GET /js/sidebar-menu-new.js 200 2.207 ms - 11624
+GET /includes/sidebar.html 200 0.571 ms - 4051
+GET /img/flame-icon-white.svg 200 0.921 ms - 763
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+SELECT created_by FROM applications WHERE id = 1.0
+SELECT * FROM users WHERE id = 1.0
+[AUTH] API Key associée à l'utilisateur admin (ID: 1)
+[API] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Message HL7 parsé avec succès: 2 types de segments
+[CONVERTER] Message HL7 parsé avec succès: 2 types de segments
+[CONVERTER] Extraction des identifiants à partir de: ["458722781","","","CENTRE_HOSPITALIER_DE_TEST","PI"]
+[CONVERTER] Traitement élément #0 du tableau
+[CONVERTER] Extraction des identifiants à partir de: "458722781"
+[CONVERTER] Traitement identifiant: 458722781 type: PI autorité: 
+[CONVERTER] 1 identifiants extraits - INS: false, IPP: true
+[CONVERTER] Traitement élément #1 du tableau
+[CONVERTER] Extraction des identifiants à partir de: ""
+[CONVERTER] Pas d'identifiants fournis
+[CONVERTER] Traitement élément #2 du tableau
+[CONVERTER] Extraction des identifiants à partir de: ""
+[CONVERTER] Pas d'identifiants fournis
+[CONVERTER] Traitement élément #3 du tableau
+[CONVERTER] Extraction des identifiants à partir de: "CENTRE_HOSPITALIER_DE_TEST"
+[CONVERTER] Traitement identifiant: CENTRE_HOSPITALIER_DE_TEST type: PI autorité: 
+[CONVERTER] 1 identifiants extraits - INS: false, IPP: true
+[CONVERTER] Traitement élément #4 du tableau
+[CONVERTER] Extraction des identifiants à partir de: "PI"
+[CONVERTER] Traitement identifiant: PI type: PI autorité: 
+[CONVERTER] 1 identifiants extraits - INS: false, IPP: true
+[CONVERTER] 3 identifiants extraits - INS: false, IPP: true
+[CONVERTER] PID-13 (Home Phone): [["0123456789","PRN","CP"],["email@test.fr","NET","",""]]
+[CONVERTER] PID-14 (Work Phone): ""
+[CONVERTER] Extraction des télécom à partir de: [["0123456789","PRN","CP"],["email@test.fr","NET","",""]] ...
+[CONVERTER] Télécom personnel (simple) ajouté: {"value":"0123456789","use":"home","system":"phone"}
+[CONVERTER] Télécom personnel (simple) ajouté: {"value":"email@test.fr","use":"home","system":"phone"}
+[CONVERTER] Numéro de téléphone invalide ignoré: email@test.fr
+[CONVERTER] Total de télécom extraits: 1
+[CONVERTER] Extraction des noms à partir de: ["SECLET","MARYSE BERTHE ALICE"]
+[CONVERTER] Traitement des noms (tableau): ["SECLET","MARYSE BERTHE ALICE"]
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Nom ajouté: {"use":"official","family":"SECLET"}
+[FRENCH_NAME_EXTRACTOR] Nom avec plusieurs parties: MARYSE BERTHE ALICE
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Nom ajouté: {"use":"official","family":"MARYSE","given":["BERTHE","ALICE"]}
+[CONVERTER] Total noms extraits: 2
+[CONVERTER] Gender field received: string F
+[CONVERTER] Extraction des adresses à partir de: ["123 AVENUE DES HÔPITAUX","","PARIS","","75001","FRANCE","H"] ...
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","line":["123 AVENUE DES HÔPITAUX"]}
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","line":["PARIS"]}
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","line":["75001"]}
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","line":["FRANCE"]}
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","line":["H"]}
+[CONVERTER] Total d'adresses extraites: 5
+[CONVERTER] Nom d'organisation semble être un horodatage: 20230801101530
+[CONVERTER] Nom d'organisation remplacé par: Établissement destinataire
+[CONVERTER] Aucun segment ROL trouvé dans le message
+[CONVERTER] 0 ressources Encounter trouvées dans le bundle pour enrichissement
+[CONVERTER] Conversion terminée avec 3 ressources FHIR générées
+[CONVERTER] Conversion effectuée, temps: 4ms
+[CACHE] Nouvelle entrée: 95943ff4... (total: 1)
+[API] Conversion terminée en 5ms avec 3 ressources générées
+[CONVERSION LOG ERROR] table conversion_logs has no column named input_message
+POST /api/convert 200 16.874 ms - 1700
+GET /applications.html 200 1.485 ms - 22797
+GET /css/styles.css 304 0.430 ms - -
+GET /css/sidebar-menu.css 304 1.064 ms - -
+GET /css/support-chatbot.css 304 1.121 ms - -
+GET /js/support-chatbot.js 304 1.319 ms - -
+GET /js/include-sidebar.js 304 1.411 ms - -
+GET /js/sidebar-menu-new.js 304 0.176 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 3.686 ms - 645
+GET /includes/sidebar.html 304 0.319 ms - -
+GET /img/flame-icon-white.svg 304 0.279 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT * FROM applications WHERE id = '3'
+DELETE FROM api_keys WHERE application_id = '3'
+DELETE FROM applications WHERE id = '3'
+DELETE /api/applications/3 200 27.537 ms - 64
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 1.991 ms - 435
+SELECT * FROM users WHERE id = 1.0
+SELECT * FROM applications WHERE id = '2'
+DELETE FROM api_keys WHERE application_id = '2'
+DELETE FROM applications WHERE id = '2'
+DELETE /api/applications/2 200 27.658 ms - 64
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 2.417 ms - 235
+SELECT * FROM users WHERE id = 1.0
+SELECT * FROM applications WHERE id = '1'
+DELETE FROM api_keys WHERE application_id = '1'
+DELETE FROM applications WHERE id = '1'
+DELETE /api/applications/1 200 43.105 ms - 64
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 1.963 ms - 26
+GET /api-keys.html 200 1.512 ms - 27075
+GET /css/styles.css 304 0.362 ms - -
+GET /css/sidebar-menu.css 304 0.316 ms - -
+GET /js/sidebar-menu-new.js 304 0.373 ms - -
+GET /js/include-sidebar.js 304 0.235 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      ORDER BY ak.created_at DESC
+    
+GET /api/api-keys 200 1.918 ms - 26
+GET /includes/sidebar.html 304 2.083 ms - -
+GET /img/flame-icon-white.svg 304 0.367 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 2.386 ms - -
+GET /applications.html 304 0.686 ms - -
+GET /css/styles.css 304 0.736 ms - -
+GET /css/sidebar-menu.css 304 0.804 ms - -
+GET /css/support-chatbot.css 304 0.201 ms - -
+GET /js/support-chatbot.js 304 0.668 ms - -
+GET /js/include-sidebar.js 304 0.728 ms - -
+GET /js/sidebar-menu-new.js 304 0.745 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 1.560 ms - -
+GET /includes/sidebar.html 304 1.632 ms - -
+GET /img/flame-icon-white.svg 304 0.282 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT id FROM applications WHERE name = 'App test'
+SELECT id FROM users WHERE username = 'admin'
+
+      INSERT INTO applications (
+        name, description, cors_origins, settings, created_at, updated_at, created_by
+      ) VALUES ('App test', NULL, NULL, '"{\"max_conversions_per_day\":10'/*+32 bytes*/, datetime('now'), datetime('now'), 1.0)
+    
+SELECT * FROM applications WHERE id = 4.0
+POST /api/applications 201 31.133 ms - 250
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 200 1.299 ms - 161
+GET /api-keys.html 304 0.662 ms - -
+GET /css/styles.css 304 0.269 ms - -
+GET /css/sidebar-menu.css 304 0.630 ms - -
+GET /js/include-sidebar.js 304 0.462 ms - -
+GET /js/sidebar-menu-new.js 304 0.269 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      ORDER BY ak.created_at DESC
+    
+GET /api/api-keys 304 1.445 ms - -
+GET /includes/sidebar.html 304 1.496 ms - -
+GET /img/flame-icon-white.svg 304 0.256 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 2.230 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT id FROM applications WHERE id = 4.0
+[API KEYS ERROR] SqliteError: table api_keys has no column named name
+    at Database.prepare (/home/sv/FhirConverter/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at /home/sv/FhirConverter/routes/api-keys.js:182:23
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at authCombinedMiddleware (/home/sv/FhirConverter/middleware/authCombined.js:105:7)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at /home/sv/FhirConverter/node_modules/express/lib/router/index.js:284:15 {
+  code: 'SQLITE_ERROR'
+}
+POST /api/api-keys 500 4.228 ms - 92
+GET /users.html 200 1.027 ms - 24945
+GET /css/styles.css 304 0.347 ms - -
+GET /css/sidebar-menu.css 304 0.527 ms - -
+GET /js/include-sidebar.js 304 0.595 ms - -
+GET /js/sidebar-menu-new.js 304 0.150 ms - -
+SELECT * FROM users WHERE id = 1.0
+SELECT id, username, role, created_at FROM users
+GET /api/users 200 1.942 ms - 103
+GET /includes/sidebar.html 304 2.406 ms - -
+GET /img/flame-icon-white.svg 304 0.358 ms - -
+GET /terminologies.html 200 0.811 ms - 60063
+GET /css/styles.css 304 0.356 ms - -
+GET /css/sidebar-menu.css 304 0.508 ms - -
+GET /css/admin.css 200 2.206 ms - 9581
+GET /js/auth-utils.js 200 2.057 ms - 6387
+GET /js/include-sidebar.js 304 0.487 ms - -
+GET /js/sidebar-menu-new.js 304 0.493 ms - -
+GET /css/support-chatbot.css 304 0.664 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/french 200 9.499 ms - 6803
+GET /js/support-chatbot.js 304 9.788 ms - -
+GET /includes/sidebar.html 304 0.458 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 200 1.884 ms - 982
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 304 1.479 ms - -
+GET /img/flame-icon-white.svg 304 0.230 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+[TERMINOLOGY] Démarrage du rafraîchissement des statistiques
+[TERMINOLOGY] Rafraîchissement terminé. 16 systèmes, 7 OIDs, 267 CodeSystems, 267 ValueSets.
+POST /api/terminology/refresh 200 11.442 ms - 215
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+[TERMINOLOGY] Analyse de 11 fichiers terminée. 534 éléments trouvés, 534 systèmes et 7 OIDs.
+POST /api/terminology/analyze 200 10.163 ms - 1945
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/french 304 12.082 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 304 1.166 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 304 1.092 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+[TERMINOLOGY] Démarrage du rafraîchissement des statistiques
+[TERMINOLOGY] Rafraîchissement terminé. 16 systèmes, 7 OIDs, 267 CodeSystems, 267 ValueSets.
+POST /api/terminology/refresh 200 11.368 ms - 215
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+[TERMINOLOGY] Analyse de 11 fichiers terminée. 534 éléments trouvés, 534 systèmes et 7 OIDs.
+POST /api/terminology/analyze 200 8.749 ms - 1945
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/french 304 12.650 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 304 1.557 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+GET /api/terminology/files 304 1.261 ms - -
+GET /workflows.html 200 1.050 ms - 78800
+GET /css/styles.css 304 0.324 ms - -
+GET /css/workflow-editor.css 200 0.542 ms - 25381
+GET /css/workflows.css 200 0.606 ms - 10409
+GET /css/workflow-templates.css 200 0.451 ms - 8394
+GET /css/sidebar-menu.css 304 0.308 ms - -
+GET /img/flame-icon-white.svg 304 0.340 ms - -
+GET /js/auth-utils.js 304 0.167 ms - -
+GET /js/workflow-editor.js 200 0.346 ms - 219026
+GET /js/workflow-templates.js 200 0.378 ms - 37313
+GET /js/workflow-integration.js 200 0.291 ms - 37779
+GET /js/include-sidebar.js 304 0.266 ms - -
+GET /js/sidebar-menu-new.js 304 0.201 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 200 1.560 ms - 2
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 2.047 ms - -
+GET /includes/sidebar.html 304 2.057 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 304 1.286 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      INSERT INTO workflows (
+        application_id, name, description, is_active, flow_json
+      ) VALUES (4.0, 'TEST', '', 1.0, '[]')
+    
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+[WORKFLOW] Workflow "TEST" créé avec succès
+POST /api/workflows 201 26.851 ms - 189
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 200 1.711 ms - 191
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+GET /api/workflows/1 200 2.002 ms - 189
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+
+        UPDATE workflows 
+        SET name = '', description = '', flow_json = '{"nodes":[{"id":"node_1","type":'/*+284 bytes*/, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+[WORKFLOW] Workflow avec l'ID 1 mis à jour avec succès
+PUT /api/workflows/1 200 26.897 ms - 559
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+GET /api/workflows/1 200 1.866 ms - 559
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      WHERE w.id = 1.0
+    
+DELETE FROM workflows WHERE id = 1.0
+[WORKFLOW] Workflow avec l'ID 1 supprimé avec succès
+DELETE /api/workflows/1 200 26.485 ms - 45
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 200 1.981 ms - 2
+GET /ai-settings.html 200 0.924 ms - 40716
+GET /css/styles.css 304 0.266 ms - -
+GET /css/admin.css 304 0.441 ms - -
+GET /css/sidebar-menu.css 304 0.389 ms - -
+GET /js/auth-utils.js 304 0.277 ms - -
+GET /js/include-sidebar.js 304 0.300 ms - -
+GET /js/sidebar-menu-new.js 304 0.263 ms - -
+SELECT * FROM users WHERE id = 1.0
+[AI] Initialisation du service AI Provider...
+[AI] Service AI Provider initialisé avec succès
+SELECT * FROM ai_providers ORDER BY created_at DESC
+GET /api/ai-providers 304 2.458 ms - -
+GET /includes/sidebar.html 304 2.520 ms - -
+SELECT * FROM users WHERE id = 1.0
+GET /api/ai-providers/supported 304 1.418 ms - -
+GET /img/flame-icon-white.svg 304 1.462 ms - -
+GET /documentation.html 200 0.663 ms - 68191
+GET /css/styles.css 304 0.265 ms - -
+GET /css/sidebar-menu.css 304 0.651 ms - -
+GET /js/include-sidebar.js 304 0.681 ms - -
+GET /js/sidebar-menu-new.js 304 0.698 ms - -
+GET /includes/sidebar.html 304 0.274 ms - -
+GET /img/flame-icon-white.svg 304 0.371 ms - -
+GET /convert.html 304 0.419 ms - -
+GET /css/styles.css 304 0.259 ms - -
+GET /css/sidebar-menu.css 304 0.932 ms - -
+GET /css/support-chatbot.css 304 0.964 ms - -
+GET /js/support-chatbot.js 304 0.967 ms - -
+GET /js/include-sidebar.js 304 1.036 ms - -
+GET /js/sidebar-menu-new.js 304 0.275 ms - -
+GET /includes/sidebar.html 304 0.288 ms - -
+GET /img/flame-icon-white.svg 304 0.256 ms - -
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+[API] Démarrage de la conversion HL7 vers FHIR
+[CACHE] Hit: 95943ff4... (1/2)
+[CONVERTER] Utilisation du cache, temps: 0ms
+[API] Conversion terminée en 0ms avec 3 ressources générées (depuis le cache)
+[CONVERSION LOG ERROR] table conversion_logs has no column named input_message
+POST /api/convert 200 1.770 ms - 1699
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+[API] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Démarrage de la conversion HL7 vers FHIR
+[CONVERTER] Message HL7 parsé avec succès: 13 types de segments
+[CONVERTER] Message HL7 parsé avec succès: 13 types de segments
+[CONVERTER] Extraction des identifiants à partir de: [["1174024","","",["MCK","1.2.250.1.211.10.200.1","ISO"],"PI"],["1121717802492545833548","","",["ASIP-SANTE-INS-C","1.2.250.1.213.1.4.2","ISO"],"INS-C","","20170215"],["160059932710027","","",["ASIP-S
+[CONVERTER] Traitement élément #0 du tableau
+[CONVERTER] Analysant identifiant tableau: 1174024 PI [ 'MCK', '1.2.250.1.211.10.200.1', 'ISO' ] 
+[CONVERTER] IPP détecté dans tableau: 1174024
+[CONVERTER] Traitement élément #1 du tableau
+[CONVERTER] Analysant identifiant tableau: 1121717802492545833548 INS-C [ 'ASIP-SANTE-INS-C', '1.2.250.1.213.1.4.2', 'ISO' ] 
+[CONVERTER] INS détecté dans tableau: 1121717802492545833548
+[CONVERTER] Traitement élément #2 du tableau
+[CONVERTER] Identifiant INS détecté dans PID: 160059932710027 INS [ 'ASIP-SANTE-INS-NIR', '1.2.250.1.213.1.4.8', 'ISO' ]
+[CONVERTER] Analysant identifiant tableau: 160059932710027 INS [ 'ASIP-SANTE-INS-NIR', '1.2.250.1.213.1.4.8', 'ISO' ] 
+[CONVERTER] INS détecté dans tableau: 160059932710027
+[CONVERTER] 1 identifiants INS spécifiques détectés
+[CONVERTER] 3 identifiants extraits - INS: true, IPP: true
+[CONVERTER] PID-13 (Home Phone): [["0696039637","PRN","PH"],["0596000093","PRN","PH"],["0696039637","PRN","CP"]]
+[CONVERTER] PID-14 (Work Phone): ""
+[CONVERTER] Extraction des télécom à partir de: [["0696039637","PRN","PH"],["0596000093","PRN","PH"],["0696039637","PRN","CP"]] ...
+[CONVERTER] Télécom personnel (simple) ajouté: {"value":"0696039637","use":"home","system":"phone"}
+[CONVERTER] Téléphone mobile français détecté: 0696039637
+[CONVERTER] Télécom personnel (simple) ajouté: {"value":"0596000093","use":"home","system":"phone"}
+[CONVERTER] Télécom personnel (simple) ajouté: {"value":"0696039637","use":"home","system":"phone"}
+[CONVERTER] Téléphone mobile français détecté: 0696039637
+[CONVERTER] Télécom ignoré car doublon: phone|mobile|0696039637
+[CONVERTER] Total de télécom extraits: 2
+[CONVERTER] Extraction des noms à partir de: ["YEHOUESSI","HERMAS JEAN RICHARD","HERMAS JEAN RICHARD","","","","L"]
+[CONVERTER] Traitement des noms (tableau): ["YEHOUESSI","HERMAS JEAN RICHARD","HERMAS JEAN RICHARD","","","","L"]
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Nom ajouté: {"use":"official","family":"YEHOUESSI"}
+[FRENCH_NAME_EXTRACTOR] Prénom composé détecté: HERMAS JEAN RICHARD
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Prénoms ajoutés à un nom de famille existant: {"use":"official","family":"YEHOUESSI","given":["HERMAS","JEAN","RICHARD"]}
+[FRENCH_NAME_EXTRACTOR] Prénom composé détecté: HERMAS JEAN RICHARD
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Prénoms ignorés car identiques à ceux existants avec le même nom de famille
+[FRENCH_NAME_EXTRACTOR] Total de noms extraits: 1
+[CONVERTER] Ignoré nom avec uniquement la lettre L
+[CONVERTER] Total noms extraits: 1
+[CONVERTER] Gender field received: string M
+[CONVERTER] Extraction des adresses à partir de: [["8  AVENUE CONDORCET","","FORT DE FRANCE","","97200","FRA","H"],["","","","","","UNK","C"],["","","PORTO NUEVO","","99327","BEN","BDL","","99327"]] ...
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"physical","line":["8  AVENUE CONDORCET"],"city":"FORT DE FRANCE","postalCode":"97200","country":"FRA"}
+[CONVERTER] Adresse extraite (simple): {"use":"temp","type":"postal","country":"UNK"}
+[CONVERTER] Adresse extraite (simple): {"use":"home","type":"both","city":"PORTO NUEVO","postalCode":"99327","country":"BEN"}
+[CONVERTER] Total d'adresses extraites: 3
+[CONVERTER] Nom d'organisation semble être un horodatage: 20250417050534
+[CONVERTER] Nom d'organisation remplacé par: Établissement destinataire
+[CONVERTER] Traitement de segments ROL: 1 segment(s) trouvé(s)
+[CONVERTER] Référence d'Encounter trouvée: urn:uuid:1b8dc6a4-4c72-4fe7-b147-fbc0c9fd38ad
+[CONVERTER] Traitement du segment ROL #1: ["ROL","","UC","ODRP",[["971219175","MERAUT SALOMON","RENEE","","","","","","",["ADELI","2.16.840.1....
+[CONVERTER] Segment ROL complet: ["ROL","","UC","ODRP",[["971219175","MERAUT SALOMON","RENEE","","","","","","",["ADELI","2.16.840.1.113883.3.31.2.2","ISO"],"","","ADELI"],["1238140","MERAUT SALOMON","RENEE","","","","","","",["MCK","1.2.250.1.211.12.1.1","ISO"],"","","EI"]],"","","","","","",[["8    AVECONDORCET","","","","97200","UNK","H"],["8    AVECONDORCET","","FORT DE FRANCE","","97200","UNK","H","","","","","EDI"]]]
+[CONVERTER] Analyse du segment ROL-4 pour praticien: object
+[CONVERTER] Ressource Practitioner créée avec succès: urn:uuid:practitioner-56e79f7c-2257-405f-943c-d4a93fb88771
+[CONVERTER] Ressource PractitionerRole créée avec succès
+[CONVERTER] Création de ressource RelatedPerson à partir de: ["NK1","1",["YEHOUESSI","ELENA"],["OTH","","IHE","SPO","FEMME","MCK"],[["","","","","","UNK","H"],["","","","","","UNK","H","","","","","EDI"]],"","","C","","","","","","","","","","","","","","","","
+[CONVERTER] Type de NK1-2: object Valeur: ["YEHOUESSI","ELENA"]
+[CONVERTER] Parsing de NK1-2 (tableau): ["YEHOUESSI","ELENA"]
+[CONVERTER] Type de NK1-3: object Valeur: ["OTH","","IHE","SPO","FEMME","MCK"]
+[CONVERTER] Parsing de NK1-3 (tableau): ["OTH","","IHE","SPO","FEMME","MCK"]
+[CONVERTER] Date de fin de couverture définie: 2025-12-31
+[CONVERTER] INS détecté dans le dernier champ IN1: 160059932710027
+[CONVERTER] 1 ressources Encounter trouvées dans le bundle pour enrichissement
+[CONVERTER] Conversion terminée avec 8 ressources FHIR générées
+[CONVERTER] Conversion effectuée, temps: 4ms
+[CACHE] Nouvelle entrée: dd4071d9... (total: 2)
+[API] Conversion terminée en 4ms avec 8 ressources générées
+[CONVERSION LOG ERROR] table conversion_logs has no column named input_message
+POST /api/convert 200 5.779 ms - 6955
+GET /workflows.html 304 0.328 ms - -
+GET /css/styles.css 304 0.345 ms - -
+GET /css/workflow-editor.css 304 1.079 ms - -
+GET /css/workflows.css 304 0.985 ms - -
+GET /css/sidebar-menu.css 304 1.021 ms - -
+GET /css/workflow-templates.css 304 1.106 ms - -
+GET /img/flame-icon-white.svg 304 1.122 ms - -
+GET /js/auth-utils.js 304 0.248 ms - -
+GET /js/workflow-editor.js 304 1.030 ms - -
+GET /js/workflow-templates.js 304 0.996 ms - -
+GET /js/workflow-integration.js 304 1.625 ms - -
+GET /js/include-sidebar.js 304 1.646 ms - -
+GET /js/sidebar-menu-new.js 304 1.648 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 304 1.089 ms - -
+SELECT * FROM users WHERE id = 1.0
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 1.541 ms - -
+GET /includes/sidebar.html 304 1.631 ms - -
+
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = 1.0
+      
+
+      SELECT w.*, a.name as application_name
+      FROM workflows w
+      JOIN applications a ON w.application_id = a.id
+      ORDER BY w.updated_at DESC
+    
+GET /api/workflows 304 1.355 ms - -
+GET /convert.html 304 0.581 ms - -
+GET /css/styles.css 304 0.293 ms - -
+GET /css/sidebar-menu.css 304 0.512 ms - -
+GET /css/support-chatbot.css 304 0.547 ms - -
+GET /js/support-chatbot.js 304 0.413 ms - -
+GET /js/include-sidebar.js 304 0.486 ms - -
+GET /js/sidebar-menu-new.js 304 0.517 ms - -
+GET /includes/sidebar.html 304 0.222 ms - -
+GET /img/flame-icon-white.svg 304 0.290 ms - -
+GET /dashboard.html 200 0.651 ms - 19166
+GET /css/styles.css 304 0.285 ms - -
+GET /css/sidebar-menu.css 304 0.644 ms - -
+GET /css/support-chatbot.css 304 0.467 ms - -
+GET /js/support-chatbot.js 304 0.247 ms - -
+GET /js/include-sidebar.js 304 0.197 ms - -
+GET /js/sidebar-menu-new.js 304 0.183 ms - -
+SELECT COUNT(*) as count FROM conversion_logs
+[STATS ERROR] SqliteError: no such column: resource_count
+    at Database.prepare (/home/sv/FhirConverter/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at /home/sv/FhirConverter/app.js:690:32
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at /home/sv/FhirConverter/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/sv/FhirConverter/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/sv/FhirConverter/node_modules/serve-static/index.js:121:7) {
+  code: 'SQLITE_ERROR'
+}
+GET /api/stats 500 2.193 ms - 82
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 1.804 ms - -
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      ORDER BY ak.created_at DESC
+    
+GET /api/api-keys 304 2.163 ms - -
+[AI] Récupération des fournisseurs d'IA actifs pour le chatbot
+SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY created_at DESC
+[AI] 0 fournisseurs d'IA actifs trouvés
+GET /api/ai/providers/active 304 1.312 ms - -
+GET /includes/sidebar.html 304 1.173 ms - -
+[AI] Récupération des fournisseurs d'IA actifs pour le chatbot
+SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY created_at DESC
+[AI] 0 fournisseurs d'IA actifs trouvés
+GET /api/ai/providers/active 304 0.867 ms - -
+GET /img/flame-icon-white.svg 304 0.362 ms - -
+GET /convert.html 304 0.347 ms - -
+GET /css/styles.css 304 0.365 ms - -
+GET /css/sidebar-menu.css 304 1.763 ms - -
+GET /css/support-chatbot.css 304 1.816 ms - -
+GET /js/support-chatbot.js 304 1.870 ms - -
+GET /js/include-sidebar.js 304 1.918 ms - -
+GET /js/sidebar-menu-new.js 304 1.237 ms - -
+GET /includes/sidebar.html 304 0.240 ms - -
+GET /img/flame-icon-white.svg 304 0.261 ms - -
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+[API] Démarrage de la conversion HL7 vers FHIR
+[CACHE] Hit: 95943ff4... (2/4)
+[CONVERTER] Utilisation du cache, temps: 0ms
+[API] Conversion terminée en 0ms avec 3 ressources générées (depuis le cache)
+[CONVERSION LOG ERROR] table conversion_logs has no column named input_message
+POST /api/convert 200 1.030 ms - 1699
+GET /dashboard.html 304 0.373 ms - -
+GET /css/styles.css 304 0.246 ms - -
+GET /css/sidebar-menu.css 304 0.394 ms - -
+GET /css/support-chatbot.css 304 0.492 ms - -
+GET /js/support-chatbot.js 304 0.263 ms - -
+GET /js/include-sidebar.js 304 0.320 ms - -
+GET /js/sidebar-menu-new.js 304 0.326 ms - -
+SELECT COUNT(*) as count FROM conversion_logs
+[STATS ERROR] SqliteError: no such column: resource_count
+    at Database.prepare (/home/sv/FhirConverter/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at /home/sv/FhirConverter/app.js:690:32
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/sv/FhirConverter/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/sv/FhirConverter/node_modules/express/lib/router/layer.js:95:5)
+    at /home/sv/FhirConverter/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/sv/FhirConverter/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/sv/FhirConverter/node_modules/express/lib/router/index.js:280:10)
+    at SendStream.error (/home/sv/FhirConverter/node_modules/serve-static/index.js:121:7) {
+  code: 'SQLITE_ERROR'
+}
+GET /api/stats 500 0.963 ms - 82
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+
+      SELECT id, name, description, cors_origins, created_at, updated_at
+      FROM applications
+      ORDER BY name ASC
+    
+GET /api/applications 304 1.253 ms - -
+
+          SELECT ak.*, a.name as app_name
+          FROM api_keys ak
+          JOIN applications a ON ak.application_id = a.id
+          WHERE ak.key = 'dev-key' AND ak.is_active = 1
+        
+
+      SELECT ak.*, a.name as application_name
+      FROM api_keys ak
+      JOIN applications a ON ak.application_id = a.id
+      ORDER BY ak.created_at DESC
+    
+GET /api/api-keys 304 1.546 ms - -
+[AI] Récupération des fournisseurs d'IA actifs pour le chatbot
+SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY created_at DESC
+[AI] 0 fournisseurs d'IA actifs trouvés
+GET /api/ai/providers/active 304 0.899 ms - -
+GET /includes/sidebar.html 304 0.895 ms - -
+[AI] Récupération des fournisseurs d'IA actifs pour le chatbot
+SELECT * FROM ai_providers WHERE enabled = 1 ORDER BY created_at DESC
+[AI] 0 fournisseurs d'IA actifs trouvés
+GET /api/ai/providers/active 304 0.607 ms - -
+GET /img/flame-icon-white.svg 304 0.330 ms - -
