@@ -501,15 +501,15 @@
           
           <div class="app-stats">
             <div class="stat-item">
-              <div class="stat-value">0</div>
+              <div class="stat-value">${app.stats ? app.stats.conversionsToday : 0}</div>
               <div class="stat-label">Conversions aujourd'hui</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">0</div>
+              <div class="stat-value">${app.stats ? app.stats.apiKeys : 0}</div>
               <div class="stat-label">Clés API</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">0</div>
+              <div class="stat-value">${app.stats ? app.stats.errors : 0}</div>
               <div class="stat-label">Erreurs</div>
             </div>
             <div class="stat-item">
@@ -537,6 +537,79 @@
           showDeleteModal(appId);
         });
       });
+    }
+    
+    // Fonction pour récupérer les statistiques d'une application
+    async function fetchApplicationStats(appId) {
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Récupérer les clés API associées à l'application
+        const appResponse = await fetch(`/api/applications/${appId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        // Récupérer l'historique des conversions pour cette application
+        const conversionsResponse = await fetch(`/api/applications/${appId}/conversions`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!appResponse.ok || !conversionsResponse.ok) {
+          throw new Error('Erreur lors de la récupération des statistiques');
+        }
+        
+        const appData = await appResponse.json();
+        const conversionsData = await conversionsResponse.json();
+        
+        // Nombre de clés API pour cette application
+        let apiKeysCount = 0;
+        if (appData.success && appData.data && appData.data.api_keys) {
+          apiKeysCount = appData.data.api_keys.length;
+        }
+        
+        // Calculer les conversions d'aujourd'hui
+        let todayConversions = 0;
+        let errorsCount = 0;
+        
+        if (conversionsData.success && conversionsData.data && conversionsData.data.conversions) {
+          const logs = conversionsData.data.conversions;
+          const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+          
+          // Filtrer les conversions d'aujourd'hui
+          logs.forEach(log => {
+            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
+            if (logDate === today) {
+              todayConversions++;
+              if (log.status === 'error') {
+                errorsCount++;
+              }
+            }
+          });
+          
+          // Si nous n'avons pas pu filtrer les conversions d'aujourd'hui (par exemple, si le format de date est différent)
+          // utilisons le compteur total comme approximation
+          if (todayConversions === 0 && conversionsData.data.totalCount > 0) {
+            todayConversions = conversionsData.data.totalCount;
+          }
+        }
+        
+        return {
+          conversionsToday: todayConversions,
+          apiKeys: apiKeysCount,
+          errors: errorsCount
+        };
+      } catch (error) {
+        console.error('Erreur lors de la récupération des statistiques de l\'application:', error);
+        return {
+          conversionsToday: 0,
+          apiKeys: 0,
+          errors: 0
+        };
+      }
     }
     
     // Afficher le modal pour ajouter une application
