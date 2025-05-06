@@ -209,32 +209,42 @@ async function getAppStats(applicationId) {
     );
     
     // Récupérer les statistiques quotidiennes des 30 derniers jours
-    const daily = await dbService.query(
-      `SELECT 
-        date(timestamp) as date,
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
-        SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as error_count,
-        AVG(processing_time) as avg_processing_time
-      FROM conversion_logs
-      WHERE application_id = ? AND timestamp > datetime('now', '-30 days')
-      GROUP BY date(timestamp)
-      ORDER BY date(timestamp) DESC`,
-      [applicationId]
-    );
+    let daily = [];
+    try {
+      daily = await dbService.query(
+        `SELECT 
+          date(timestamp) as date,
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as success_count,
+          SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as error_count,
+          AVG(processing_time) as avg_processing_time
+        FROM conversion_logs
+        WHERE application_id = ? AND timestamp > datetime('now', '-30 days')
+        GROUP BY date(timestamp)
+        ORDER BY date(timestamp) DESC`,
+        [applicationId]
+      );
+    } catch (error) {
+      console.error('[CONVERSION-LOG] Erreur lors de la récupération des statistiques quotidiennes:', error);
+    }
     
     // Récupérer les 10 conversions les plus récentes
-    const recent = await dbService.query(
-      `SELECT 
-        c.id, c.input_message as source_type, c.status, c.processing_time, c.timestamp as created_at,
-        k.description as api_key_name
-      FROM conversion_logs c
-      LEFT JOIN api_keys k ON c.api_key_id = k.id
-      WHERE c.application_id = ?
-      ORDER BY c.timestamp DESC
-      LIMIT 10`,
-      [applicationId]
-    );
+    let recent = [];
+    try {
+      recent = await dbService.query(
+        `SELECT 
+          c.id, c.input_message as source_type, c.status, c.processing_time, c.timestamp as created_at,
+          k.description as api_key_name
+        FROM conversion_logs c
+        LEFT JOIN api_keys k ON c.api_key_id = k.id
+        WHERE c.application_id = ?
+        ORDER BY c.timestamp DESC
+        LIMIT 10`,
+        [applicationId]
+      );
+    } catch (error) {
+      console.error('[CONVERSION-LOG] Erreur lors de la récupération des conversions récentes:', error);
+    }
     
     return {
       general,
