@@ -442,9 +442,23 @@ async function sendAIRequest(provider, messages) {
     let modelsList = [];
     if (models) {
       try {
-        modelsList = JSON.parse(models);
+        // Correction 2025-05-06: Gestion plus robuste du parsing des modèles
+        if (typeof models === 'string') {
+          if (models.startsWith('[') && models.endsWith(']')) {
+            // Format JSON array
+            modelsList = JSON.parse(models);
+          } else if (models.includes(',')) {
+            // Format séparé par des virgules
+            modelsList = models.split(',').map(m => m.trim());
+          } else {
+            // Format de modèle unique
+            modelsList = [models.trim()];
+          }
+        }
       } catch (error) {
         console.warn(`Erreur de parsing des modèles pour ${providerName}:`, error);
+        // Fallback en cas d'erreur
+        modelsList = models.startsWith('[') ? [] : [models];
       }
     }
     
