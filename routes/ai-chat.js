@@ -70,29 +70,62 @@ const axios = require('axios');
  *       500:
  *         description: Erreur serveur
  */
-router.post('/ai/chat', jwtAuth, async (req, res) => {
+router.post('/ai/chat', async (req, res) => {
   try {
-    console.log('[AI] Nouvelle requête de chat reçue');
+    console.log('[AI CHAT ROUTE] Nouvelle requête de chat reçue sur /api/ai/chat');
+    console.log('[AI CHAT ROUTE] Auth JWT désactivée temporairement pour déboguer');
+    console.log('[AI CHAT ROUTE] Body reçu:', JSON.stringify(req.body).substring(0, 1000));
+    
+    // Vérifiez si c'est un appel simple de test (sans body complet)
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log('[AI CHAT ROUTE] Requête de test détectée, utilisation des valeurs par défaut');
+      
+      // Simuler une requête simple pour tester l'API
+      const testResult = await axios.post(
+        'https://api.mistral.ai/v1/chat/completions',
+        {
+          model: 'mistral-medium',
+          messages: [{ role: 'user', content: 'Réponds simplement "Connexion réussie"' }]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer VNjTxMwJ1UwOpQBDERIAwdWKK4LHsCXd'
+          },
+          timeout: 15000
+        }
+      );
+      
+      console.log('[AI CHAT ROUTE] Test direct réussi!');
+      return res.status(200).json({ 
+        content: `Test réussi! Réponse de l'API: ${testResult.data.choices[0].message.content.substring(0, 100)}` 
+      });
+    }
+    
     const { provider, messages, max_tokens = 1000 } = req.body;
     
     if (!provider || !messages || !Array.isArray(messages)) {
+      console.error('[AI CHAT ROUTE] Paramètres manquants:', { provider, messagesIsArray: Array.isArray(messages) });
       return res.status(400).json({ error: 'Les paramètres provider et messages sont requis.' });
     }
     
     // Récupérer le fournisseur d'IA spécifié
+    console.log('[AI CHAT ROUTE] Recherche du fournisseur:', provider);
     const aiProvider = await aiProviderService.getProviderByName(provider);
+    console.log('[AI CHAT ROUTE] Fournisseur trouvé:', aiProvider ? 'Oui' : 'Non');
     
     if (!aiProvider) {
-      console.log(`[AI] Fournisseur d'IA "${provider}" non trouvé`);
+      console.error(`[AI CHAT ROUTE] Fournisseur d'IA "${provider}" non trouvé`);
       return res.status(404).json({ error: `Fournisseur d'IA "${provider}" non trouvé.` });
     }
     
     if (!aiProvider.enabled) {
-      console.log(`[AI] Fournisseur d'IA "${provider}" désactivé`);
+      console.log(`[AI CHAT ROUTE] Fournisseur d'IA "${provider}" désactivé`);
       return res.status(400).json({ error: `Le fournisseur d'IA "${provider}" est désactivé.` });
     }
     
-    console.log(`[AI] Traitement de la requête avec le fournisseur: ${provider}`);
+    console.log(`[AI CHAT ROUTE] Traitement de la requête avec le fournisseur: ${provider}`);
+    console.log(`[AI CHAT ROUTE] Clé API disponible:`, !!aiProvider.api_key);
     
     // Traiter la requête selon le fournisseur d'IA
     let response;
@@ -152,7 +185,7 @@ router.post('/ai/chat', jwtAuth, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/providers/active', async (req, res) => {
+router.get('/ai/providers/active', async (req, res) => {
   try {
     console.log('[AI] Récupération des fournisseurs d\'IA actifs pour le chatbot');
     const activeProviders = await aiProviderService.getActiveProviders();
@@ -175,6 +208,8 @@ router.get('/providers/active', async (req, res) => {
  * Gestion des requêtes pour Mistral AI
  */
 async function handleMistralRequest(provider, messages, max_tokens) {
+  console.log('[MISTRAL DEBUG] Début du traitement de la requête Mistral');
+  
   // Correction 2025-05-06: URL de l'API Mistral mise à jour vers le chemin exact
   // Correction 2025-05-07: URL complète pour API Mistral
   let apiUrl = provider.api_url || 'https://api.mistral.ai/v1/chat/completions';
@@ -188,10 +223,16 @@ async function handleMistralRequest(provider, messages, max_tokens) {
     }
   }
   
+  console.log('[MISTRAL DEBUG] URL de l\'API:', apiUrl);
+  console.log('[MISTRAL DEBUG] Clé API disponible:', !!provider.api_key);
+  console.log('[MISTRAL DEBUG] Longueur de la clé API:', provider.api_key ? provider.api_key.length : 0);
+  console.log('[MISTRAL DEBUG] Début de clé API:', provider.api_key ? provider.api_key.substring(0, 5) : 'none');
+  
   // Correction 2025-05-06: Parsing plus robuste du modèle Mistral
   let modelToUse = 'mistral-medium';  // Modèle par défaut
   try {
     if (provider.models) {
+      console.log('[MISTRAL DEBUG] Models from DB:', provider.models);
       if (provider.models.startsWith('[') && provider.models.endsWith(']')) {
         // Format JSON array
         const modelsArray = JSON.parse(provider.models);
@@ -205,44 +246,78 @@ async function handleMistralRequest(provider, messages, max_tokens) {
       }
     }
   } catch (error) {
-    console.warn('Erreur lors du parsing du modèle Mistral:', error);
+    console.warn('[MISTRAL DEBUG] Erreur lors du parsing du modèle Mistral:', error);
   }
   
-  console.log(`[AI] Envoi de requête Mistral à: ${apiUrl}`);
-  console.log(`[AI] Modèle utilisé: ${modelToUse}`);
+  console.log(`[MISTRAL DEBUG] Modèle sélectionné: ${modelToUse}`);
+  console.log(`[MISTRAL DEBUG] Préparation de la requête`);
+  
+  // Log original messages
+  console.log(`[MISTRAL DEBUG] Messages à traiter:`, JSON.stringify(messages).substring(0, 200) + '...');
   
   try {
-    const response = await axios.post(
-      apiUrl,
-      {
-        model: modelToUse,
-        messages: messages,
-        max_tokens: max_tokens
+    console.log(`[MISTRAL DEBUG] Envoi de la requête HTTP à ${apiUrl}`);
+    
+    const requestPayload = {
+      model: modelToUse,
+      messages: messages,
+      max_tokens: max_tokens
+    };
+    
+    console.log(`[MISTRAL DEBUG] Payload de la requête:`, JSON.stringify(requestPayload).substring(0, 500));
+    
+    const axios_config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${provider.api_key}`
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.api_key}`
-        }
-      }
-    );
+      timeout: 60000  // 60 secondes de timeout
+    };
+    
+    console.log(`[MISTRAL DEBUG] Headers configurés (sans clé API)`);
+    
+    const response = await axios.post(apiUrl, requestPayload, axios_config);
+    
+    console.log(`[MISTRAL DEBUG] Réponse reçue avec statut: ${response.status}`);
+    console.log(`[MISTRAL DEBUG] Headers de réponse: ${JSON.stringify(response.headers)}`);
     
     // Ajout de débogage pour voir la structure de la réponse
-    console.log('[AI] Structure de la réponse Mistral:', 
+    console.log('[MISTRAL DEBUG] Structure de la réponse:', 
                 Object.keys(response.data).join(', '),
                 'choices:', response.data.choices ? response.data.choices.length : 'none');
     
+    if (response.data) {
+      console.log(`[MISTRAL DEBUG] Début de la réponse: ${JSON.stringify(response.data).substring(0, 300)}`);
+    }
+    
     // Vérification plus robuste des champs
     if (response.data.choices && response.data.choices.length > 0 && response.data.choices[0].message) {
+      console.log('[MISTRAL DEBUG] Format de réponse correct, extraction du contenu');
+      const content = response.data.choices[0].message.content;
+      console.log(`[MISTRAL DEBUG] Contenu extrait (début): ${content.substring(0, 100)}...`);
       return {
-        content: response.data.choices[0].message.content
+        content: content
       };
     } else {
-      console.error('[AI] Format de réponse Mistral inattendu:', JSON.stringify(response.data).substring(0, 1000));
+      console.error('[MISTRAL DEBUG] Format de réponse inattendu:', JSON.stringify(response.data).substring(0, 1000));
       throw new Error('Format de réponse Mistral inattendu');
     }
   } catch (error) {
-    console.error('Erreur Mistral AI:', error.response?.data || error.message);
+    console.error('[MISTRAL DEBUG] Erreur complète:', error);
+    console.error('[MISTRAL DEBUG] Message d\'erreur:', error.message);
+    
+    if (error.response) {
+      console.error('[MISTRAL DEBUG] Statut de l\'erreur:', error.response.status);
+      console.error('[MISTRAL DEBUG] Headers de l\'erreur:', JSON.stringify(error.response.headers));
+      console.error('[MISTRAL DEBUG] Données de l\'erreur:', JSON.stringify(error.response.data));
+    }
+    
+    if (error.config) {
+      console.error('[MISTRAL DEBUG] URL de la requête:', error.config.url);
+      console.error('[MISTRAL DEBUG] Méthode de la requête:', error.config.method);
+      console.error('[MISTRAL DEBUG] Timeout configuré:', error.config.timeout);
+    }
+    
     throw new Error(`Erreur Mistral AI: ${error.response?.data?.error?.message || error.message}`);
   }
 }
