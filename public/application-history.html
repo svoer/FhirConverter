@@ -160,18 +160,27 @@
         }
 
         .pagination button {
-            background-color: #5a6268;
+            background: linear-gradient(135deg, #ff5e62, #ff9966);
             color: white;
             border: none;
             padding: 8px 15px;
             margin: 0 5px;
             border-radius: 4px;
             cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ff5258, #ff8c59);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
         }
 
         .pagination button:disabled {
-            opacity: 0.6;
+            background: #e0e0e0;
+            color: #a0a0a0;
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         .back-link {
@@ -287,12 +296,12 @@
             <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo" class="navbar-logo">
             <span class="navbar-title">FHIRHub</span>
         </div>
-        <div class="navbar-menu">
-            <a href="/dashboard.html" class="navbar-item">Tableau de bord</a>
-            <a href="/applications.html" class="navbar-item active">Applications</a>
-            <a href="/api-keys.html" class="navbar-item">Clés API</a>
-            <a href="/users.html" class="navbar-item">Utilisateurs</a>
-            <a href="/logout" id="logoutBtn" class="navbar-item logout">Déconnexion</a>
+        <div class="navbar-menu" style="display: flex; gap: 15px;">
+            <a href="/dashboard.html" style="color: white; text-decoration: none; font-weight: 500; padding: 5px 10px;">Tableau de bord</a>
+            <a href="/applications.html" style="color: white; text-decoration: none; font-weight: 500; padding: 5px 10px; background-color: rgba(255,255,255,0.2); border-radius: 4px;">Applications</a>
+            <a href="/api-keys.html" style="color: white; text-decoration: none; font-weight: 500; padding: 5px 10px;">Clés API</a>
+            <a href="/users.html" style="color: white; text-decoration: none; font-weight: 500; padding: 5px 10px;">Utilisateurs</a>
+            <a href="/logout" id="logoutBtn" style="color: white; text-decoration: none; font-weight: 500; padding: 5px 10px; margin-left: auto;">Déconnexion</a>
         </div>
     </header>
 
@@ -556,14 +565,14 @@
                     </td>
                     <td>${conversion.processing_time || 0} ms</td>
                     <td>
-                        <button class="view-details-btn" data-id="${conversion.id}" data-app-id="${appId}">Détails</button>
+                        <button style="padding: 6px 12px; background: linear-gradient(135deg, #ff5e62, #ff9966); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" data-id="${conversion.id}" data-app-id="${appId}">Détails</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
             
             // Ajouter des gestionnaires d'événements pour les boutons de détails
-            document.querySelectorAll('.view-details-btn').forEach(button => {
+            document.querySelectorAll('button[data-id]').forEach(button => {
                 button.addEventListener('click', function() {
                     const conversionId = this.dataset.id;
                     const appId = this.dataset.appId;
