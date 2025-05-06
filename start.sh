@@ -81,6 +81,18 @@ if [ ! -f "./app.js" ]; then
   error_exit "Structure du projet incorrecte. Le fichier app.js n'a pas été trouvé. Vérifiez que vous êtes dans le bon répertoire."
 fi
 
+# Création des nouveaux dossiers avec la structure optimisée
+echo -e "${BLUE}Création de la nouvelle structure de répertoires optimisée...${NC}"
+STORAGE_DIR="./storage"
+DB_DIR="${STORAGE_DIR}/db"
+DATA_DIR="${STORAGE_DIR}/data"
+LOGS_DIR="${STORAGE_DIR}/logs"
+BACKUPS_DIR="${STORAGE_DIR}/backups"
+
+# Créer les répertoires de la nouvelle structure
+mkdir -p "${DB_DIR}" "${DATA_DIR}" "${DATA_DIR}/workflows" "${LOGS_DIR}" "${BACKUPS_DIR}"
+echo -e "${GREEN}✅ Structure de répertoires optimisée pour Docker mise en place${NC}"
+
 # Vérification du fichier .env
 echo -e "${BLUE}[2/6] Vérification de la configuration...${NC}"
 if [ ! -f "./.env" ]; then
@@ -155,7 +167,7 @@ fi
 
 # Vérification de SQLite
 echo -e "${BLUE}Vérification de la base de données SQLite...${NC}"
-DB_PATH=$(grep -oP "(?<=DB_PATH=).*" .env 2>/dev/null || echo "./data/fhirhub.db")
+DB_PATH=$(grep -oP "(?<=DB_PATH=).*" .env 2>/dev/null || echo "./storage/db/fhirhub.db")
 DB_DIR=$(dirname "$DB_PATH")
 
 # Vérifier que le dossier contenant la base de données existe
@@ -163,6 +175,8 @@ if [ ! -d "$DB_DIR" ]; then
   echo -e "${YELLOW}Création du dossier pour la base de données: $DB_DIR${NC}"
   mkdir -p "$DB_DIR" || error_exit "Impossible de créer le dossier $DB_DIR pour la base de données"
   echo -e "${GREEN}✅ Dossier de base de données créé${NC}"
+else
+  echo -e "${GREEN}✅ Dossier de base de données déjà existant${NC}"
 fi
 
 # Tester si sqlite3 est disponible pour les opérations de diagnostic
@@ -268,17 +282,7 @@ if command -v dnf &> /dev/null; then
   fi
 fi
 
-# Création des nouveaux dossiers avec la structure optimisée
-echo -e "${BLUE}Création de la nouvelle structure de répertoires optimisée...${NC}"
-STORAGE_DIR="./storage"
-DB_DIR="${STORAGE_DIR}/db"
-DATA_DIR="${STORAGE_DIR}/data"
-LOGS_DIR="${STORAGE_DIR}/logs"
-BACKUPS_DIR="${STORAGE_DIR}/backups"
-
-# Créer les répertoires de la nouvelle structure
-mkdir -p "${DB_DIR}" "${DATA_DIR}" "${DATA_DIR}/workflows" "${LOGS_DIR}" "${BACKUPS_DIR}"
-
+# Migrer les données vers la nouvelle structure
 # Vérifier si la migration est nécessaire
 if [ -d "./data" ] && [ ! -f "${DB_DIR}/fhirhub.db" ] && [ -f "./data/fhirhub.db" ]; then
   echo -e "${YELLOW}Migration de l'ancienne base de données vers la nouvelle structure...${NC}"
@@ -294,8 +298,6 @@ if [ -d "./data/workflows" ] && [ ! -z "$(ls -A ./data/workflows 2>/dev/null)" ]
   echo -e "${GREEN}✅ Workflows migrés avec succès${NC}" ||
   echo -e "${RED}❌ Échec de la migration des workflows${NC}"
 fi
-
-echo -e "${GREEN}✅ Structure de répertoires optimisée pour Docker mise en place${NC}"
 
 # Vérification de l'installation Python pour les scripts auxiliaires
 echo -e "${BLUE}[5/6] Vérification de Python...${NC}"
