@@ -14,10 +14,10 @@ echo -e "${BLUE}=== Initialisation de l'environnement Docker pour FHIRHub ===${N
 
 # Création des répertoires pour les volumes
 echo -e "${YELLOW}Création des répertoires pour les volumes Docker...${NC}"
-mkdir -p volumes/data volumes/logs volumes/backups volumes/french_terminology
+mkdir -p volumes/db volumes/data volumes/logs volumes/backups volumes/french_terminology
 
 # Vérification si les répertoires existent
-if [ -d "volumes/data" ] && [ -d "volumes/logs" ] && [ -d "volumes/backups" ] && [ -d "volumes/french_terminology" ]; then
+if [ -d "volumes/db" ] && [ -d "volumes/data" ] && [ -d "volumes/logs" ] && [ -d "volumes/backups" ] && [ -d "volumes/french_terminology" ]; then
   echo -e "${GREEN}✓ Structure des répertoires pour les volumes créée avec succès${NC}"
 else
   echo -e "${RED}× Erreur lors de la création des répertoires${NC}"
@@ -39,6 +39,7 @@ if [ ! -f ".env" ]; then
 # Configuration FHIRHub Docker
 PORT=5000
 JWT_SECRET=fhirhub-secure-jwt-secret-change-me
+DB_DIR=./volumes/db
 DATA_DIR=./volumes/data
 LOGS_DIR=./volumes/logs
 BACKUPS_DIR=./volumes/backups
