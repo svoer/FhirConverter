@@ -322,6 +322,7 @@
     <!-- Script pour gérer la version dans le footer -->
     <script src="/js/footer-version.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Charger les composants d'interface
         document.addEventListener('DOMContentLoaded', function() {
@@ -335,6 +336,12 @@
             // Récupérer l'ID de l'application depuis l'URL (format /application-history.html?id=X)
             const urlParams = new URLSearchParams(window.location.search);
             const appId = urlParams.get('id');
+            
+            if (!appId) {
+                alert('ID d\'application manquant. Redirection vers la liste des applications.');
+                window.location.href = '/applications.html';
+                return;
+            }
             
             // Charger les données de l'application
             fetchApplicationData(appId);
@@ -445,12 +452,7 @@
                     responsive: true,
                     scales: {
                         x: {
-                            stacked: true,
-                            type: 'time',
-                            time: {
-                                unit: 'day',
-                                tooltipFormat: 'dd/MM/yyyy'
-                            }
+                            stacked: true
                         },
                         y: {
                             stacked: true,
@@ -497,12 +499,19 @@
                 return;
             }
             
+            // Récupérer l'ID de l'application depuis l'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const appId = urlParams.get('id');
+            
             conversions.forEach(conversion => {
                 const row = document.createElement('tr');
+                // Déterminer le type basé sur la présence d'un message d'entrée
+                const type = conversion.input_message || conversion.hl7_content ? 'HL7' : 'API';
+                
                 row.innerHTML = `
                     <td>${conversion.id}</td>
                     <td>${formatDate(conversion.timestamp || conversion.created_at)}</td>
-                    <td>${conversion.input_message ? 'HL7' : 'API'}</td>
+                    <td>${type}</td>
                     <td>
                         <span class="status-badge ${conversion.status === 'success' ? 'status-success' : 'status-error'}">
                             ${conversion.status === 'success' ? 'Succès' : 'Échec'}
@@ -510,7 +519,7 @@
                     </td>
                     <td>${conversion.processing_time || 0} ms</td>
                     <td>
-                        <button class="view-details-btn" data-id="${conversion.id}">Détails</button>
+                        <button class="view-details-btn" data-id="${conversion.id}" data-app-id="${appId}">Détails</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -520,6 +529,7 @@
             document.querySelectorAll('.view-details-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const conversionId = this.dataset.id;
+                    const appId = this.dataset.appId;
                     showConversionDetails(appId, conversionId);
                 });
             });
