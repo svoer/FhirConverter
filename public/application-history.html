@@ -233,9 +233,9 @@
                     document.getElementById('sidebar-container').innerHTML = data;
                 });
             
-            // Récupérer l'ID de l'application depuis l'URL
-            const urlParts = window.location.pathname.split('/');
-            const appId = urlParts[2]; // Format /applications/:id/history
+            // Récupérer l'ID de l'application depuis l'URL (format /application-history.html?id=X)
+            const urlParams = new URLSearchParams(window.location.search);
+            const appId = urlParams.get('id');
             
             // Charger les données de l'application
             fetchApplicationData(appId);
