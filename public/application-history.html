@@ -131,11 +131,23 @@
     </style>
 </head>
 <body>
-    <!-- Inclure le header -->
-    <div id="header-container"></div>
+    <!-- Header fixe -->
+    <header class="navbar">
+        <div class="navbar-brand">
+            <img src="/img/flame-icon-white.svg" alt="FHIRHub Logo" class="navbar-logo">
+            <span class="navbar-title">FHIRHub</span>
+        </div>
+        <div class="navbar-menu">
+            <a href="/dashboard.html" class="navbar-item">Tableau de bord</a>
+            <a href="/applications.html" class="navbar-item active">Applications</a>
+            <a href="/api-keys.html" class="navbar-item">Clés API</a>
+            <a href="/users.html" class="navbar-item">Utilisateurs</a>
+            <a href="/logout" id="logoutBtn" class="navbar-item logout">Déconnexion</a>
+        </div>
+    </header>
 
     <div class="main-content">
-        <!-- Inclure la sidebar -->
+        <!-- Inclure la sidebar via JS -->
         <div id="sidebar-container"></div>
 
         <div class="content">
@@ -220,13 +232,7 @@
     <script>
         // Charger les composants d'interface
         document.addEventListener('DOMContentLoaded', function() {
-            // Charger le header et la sidebar
-            fetch('/includes/header.html')
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('header-container').innerHTML = data;
-                });
-
+            // Charger la sidebar uniquement - le header est maintenant en HTML direct
             fetch('/includes/sidebar.html')
                 .then(response => response.text())
                 .then(data => {
