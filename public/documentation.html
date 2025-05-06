@@ -1715,6 +1715,167 @@ http://localhost:5000  # Identifiants : admin / adminfhirhub</pre>
         <p>Le système de terminologie est hautement extensible et permet d'ajouter facilement de nouveaux mappings pour d'autres systèmes de santé régionaux.</p>
       </div>
       
+      <div id="nomenclatures-medicales" class="documentation-section">
+        <h2>Gestion des Nomenclatures Médicales</h2>
+        <p>FHIRHub intègre un système complet de gestion des nomenclatures médicales françaises, essentiel pour assurer la conformité avec les standards de l'ANS (Agence du Numérique en Santé) et faciliter l'interopérabilité dans l'écosystème de santé français.</p>
+        
+        <div class="info-box">
+          <p><strong>Fonctionnement hors-ligne garanti :</strong> Toutes les terminologies sont préchargées dans l'application, permettant une utilisation complète sans connexion Internet et sans appels vers des serveurs de terminologie externes.</p>
+        </div>
+        
+        <h3>Nomenclatures prises en charge</h3>
+        <p>FHIRHub intègre nativement les principales nomenclatures médicales utilisées dans le système de santé français :</p>
+        
+        <div class="tech-spec">
+          <div class="tech-spec-title">Principales terminologies intégrées</div>
+          <table class="terminology-mapping">
+            <thead>
+              <tr>
+                <th>Terminologie</th>
+                <th>Description</th>
+                <th>Utilisation dans FHIRHub</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>CIM-10</strong></td>
+                <td>Classification Internationale des Maladies, 10ème révision</td>
+                <td>Codage des diagnostics et pathologies</td>
+              </tr>
+              <tr>
+                <td><strong>CCAM</strong></td>
+                <td>Classification Commune des Actes Médicaux</td>
+                <td>Codage des actes médicaux</td>
+              </tr>
+              <tr>
+                <td><strong>LOINC</strong></td>
+                <td>Logical Observation Identifiers Names and Codes</td>
+                <td>Codage des observations biologiques et examens</td>
+              </tr>
+              <tr>
+                <td><strong>ATC</strong></td>
+                <td>Anatomical Therapeutic Chemical</td>
+                <td>Classification des médicaments</td>
+              </tr>
+              <tr>
+                <td><strong>UCD</strong></td>
+                <td>Unité Commune de Dispensation</td>
+                <td>Identification des médicaments en France</td>
+              </tr>
+              <tr>
+                <td><strong>SNOMED CT</strong></td>
+                <td>Systematized Nomenclature of Medicine — Clinical Terms</td>
+                <td>Terminologie clinique (version française)</td>
+              </tr>
+              <tr>
+                <td><strong>RPPS</strong></td>
+                <td>Répertoire Partagé des Professionnels de Santé</td>
+                <td>Identification des professionnels de santé</td>
+              </tr>
+              <tr>
+                <td><strong>FINESS</strong></td>
+                <td>Fichier National des Établissements Sanitaires et Sociaux</td>
+                <td>Identification des établissements de santé</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <h3>Architecture du système de terminologies</h3>
+        <p>Le système de gestion des terminologies s'articule autour de plusieurs composants techniques :</p>
+        
+        <div class="workflow-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Fichiers de terminologie préchargés</div>
+            <div class="step-description">Stockés dans le répertoire <span class="code-highlight">french_terminology/</span>, ces fichiers JSON contiennent les mappings entre codes et libellés.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Service d'adaptation terminologique</div>
+            <div class="step-description">Le module <span class="code-highlight">french_terminology_adapter.js</span> fournit des fonctions de conversion entre les différents systèmes de codage.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Cache de terminologie</div>
+            <div class="step-description">Optimise les performances en stockant les résultats de recherche fréquents en mémoire.</div>
+          </div>
+        </div>
+        
+        <div class="workflow-step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">API de recherche terminologique</div>
+            <div class="step-description">Endpoints RESTful pour rechercher des codes et leurs descriptions (/api/terminology).</div>
+          </div>
+        </div>
+        
+        <h3>Exemple d'implémentation</h3>
+        <pre class="code-block">/**
+ * Recherche un code dans la terminologie spécifiée
+ * @param {string} system - Système de terminologie (ex: "CIM-10", "CCAM")
+ * @param {string} code - Code à rechercher
+ * @returns {Promise<Object>} Informations sur le code trouvé
+ */
+async function findCodeInTerminology(system, code) {
+  // Vérifier dans le cache d'abord
+  const cacheKey = `${system}:${code}`;
+  if (terminologyCache.has(cacheKey)) {
+    return terminologyCache.get(cacheKey);
+  }
+  
+  // Construire le chemin du fichier selon le système
+  const systemFileName = getSystemFileName(system);
+  const filePath = path.join(__dirname, 'french_terminology', systemFileName);
+  
+  try {
+    // Lire le fichier de terminologie
+    const terminologyData = JSON.parse(await fs.promises.readFile(filePath, 'utf8'));
+    
+    // Rechercher le code
+    const codeEntry = terminologyData.concepts.find(entry => entry.code === code);
+    
+    if (codeEntry) {
+      // Mettre en cache pour les futures requêtes
+      terminologyCache.set(cacheKey, codeEntry);
+      return codeEntry;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Erreur lors de la recherche du code ${code} dans ${system}:`, error);
+    return null;
+  }
+}</pre>
+        
+        <h3>Mise à jour des terminologies</h3>
+        <p>Le système inclut des scripts de mise à jour des terminologies qui peuvent être exécutés pour mettre à jour les données sans nécessiter une réinstallation complète :</p>
+        
+        <div class="code-block">
+          <p><span class="code-keyword">python</span> get_french_terminology.py <span class="code-comment"># Télécharge les dernières versions des terminologies</span></p>
+          <p><span class="code-keyword">python</span> extract_french_systems.py <span class="code-comment"># Extrait et formate les données pour l'utilisation dans FHIRHub</span></p>
+        </div>
+        
+        <div class="tip-box">
+          <p><strong>Astuce :</strong> Pour les déploiements en environnement sécurisé sans accès Internet, vous pouvez précharger les fichiers de terminologie et les inclure dans votre package d'installation.</p>
+        </div>
+        
+        <h3>Extension du système de terminologie</h3>
+        <p>Le système de terminologie peut être étendu pour prendre en charge des nomenclatures spécifiques à un établissement ou à une région :</p>
+        
+        <ol>
+          <li>Créez un nouveau fichier JSON dans le format standard dans le répertoire <span class="code-highlight">french_terminology/</span>.</li>
+          <li>Ajoutez une entrée dans le fichier <span class="code-highlight">ans_terminology_systems.json</span> pour référencer votre nouvelle terminologie.</li>
+          <li>Redémarrez l'application pour charger la nouvelle terminologie.</li>
+        </ol>
+      </div>
+      
       <div id="prerequites" class="documentation-section">
         <h2>Prérequis et installation</h2>
         <p>FHIRHub est conçu pour être facilement déployable avec un minimum de dépendances.</p>
