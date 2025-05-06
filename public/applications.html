@@ -54,10 +54,49 @@
     }
     .stat-item {
       text-align: center;
+      position: relative;
     }
     .stat-value {
       font-size: 20px;
       font-weight: 700;
+      transition: all 0.3s ease;
+    }
+    .stat-value.highlight {
+      color: #e94e31;
+      animation: pulse 1.5s;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .refresh-stats {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #f1f1f1;
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 12px;
+      color: #555;
+      transition: all 0.2s ease;
+    }
+    .refresh-stats:hover {
+      background: #e0e0e0;
+    }
+    .refresh-stats.rotating i {
+      animation: spin 1s linear infinite;
+    }
       color: #3498db;
       margin-bottom: 5px;
     }
@@ -481,6 +520,51 @@
       }
     }
     
+    // Fonction pour rafraîchir les statistiques d'une application spécifique  
+    async function refreshAppStats(appId) {
+      try {
+        // Récupérer les statistiques actualisées
+        const statsData = await fetchApplicationStats(appId);
+        
+        console.log(`Statistiques rafraîchies pour l'application ${appId}:`, statsData);
+        
+        // Mettre à jour l'affichage des statistiques dans le DOM
+        const conversionsElement = document.getElementById(`app-${appId}-conversions`);
+        const apiKeysElement = document.getElementById(`app-${appId}-apikeys`);
+        const errorsElement = document.getElementById(`app-${appId}-errors`);
+        
+        if (conversionsElement) {
+          // Sauvegarder l'ancienne valeur pour la comparaison
+          const oldValue = parseInt(conversionsElement.textContent);
+          const newValue = parseInt(statsData.conversionsToday) || 0;
+          
+          // Mettre à jour la valeur
+          conversionsElement.textContent = newValue;
+          
+          // Ajouter une animation si la valeur a changé
+          if (oldValue !== newValue) {
+            conversionsElement.classList.add('highlight');
+            setTimeout(() => {
+              conversionsElement.classList.remove('highlight');
+            }, 1500);
+          }
+        }
+        
+        if (apiKeysElement) {
+          apiKeysElement.textContent = statsData.apiKeys;
+        }
+        
+        if (errorsElement) {
+          errorsElement.textContent = statsData.errors;
+        }
+        
+        return statsData;
+      } catch (error) {
+        console.error(`Erreur lors du rafraîchissement des statistiques pour l'application ${appId}:`, error);
+        return null;
+      }
+    }
+    
     // Afficher les applications dans la liste
     function renderApplications(applications) {
       const appsList = document.getElementById('applicationsList');
@@ -515,6 +599,7 @@
         
         const appCard = document.createElement('div');
         appCard.className = 'app-card';
+        appCard.dataset.appId = app.id;
         appCard.innerHTML = `
           <div class="app-header">
             <h2 class="app-title">${app.name}</h2>
@@ -556,15 +641,16 @@
           
           <div class="app-stats">
             <div class="stat-item">
-              <div class="stat-value">${conversionsToday}</div>
+              <span class="refresh-stats" data-id="${app.id}" title="Rafraîchir les statistiques"><i class="fas fa-sync-alt"></i></span>
+              <div id="app-${app.id}-conversions" class="stat-value">${conversionsToday}</div>
               <div class="stat-label">Conversions aujourd'hui</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">${apiKeys}</div>
+              <div id="app-${app.id}-apikeys" class="stat-value">${apiKeys}</div>
               <div class="stat-label">Clés API</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">${errors}</div>
+              <div id="app-${app.id}-errors" class="stat-value">${errors}</div>
               <div class="stat-label">Erreurs</div>
             </div>
             <div class="stat-item">
@@ -592,6 +678,37 @@
           showDeleteModal(appId);
         });
       });
+      
+      // Ajouter l'événement pour rafraîchir les statistiques en temps réel
+      document.querySelectorAll('.refresh-stats').forEach(button => {
+        button.addEventListener('click', async function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // Obtenir l'ID de l'application
+          const appId = this.getAttribute('data-id');
+          
+          // Ajouter la classe de rotation pour indiquer le chargement
+          this.classList.add('rotating');
+          
+          // Mettre à jour les statistiques
+          await refreshAppStats(appId);
+          
+          // Retirer la classe de rotation
+          this.classList.remove('rotating');
+        });
+      });
+      
+      // Configurer une rafraîchissement automatique toutes les 30 secondes
+      setInterval(() => {
+        console.log("Rafraîchissement automatique des statistiques...");
+        document.querySelectorAll('.app-card').forEach(card => {
+          const appId = card.dataset.appId;
+          if (appId) {
+            refreshAppStats(appId);
+          }
+        });
+      }, 30000);
     }
     
     // Fonction pour récupérer les statistiques d'une application
