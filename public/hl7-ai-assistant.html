@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assistant IA HL7-FHIR - FHIRHub</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/sidebar-menu.css">
+  <link rel="stylesheet" href="/css/support-chatbot.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="/js/auth-utils.js" defer></script>
+  
+  <!-- Inclusion du menu latéral -->
+  <script src="/js/include-sidebar.js" defer></script>
+  <script src="/js/sidebar-menu-new.js" defer></script>
+  
+  <style>
+    .ai-assistant-container {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 2rem;
+      height: calc(100vh - 200px);
+      min-height: 500px;
+    }
+    
+    .input-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: #fff;
+      box-shadow: var(--box-shadow);
+    }
+    
+    .output-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: #fff;
+      box-shadow: var(--box-shadow);
+    }
+    
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      background-color: #f8f9fa;
+    }
+    
+    .panel-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+    
+    .panel-body {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .input-tabs {
+      display: flex;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .input-tab {
+      padding: 0.5rem 1rem;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      background-color: #f8f9fa;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      font-weight: 500;
+      color: #666;
+      transition: all 0.2s ease;
+    }
+    
+    .input-tab.active {
+      background-color: #fff;
+      border-color: var(--border-color);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+    
+    .input-tab:hover:not(.active) {
+      background-color: #eaeaea;
+    }
+    
+    .tab-content {
+      display: none;
+      height: 100%;
+    }
+    
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    .text-area-container {
+      position: relative;
+      flex: 1;
+      margin-bottom: 1rem;
+    }
+    
+    .text-area-container textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+      resize: none;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+    
+    .text-area-container .editor-overlay {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 0.5rem;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: 0 4px 0 4px;
+    }
+    
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    
+    .output-content {
+      height: 100%;
+      padding: 1rem;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    
+    .output-placeholder {
+      display: flex;
+      height: 100%;
+      justify-content: center;
+      align-items: center;
+      color: #999;
+      font-style: italic;
+    }
+    
+    .ai-response {
+      background-color: #f8f9fa;
+      border-left: 4px solid var(--primary-color);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 0 4px 4px 0;
+      overflow-wrap: break-word;
+    }
+    
+    .ai-response pre {
+      background-color: #272822;
+      color: #f8f8f2;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+    
+    .ai-metadata {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #eee;
+    }
+    
+    .file-upload-area {
+      border: 2px dashed var(--border-color);
+      padding: 2rem;
+      text-align: center;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .file-upload-area:hover {
+      border-color: var(--primary-color);
+      background-color: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    .file-upload-area i {
+      font-size: 2rem;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+      display: block;
+    }
+    
+    .file-info {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.5rem;
+      border: 1px solid var(--success-color);
+      background-color: rgba(var(--success-rgb), 0.1);
+      border-radius: 4px;
+    }
+    
+    .loading-indicator {
+      display: none;
+      text-align: center;
+      padding: 1rem;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 4px solid var(--primary-color);
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 1rem;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .examples-container {
+      margin-top: 1rem;
+    }
+    
+    .example-title {
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+    }
+    
+    .example-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .example-button {
+      font-size: 0.8rem;
+      padding: 0.5rem 0.75rem;
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .example-button:hover {
+      background-color: #e0e0e0;
+      border-color: #ccc;
+    }
+    
+    .analysis-section {
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .analysis-section:last-child {
+      border-bottom: none;
+    }
+    
+    .analysis-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+    
+    .analysis-content {
+      line-height: 1.6;
+    }
+    
+    .comparison-view {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .comparison-column {
+      flex: 1;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #eee;
+    }
+    
+    .comparison-column h4 {
+      margin-top: 0;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+    
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+    }
+    
+    .tooltip .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: #555;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+      color: #fff;
+      background-color: var(--primary-color);
+    }
+    
+    .badge-success {
+      background-color: var(--success-color);
+    }
+    
+    .badge-warning {
+      background-color: var(--warning-color);
+    }
+    
+    .badge-danger {
+      background-color: var(--error-color);
+    }
+    
+    .badge-info {
+      background-color: var(--info-color);
+    }
+    
+    .provider-settings {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .provider-label {
+      margin-right: 0.5rem;
+      font-weight: 500;
+    }
+    
+    .provider-select {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Le menu latéral sera chargé par include-sidebar.js -->
+  
+  <div class="main-content">
+    <div class="container">
+      <div class="card card-no-padding">
+        <div class="card-header">
+          <h2 class="card-title">
+            Assistant IA HL7-FHIR
+            <span class="badge badge-info">BETA</span>
+          </h2>
+        </div>
+        
+        <!-- Sélection du fournisseur d'IA -->
+        <div class="card-body">
+          <div class="provider-settings">
+            <span class="provider-label">Fournisseur d'IA:</span>
+            <select id="ai-provider-select" class="provider-select">
+              <option value="mistral">Mistral AI</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+          </div>
+          
+          <div class="ai-assistant-container">
+            <!-- Panneau de gauche: saisie -->
+            <div class="input-panel">
+              <div class="panel-header">
+                <h3 class="panel-title">Entrée</h3>
+                <div>
+                  <button class="btn btn-sm btn-secondary" id="clear-input-btn">
+                    <i class="fas fa-trash"></i> Effacer
+                  </button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="input-tabs">
+                  <div class="input-tab active" data-tab="hl7-tab">Message HL7</div>
+                  <div class="input-tab" data-tab="fhir-tab">Ressource FHIR</div>
+                  <div class="input-tab" data-tab="conversion-tab">Analyse de conversion</div>
+                </div>
+                
+                <!-- Tab HL7 -->
+                <div id="hl7-tab" class="tab-content active">
+                  <div class="text-area-container">
+                    <textarea id="hl7-input" placeholder="Collez votre message HL7 v2.5 ici ou sélectionnez un exemple..."></textarea>
+                    <div class="editor-overlay">
+                      <button class="btn btn-sm btn-icon" id="copy-hl7" title="Copier">
+                        <i class="fas fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="examples-container">
+                    <div class="example-title">Exemples:</div>
+                    <div class="example-buttons">
+                      <span class="example-button" data-example="adt-a01">ADT^A01 (Admission)</span>
+                      <span class="example-button" data-example="oru-r01">ORU^R01 (Résultats)</span>
+                      <span class="example-button" data-example="siu-s12">SIU^S12 (RDV)</span>
+                    </div>
+                  </div>
+                  
+                  <div class="button-group">
+                    <button class="btn btn-primary" id="analyze-hl7-btn">Analyser avec IA</button>
+                  </div>
+                </div>
+                
+                <!-- Tab FHIR -->
+                <div id="fhir-tab" class="tab-content">
+                  <div class="text-area-container">
+                    <textarea id="fhir-input" placeholder="Collez votre ressource FHIR R4 (JSON) ici ou sélectionnez un exemple..."></textarea>
+                    <div class="editor-overlay">
+                      <button class="btn btn-sm btn-icon" id="copy-fhir" title="Copier">
+                        <i class="fas fa-copy"></i>
+                      </button>
+                      <button class="btn btn-sm btn-icon" id="format-json" title="Formater JSON">
+                        <i class="fas fa-indent"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="examples-container">
+                    <div class="example-title">Exemples:</div>
+                    <div class="example-buttons">
+                      <span class="example-button" data-example="patient">Patient</span>
+                      <span class="example-button" data-example="observation">Observation</span>
+                      <span class="example-button" data-example="encounter">Encounter</span>
+                    </div>
+                  </div>
+                  
+                  <div class="button-group">
+                    <button class="btn btn-primary" id="analyze-fhir-btn">Analyser avec IA</button>
+                  </div>
+                </div>
+                
+                <!-- Tab Conversion -->
+                <div id="conversion-tab" class="tab-content">
+                  <div class="comparison-view">
+                    <div class="comparison-column">
+                      <h4>Message HL7 d'origine</h4>
+                      <textarea id="conversion-hl7-input" placeholder="Collez votre message HL7 v2.5 original ici..."></textarea>
+                    </div>
+                    <div class="comparison-column">
+                      <h4>Ressources FHIR générées</h4>
+                      <textarea id="conversion-fhir-input" placeholder="Collez les ressources FHIR générées (JSON) ici..."></textarea>
+                    </div>
+                  </div>
+                  
+                  <div class="button-group" style="margin-top: 1rem;">
+                    <button class="btn btn-primary" id="analyze-conversion-btn">Analyser la qualité de la conversion</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Panneau de droite: résultat -->
+            <div class="output-panel">
+              <div class="panel-header">
+                <h3 class="panel-title">Analyse IA</h3>
+                <div>
+                  <button class="btn btn-sm btn-icon" id="copy-output" title="Copier">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                  <button class="btn btn-sm btn-icon" id="export-pdf" title="Exporter en PDF">
+                    <i class="fas fa-file-pdf"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="output-content" class="panel-body">
+                <div class="output-placeholder">
+                  <div>
+                    <i class="fas fa-robot" style="font-size: 3rem; color: #ddd; margin-bottom: 1rem;"></i>
+                    <p>L'analyse IA apparaîtra ici.<br>Saisissez un message HL7 ou une ressource FHIR et cliquez sur "Analyser".</p>
+                  </div>
+                </div>
+                
+                <div id="loading-indicator" class="loading-indicator">
+                  <div class="loading-spinner"></div>
+                  <p>Analyse en cours...</p>
+                </div>
+                
+                <div id="ai-output" class="ai-response" style="display: none;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Attendre que le DOM soit chargé
+    document.addEventListener('DOMContentLoaded', function() {
+      // Vérifier l'authentification
+      FHIRHubAuth.checkAuth();
+      
+      // Variables globales
+      let activeTab = 'hl7-tab';
+      let aiProviders = [];
+      
+      // Sélection des éléments DOM
+      const tabs = document.querySelectorAll('.input-tab');
+      const tabContents = document.querySelectorAll('.tab-content');
+      const aiProviderSelect = document.getElementById('ai-provider-select');
+      
+      const hl7Input = document.getElementById('hl7-input');
+      const fhirInput = document.getElementById('fhir-input');
+      const conversionHl7Input = document.getElementById('conversion-hl7-input');
+      const conversionFhirInput = document.getElementById('conversion-fhir-input');
+      
+      const analyzeHl7Btn = document.getElementById('analyze-hl7-btn');
+      const analyzeFhirBtn = document.getElementById('analyze-fhir-btn');
+      const analyzeConversionBtn = document.getElementById('analyze-conversion-btn');
+      
+      const clearInputBtn = document.getElementById('clear-input-btn');
+      const formatJsonBtn = document.getElementById('format-json');
+      const copyHl7Btn = document.getElementById('copy-hl7');
+      const copyFhirBtn = document.getElementById('copy-fhir');
+      const copyOutputBtn = document.getElementById('copy-output');
+      const exportPdfBtn = document.getElementById('export-pdf');
+      
+      const outputContent = document.getElementById('output-content');
+      const aiOutput = document.getElementById('ai-output');
+      const loadingIndicator = document.getElementById('loading-indicator');
+      
+      // Charger les fournisseurs d'IA actifs
+      loadActiveAIProviders();
+      
+      // Gestionnaire pour les onglets
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.getAttribute('data-tab');
+          
+          // Désactiver tous les onglets et contenus
+          tabs.forEach(t => t.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+          
+          // Activer l'onglet et le contenu sélectionnés
+          tab.classList.add('active');
+          document.getElementById(tabId).classList.add('active');
+          
+          // Mettre à jour l'onglet actif
+          activeTab = tabId;
+        });
+      });
+      
+      // Exemples de messages HL7
+      const hl7Examples = {
+        'adt-a01': `MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20230901123145||ADT^A01|MSG00001|P|2.5|
+EVN|A01|20230901123145|||admin^Administrator^A^^^Dr|
+PID|1||10101^^^EPI^PI||DUPONT^JEAN^^^M||19760425|M|||25 RUE DES FLEURS^^PARIS^^75001^FR||0033612345678|||||1234^^^SSN^SS|||||||||||||||||
+NK1|1|DUPONT^MARIE^^^|SPOUSE|25 RUE DES FLEURS^^PARIS^^75001^FR|0033612345679||EMERGENCY CONTACT|||||||||
+PV1|1|I|CARD^2SOUTH^203^GENERAL HOSPITAL|E|||123456^BERNARD^ROBERT^^^DR|234567^LAPLANTE^JEAN^^^DR|||||||||A0|||||||||||||||||||||||||20230901123000|
+DG1|1|ICD10-CM|I21.3|INFARCTUS TRANSMURAL INFERIEUR AIGU DU MYOCARDE|20230901123000|A|||||||||0|234567^LAPLANTE^JEAN^^^DR|`,
+        'oru-r01': `MSH|^~\\&|SENDING_LAB|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20230901134500||ORU^R01|MSG00002|P|2.5|
+PID|1||10101^^^EPI^PI||DUPONT^JEAN^^^M||19760425|M|||25 RUE DES FLEURS^^PARIS^^75001^FR||0033612345678|||||1234^^^SSN^SS|||||||||||||||||
+ORC|RE||LAB12345^EPC|||||||||123456^BERNARD^ROBERT^^^DR|||||||||GENERAL HOSPITAL|||||||
+OBR|1||LAB12345^EPC|CBC^BLOOD COUNT^L|||20230901132000|20230901133000||||||DRAWN BY NURSE||123456^BERNARD^ROBERT^^^DR||||LAB|F||^^^20230901134500^^FINAL||||||||||||||||
+OBX|1|NM|HGB^HEMOGLOBIN||14.5|g/dL|13.5-17.5||||F|||20230901133000|LAB|
+OBX|2|NM|WBC^WHITE BLOOD CELLS||8.5|10^3/uL|4.5-11.0||||F|||20230901133000|LAB|
+OBX|3|NM|PLT^PLATELETS||250|10^3/uL|150-400||||F|||20230901133000|LAB|
+OBX|4|TX|ADDITIONAL INFO||SAMPLE SLIGHTLY HEMOLYZED||||||F|||20230901133000|LAB|`,
+        'siu-s12': `MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20230901140000||SIU^S12|MSG00003|P|2.5|
+SCH|12345|54321|CARDIO99||SCHEDULED|FOLLOWUP|30|MIN|^^30|MIN||||CARDIOLOGYCLINIC^TYPE^FOLLOWUP^REASON|123456^BERNARD^ROBERT^^^DR|0033123456789|CARDIOLOGYCLINIC^BUILDING1^2NDFLOOR^ROOM202^SHORTDESC^DESC|
+NTE|1||PATIENT REQUIRES INTERPRETER|
+PID|1||10101^^^EPI^PI||DUPONT^JEAN^^^M||19760425|M|||25 RUE DES FLEURS^^PARIS^^75001^FR||0033612345678|||||1234^^^SSN^SS|||||||||||||||||
+PV1|1|O|CARDIO^BUILDING1^2NDFLOOR^ROOM202^FACILITYID^DESC||||123456^BERNARD^ROBERT^^^DR|234567^LAPLANTE^JEAN^^^DR||||||||||||99234^^^VISITID|||||||||||||||||||||20230915143000|
+RGS|1||
+AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC^BUILDING1^2NDFLOOR^ROOM202^SHORTDESC^DESC|30|MIN|123456^BERNARD^ROBERT^^^DR|||1|`
+      };
+      
+      // Exemples de ressources FHIR
+      const fhirExamples = {
+        'patient': `{
+  "resourceType": "Patient",
+  "id": "patient-example-french",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/Patient"
+    ]
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns='http://www.w3.org/1999/xhtml'>Jean Dupont</div>"
+  },
+  "identifier": [
+    {
+      "system": "http://www.example.org/fhir/identifier/mrn",
+      "value": "10101"
+    },
+    {
+      "system": "http://www.example.org/fhir/identifier/SocialSecurityNumber",
+      "value": "1234"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "family": "Dupont",
+      "given": ["Jean"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "0033612345678",
+      "use": "mobile"
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1976-04-25",
+  "address": [
+    {
+      "line": ["25 RUE DES FLEURS"],
+      "city": "PARIS",
+      "postalCode": "75001",
+      "country": "FR"
+    }
+  ],
+  "contact": [
+    {
+      "relationship": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+              "code": "WIFE",
+              "display": "spouse"
+            }
+          ]
+        }
+      ],
+      "name": {
+        "family": "Dupont",
+        "given": ["Marie"]
+      },
+      "telecom": [
+        {
+          "system": "phone",
+          "value": "0033612345679",
+          "use": "mobile"
+        }
+      ],
+      "address": {
+        "line": ["25 RUE DES FLEURS"],
+        "city": "PARIS",
+        "postalCode": "75001",
+        "country": "FR"
+      }
+    }
+  ]
+}`,
+        'observation': `{
+  "resourceType": "Observation",
+  "id": "lab-example-hemoglobin",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/Observation"
+    ]
+  },
+  "status": "final",
+  "category": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code": "laboratory",
+          "display": "Laboratory"
+        }
+      ]
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "718-7",
+        "display": "Hemoglobin [Mass/volume] in Blood"
+      }
+    ],
+    "text": "Hemoglobin"
+  },
+  "subject": {
+    "reference": "Patient/patient-example-french",
+    "display": "Jean Dupont"
+  },
+  "encounter": {
+    "reference": "Encounter/encounter-lab-visit"
+  },
+  "effectiveDateTime": "2023-09-01T13:30:00+02:00",
+  "issued": "2023-09-01T13:45:00+02:00",
+  "performer": [
+    {
+      "reference": "Organization/lab-organization",
+      "display": "GENERAL HOSPITAL Laboratory"
+    }
+  ],
+  "valueQuantity": {
+    "value": 14.5,
+    "unit": "g/dL",
+    "system": "http://unitsofmeasure.org",
+    "code": "g/dL"
+  },
+  "referenceRange": [
+    {
+      "low": {
+        "value": 13.5,
+        "unit": "g/dL",
+        "system": "http://unitsofmeasure.org",
+        "code": "g/dL"
+      },
+      "high": {
+        "value": 17.5,
+        "unit": "g/dL",
+        "system": "http://unitsofmeasure.org",
+        "code": "g/dL"
+      }
+    }
+  ]
+}`,
+        'encounter': `{
+  "resourceType": "Encounter",
+  "id": "encounter-example-french",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/StructureDefinition/Encounter"
+    ]
+  },
+  "status": "in-progress",
+  "class": {
+    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+    "code": "IMP",
+    "display": "inpatient encounter"
+  },
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://snomed.info/sct",
+          "code": "183807002",
+          "display": "Emergency hospital admission for cardiac condition"
+        }
+      ]
+    }
+  ],
+  "subject": {
+    "reference": "Patient/patient-example-french",
+    "display": "Jean Dupont"
+  },
+  "participant": [
+    {
+      "type": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+              "code": "ATND",
+              "display": "attender"
+            }
+          ]
+        }
+      ],
+      "individual": {
+        "reference": "Practitioner/practitioner-123456",
+        "display": "Dr Robert Bernard"
+      }
+    },
+    {
+      "type": [
+        {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+              "code": "PART",
+              "display": "Participation"
+            }
+          ]
+        }
+      ],
+      "individual": {
+        "reference": "Practitioner/practitioner-234567",
+        "display": "Dr Jean Laplante"
+      }
+    }
+  ],
+  "period": {
+    "start": "2023-09-01T12:30:00+02:00"
+  },
+  "location": [
+    {
+      "location": {
+        "reference": "Location/location-cardio-203",
+        "display": "GENERAL HOSPITAL, CARD, 2SOUTH, Room 203"
+      },
+      "status": "active"
+    }
+  ],
+  "diagnosis": [
+    {
+      "condition": {
+        "reference": "Condition/condition-myocardial-infarction",
+        "display": "Infarctus transmural inférieur aigu du myocarde"
+      },
+      "rank": 1
+    }
+  ],
+  "serviceProvider": {
+    "reference": "Organization/organization-general-hospital",
+    "display": "GENERAL HOSPITAL"
+  }
+}`
+      };
+      
+      // Gestionnaires d'événements pour les exemples HL7
+      document.querySelectorAll('.example-button[data-example]').forEach(button => {
+        button.addEventListener('click', () => {
+          const exampleId = button.getAttribute('data-example');
+          
+          if (activeTab === 'hl7-tab' && hl7Examples[exampleId]) {
+            hl7Input.value = hl7Examples[exampleId];
+          } else if (activeTab === 'fhir-tab' && fhirExamples[exampleId]) {
+            fhirInput.value = fhirExamples[exampleId];
+          }
+        });
+      });
+      
+      // Effacer le champ d'entrée actif
+      clearInputBtn.addEventListener('click', () => {
+        if (activeTab === 'hl7-tab') {
+          hl7Input.value = '';
+        } else if (activeTab === 'fhir-tab') {
+          fhirInput.value = '';
+        } else if (activeTab === 'conversion-tab') {
+          conversionHl7Input.value = '';
+          conversionFhirInput.value = '';
+        }
+      });
+      
+      // Formater le JSON dans le champ FHIR
+      formatJsonBtn.addEventListener('click', () => {
+        try {
+          const json = JSON.parse(fhirInput.value);
+          fhirInput.value = JSON.stringify(json, null, 2);
+        } catch (error) {
+          alert('Le contenu n\'est pas un JSON valide: ' + error.message);
+        }
+      });
+      
+      // Copier le contenu des champs
+      copyHl7Btn.addEventListener('click', () => copyToClipboard(hl7Input.value));
+      copyFhirBtn.addEventListener('click', () => copyToClipboard(fhirInput.value));
+      copyOutputBtn.addEventListener('click', () => copyToClipboard(aiOutput.innerText));
+      
+      // Exporter en PDF
+      exportPdfBtn.addEventListener('click', () => {
+        alert('Fonctionnalité d\'export PDF en développement');
+        // TODO: Implémenter l'export PDF
+      });
+      
+      // Analyser avec IA
+      analyzeHl7Btn.addEventListener('click', () => {
+        const hl7Message = hl7Input.value.trim();
+        if (!hl7Message) {
+          alert('Veuillez saisir un message HL7 à analyser.');
+          return;
+        }
+        
+        analyzeHL7(hl7Message);
+      });
+      
+      analyzeFhirBtn.addEventListener('click', () => {
+        const fhirResource = fhirInput.value.trim();
+        if (!fhirResource) {
+          alert('Veuillez saisir une ressource FHIR à analyser.');
+          return;
+        }
+        
+        analyzeFHIR(fhirResource);
+      });
+      
+      analyzeConversionBtn.addEventListener('click', () => {
+        const hl7Message = conversionHl7Input.value.trim();
+        const fhirResource = conversionFhirInput.value.trim();
+        
+        if (!hl7Message || !fhirResource) {
+          alert('Veuillez saisir à la fois le message HL7 et les ressources FHIR générées.');
+          return;
+        }
+        
+        analyzeConversion(hl7Message, fhirResource);
+      });
+      
+      // Fonctions d'API
+      async function loadActiveAIProviders() {
+        try {
+          const headers = {
+            'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`
+          };
+          
+          // Ajouter également la clé API par défaut pour l'authentification combinée
+          if (localStorage.getItem('devKey')) {
+            headers['X-API-KEY'] = localStorage.getItem('devKey');
+          } else {
+            headers['X-API-KEY'] = 'dev-key'; // Clé API de développement par défaut
+          }
+
+          const response = await fetch('/api/ai/providers/active', { headers });
+          
+          if (!response.ok) {
+            console.error('Erreur lors du chargement des fournisseurs d\'IA actifs');
+            return;
+          }
+          
+          aiProviders = await response.json();
+          
+          // Mettre à jour le sélecteur avec les fournisseurs disponibles
+          if (aiProviders.length > 0) {
+            aiProviderSelect.innerHTML = '';
+            
+            aiProviders.forEach(provider => {
+              const option = document.createElement('option');
+              option.value = provider.provider_name.toLowerCase();
+              option.textContent = provider.provider_name;
+              aiProviderSelect.appendChild(option);
+            });
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des fournisseurs d\'IA:', error);
+        }
+      }
+      
+      async function analyzeHL7(hl7Message) {
+        try {
+          showLoading();
+          
+          const provider = aiProviderSelect.value;
+          
+          const response = await fetch('/api/hl7-ai/analyze-hl7', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
+              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
+            },
+            body: JSON.stringify({
+              hl7Message,
+              provider
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de l\'analyse HL7');
+          }
+          
+          const result = await response.json();
+          displayAnalysisResult(result, 'hl7');
+        } catch (error) {
+          console.error('Erreur lors de l\'analyse HL7:', error);
+          displayError(error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function analyzeFHIR(fhirResource) {
+        try {
+          showLoading();
+          
+          const provider = aiProviderSelect.value;
+          let parsedResource;
+          
+          // Essayer de parser le JSON si c'est une chaîne
+          try {
+            parsedResource = typeof fhirResource === 'string' ? JSON.parse(fhirResource) : fhirResource;
+          } catch (error) {
+            throw new Error('La ressource FHIR n\'est pas un JSON valide: ' + error.message);
+          }
+          
+          const response = await fetch('/api/hl7-ai/analyze-fhir', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
+              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
+            },
+            body: JSON.stringify({
+              fhirResource: parsedResource,
+              provider
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de l\'analyse FHIR');
+          }
+          
+          const result = await response.json();
+          displayAnalysisResult(result, 'fhir');
+        } catch (error) {
+          console.error('Erreur lors de l\'analyse FHIR:', error);
+          displayError(error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      async function analyzeConversion(hl7Message, fhirResource) {
+        try {
+          showLoading();
+          
+          const provider = aiProviderSelect.value;
+          let parsedResource;
+          
+          // Essayer de parser le JSON si c'est une chaîne
+          try {
+            parsedResource = typeof fhirResource === 'string' ? JSON.parse(fhirResource) : fhirResource;
+          } catch (error) {
+            throw new Error('Les ressources FHIR ne sont pas un JSON valide: ' + error.message);
+          }
+          
+          const response = await fetch('/api/hl7-ai/analyze-conversion', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
+              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
+            },
+            body: JSON.stringify({
+              hl7Message,
+              fhirResources: parsedResource,
+              provider
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de l\'analyse de conversion');
+          }
+          
+          const result = await response.json();
+          displayAnalysisResult(result, 'conversion');
+        } catch (error) {
+          console.error('Erreur lors de l\'analyse de conversion:', error);
+          displayError(error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      // Fonctions d'affichage
+      function displayAnalysisResult(result, type) {
+        aiOutput.style.display = 'block';
+        
+        // Formatage simple avec des sauts de ligne et des espaces préservés
+        aiOutput.innerHTML = `<div class="analysis-content">${formatAnalysisText(result.analysis)}</div>`;
+        
+        // Ajouter des métadonnées
+        let typeInfo = '';
+        if (type === 'hl7' && result.messageType) {
+          typeInfo = `<span class="badge badge-info">${result.messageType}</span>`;
+        } else if (type === 'fhir' && result.resourceType) {
+          typeInfo = `<span class="badge badge-info">${result.resourceType}</span>`;
+        }
+        
+        aiOutput.innerHTML += `
+          <div class="ai-metadata">
+            <div>
+              ${typeInfo}
+              <span class="ai-timestamp">${new Date(result.timestamp).toLocaleString()}</span>
+            </div>
+            <div>
+              <span class="ai-provider">IA: ${aiProviderSelect.options[aiProviderSelect.selectedIndex].text}</span>
+            </div>
+          </div>
+        `;
+        
+        // Faire défiler vers le résultat
+        aiOutput.scrollIntoView({ behavior: 'smooth' });
+      }
+      
+      function displayError(message) {
+        aiOutput.style.display = 'block';
+        aiOutput.innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+          </div>
+        `;
+      }
+      
+      function formatAnalysisText(text) {
+        if (!text) return '';
+        
+        // Remplacer les sauts de ligne par des balises <br>
+        let formattedText = text.replace(/\n/g, '<br>');
+        
+        // Mettre en évidence les sections
+        formattedText = formattedText.replace(/^(#+)\s+(.*?)$/gm, (match, hashes, title) => {
+          const level = hashes.length;
+          return `<h${level + 2} class="analysis-title">${title}</h${level + 2}>`;
+        });
+        
+        // Mettre en forme les listes
+        formattedText = formattedText.replace(/^(\d+\.\s+)(.*?)$/gm, '<ol><li>$2</li></ol>');
+        formattedText = formattedText.replace(/^(\*\s+)(.*?)$/gm, '<ul><li>$2</li></ul>');
+        
+        // Gérer les blocs de code
+        formattedText = formattedText.replace(/```([\s\S]*?)```/g, (match, code) => {
+          return `<pre>${code}</pre>`;
+        });
+        
+        // Mettre en évidence les termes techniques
+        formattedText = formattedText.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        return formattedText;
+      }
+      
+      function showLoading() {
+        document.querySelector('.output-placeholder').style.display = 'none';
+        aiOutput.style.display = 'none';
+        loadingIndicator.style.display = 'block';
+      }
+      
+      function hideLoading() {
+        loadingIndicator.style.display = 'none';
+      }
+      
+      // Utilitaires
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(
+          () => {
+            // Copie réussie
+            alert('Contenu copié dans le presse-papiers');
+          },
+          () => {
+            // Échec de la copie
+            alert('Impossible de copier le contenu dans le presse-papiers');
+          }
+        );
+      }
+    });
+  </script>
+</body>
+</html>

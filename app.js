@@ -918,6 +918,7 @@ const cacheRoutes = require('./routes/cache');
 const terminologyRoutes = require('./routes/terminology');
 const aiProvidersRoutes = require('./routes/ai-providers');
 const aiChatRoutes = require('./routes/ai-chat');
+const hl7AIRoutes = require('./routes/hl7-ai');
 const workflowsRoutes = require('./routes/workflows');
 const adminRoutes = require('./routes/adminRoutes');
 
@@ -932,6 +933,7 @@ app.use('/api/cache', cacheRoutes);
 app.use('/api/terminology', terminologyRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/ai', aiChatRoutes);
+app.use('/api/hl7-ai', hl7AIRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/admin', adminRoutes);
 
