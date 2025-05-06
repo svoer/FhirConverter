@@ -29,7 +29,7 @@ function initDatabase() {
   // Créer la table des applications
   db.exec(`
     CREATE TABLE IF NOT EXISTS applications (
-      app_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       description TEXT,
       settings TEXT,
@@ -48,7 +48,7 @@ function initDatabase() {
       is_active INTEGER DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       expires_at TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(app_id)
+      FOREIGN KEY (app_id) REFERENCES applications(id)
     )
   `);
 
@@ -64,7 +64,7 @@ function initDatabase() {
       resource_count INTEGER DEFAULT 0,
       result_content TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES applications(app_id)
+      FOREIGN KEY (app_id) REFERENCES applications(id)
     )
   `);
 
@@ -96,7 +96,7 @@ function initDatabase() {
   }
 
   // Récupérer l'ID de l'application par défaut
-  const defaultApp = db.prepare('SELECT app_id FROM applications WHERE name = ?').get('Application par défaut');
+  const defaultApp = db.prepare('SELECT id FROM applications WHERE name = ?').get('Application par défaut');
   
   if (defaultApp) {
     // Insérer la clé API de développement si elle n'existe pas
@@ -108,7 +108,7 @@ function initDatabase() {
         INSERT INTO api_keys (app_id, api_key, description)
         VALUES (?, 'dev-key', 'Clé API de développement')
       `);
-      insertKeyStmt.run(defaultApp.app_id);
+      insertKeyStmt.run(defaultApp.id);
     }
   }
 
@@ -131,7 +131,7 @@ function validateApiKey(apiKey) {
   const stmt = db.prepare(`
     SELECT api_keys.key_id, api_keys.app_id, applications.name as app_name, applications.settings
     FROM api_keys
-    JOIN applications ON api_keys.app_id = applications.app_id
+    JOIN applications ON api_keys.app_id = applications.id
     WHERE api_keys.api_key = ? AND api_keys.is_active = 1
   `);
   
@@ -267,7 +267,7 @@ function cleanupHistory() {
   console.log('[DB] Nettoyage de l\'historique des conversions');
   
   // Récupérer toutes les applications
-  const apps = db.prepare('SELECT app_id, settings FROM applications').all();
+  const apps = db.prepare('SELECT id as app_id, settings FROM applications').all();
   
   let totalDeleted = 0;
   let appsProcessed = 0;

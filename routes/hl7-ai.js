@@ -6,8 +6,9 @@
 
 const express = require('express');
 const router = express.Router();
-const hl7AIService = require('../src/services/hl7AIService');
 const authCombined = require('../middleware/authCombined');
+const hl7AIService = require('../src/services/hl7AIService');
+const { apiRequestCounter } = require('../src/metrics');
 
 /**
  * @swagger
@@ -49,19 +50,39 @@ const authCombined = require('../middleware/authCombined');
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-hl7', authCombined, async (req, res) => {
+router.post('/analyze-hl7', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { hl7Message, provider = 'mistral' } = req.body;
-    
+
     if (!hl7Message) {
-      return res.status(400).json({ error: 'Le message HL7 est requis' });
+      return res.status(400).json({
+        success: false,
+        error: 'Message HL7 manquant',
+        message: 'Vous devez fournir un message HL7 à analyser'
+      });
     }
-    
+
+    const startTime = Date.now();
     const analysis = await hl7AIService.analyzeHL7Message(hl7Message, provider);
-    return res.status(200).json(analysis);
+    const processingTime = Date.now() - startTime;
+
+    // Détecter le type de message pour les métadonnées
+    const messageType = hl7AIService.detectHL7MessageType(hl7Message);
+
+    res.json({
+      success: true,
+      analysis,
+      messageType,
+      timestamp: new Date().toISOString(),
+      processingTime
+    });
   } catch (error) {
-    console.error('[HL7-AI] Erreur lors de l\'analyse HL7:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Erreur lors de l\'analyse HL7:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'analyse',
+      message: error.message || 'Une erreur s\'est produite lors de l\'analyse du message HL7'
+    });
   }
 });
 
@@ -98,19 +119,39 @@ router.post('/analyze-hl7', authCombined, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-fhir', authCombined, async (req, res) => {
+router.post('/analyze-fhir', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { fhirResource, provider = 'mistral' } = req.body;
-    
+
     if (!fhirResource) {
-      return res.status(400).json({ error: 'La ressource FHIR est requise' });
+      return res.status(400).json({
+        success: false,
+        error: 'Ressource FHIR manquante',
+        message: 'Vous devez fournir une ressource FHIR à analyser'
+      });
     }
-    
+
+    const startTime = Date.now();
     const analysis = await hl7AIService.analyzeFHIRResource(fhirResource, provider);
-    return res.status(200).json(analysis);
+    const processingTime = Date.now() - startTime;
+
+    // Détecter le type de ressource pour les métadonnées
+    const resourceType = hl7AIService.detectFHIRResourceType(fhirResource);
+
+    res.json({
+      success: true,
+      analysis,
+      resourceType,
+      timestamp: new Date().toISOString(),
+      processingTime
+    });
   } catch (error) {
-    console.error('[FHIR-AI] Erreur lors de l\'analyse FHIR:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Erreur lors de l\'analyse FHIR:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'analyse',
+      message: error.message || 'Une erreur s\'est produite lors de l\'analyse de la ressource FHIR'
+    });
   }
 });
 
@@ -153,19 +194,35 @@ router.post('/analyze-fhir', authCombined, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-conversion', authCombined, async (req, res) => {
+router.post('/analyze-conversion', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { hl7Message, fhirResources, provider = 'mistral' } = req.body;
-    
+
     if (!hl7Message || !fhirResources) {
-      return res.status(400).json({ error: 'Le message HL7 et les ressources FHIR sont requis' });
+      return res.status(400).json({
+        success: false,
+        error: 'Données manquantes',
+        message: 'Vous devez fournir à la fois le message HL7 original et les ressources FHIR générées'
+      });
     }
-    
+
+    const startTime = Date.now();
     const analysis = await hl7AIService.analyzeConversion(hl7Message, fhirResources, provider);
-    return res.status(200).json(analysis);
+    const processingTime = Date.now() - startTime;
+
+    res.json({
+      success: true,
+      analysis,
+      timestamp: new Date().toISOString(),
+      processingTime
+    });
   } catch (error) {
-    console.error('[CONVERSION-AI] Erreur lors de l\'analyse de conversion:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Erreur lors de l\'analyse de conversion:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'analyse',
+      message: error.message || 'Une erreur s\'est produite lors de l\'analyse de la conversion'
+    });
   }
 });
 
@@ -205,19 +262,39 @@ router.post('/analyze-conversion', authCombined, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/suggest-mapping', authCombined, async (req, res) => {
+router.post('/suggest-mapping', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { mappingTemplate, conversionExamples = [], provider = 'mistral' } = req.body;
-    
+
     if (!mappingTemplate) {
-      return res.status(400).json({ error: 'Le template de mapping est requis' });
+      return res.status(400).json({
+        success: false,
+        error: 'Template de mapping manquant',
+        message: 'Vous devez fournir un template de mapping à améliorer'
+      });
     }
-    
-    const suggestions = await hl7AIService.suggestMappingImprovements(mappingTemplate, conversionExamples, provider);
-    return res.status(200).json(suggestions);
+
+    const startTime = Date.now();
+    const suggestions = await hl7AIService.suggestMappingImprovements(
+      mappingTemplate,
+      conversionExamples,
+      provider
+    );
+    const processingTime = Date.now() - startTime;
+
+    res.json({
+      success: true,
+      suggestions,
+      timestamp: new Date().toISOString(),
+      processingTime
+    });
   } catch (error) {
-    console.error('[MAPPING-AI] Erreur lors de la suggestion de mapping:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Erreur lors de la suggestion de mapping:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la génération des suggestions',
+      message: error.message || 'Une erreur s\'est produite lors de la génération des suggestions'
+    });
   }
 });
 
@@ -259,23 +336,43 @@ router.post('/suggest-mapping', authCombined, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/generate-documentation', authCombined, async (req, res) => {
+router.post('/generate-documentation', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { message, type, provider = 'mistral' } = req.body;
-    
+
     if (!message || !type) {
-      return res.status(400).json({ error: 'Le message et le type sont requis' });
+      return res.status(400).json({
+        success: false,
+        error: 'Données manquantes',
+        message: 'Vous devez fournir le message et son type (hl7 ou fhir)'
+      });
     }
-    
+
     if (type !== 'hl7' && type !== 'fhir') {
-      return res.status(400).json({ error: 'Le type doit être "hl7" ou "fhir"' });
+      return res.status(400).json({
+        success: false,
+        error: 'Type invalide',
+        message: 'Le type doit être "hl7" ou "fhir"'
+      });
     }
-    
+
+    const startTime = Date.now();
     const documentation = await hl7AIService.generateDocumentation(message, type, provider);
-    return res.status(200).json(documentation);
+    const processingTime = Date.now() - startTime;
+
+    res.json({
+      success: true,
+      documentation,
+      timestamp: new Date().toISOString(),
+      processingTime
+    });
   } catch (error) {
-    console.error('[DOC-AI] Erreur lors de la génération de documentation:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Erreur lors de la génération de documentation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la génération',
+      message: error.message || 'Une erreur s\'est produite lors de la génération de la documentation'
+    });
   }
 });
 

@@ -4,37 +4,41 @@
  * la compréhension, l'analyse et la conversion des messages HL7 et des ressources FHIR
  */
 
-const aiProviderService = require('./aiProviderService');
 const axios = require('axios');
+const dbService = require('../db/dbService');
+const { promiseWithTimeout } = require('../utils/promiseUtils');
+
+// Durée maximale d'une requête IA (en ms)
+const AI_REQUEST_TIMEOUT = 30000;
 
 /**
  * Système d'instructions pour l'assistant IA spécialisé HL7-FHIR
  */
-const SYSTEM_INSTRUCTIONS = `Tu es un expert médical informatique spécialisé dans les standards HL7 v2.5 et FHIR R4.
-Ton rôle est d'aider les utilisateurs à comprendre, analyser et améliorer la conversion entre les formats HL7 et FHIR.
+const HL7_FHIR_SYSTEM_INSTRUCTIONS = `
+Vous êtes un expert en interopérabilité des systèmes de santé, spécialisé dans les standards HL7 v2.x et FHIR.
+Votre rôle est d'analyser et d'expliquer avec précision les structures de données de santé.
 
-Conseils techniques pour les messages HL7 v2.5:
-- Structure: MSH (en-tête), PID (patient), PV1 (visite), OBR (requête), OBX (observation)
-- Les séparateurs sont |^~\\&
-- Les segments commencent par un code à 3 lettres suivi d'un |
+Quelques règles importantes à suivre:
+1. Vos explications doivent être techniques et factuelles, basées sur les spécifications officielles
+2. Pour HL7 v2.x, référez-vous aux standards officiels de Health Level Seven International
+3. Pour FHIR, référez-vous à la version R4 (4.0.1) qui est la version de référence en France (ANS)
+4. Incluez toujours des détails sur les mappings/correspondances entre HL7 v2.x et FHIR
+5. Tenez compte des spécificités françaises lorsqu'elles sont pertinentes (ex: systèmes de codage nationaux, réglementation)
+6. Structurez vos réponses avec des sections claires et des exemples précis
+7. Ne fournissez que des informations vérifiables et conformes aux standards
 
-Pour les ressources FHIR R4:
-- Structure JSON avec resourceType, id, et attributs spécifiques au type
-- Les ressources principales: Patient, Encounter, Observation, ServiceRequest, etc.
-- Respecte les profils français (ANS)
+Formats de réponse:
+- Utilisez un format structuré avec des titres et sous-titres clairs
+- Incluez des tableaux de comparaison lorsque pertinent
+- Fournissez des exemples de code ou de structures de données
 
-Quand on te présente un message HL7 ou FHIR:
-1. Analyse sa structure et ses composants clés
-2. Identifie les informations essentielles (patient, date, observations, etc.)
-3. Explique la signification médicale des codes présents
-4. Suggère des améliorations pour la conformité aux standards
-
-Pour les conversions:
-- Vérifie que tous les éléments importants ont été transférés
-- Identifie les pertes potentielles d'information
-- Suggère des améliorations pour une conversion plus précise
-
-Tu es concis, précis et pédagogique. Tu assumes toujours qu'un élément manquant peut avoir un impact critique sur les soins du patient.`;
+Terminologies françaises à connaître:
+- CIM-10 (ICD-10): Classification Internationale des Maladies
+- CCAM: Classification Commune des Actes Médicaux
+- UCD: Unité Commune de Dispensation (médicaments)
+- RPPS: Répertoire Partagé des Professionnels intervenant dans le système de Santé
+- INS: Identifiant National de Santé
+`;
 
 /**
  * Analyser un message HL7 v2.5 et fournir des insights avec l'IA
@@ -44,34 +48,48 @@ Tu es concis, précis et pédagogique. Tu assumes toujours qu'un élément manqu
  */
 async function analyzeHL7Message(hl7Message, providerName = 'mistral') {
   try {
-    // Récupérer le fournisseur d'IA
-    const aiProvider = await aiProviderService.getProviderByName(providerName);
-    if (!aiProvider || !aiProvider.enabled) {
-      throw new Error(`Le fournisseur d'IA "${providerName}" n'est pas disponible.`);
+    // Récupérer les informations du fournisseur d'IA
+    const provider = await getAIProvider(providerName);
+    
+    if (!provider) {
+      throw new Error(`Fournisseur d'IA '${providerName}' non trouvé ou non activé`);
     }
+    
+    // Créer le prompt pour l'analyse HL7
+    const messages = [
+      { role: 'system', content: HL7_FHIR_SYSTEM_INSTRUCTIONS },
+      { role: 'user', content: `
+Voici un message HL7 v2.5 à analyser en détail:
 
-    // Construire le prompt pour l'analyse
-    const userMessage = `Voici un message HL7 v2.5 que j'aimerais analyser:\n\n\`\`\`\n${hl7Message}\n\`\`\`\n\nMerci de:
-1. Identifier les segments clés et leur signification
-2. Extraire les informations essentielles du patient et du contexte médical
-3. Expliquer brièvement l'objectif de ce message
-4. Identifier d'éventuels problèmes de conformité`;
+\`\`\`
+${hl7Message}
+\`\`\`
 
-    // Envoyer la requête au bon fournisseur d'IA
-    const insights = await sendAIRequest(aiProvider, [
-      { role: 'system', content: SYSTEM_INSTRUCTIONS },
-      { role: 'user', content: userMessage }
-    ]);
+Merci de fournir une analyse complète avec les éléments suivants:
+1. Type et structure du message (ADT, ORU, etc.)
+2. Description détaillée de chaque segment présent
+3. Informations cliniques ou administratives contenues dans le message
+4. Correspondances FHIR pour les informations principales
+5. Points d'attention ou particularités notables
 
-    // Structurer la réponse
-    return {
-      analysis: insights,
-      messageType: detectHL7MessageType(hl7Message),
-      timestamp: new Date().toISOString()
-    };
+Présentez l'analyse sous forme structurée avec des titres clairs.
+` }
+    ];
+    
+    // Envoyer la requête au modèle d'IA avec timeout
+    const response = await promiseWithTimeout(
+      sendAIRequest(provider, messages),
+      AI_REQUEST_TIMEOUT,
+      'La requête à l\'IA a pris trop de temps'
+    );
+    
+    // Mettre à jour le compteur d'utilisation
+    await updateProviderUsage(provider.id);
+    
+    return response;
   } catch (error) {
-    console.error('[HL7-AI] Erreur lors de l\'analyse du message HL7:', error);
-    throw new Error(`Erreur lors de l'analyse du message HL7: ${error.message}`);
+    console.error('Erreur lors de l\'analyse HL7:', error);
+    throw new Error(`Erreur d'analyse HL7: ${error.message}`);
   }
 }
 
@@ -83,42 +101,54 @@ async function analyzeHL7Message(hl7Message, providerName = 'mistral') {
  */
 async function analyzeFHIRResource(fhirResource, providerName = 'mistral') {
   try {
-    // Récupérer le fournisseur d'IA
-    const aiProvider = await aiProviderService.getProviderByName(providerName);
-    if (!aiProvider || !aiProvider.enabled) {
-      throw new Error(`Le fournisseur d'IA "${providerName}" n'est pas disponible.`);
+    // Récupérer les informations du fournisseur d'IA
+    const provider = await getAIProvider(providerName);
+    
+    if (!provider) {
+      throw new Error(`Fournisseur d'IA '${providerName}' non trouvé ou non activé`);
     }
+    
+    // S'assurer que la ressource est en format string
+    const fhirResourceStr = typeof fhirResource === 'string' 
+      ? fhirResource 
+      : JSON.stringify(fhirResource, null, 2);
+    
+    // Créer le prompt pour l'analyse FHIR
+    const messages = [
+      { role: 'system', content: HL7_FHIR_SYSTEM_INSTRUCTIONS },
+      { role: 'user', content: `
+Voici une ressource FHIR R4 à analyser en détail:
 
-    // Convertir la ressource en string si c'est un objet
-    const fhirString = typeof fhirResource === 'object' 
-      ? JSON.stringify(fhirResource, null, 2)
-      : fhirResource;
+\`\`\`json
+${fhirResourceStr}
+\`\`\`
 
-    // Construire le prompt pour l'analyse
-    const userMessage = `Voici une ressource FHIR R4 que j'aimerais analyser:\n\n\`\`\`json\n${fhirString}\n\`\`\`\n\nMerci de:
-1. Identifier le type de ressource et ses attributs clés
-2. Extraire les informations essentielles concernant le patient et le contexte médical
-3. Expliquer brièvement l'objectif de cette ressource
-4. Identifier d'éventuels problèmes de conformité avec le standard FHIR R4`;
+Merci de fournir une analyse complète avec les éléments suivants:
+1. Type de ressource et aperçu général
+2. Description détaillée des éléments principaux et leur signification
+3. Références et relations avec d'autres ressources FHIR
+4. Équivalents HL7 v2.x pour les informations principales
+5. Conformité avec les profils français si applicable
+6. Suggestions pour améliorer ou compléter la ressource
 
-    // Envoyer la requête au bon fournisseur d'IA
-    const insights = await sendAIRequest(aiProvider, [
-      { role: 'system', content: SYSTEM_INSTRUCTIONS },
-      { role: 'user', content: userMessage }
-    ]);
-
-    // Détecter le type de ressource
-    const resourceType = detectFHIRResourceType(fhirResource);
-
-    // Structurer la réponse
-    return {
-      analysis: insights,
-      resourceType: resourceType,
-      timestamp: new Date().toISOString()
-    };
+Présentez l'analyse sous forme structurée avec des titres clairs.
+` }
+    ];
+    
+    // Envoyer la requête au modèle d'IA avec timeout
+    const response = await promiseWithTimeout(
+      sendAIRequest(provider, messages),
+      AI_REQUEST_TIMEOUT,
+      'La requête à l\'IA a pris trop de temps'
+    );
+    
+    // Mettre à jour le compteur d'utilisation
+    await updateProviderUsage(provider.id);
+    
+    return response;
   } catch (error) {
-    console.error('[FHIR-AI] Erreur lors de l\'analyse de la ressource FHIR:', error);
-    throw new Error(`Erreur lors de l'analyse de la ressource FHIR: ${error.message}`);
+    console.error('Erreur lors de l\'analyse FHIR:', error);
+    throw new Error(`Erreur d'analyse FHIR: ${error.message}`);
   }
 }
 
@@ -132,51 +162,59 @@ async function analyzeFHIRResource(fhirResource, providerName = 'mistral') {
  */
 async function analyzeConversion(hl7Message, fhirResources, providerName = 'mistral') {
   try {
-    // Récupérer le fournisseur d'IA
-    const aiProvider = await aiProviderService.getProviderByName(providerName);
-    if (!aiProvider || !aiProvider.enabled) {
-      throw new Error(`Le fournisseur d'IA "${providerName}" n'est pas disponible.`);
+    // Récupérer les informations du fournisseur d'IA
+    const provider = await getAIProvider(providerName);
+    
+    if (!provider) {
+      throw new Error(`Fournisseur d'IA '${providerName}' non trouvé ou non activé`);
     }
+    
+    // S'assurer que les ressources FHIR sont en format string
+    const fhirResourcesStr = typeof fhirResources === 'string' 
+      ? fhirResources 
+      : JSON.stringify(fhirResources, null, 2);
+    
+    // Créer le prompt pour l'analyse de conversion
+    const messages = [
+      { role: 'system', content: HL7_FHIR_SYSTEM_INSTRUCTIONS },
+      { role: 'user', content: `
+Je souhaite évaluer la qualité d'une conversion HL7 v2.5 vers FHIR.
 
-    // Convertir les ressources FHIR en string si c'est un objet
-    const fhirString = typeof fhirResources === 'object' 
-      ? JSON.stringify(fhirResources, null, 2)
-      : fhirResources;
-
-    // Construire le prompt pour l'analyse
-    const userMessage = `Je viens de convertir un message HL7 v2.5 en ressources FHIR R4. 
-Merci d'analyser la qualité de cette conversion et d'identifier d'éventuelles pertes d'information ou améliorations possibles.
-
-**Message HL7 v2.5 original:**
+Voici le message HL7 v2.5 original:
 \`\`\`
 ${hl7Message}
 \`\`\`
 
-**Ressources FHIR R4 générées:**
+Et voici les ressources FHIR générées:
 \`\`\`json
-${fhirString}
+${fhirResourcesStr}
 \`\`\`
 
-Merci de répondre avec:
-1. Un score de qualité de conversion de 1 à 10
-2. Les points forts de cette conversion
-3. Les problèmes ou pertes d'information identifiés
-4. Des suggestions d'amélioration spécifiques`;
+Merci d'analyser cette conversion avec les éléments suivants:
+1. Évaluation générale de la qualité de la conversion (complétude, conformité)
+2. Vérification que toutes les informations du message HL7 se retrouvent dans les ressources FHIR
+3. Identification des données manquantes ou mal converties
+4. Suggestions d'améliorations spécifiques pour une meilleure conversion
+5. Recommandations pour les cas particuliers ou complexes
 
-    // Envoyer la requête au bon fournisseur d'IA
-    const analysis = await sendAIRequest(aiProvider, [
-      { role: 'system', content: SYSTEM_INSTRUCTIONS },
-      { role: 'user', content: userMessage }
-    ]);
-
-    // Structurer la réponse
-    return {
-      analysis: analysis,
-      timestamp: new Date().toISOString()
-    };
+Notez la conversion sur 10 et expliquez votre notation.
+` }
+    ];
+    
+    // Envoyer la requête au modèle d'IA avec timeout
+    const response = await promiseWithTimeout(
+      sendAIRequest(provider, messages),
+      AI_REQUEST_TIMEOUT,
+      'La requête à l\'IA a pris trop de temps'
+    );
+    
+    // Mettre à jour le compteur d'utilisation
+    await updateProviderUsage(provider.id);
+    
+    return response;
   } catch (error) {
-    console.error('[CONVERSION-AI] Erreur lors de l\'analyse de la conversion:', error);
-    throw new Error(`Erreur lors de l'analyse de la conversion: ${error.message}`);
+    console.error('Erreur lors de l\'analyse de conversion:', error);
+    throw new Error(`Erreur d'analyse de conversion: ${error.message}`);
   }
 }
 
@@ -189,50 +227,66 @@ Merci de répondre avec:
  */
 async function suggestMappingImprovements(mappingTemplate, conversionExamples, providerName = 'mistral') {
   try {
-    // Récupérer le fournisseur d'IA
-    const aiProvider = await aiProviderService.getProviderByName(providerName);
-    if (!aiProvider || !aiProvider.enabled) {
-      throw new Error(`Le fournisseur d'IA "${providerName}" n'est pas disponible.`);
+    // Récupérer les informations du fournisseur d'IA
+    const provider = await getAIProvider(providerName);
+    
+    if (!provider) {
+      throw new Error(`Fournisseur d'IA '${providerName}' non trouvé ou non activé`);
     }
-
-    // Convertir les objets en strings
-    const templateString = JSON.stringify(mappingTemplate, null, 2);
-    const examplesString = JSON.stringify(conversionExamples, null, 2);
-
-    // Construire le prompt pour l'analyse
-    const userMessage = `Je cherche à améliorer mon template de mapping HL7 v2.5 vers FHIR R4. 
-Merci d'analyser ce template et les exemples de conversions réussies pour suggérer des améliorations.
-
-**Template de mapping actuel:**
+    
+    // Convertir en string si nécessaire
+    const mappingTemplateStr = typeof mappingTemplate === 'string' 
+      ? mappingTemplate 
+      : JSON.stringify(mappingTemplate, null, 2);
+    
+    // Préparer les exemples de conversion
+    let examplesStr = '';
+    if (conversionExamples && conversionExamples.length > 0) {
+      examplesStr = `
+Voici également des exemples de conversions réussies:
 \`\`\`json
-${templateString}
+${JSON.stringify(conversionExamples, null, 2)}
 \`\`\`
+`;
+    }
+    
+    // Créer le prompt pour l'amélioration de mapping
+    const messages = [
+      { role: 'system', content: HL7_FHIR_SYSTEM_INSTRUCTIONS },
+      { role: 'user', content: `
+J'ai besoin d'améliorer mon template de mapping HL7 v2.5 vers FHIR.
 
-**Exemples de conversions réussies:**
+Voici mon template actuel:
 \`\`\`json
-${examplesString}
+${mappingTemplateStr}
 \`\`\`
+${examplesStr}
 
-Merci de suggérer:
-1. Des améliorations pour la précision du mapping
-2. Des optimisations pour gérer plus de cas particuliers
-3. Des ajouts de mappings manquants
-4. Des corrections pour les mappings problématiques`;
+Merci de suggérer des améliorations avec les éléments suivants:
+1. Analyse du template actuel et identification des forces et faiblesses
+2. Suggestions pour améliorer la couverture des données (éléments manquants)
+3. Recommandations pour optimiser les transformations et manipulations de données
+4. Meilleures pratiques pour gérer les cas particuliers (valeurs nulles, formats spécifiques)
+5. Propositions concrètes de modifications du template (avec exemples de code)
 
-    // Envoyer la requête au bon fournisseur d'IA
-    const suggestions = await sendAIRequest(aiProvider, [
-      { role: 'system', content: SYSTEM_INSTRUCTIONS },
-      { role: 'user', content: userMessage }
-    ]);
-
-    // Structurer la réponse
-    return {
-      suggestions: suggestions,
-      timestamp: new Date().toISOString()
-    };
+Votre réponse doit être axée sur des améliorations pragmatiques et conformes aux standards.
+` }
+    ];
+    
+    // Envoyer la requête au modèle d'IA avec timeout
+    const response = await promiseWithTimeout(
+      sendAIRequest(provider, messages),
+      AI_REQUEST_TIMEOUT,
+      'La requête à l\'IA a pris trop de temps'
+    );
+    
+    // Mettre à jour le compteur d'utilisation
+    await updateProviderUsage(provider.id);
+    
+    return response;
   } catch (error) {
-    console.error('[MAPPING-AI] Erreur lors de la suggestion d\'améliorations pour le mapping:', error);
-    throw new Error(`Erreur lors de la suggestion d'améliorations pour le mapping: ${error.message}`);
+    console.error('Erreur lors de la suggestion d\'améliorations de mapping:', error);
+    throw new Error(`Erreur de suggestion d'améliorations: ${error.message}`);
   }
 }
 
@@ -245,60 +299,71 @@ Merci de suggérer:
  */
 async function generateDocumentation(message, type, providerName = 'mistral') {
   try {
-    // Récupérer le fournisseur d'IA
-    const aiProvider = await aiProviderService.getProviderByName(providerName);
-    if (!aiProvider || !aiProvider.enabled) {
-      throw new Error(`Le fournisseur d'IA "${providerName}" n'est pas disponible.`);
+    // Récupérer les informations du fournisseur d'IA
+    const provider = await getAIProvider(providerName);
+    
+    if (!provider) {
+      throw new Error(`Fournisseur d'IA '${providerName}' non trouvé ou non activé`);
     }
-
-    // Convertir le message en string si c'est un objet
-    const messageString = typeof message === 'object' 
-      ? JSON.stringify(message, null, 2)
-      : message;
-
-    // Construire le prompt selon le type
-    let userMessage;
-    if (type.toLowerCase() === 'hl7') {
-      userMessage = `Merci de générer une documentation détaillée expliquant ce message HL7 v2.5 pour un nouveau développeur:
-
-\`\`\`
-${messageString}
-\`\`\`
-
-La documentation doit:
-1. Expliquer chaque segment et ses champs importants
-2. Clarifier la signification des codes et abréviations
-3. Mettre en contexte le message dans un flux de travail clinique
-4. Inclure des notes explicatives sur les particularités de ce message`;
+    
+    // Convertir en string si nécessaire
+    let messageStr = message;
+    if (type === 'fhir' && typeof message === 'object') {
+      messageStr = JSON.stringify(message, null, 2);
+    }
+    
+    // Préparer l'instruction spécifique au type
+    let instructionSpecifique = '';
+    if (type === 'hl7') {
+      instructionSpecifique = `
+Merci de générer une documentation pédagogique pour ce message HL7 v2.5 avec:
+1. Explication générale du type de message et de son utilisation
+2. Description détaillée de chaque segment, champ et composant
+3. Signification clinique ou administrative des informations présentes
+4. Guide de lecture du message pour un nouvel utilisateur
+5. Bonnes pratiques et points d'attention pour l'utilisation de ce type de message
+`;
     } else {
-      userMessage = `Merci de générer une documentation détaillée expliquant cette ressource FHIR R4 pour un nouveau développeur:
+      instructionSpecifique = `
+Merci de générer une documentation pédagogique pour cette ressource FHIR avec:
+1. Explication générale du type de ressource et de son utilisation
+2. Description détaillée de chaque élément et attribut
+3. Signification clinique ou administrative des informations présentes
+4. Guide d'utilisation de la ressource pour un nouvel utilisateur
+5. Bonnes pratiques et points d'attention pour l'utilisation de ce type de ressource
+`;
+    }
+    
+    // Créer le prompt pour la génération de documentation
+    const messages = [
+      { role: 'system', content: HL7_FHIR_SYSTEM_INSTRUCTIONS },
+      { role: 'user', content: `
+Je souhaite générer une documentation explicative et pédagogique pour mieux comprendre le contenu suivant:
 
-\`\`\`json
-${messageString}
+\`\`\`${type === 'fhir' ? 'json' : ''}
+${messageStr}
 \`\`\`
 
-La documentation doit:
-1. Expliquer le type de ressource et ses attributs importants
-2. Clarifier la signification des codes et terminologies utilisés
-3. Mettre en contexte la ressource dans un flux de travail clinique
-4. Inclure des notes explicatives sur les particularités de cette ressource`;
-    }
+${instructionSpecifique}
 
-    // Envoyer la requête au bon fournisseur d'IA
-    const documentation = await sendAIRequest(aiProvider, [
-      { role: 'system', content: SYSTEM_INSTRUCTIONS },
-      { role: 'user', content: userMessage }
-    ]);
-
-    // Structurer la réponse
-    return {
-      documentation: documentation,
-      messageType: type.toLowerCase(),
-      timestamp: new Date().toISOString()
-    };
+La documentation doit être structurée, claire et accessible, tout en restant techniquement précise.
+` }
+    ];
+    
+    // Envoyer la requête au modèle d'IA avec timeout
+    const response = await promiseWithTimeout(
+      sendAIRequest(provider, messages),
+      AI_REQUEST_TIMEOUT,
+      'La requête à l\'IA a pris trop de temps'
+    );
+    
+    // Mettre à jour le compteur d'utilisation
+    await updateProviderUsage(provider.id);
+    
+    return response;
   } catch (error) {
-    console.error('[DOC-AI] Erreur lors de la génération de documentation:', error);
-    throw new Error(`Erreur lors de la génération de documentation: ${error.message}`);
+    console.error('Erreur lors de la génération de documentation:', error);
+    throw new Error(`Erreur de génération de documentation: ${error.message}`);
   }
 }
 
@@ -309,19 +374,27 @@ La documentation doit:
  */
 function detectHL7MessageType(hl7Message) {
   try {
-    // Rechercher le segment MSH et extraire le type de message
-    const mshRegex = /^MSH\|.*?\|.*?\|.*?\|.*?\|.*?\|(.*?)\|/m;
-    const match = hl7Message.match(mshRegex);
+    // Rechercher la ligne MSH
+    const lines = hl7Message.split('\n');
+    const mshLine = lines.find(line => line.startsWith('MSH|'));
     
-    if (match && match[1]) {
-      // Retourner le type de message (ex: ADT^A01)
-      return match[1];
+    if (!mshLine) {
+      return 'Inconnu';
     }
     
-    return 'Unknown';
+    // Extraire le type de message (champ 9)
+    const segments = mshLine.split('|');
+    if (segments.length < 10) {
+      return 'Inconnu';
+    }
+    
+    const messageTypeField = segments[8];
+    
+    // Le format est généralement comme "ADT^A01"
+    return messageTypeField.replace(/\^.*$/, '') || 'Inconnu';
   } catch (error) {
-    console.error('[HL7-AI] Erreur lors de la détection du type de message HL7:', error);
-    return 'Unknown';
+    console.error('Erreur lors de la détection du type de message HL7:', error);
+    return 'Inconnu';
   }
 }
 
@@ -332,25 +405,16 @@ function detectHL7MessageType(hl7Message) {
  */
 function detectFHIRResourceType(fhirResource) {
   try {
-    // Si la ressource est une chaîne, la parser en objet
+    // Convertir en objet si c'est une chaîne
     const resource = typeof fhirResource === 'string' 
-      ? JSON.parse(fhirResource)
+      ? JSON.parse(fhirResource) 
       : fhirResource;
     
     // Extraire le type de ressource
-    if (resource && resource.resourceType) {
-      return resource.resourceType;
-    }
-    
-    // Si c'est un tableau, prendre le premier élément
-    if (Array.isArray(resource) && resource.length > 0 && resource[0].resourceType) {
-      return `Bundle[${resource[0].resourceType}]`;
-    }
-    
-    return 'Unknown';
+    return resource.resourceType || 'Inconnu';
   } catch (error) {
-    console.error('[FHIR-AI] Erreur lors de la détection du type de ressource FHIR:', error);
-    return 'Unknown';
+    console.error('Erreur lors de la détection du type de ressource FHIR:', error);
+    return 'Inconnu';
   }
 }
 
@@ -362,66 +426,361 @@ function detectFHIRResourceType(fhirResource) {
  */
 async function sendAIRequest(provider, messages) {
   try {
-    // Construire l'URL selon le fournisseur
-    let apiUrl;
-    let requestData;
-    let headers = {
-      'Content-Type': 'application/json'
-    };
+    // Extraire les paramètres du fournisseur
+    const { provider_name: providerName, api_key: apiKey, api_url: apiUrl, models, settings } = provider;
     
-    switch (provider.provider_name.toLowerCase()) {
+    // Analyser les settings et les models
+    let providerSettings = {};
+    if (settings) {
+      try {
+        providerSettings = JSON.parse(settings);
+      } catch (error) {
+        console.warn(`Erreur de parsing des paramètres pour ${providerName}:`, error);
+      }
+    }
+    
+    let modelsList = [];
+    if (models) {
+      try {
+        modelsList = JSON.parse(models);
+      } catch (error) {
+        console.warn(`Erreur de parsing des modèles pour ${providerName}:`, error);
+      }
+    }
+    
+    // Sélectionner le modèle par défaut (premier de la liste ou valeur par défaut)
+    const model = modelsList[0] || 'mistral-large-latest';
+    
+    // Adaptations spécifiques aux fournisseurs
+    let response = null;
+    
+    switch (providerName.toLowerCase()) {
       case 'mistral':
-        apiUrl = `${provider.api_url || 'https://api.mistral.ai/v1'}/chat/completions`;
-        requestData = {
-          model: provider.models ? provider.models.split(',')[0].trim() : 'mistral-large-latest',
-          messages: messages,
-          max_tokens: 2000
-        };
-        headers['Authorization'] = `Bearer ${provider.api_key}`;
+        // Pour Mistral AI
+        response = await sendMistralRequest(apiKey, apiUrl, model, messages, providerSettings);
         break;
         
       case 'openai':
-        apiUrl = `${provider.api_url || 'https://api.openai.com/v1'}/chat/completions`;
-        requestData = {
-          model: provider.models ? provider.models.split(',')[0].trim() : 'gpt-4o',
-          messages: messages,
-          max_tokens: 2000
-        };
-        headers['Authorization'] = `Bearer ${provider.api_key}`;
+        // Pour OpenAI
+        response = await sendOpenAIRequest(apiKey, apiUrl, model, messages, providerSettings);
         break;
         
       case 'anthropic':
-        apiUrl = `${provider.api_url || 'https://api.anthropic.com/v1'}/messages`;
-        // Adapter au format Anthropic
-        requestData = {
-          model: provider.models ? provider.models.split(',')[0].trim() : 'claude-3-7-sonnet-20250219',
-          messages: messages,
-          max_tokens: 2000
-        };
-        headers['x-api-key'] = provider.api_key;
-        headers['anthropic-version'] = '2023-06-01';
+        // Pour Anthropic
+        response = await sendAnthropicRequest(apiKey, apiUrl, model, messages, providerSettings);
+        break;
+        
+      case 'gemini':
+      case 'google':
+        // Pour Google AI (Gemini)
+        response = await sendGoogleAIRequest(apiKey, apiUrl, model, messages, providerSettings);
+        break;
+        
+      case 'ollama':
+        // Pour Ollama (local)
+        response = await sendOllamaRequest(apiUrl, model, messages, providerSettings);
         break;
         
       default:
-        throw new Error(`Fournisseur d'IA "${provider.provider_name}" non pris en charge pour les analyses HL7/FHIR.`);
+        throw new Error(`Fournisseur d'IA '${providerName}' non supporté`);
     }
     
-    // Envoyer la requête
-    const response = await axios.post(apiUrl, requestData, { headers });
-    
-    // Extraire la réponse selon le format du fournisseur
-    let content;
-    
-    if (provider.provider_name.toLowerCase() === 'anthropic') {
-      content = response.data.content[0].text;
-    } else {
-      content = response.data.choices[0].message.content;
-    }
-    
-    return content;
+    return response;
   } catch (error) {
-    console.error(`[AI] Erreur lors de la requête au modèle d'IA (${provider.provider_name}):`, error);
-    throw new Error(`Erreur lors de la communication avec l'IA: ${error.message}`);
+    console.error('Erreur lors de l\'envoi de la requête IA:', error);
+    throw new Error(`Erreur de requête IA: ${error.message}`);
+  }
+}
+
+/**
+ * Envoyer une requête à Mistral AI
+ * @param {string} apiKey - La clé API Mistral
+ * @param {string} apiUrl - L'URL de l'API (optionnel)
+ * @param {string} model - Le modèle à utiliser
+ * @param {Array<Object>} messages - Les messages à envoyer
+ * @param {Object} settings - Paramètres supplémentaires
+ * @returns {Promise<string>} La réponse générée
+ */
+async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}) {
+  const url = apiUrl || 'https://api.mistral.ai/v1/chat/completions';
+  
+  // Paramètres de base
+  const params = {
+    model: model,
+    messages: messages,
+    temperature: settings.temperature || 0.2,
+    max_tokens: settings.max_tokens || 4000
+  };
+  
+  // Ajouter d'autres paramètres si présents
+  if (settings.top_p) params.top_p = settings.top_p;
+  if (settings.safe_mode !== undefined) params.safe_mode = settings.safe_mode;
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    const response = await axios.post(url, params, { headers });
+    
+    // Extraire et retourner le texte de la réponse
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error('Erreur API Mistral:', error.response?.data || error.message);
+    throw new Error(`Erreur API Mistral: ${error.response?.data?.error?.message || error.message}`);
+  }
+}
+
+/**
+ * Envoyer une requête à OpenAI
+ * @param {string} apiKey - La clé API OpenAI
+ * @param {string} apiUrl - L'URL de l'API (optionnel)
+ * @param {string} model - Le modèle à utiliser
+ * @param {Array<Object>} messages - Les messages à envoyer
+ * @param {Object} settings - Paramètres supplémentaires
+ * @returns {Promise<string>} La réponse générée
+ */
+async function sendOpenAIRequest(apiKey, apiUrl, model, messages, settings = {}) {
+  const url = apiUrl || 'https://api.openai.com/v1/chat/completions';
+  
+  // Paramètres de base
+  const params = {
+    model: model,
+    messages: messages,
+    temperature: settings.temperature || 0.2,
+    max_tokens: settings.max_tokens || 4000
+  };
+  
+  // Ajouter d'autres paramètres si présents
+  if (settings.top_p) params.top_p = settings.top_p;
+  if (settings.frequency_penalty) params.frequency_penalty = settings.frequency_penalty;
+  if (settings.presence_penalty) params.presence_penalty = settings.presence_penalty;
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    
+    const response = await axios.post(url, params, { headers });
+    
+    // Extraire et retourner le texte de la réponse
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error('Erreur API OpenAI:', error.response?.data || error.message);
+    throw new Error(`Erreur API OpenAI: ${error.response?.data?.error?.message || error.message}`);
+  }
+}
+
+/**
+ * Envoyer une requête à Anthropic
+ * @param {string} apiKey - La clé API Anthropic
+ * @param {string} apiUrl - L'URL de l'API (optionnel)
+ * @param {string} model - Le modèle à utiliser
+ * @param {Array<Object>} messages - Les messages à envoyer
+ * @param {Object} settings - Paramètres supplémentaires
+ * @returns {Promise<string>} La réponse générée
+ */
+async function sendAnthropicRequest(apiKey, apiUrl, model, messages, settings = {}) {
+  const url = apiUrl || 'https://api.anthropic.com/v1/messages';
+  
+  // Convertir le format des messages au format Anthropic
+  const anthropicMessages = messages.filter(msg => msg.role !== 'system');
+  const systemMessage = messages.find(msg => msg.role === 'system')?.content || '';
+  
+  // Paramètres de base
+  const params = {
+    model: model,
+    messages: anthropicMessages,
+    max_tokens: settings.max_tokens || 4000
+  };
+  
+  // Ajouter le message système si présent
+  if (systemMessage) {
+    params.system = systemMessage;
+  }
+  
+  // Ajouter d'autres paramètres si présents
+  if (settings.temperature) params.temperature = settings.temperature;
+  if (settings.top_p) params.top_p = settings.top_p;
+  if (settings.top_k) params.top_k = settings.top_k;
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    };
+    
+    const response = await axios.post(url, params, { headers });
+    
+    // Extraire et retourner le texte de la réponse
+    return response.data.content[0].text;
+  } catch (error) {
+    console.error('Erreur API Anthropic:', error.response?.data || error.message);
+    throw new Error(`Erreur API Anthropic: ${error.response?.data?.error?.message || error.message}`);
+  }
+}
+
+/**
+ * Envoyer une requête à Google AI (Gemini)
+ * @param {string} apiKey - La clé API Google
+ * @param {string} apiUrl - L'URL de l'API (optionnel)
+ * @param {string} model - Le modèle à utiliser
+ * @param {Array<Object>} messages - Les messages à envoyer
+ * @param {Object} settings - Paramètres supplémentaires
+ * @returns {Promise<string>} La réponse générée
+ */
+async function sendGoogleAIRequest(apiKey, apiUrl, model, messages, settings = {}) {
+  const geminiModel = model || 'gemini-pro';
+  const url = apiUrl || `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+  
+  // Convertir le format des messages au format Gemini
+  const geminiContents = [];
+  let systemPrompt = '';
+  
+  // Extraire le message système s'il existe
+  const systemMessage = messages.find(msg => msg.role === 'system');
+  if (systemMessage) {
+    systemPrompt = systemMessage.content;
+  }
+  
+  // Traiter les messages utilisateur et assistant
+  messages.forEach(msg => {
+    if (msg.role !== 'system') {
+      geminiContents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      });
+    }
+  });
+  
+  // Paramètres de base
+  const params = {
+    contents: geminiContents,
+    generationConfig: {
+      temperature: settings.temperature || 0.2,
+      maxOutputTokens: settings.max_tokens || 4000,
+      topP: settings.top_p || 0.95,
+      topK: settings.top_k || 40
+    }
+  };
+  
+  // Ajouter le message système comme une instruction si présent
+  if (systemPrompt) {
+    params.systemInstruction = { parts: [{ text: systemPrompt }] };
+  }
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    const response = await axios.post(url, params, { headers });
+    
+    // Extraire et retourner le texte de la réponse
+    return response.data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error('Erreur API Google AI:', error.response?.data || error.message);
+    throw new Error(`Erreur API Google AI: ${error.response?.data?.error?.message || error.message}`);
+  }
+}
+
+/**
+ * Envoyer une requête à Ollama (instance locale)
+ * @param {string} apiUrl - L'URL de l'API Ollama
+ * @param {string} model - Le modèle à utiliser
+ * @param {Array<Object>} messages - Les messages à envoyer
+ * @param {Object} settings - Paramètres supplémentaires
+ * @returns {Promise<string>} La réponse générée
+ */
+async function sendOllamaRequest(apiUrl, model, messages, settings = {}) {
+  const url = apiUrl || 'http://localhost:11434/api/chat';
+  
+  // Paramètres de base
+  const params = {
+    model: model || 'llama3',
+    messages: messages,
+    stream: false,
+    options: {
+      temperature: settings.temperature || 0.2,
+      num_predict: settings.max_tokens || 4000
+    }
+  };
+  
+  // Ajouter d'autres paramètres si présents
+  if (settings.top_p) params.options.top_p = settings.top_p;
+  if (settings.top_k) params.options.top_k = settings.top_k;
+  
+  try {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    const response = await axios.post(url, params, { headers });
+    
+    // Extraire et retourner le texte de la réponse
+    return response.data.message.content;
+  } catch (error) {
+    console.error('Erreur API Ollama:', error.response?.data || error.message);
+    throw new Error(`Erreur API Ollama: ${error.response?.data?.error || error.message}`);
+  }
+}
+
+/**
+ * Récupérer les informations d'un fournisseur d'IA à partir de son nom
+ * @param {string} providerName - Le nom du fournisseur
+ * @returns {Promise<Object>} Les informations du fournisseur
+ */
+async function getAIProvider(providerName) {
+  try {
+    const db = dbService.getDb();
+    
+    // Rechercher le fournisseur dans la base de données
+    const provider = db.prepare(`
+      SELECT * FROM ai_providers 
+      WHERE provider_name = ? AND enabled = 1
+    `).get(providerName);
+    
+    if (!provider) {
+      // Rechercher un fournisseur par défaut si celui demandé n'est pas trouvé
+      console.log(`Fournisseur '${providerName}' non trouvé, utilisation du fournisseur par défaut`);
+      return db.prepare(`
+        SELECT * FROM ai_providers 
+        WHERE enabled = 1 
+        ORDER BY id ASC 
+        LIMIT 1
+      `).get();
+    }
+    
+    return provider;
+  } catch (error) {
+    console.error('Erreur lors de la récupération du fournisseur d\'IA:', error);
+    return null;
+  }
+}
+
+/**
+ * Mettre à jour le compteur d'utilisation d'un fournisseur d'IA
+ * @param {number} providerId - L'ID du fournisseur
+ * @returns {Promise<void>}
+ */
+async function updateProviderUsage(providerId) {
+  try {
+    const db = dbService.getDb();
+    
+    // Mettre à jour le compteur d'utilisation et la date de dernière utilisation
+    db.prepare(`
+      UPDATE ai_providers 
+      SET usage_count = usage_count + 1, 
+          current_usage = current_usage + 1,
+          last_used_at = datetime('now')
+      WHERE id = ?
+    `).run(providerId);
+    
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du compteur d\'utilisation:', error);
   }
 }
 
@@ -430,5 +789,7 @@ module.exports = {
   analyzeFHIRResource,
   analyzeConversion,
   suggestMappingImprovements,
-  generateDocumentation
+  generateDocumentation,
+  detectHL7MessageType,
+  detectFHIRResourceType
 };

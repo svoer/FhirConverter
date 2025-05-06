@@ -1,9 +1,11 @@
 /* Styles pour FHIRHub */
 :root {
   --primary-color: #e74c3c; /* Rouge dégradé */
+  --primary-rgb: 231, 76, 60;
   --primary-gradient-start: #e74c3c; /* Rouge */
   --primary-gradient-end: #f39c12; /* Orange */
   --secondary-color: #f39c12; /* Orange */
+  --secondary-rgb: 243, 156, 18;
   --text-color: #333;
   --light-text: #f8f9fa;
   --background-color: #f4f7f9;
@@ -11,6 +13,14 @@
   --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   --border-radius: 0;
   --transition: all 0.3s ease;
+  --info-color: #2196F3;
+  --info-rgb: 33, 150, 243;
+  --success-color: #4CAF50;
+  --success-rgb: 76, 175, 80;
+  --warning-color: #FFC107;
+  --warning-rgb: 255, 193, 7;
+  --error-color: #e74c3c;
+  --error-rgb: 231, 76, 60;
 }
 
 * {
@@ -399,6 +409,38 @@ body {
   background-color: rgba(46, 204, 113, 0.15);
   border: 1px solid rgba(46, 204, 113, 0.3);
   color: #27ae60;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 20px;
+  margin-left: 5px;
+  color: #fff;
+  background-color: var(--secondary-color);
+}
+
+.badge-info {
+  background-color: var(--info-color);
+}
+
+.badge-success {
+  background-color: var(--success-color);
+}
+
+.badge-warning {
+  background-color: var(--warning-color);
+}
+
+.badge-danger {
+  background-color: var(--error-color);
 }
 
 /* Dashboard styles */
