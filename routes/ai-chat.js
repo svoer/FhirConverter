@@ -7,7 +7,10 @@
 const express = require('express');
 const router = express.Router();
 const jwtAuth = require('../middleware/jwtAuth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
+const authCombined = require('../middleware/authCombined');
 const aiProviderService = require('../src/services/aiProviderService');
+const documentationService = require('../src/services/documentationService');
 const axios = require('axios');
 
 /**
@@ -70,6 +73,94 @@ const axios = require('axios');
  *       500:
  *         description: Erreur serveur
  */
+/**
+ * @swagger
+ * /api/ai/documentation:
+ *   get:
+ *     summary: Récupère la documentation pertinente pour une requête
+ *     description: Utilisé par le chatbot pour enrichir ses réponses avec la documentation technique
+ *     tags: [AI Chat]
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Terme de recherche dans la documentation
+ *     responses:
+ *       200:
+ *         description: Documentation pertinente
+ *       400:
+ *         description: Requête invalide
+ *       404:
+ *         description: Aucune documentation trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/ai/documentation', async (req, res) => {
+  // Permettre l'accès au chatbot avec un en-tête spécial
+  if (req.headers['x-chatbot-request'] === 'true') {
+    console.log('[AI DOC] Requête du chatbot acceptée avec X-Chatbot-Request');
+    // Continuer sans vérification d'authentification
+  } else {
+    // Pour les autres requêtes, vérifier l'authentification
+    try {
+      if (!req.headers.authorization) {
+        return res.status(401).json({ error: 'Authentification requise' });
+      }
+    } catch (authError) {
+      console.error('[AI DOC] Erreur d\'authentification:', authError);
+      return res.status(401).json({ error: 'Erreur d\'authentification' });
+    }
+  }
+  try {
+    const query = req.query.query;
+    
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({ 
+        error: 'Un terme de recherche d\'au moins 2 caractères est requis',
+        documentation: null 
+      });
+    }
+    
+    console.log(`[AI DOC] Recherche de documentation pour: "${query}"`);
+    
+    // Utiliser le service de documentation pour rechercher des informations pertinentes
+    const docSummary = await documentationService.getDocumentationSummary(query);
+    
+    if (!docSummary || !docSummary.documents || docSummary.documents.length === 0) {
+      console.log(`[AI DOC] Aucune documentation trouvée pour: "${query}"`);
+      return res.status(200).json({ 
+        found: false,
+        documentation: null 
+      });
+    }
+    
+    // Construire un texte formaté avec la documentation trouvée
+    let formattedDocumentation = `### Documentation technique pertinente:\n\n`;
+    
+    docSummary.documents.forEach(doc => {
+      formattedDocumentation += `#### ${doc.title} (${doc.path})\n\n`;
+      formattedDocumentation += `${doc.content.substring(0, 1000)}${doc.content.length > 1000 ? '...' : ''}\n\n`;
+    });
+    
+    console.log(`[AI DOC] ${docSummary.documents.length} documents trouvés pour: "${query}"`);
+    
+    return res.status(200).json({
+      found: true,
+      query: query,
+      count: docSummary.documents.length,
+      documentation: formattedDocumentation
+    });
+  } catch (error) {
+    console.error('[AI DOC] Erreur lors de la recherche de documentation:', error);
+    return res.status(500).json({ 
+      error: `Erreur lors de la recherche de documentation: ${error.message}`,
+      documentation: null 
+    });
+  }
+});
+
 router.post('/ai/chat', async (req, res) => {
   try {
     console.log('[AI CHAT ROUTE] Nouvelle requête de chat reçue sur /api/ai/chat');
