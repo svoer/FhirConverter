@@ -346,11 +346,57 @@ async function getApplicationsForFilter() {
   }
 }
 
+/**
+ * Récupère les conversions pour une application spécifique
+ * @param {Number} applicationId - ID de l'application
+ * @param {Number} limit - Nombre maximum de résultats
+ * @param {Number} page - Numéro de page (commence à 1)
+ * @param {Boolean} includeNull - Inclure les conversions sans application_id
+ * @returns {Array} - Liste des conversions
+ */
+async function getConversions(applicationId, limit = 100, page = 1, includeNull = false) {
+  try {
+    const offset = (page - 1) * limit;
+    
+    let query, params;
+    
+    if (includeNull) {
+      query = `
+        SELECT *, 
+               SUBSTR(input_message, 1, 100) as input_preview,
+               SUBSTR(output_message, 1, 100) as output_preview
+        FROM conversion_logs 
+        WHERE application_id = ? OR application_id IS NULL
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [applicationId, limit, offset];
+    } else {
+      query = `
+        SELECT *, 
+               SUBSTR(input_message, 1, 100) as input_preview,
+               SUBSTR(output_message, 1, 100) as output_preview
+        FROM conversion_logs 
+        WHERE application_id = ?
+        ORDER BY timestamp DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [applicationId, limit, offset];
+    }
+    
+    return await db.all(query, params);
+  } catch (error) {
+    console.error('[CONVERSION-LOGS] Erreur lors de la récupération des conversions:', error);
+    return [];
+  }
+}
+
 module.exports = {
   logConversion,
   getConversionLogs,
   countConversionLogs,
   deleteOldLogs,
   getConversionStats,
-  getApplicationsForFilter
+  getApplicationsForFilter,
+  getConversions
 };
