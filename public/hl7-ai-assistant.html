@@ -563,6 +563,7 @@
                   </div>
                   
                   <div class="button-group">
+                    <button class="btn btn-secondary" id="convert-hl7-btn">Convertir en FHIR</button>
                     <button class="btn btn-primary" id="analyze-hl7-btn">Analyser avec IA</button>
                   </div>
                 </div>
@@ -670,6 +671,7 @@
       const conversionHl7Input = document.getElementById('conversion-hl7-input');
       const conversionFhirInput = document.getElementById('conversion-fhir-input');
       
+      const convertHl7Btn = document.getElementById('convert-hl7-btn');
       const analyzeHl7Btn = document.getElementById('analyze-hl7-btn');
       const analyzeFhirBtn = document.getElementById('analyze-fhir-btn');
       const analyzeConversionBtn = document.getElementById('analyze-conversion-btn');
@@ -1019,6 +1021,17 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         // TODO: Implémenter l'export PDF
       });
       
+      // Convertir simplement en FHIR (sans analyse IA)
+      convertHl7Btn.addEventListener('click', () => {
+        const hl7Message = hl7Input.value.trim();
+        if (!hl7Message) {
+          alert('Veuillez saisir un message HL7 à convertir.');
+          return;
+        }
+        
+        convertHL7ToFHIR(hl7Message);
+      });
+      
       // Analyser avec IA
       analyzeHl7Btn.addEventListener('click', () => {
         const hl7Message = hl7Input.value.trim();
@@ -1252,6 +1265,34 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         `;
       }
       
+      // Style CSS pour les alertes
+      document.head.insertAdjacentHTML('beforeend', `
+        <style>
+          .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+          }
+          
+          .alert-success {
+            background-color: rgba(76, 175, 80, 0.1);
+            border: 1px solid #4CAF50;
+            color: #2E7D32;
+          }
+          
+          .alert-danger {
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            color: #C0392B;
+          }
+          
+          .alert i {
+            margin-right: 0.5rem;
+          }
+        </style>
+      `);
+      
       function formatAnalysisText(text) {
         if (!text) return '';
         
@@ -1287,6 +1328,59 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       
       function hideLoading() {
         loadingIndicator.style.display = 'none';
+      }
+      
+      // Fonction de conversion HL7 vers FHIR (sans analyse IA)
+      async function convertHL7ToFHIR(hl7Message) {
+        try {
+          showLoading();
+          
+          const response = await fetch('/api/convert/hl7-to-fhir', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
+              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
+            },
+            body: JSON.stringify({
+              hl7Message,
+              options: {
+                includeComments: true,
+                useIdentifiers: true
+              }
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de la conversion HL7 vers FHIR');
+          }
+          
+          const result = await response.json();
+          
+          // Activer l'onglet FHIR et afficher le résultat
+          document.querySelector('.input-tab[data-tab="fhir-tab"]').click();
+          fhirInput.value = JSON.stringify(result.fhirResources, null, 2);
+          
+          // Afficher un message de réussite dans la sortie
+          aiOutput.style.display = 'block';
+          aiOutput.innerHTML = `
+            <div class="alert alert-success">
+              <i class="fas fa-check-circle"></i> Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).
+            </div>
+            <div class="analysis-content">
+              <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
+              <p>Vous pouvez désormais visualiser et modifier le résultat dans l'onglet "Ressource FHIR".</p>
+              <p>Pour une analyse détaillée de la qualité de la conversion, vous pouvez utiliser l'onglet "Analyse de conversion".</p>
+            </div>
+          `;
+          
+        } catch (error) {
+          console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
+          displayError(error.message);
+        } finally {
+          hideLoading();
+        }
       }
       
       // Utilitaires
