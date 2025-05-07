@@ -1407,7 +1407,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         try {
           showLoading();
           
-          const response = await fetch('/api/hl7-to-fhir', {
+          const response = await fetch('/api/convert/hl7-to-fhir', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
