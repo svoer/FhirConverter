@@ -60,15 +60,11 @@ N'oublie pas:
 - Tu ne traites PAS de données patient réelles
 - Sois cordial et professionnel dans tes réponses
 - Limite tes réponses à 2-3 phrases ou points concis
-- Quand tu ne sais pas, suggère de consulter la documentation ou de contacter le support technique
+- Utilise la documentation technique fournie pour répondre aux questions des utilisateurs
+- Cite tes sources quand tu te réfères à la documentation (ex: "Selon la documentation technique...")
 
-IMPORTANT: Utilise TOUJOURS la documentation technique que je te fournis pour enrichir tes réponses. 
-Avant de répondre, j'ai déjà recherché pour toi les informations pertinentes dans la documentation technique
-et je te les ai incluses dans le message système. Si tu vois une section "Documentation technique pertinente",
-utilise ces informations pour formuler ta réponse, et cite la source (ex: "Selon la documentation technique sur l'authentification...").
-
-Si tu ne trouves pas l'information dans la documentation fournie, indique-le clairement et propose les meilleures
-ressources alternatives ou qui pourrait aider l'utilisateur à résoudre son problème.`;
+Tu as accès à la documentation technique via l'API /api/documentation/summary.
+Je vais chercher automatiquement les informations pertinentes de la documentation et te les fournir pour enrichir tes réponses.`;
 
 /**
  * Initialise le chatbot
@@ -201,7 +197,7 @@ function addEventListeners() {
 async function loadAIProvider() {
   try {
     // Récupérer la liste des fournisseurs d'IA configurés et actifs
-    const response = await fetch('/api/providers/active', {
+    const response = await fetch('/api/ai/providers/active', {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
@@ -363,28 +359,23 @@ async function getAIResponse(userMessage) {
     // Récupérer la documentation pertinente pour la question de l'utilisateur
     let documentationContext = "";
     try {
-      console.log(`Recherche de documentation pour: "${userMessage}"`);
-      
-      // Nouvel endpoint dédié pour le chatbot
-      const docResponse = await fetch(`/api/documentation?query=${encodeURIComponent(userMessage)}`, {
+      const docResponse = await fetch(`/api/documentation/summary?topic=${encodeURIComponent(userMessage)}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'X-Chatbot-Request': 'true'
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
       if (docResponse.ok) {
         const docData = await docResponse.json();
-        
-        if (docData && docData.found && docData.documentation) {
-          documentationContext = docData.documentation;
-          console.log(`Documentation trouvée (${docData.count} documents) pour la question de l'utilisateur`);
-        } else {
-          console.log('Aucune documentation pertinente trouvée');
+        if (docData && docData.results && docData.results.length > 0) {
+          documentationContext = "### Documentation technique pertinente:\n\n";
+          docData.results.forEach(doc => {
+            documentationContext += `#### ${doc.title} (${doc.path})\n\n${doc.content}\n\n`;
+          });
+          
+          console.log('Documentation trouvée pour la question de l\'utilisateur');
         }
-      } else {
-        console.warn(`Erreur lors de la récupération de la documentation: ${docResponse.status}`);
       }
     } catch (docError) {
       console.warn('Erreur lors de la récupération de la documentation:', docError);
@@ -397,7 +388,7 @@ async function getAIResponse(userMessage) {
       : systemInstructions;
     
     // Construire la requête pour l'API d'IA
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

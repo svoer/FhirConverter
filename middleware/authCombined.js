@@ -1,14 +1,6 @@
 /**
  * Middleware combiné pour l'authentification
  * Combine l'authentification par clé API et par JWT
- * 
- * Ce module fournit plusieurs middlewares standardisés pour l'authentification :
- * - checkAuth : Vérifie l'authentification par JWT ou par clé API
- * - requireAdmin : Vérifie que l'utilisateur est administrateur
- * - authWithRoles : Middleware configurable pour vérifier les rôles
- * 
- * @module middleware/authCombined
- * @see middleware/README.md pour la documentation complète et les exemples
  */
 
 const apiKeyAuth = require('./apiKeyAuth');
