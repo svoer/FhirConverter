@@ -97,7 +97,7 @@ const axios = require('axios');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/ai/documentation', async (req, res) => {
+router.get('/documentation', async (req, res) => {
   // Permettre l'accès au chatbot avec un en-tête spécial
   if (req.headers['x-chatbot-request'] === 'true') {
     console.log('[AI DOC] Requête du chatbot acceptée avec X-Chatbot-Request');
@@ -161,7 +161,7 @@ router.get('/ai/documentation', async (req, res) => {
   }
 });
 
-router.post('/ai/chat', async (req, res) => {
+router.post('/chat', async (req, res) => {
   try {
     console.log('[AI CHAT ROUTE] Nouvelle requête de chat reçue sur /api/ai/chat');
     console.log('[AI CHAT ROUTE] Auth JWT désactivée temporairement pour déboguer');
