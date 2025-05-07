@@ -424,6 +424,68 @@ async function getConversions(applicationId, limit = 100, page = 1, includeNull 
   }
 }
 
+/**
+ * Obtient les statistiques pour une application spécifique
+ * @param {Number} applicationId - ID de l'application
+ * @returns {Object} - Statistiques de l'application
+ */
+async function getAppStats(applicationId) {
+  try {
+    // Vérifier si l'application existe
+    const app = await db.get('SELECT * FROM applications WHERE id = ?', [applicationId]);
+    if (!app) {
+      throw new Error('Application non trouvée');
+    }
+
+    // Compter le nombre total de conversions pour cette application
+    const totalConversions = await db.get(
+      'SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ?',
+      [applicationId]
+    );
+
+    // Compter le nombre de clés API associées à cette application
+    const apiKeys = await db.get(
+      'SELECT COUNT(*) as count FROM api_keys WHERE application_id = ?',
+      [applicationId]
+    );
+
+    // Compter le nombre d'erreurs
+    const errors = await db.get(
+      'SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ? AND status != ?',
+      [applicationId, 'success']
+    );
+
+    // Calculer la date de début de la journée (minuit) en tenant compte du fuseau horaire local
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISOString = today.toISOString();
+
+    // Compter le nombre de conversions aujourd'hui
+    const conversionsToday = await db.get(
+      'SELECT COUNT(*) as count FROM conversion_logs WHERE application_id = ? AND timestamp >= ?',
+      [applicationId, todayISOString]
+    );
+
+    console.log(`[STATS] Date d'aujourd'hui pour les statistiques: ${todayISOString}`);
+    console.log(`[STATS] Conversions aujourd'hui pour l'application ${applicationId}: ${conversionsToday.count}`);
+
+    return {
+      totalConversions: totalConversions.count || 0,
+      apiKeys: apiKeys.count || 0,
+      errors: errors.count || 0,
+      conversionsToday: conversionsToday.count || 0
+    };
+  } catch (error) {
+    console.error(`[STATS] Erreur lors de la récupération des statistiques de l'application ${applicationId}:`, error);
+    return {
+      totalConversions: 0,
+      apiKeys: 0,
+      errors: 0,
+      conversionsToday: 0
+    };
+  }
+}
+
 module.exports = {
   logConversion,
   getConversionLogs,
@@ -431,5 +493,6 @@ module.exports = {
   deleteOldLogs,
   getConversionStats,
   getApplicationsForFilter,
-  getConversions
+  getConversions,
+  getAppStats
 };
