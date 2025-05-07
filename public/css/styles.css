@@ -413,6 +413,87 @@ body {
   color: #27ae60;
 }
 
+/* Styles de notification moderne UX 2025 */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  max-width: 350px;
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-10px);
+  opacity: 0;
+  animation: notificationFadeIn 0.3s ease forwards;
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+}
+
+.notification-container.info {
+  background: linear-gradient(135deg, var(--info-color), rgba(33, 150, 243, 0.8));
+  border-left: 4px solid var(--info-color);
+}
+
+.notification-container.success {
+  background: linear-gradient(135deg, var(--success-color), rgba(76, 175, 80, 0.8));
+  border-left: 4px solid var(--success-color);
+}
+
+.notification-container.warning {
+  background: linear-gradient(135deg, var(--warning-color), rgba(255, 193, 7, 0.8));
+  border-left: 4px solid var(--warning-color);
+}
+
+.notification-container.error {
+  background: linear-gradient(135deg, var(--error-color), rgba(231, 76, 60, 0.8));
+  border-left: 4px solid var(--error-color);
+}
+
+.notification-container::before {
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  margin-right: 12px;
+  font-size: 18px;
+}
+
+.notification-container.info::before {
+  content: "\f05a";  /* icône info */
+}
+
+.notification-container.success::before {
+  content: "\f058";  /* icône check-circle */
+}
+
+.notification-container.warning::before {
+  content: "\f071";  /* icône exclamation-triangle */
+}
+
+.notification-container.error::before {
+  content: "\f057";  /* icône times-circle */
+}
+
+@keyframes notificationFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes notificationFadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.notification-container.fadeOut {
+  animation: notificationFadeOut 0.3s ease forwards;
+}
+
 /* Badges */
 .badge {
   display: inline-block;

@@ -1008,7 +1008,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
           const json = JSON.parse(fhirInput.value);
           fhirInput.value = JSON.stringify(json, null, 2);
         } catch (error) {
-          alert('Le contenu n\'est pas un JSON valide: ' + error.message);
+          showNotification('Le contenu n\'est pas un JSON valide: ' + error.message, 'error');
         }
       });
       
@@ -1019,7 +1019,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       
       // Exporter en PDF
       exportPdfBtn.addEventListener('click', () => {
-        alert('Fonctionnalité d\'export PDF en développement');
+        showNotification('Fonctionnalité d\'export PDF en développement', 'info');
         // TODO: Implémenter l'export PDF
       });
       
@@ -1028,7 +1028,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         convertHl7Btn.addEventListener('click', () => {
           const hl7Message = conversionHl7Input.value.trim();
           if (!hl7Message) {
-            alert('Veuillez saisir un message HL7 à convertir.');
+            showNotification('Veuillez saisir un message HL7 à convertir.', 'warning');
             return;
           }
           
@@ -1467,6 +1467,30 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         );
       }
     });
+  </script>
+  <!-- Conteneur de notification -->
+  <div id="notification-container" class="notification-container" style="display: none;"></div>
+
+  <!-- Fonction pour afficher des notifications modernes -->
+  <script>
+    function showNotification(message, type = 'info') {
+      const notificationContainer = document.getElementById('notification-container');
+      notificationContainer.textContent = message;
+      notificationContainer.className = `notification-container ${type}`;
+      notificationContainer.style.display = 'block';
+      
+      // Effacer les notifications précédentes
+      clearTimeout(window.notificationTimeout);
+      
+      // Auto-masquer après 3 secondes
+      window.notificationTimeout = setTimeout(() => {
+        notificationContainer.classList.add('fadeOut');
+        setTimeout(() => {
+          notificationContainer.style.display = 'none';
+          notificationContainer.classList.remove('fadeOut');
+        }, 300);
+      }, 3000);
+    }
   </script>
 </body>
 </html>
