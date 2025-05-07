@@ -1,5 +1,13 @@
 /**
  * Middleware pour l'authentification par clé API
+ * 
+ * Ce module fournit des fonctionnalités pour l'authentification par clé API :
+ * - verifyApiKey : Vérifie la validité d'une clé API
+ * - generateApiKey : Génère une nouvelle clé API unique
+ * 
+ * @module middleware/apiKeyAuth
+ * @see middleware/README.md pour la documentation complète et les exemples
+ * @see middleware/authCombined.js pour un middleware combinant JWT et API Key
  */
 
 const crypto = require('crypto');

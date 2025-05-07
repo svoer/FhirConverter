@@ -34,6 +34,7 @@ Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub –
 - Documentation Swagger intégrée
 - Environnement entièrement portable avec SQLite
 - Système de cache intelligent pour optimiser les performances
+- Middlewares d'authentification standardisés (JWT et API Key)
 - Scripts d'installation et de démarrage pour Windows, Linux et macOS
 - Déploiement facilité via Docker
 
@@ -161,11 +162,17 @@ Accédez à l'application via `http://localhost:5000` et connectez-vous avec les
 fhirhub/
 ├── api/                    # Modules API
 ├── data/                   # Stockage SQLite et logs
+├── docs/                   # Documentation technique
 ├── french_terminology/     # Mappings pour terminologies françaises
-├── middleware/             # Middleware Express
+├── middleware/             # Middleware Express standardisé
+│   ├── README.md           # Documentation des middlewares d'authentification
+│   ├── jwtAuth.js          # Authentification par JWT
+│   ├── apiKeyAuth.js       # Authentification par clé API
+│   └── authCombined.js     # Middleware combinant JWT et API Key
 ├── public/                 # Interface utilisateur
 ├── routes/                 # Routes Express
 ├── src/                    # Code source principal
+├── storage/                # Stockage persistant (base de données, logs, etc.)
 ├── utils/                  # Utilitaires et fonctions d'aide
 ├── vendor/                 # 🆕 Dépendances intégrées (Node.js local)
 │   └── nodejs/             # 🆕 Installation locale de Node.js v20.15.1

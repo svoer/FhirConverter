@@ -1,5 +1,13 @@
 /**
  * Middleware pour l'authentification par JWT
+ * 
+ * Ce module fournit des fonctionnalités pour l'authentification par token JWT :
+ * - generateToken : Génère un token JWT pour un utilisateur
+ * - verifyToken : Vérifie la validité d'un token JWT
+ * 
+ * @module middleware/jwtAuth
+ * @see middleware/README.md pour la documentation complète et les exemples
+ * @see middleware/authCombined.js pour un middleware combinant JWT et API Key
  */
 
 const jwt = require('jsonwebtoken');
