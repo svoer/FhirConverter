@@ -1040,7 +1040,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       analyzeHl7Btn.addEventListener('click', () => {
         const hl7Message = hl7Input.value.trim();
         if (!hl7Message) {
-          alert('Veuillez saisir un message HL7 à analyser.');
+          showNotification('Veuillez saisir un message HL7 à analyser.', 'warning');
           return;
         }
         
@@ -1050,7 +1050,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       analyzeFhirBtn.addEventListener('click', () => {
         const fhirResource = fhirInput.value.trim();
         if (!fhirResource) {
-          alert('Veuillez saisir une ressource FHIR à analyser.');
+          showNotification('Veuillez saisir une ressource FHIR à analyser.', 'warning');
           return;
         }
         
@@ -1062,7 +1062,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         const fhirResource = conversionFhirInput.value.trim();
         
         if (!hl7Message || !fhirResource) {
-          alert('Veuillez saisir à la fois le message HL7 et les ressources FHIR générées.');
+          showNotification('Veuillez saisir à la fois le message HL7 et les ressources FHIR générées.', 'warning');
           return;
         }
         
@@ -1264,6 +1264,10 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       const convertHl7BtnTab = document.getElementById('convert-hl7-btn-tab');
       
       function displayError(message) {
+        // Afficher une notification d'erreur
+        showNotification(message, 'error');
+        
+        // Afficher également l'erreur dans la zone de sortie pour référence
         aiOutput.style.display = 'block';
         aiOutput.innerHTML = `
           <div class="alert alert-danger">
@@ -1382,6 +1386,9 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
             </div>
           `;
           
+          // Afficher également une notification
+          showNotification(`Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).`, 'success');
+          
         } catch (error) {
           console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
           displayError(error.message);
@@ -1394,7 +1401,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
       convertHl7BtnTab.addEventListener('click', () => {
         const hl7Message = conversionHl7Input.value.trim();
         if (!hl7Message) {
-          alert('Veuillez saisir un message HL7 à convertir.');
+          showNotification('Veuillez saisir un message HL7 à convertir.', 'warning');
           return;
         }
         
@@ -1445,6 +1452,9 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
             </div>
           `;
           
+          // Afficher également une notification
+          showNotification(`Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).`, 'success');
+          
         } catch (error) {
           console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
           displayError(error.message);
@@ -1458,11 +1468,11 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         navigator.clipboard.writeText(text).then(
           () => {
             // Copie réussie
-            alert('Contenu copié dans le presse-papiers');
+            showNotification('Contenu copié dans le presse-papiers', 'success');
           },
           () => {
             // Échec de la copie
-            alert('Impossible de copier le contenu dans le presse-papiers');
+            showNotification('Impossible de copier le contenu dans le presse-papiers', 'error');
           }
         );
       }
