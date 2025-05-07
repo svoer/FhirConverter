@@ -18,6 +18,7 @@ const documentationRoutes = require('./server/routes/documentation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const metrics = require('./src/metrics');
 const conversionLogsExporter = require('./src/conversionLogsExporter');
+const logsExporter = require('./src/logsExporter');
 
 // Importer le convertisseur avec cache intégré 
 const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
@@ -1044,6 +1045,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     // Activer les endpoints de logs de conversion pour Grafana
     metrics.addConversionLogsEndpoints(conversionLogsExporter.conversionLogsApp);
     console.log(`[METRICS] Endpoints de logs de conversion activés pour Grafana`);
+    
+    // Ajouter le nouvel exportateur de logs pour Grafana
+    metrics.metricsApp.use(logsExporter);
+    console.log(`[METRICS] Nouvel exportateur de logs activé pour Grafana`);
   }
   
   // Initialiser le compteur de connexions actives
