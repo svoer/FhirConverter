@@ -198,6 +198,44 @@ npm test
 
 FHIRHub peut être facilement déployé avec Docker, ce qui simplifie l'installation et la maintenance sur n'importe quel environnement (Windows, Linux ou macOS).
 
+### Installation de Docker
+
+Si Docker n'est pas encore installé sur votre système :
+
+#### Linux (Ubuntu/Debian)
+```bash
+# Mettre à jour les paquets
+sudo apt update
+
+# Installer les prérequis
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+# Ajouter la clé GPG de Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+# Ajouter le dépôt Docker
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+# Mettre à jour les paquets et installer Docker
+sudo apt update
+sudo apt install -y docker-ce docker-compose
+
+# Ajouter votre utilisateur au groupe docker pour éviter d'utiliser sudo
+sudo usermod -aG docker ${USER}
+
+# Appliquer les changements de groupe (ou déconnectez-vous puis reconnectez-vous)
+newgrp docker
+```
+
+#### macOS
+1. Téléchargez et installez [Docker Desktop pour Mac](https://www.docker.com/products/docker-desktop)
+2. Lancez Docker Desktop depuis vos Applications
+
+#### Windows
+1. Téléchargez et installez [Docker Desktop pour Windows](https://www.docker.com/products/docker-desktop)
+2. Lancez Docker Desktop et suivez les instructions d'installation
+3. Assurez-vous que WSL 2 (Windows Subsystem for Linux) est activé si demandé
+
 ### Déploiement rapide
 
 ```bash
@@ -212,25 +250,46 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### Déploiement détaillé
 
-1. Assurez-vous que Docker et Docker Compose sont installés sur votre système.
-2. Clonez le dépôt et naviguez dans le répertoire du projet.
-3. Construisez l'image Docker :
+1. Clonez le dépôt et naviguez dans le répertoire du projet :
+   ```bash
+   git clone https://github.com/votre-organisation/fhirhub.git
+   cd fhirhub
+   ```
 
-```bash
-docker-compose build
-```
+2. Exécutez le script d'initialisation pour préparer l'environnement :
+   ```bash
+   # Sous Linux/macOS
+   chmod +x docker-init.sh
+   ./docker-init.sh
+   
+   # Sous Windows
+   docker-init.bat
+   ```
+   Ce script va :
+   - Vérifier les prérequis Docker
+   - Créer les dossiers nécessaires pour les volumes
+   - Générer les fichiers de configuration
+   - Préparer les fichiers de terminologie française
+
+3. Construisez l'image Docker :
+   ```bash
+   docker-compose build
+   ```
 
 4. Démarrez les conteneurs en mode détaché :
-
-```bash
-docker-compose up -d
-```
+   ```bash
+   docker-compose up -d
+   ```
+   Cela va démarrer :
+   - Le serveur FHIRHub principal
+   - Le service Prometheus pour les métriques
+   - Le service Grafana pour les tableaux de bord
+   - Le service Node Exporter pour les métriques système
 
 5. Pour le déploiement en production, utilisez le fichier de configuration dédié :
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
 
 ### Persistance des données
 
@@ -263,9 +322,11 @@ FHIRHub intègre un système complet de monitoring avec Prometheus et Grafana, o
 - **Métriques système** - Utilisation CPU, mémoire, connexions actives
 - **Tableaux de logs détaillés** - Affichage complet des informations de conversion
 
-#### Redémarrer les services de monitoring
+#### Scripts de maintenance pour le monitoring
 
-Si vous rencontrez des problèmes avec les tableaux de bord, vous pouvez utiliser le script de redémarrage fourni:
+FHIRHub inclut plusieurs scripts pour faciliter la maintenance du système de monitoring :
+
+##### Script de redémarrage des services Grafana et Prometheus
 
 ```bash
 # Donner les permissions d'exécution
@@ -275,7 +336,37 @@ chmod +x restart-grafana-logs.sh
 ./restart-grafana-logs.sh
 ```
 
-Le script redémarrera les services nécessaires et vous guidera sur les étapes à suivre si les logs n'apparaissent toujours pas correctement.
+Ce script redémarre les services nécessaires et vous guide sur les étapes à suivre si les logs n'apparaissent toujours pas correctement.
+
+##### Script de redémarrage des conteneurs Docker
+
+```bash
+# Donner les permissions d'exécution
+chmod +x docker-restart-grafana.sh
+
+# Exécuter le script
+./docker-restart-grafana.sh
+```
+
+Ce script est spécifiquement conçu pour l'environnement Docker et va :
+- Redémarrer les conteneurs FHIRHub, Prometheus et Grafana
+- Vérifier que les services redémarrent correctement
+- Afficher des instructions pour accéder aux tableaux de bord
+- Proposer des solutions en cas de problème
+
+##### Réinitialisation des métriques Prometheus
+
+Si vous souhaitez réinitialiser les compteurs Prometheus sans affecter les données de la base de données :
+
+```bash
+# Donner les permissions d'exécution
+chmod +x reset-prometheus-metrics.sh
+
+# Exécuter le script
+./reset-prometheus-metrics.sh
+```
+
+Ce script va nettoyer les métriques Prometheus tout en préservant les données de conversion.
 
 Pour effectuer une sauvegarde des données :
 
