@@ -922,6 +922,7 @@ const aiRoutes = require('./routes/ai');
 const hl7AIRoutes = require('./routes/hl7-ai');
 const workflowsRoutes = require('./routes/workflows');
 const adminRoutes = require('./routes/adminRoutes');
+const convertRoutes = require('./routes/convert');
 
 // Enregistrement des routes
 app.use('/api/applications', applicationsRoutes);
@@ -938,6 +939,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/hl7-ai', hl7AIRoutes);
 app.use('/api/workflows', workflowsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/convert', convertRoutes);  // Routes pour les conversions sans analyse IA
 
 // L'application utilise maintenant l'éditeur de workflow visuel personnalisé
 // La fonctionnalité Node-RED a été remplacée par notre propre implémentation

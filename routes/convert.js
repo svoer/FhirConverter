@@ -9,7 +9,8 @@ const router = express.Router();
 const authenticateToken = require('../middleware/jwtAuth');
 const validateApiKey = require('../middleware/apiKeyAuth');
 const converter = require('../src/services/conversionService');
-const statsService = require('../src/services/statsService');
+// Le service statsService n'existe pas, utilisons le service de journalisation des conversions à la place
+const conversionLogService = require('../src/services/conversionLogService');
 const { apiRequestCounter } = require('../src/metrics');
 
 /**
@@ -77,35 +78,40 @@ router.post('/hl7-to-fhir', authenticateToken, validateApiKey, apiRequestCounter
     try {
       const result = await converter.convertHL7ToFHIR(hl7Message, options);
       
-      // Enregistrer la conversion dans les statistiques
+      // Enregistrer la conversion dans les journaux
       try {
-        await statsService.recordConversion({
-          source_format: 'HL7',
-          target_format: 'FHIR',
-          message_type: result.messageType || 'Unknown',
+        await conversionLogService.logConversion({
+          apiKeyId: req.apiKeyData ? req.apiKeyData.id : null,
+          applicationId: application_id || 1,
+          sourceType: 'direct',
+          hl7Content: hl7Message,
+          fhirContent: JSON.stringify(result),
           status: 'success',
-          application_id: application_id
+          processingTime: result.processingTime || 0,
+          errorMessage: null
         });
-      } catch (statsError) {
-        console.error('Erreur lors de l\'enregistrement des statistiques:', statsError);
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de la conversion:', logError);
       }
       
       return res.json(result);
     } catch (conversionError) {
       console.error('Erreur lors de la conversion HL7 vers FHIR:', conversionError);
       
-      // Enregistrer l'échec dans les statistiques
+      // Enregistrer l'échec dans les journaux
       try {
-        await statsService.recordConversion({
-          source_format: 'HL7',
-          target_format: 'FHIR',
-          message_type: 'Unknown',
+        await conversionLogService.logConversion({
+          apiKeyId: req.apiKeyData ? req.apiKeyData.id : null,
+          applicationId: application_id || 1,
+          sourceType: 'direct',
+          hl7Content: hl7Message,
+          fhirContent: null,
           status: 'error',
-          error_details: conversionError.message,
-          application_id: application_id
+          processingTime: 0,
+          errorMessage: conversionError.message
         });
-      } catch (statsError) {
-        console.error('Erreur lors de l\'enregistrement des statistiques d\'erreur:', statsError);
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de l\'erreur de conversion:', logError);
       }
       
       return res.status(400).json({ error: conversionError.message });
@@ -175,35 +181,40 @@ router.post('/fhir-to-hl7', authenticateToken, validateApiKey, apiRequestCounter
     try {
       const result = await converter.convertFHIRToHL7(fhirResources, options);
       
-      // Enregistrer la conversion dans les statistiques
+      // Enregistrer la conversion dans les journaux
       try {
-        await statsService.recordConversion({
-          source_format: 'FHIR',
-          target_format: 'HL7',
-          message_type: result.messageType || 'Unknown',
+        await conversionLogService.logConversion({
+          apiKeyId: req.apiKeyData ? req.apiKeyData.id : null,
+          applicationId: application_id || 1,
+          sourceType: 'direct',
+          hl7Content: result.hl7Message || '',
+          fhirContent: JSON.stringify(fhirResources),
           status: 'success',
-          application_id: application_id
+          processingTime: result.processingTime || 0,
+          errorMessage: null
         });
-      } catch (statsError) {
-        console.error('Erreur lors de l\'enregistrement des statistiques:', statsError);
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de la conversion:', logError);
       }
       
       return res.json(result);
     } catch (conversionError) {
       console.error('Erreur lors de la conversion FHIR vers HL7:', conversionError);
       
-      // Enregistrer l'échec dans les statistiques
+      // Enregistrer l'échec dans les journaux
       try {
-        await statsService.recordConversion({
-          source_format: 'FHIR',
-          target_format: 'HL7',
-          message_type: 'Unknown',
+        await conversionLogService.logConversion({
+          apiKeyId: req.apiKeyData ? req.apiKeyData.id : null,
+          applicationId: application_id || 1,
+          sourceType: 'direct',
+          hl7Content: null,
+          fhirContent: JSON.stringify(fhirResources),
           status: 'error',
-          error_details: conversionError.message,
-          application_id: application_id
+          processingTime: 0,
+          errorMessage: conversionError.message
         });
-      } catch (statsError) {
-        console.error('Erreur lors de l\'enregistrement des statistiques d\'erreur:', statsError);
+      } catch (logError) {
+        console.error('Erreur lors de l\'enregistrement de l\'erreur de conversion:', logError);
       }
       
       return res.status(400).json({ error: conversionError.message });
