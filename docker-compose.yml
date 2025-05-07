@@ -1,6 +1,58 @@
 version: '3.8'
 
 services:
+  # Nginx comme proxy inverse pour sécuriser l'accès
+  nginx:
+    image: nginx:latest
+    container_name: fhirhub-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"     # HTTP
+      - "443:443"   # HTTPS
+    volumes:
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/nginx/logs:/var/log/nginx:rw
+      - ./data/nginx/certbot/conf:/etc/letsencrypt:rw
+      - ./data/nginx/certbot/www:/var/www/certbot:rw
+    networks:
+      - fhirhub-network
+    depends_on:
+      - fhirhub
+      - grafana
+      - prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # Certbot pour gérer automatiquement les certificats SSL
+  certbot:
+    image: certbot/certbot:latest
+    container_name: fhirhub-certbot
+    restart: unless-stopped
+    volumes:
+      - ./data/nginx/certbot/conf:/etc/letsencrypt:rw
+      - ./data/nginx/certbot/www:/var/www/certbot:rw
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait ${!}; done;'"
+    networks:
+      - fhirhub-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Application principale FHIRHub
   fhirhub:
     build:
@@ -9,33 +61,28 @@ services:
     container_name: fhirhub
     restart: unless-stopped
     ports:
-      - "5000:5000"
-      - "9091:9091"
+      - "127.0.0.1:5000:5000"  # Uniquement accessible via Nginx
+      - "127.0.0.1:9091:9091"  # Uniquement accessible via Nginx
     environment:
       - NODE_ENV=production
       - PORT=5000
       - DB_PATH=/app/storage/db/fhirhub.db
       - DB_PERSISTENT=true
-      - JWT_SECRET=fhirhub-secure-jwt-secret
+      - JWT_SECRET=${JWT_SECRET:-changeme_in_env_file}  # Secret stocké dans un fichier .env
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
       - LOKI_URL=http://loki:3100
     volumes:
-      # Volume pour la base de données
-      - ./volumes/db:/app/storage/db:rw
-      # Volume pour les données persistantes
-      - ./volumes/data:/app/storage/data:rw
-      # Volume pour les logs
-      - ./volumes/logs:/app/storage/logs:rw
-      # Volume pour les sauvegardes
-      - ./volumes/backups:/app/storage/backups:rw
-      # Volume pour les terminologies françaises
-      - ./volumes/french_terminology:/app/french_terminology:rw
-      # Support de la structure de dossiers legacy
-      - ./volumes/data:/app/data:rw
-    # Utiliser l'utilisateur root pour éviter les problèmes de permissions
-    # Cela est sécuritaire car l'application s'exécute dans un conteneur isolé
-    user: "root"
+      # Volumes avec droits spécifiques et séparation claire
+      - ./data/db:/app/storage/db:rw
+      - ./data/storage:/app/storage/data:rw
+      - ./data/logs:/app/storage/logs:rw
+      - ./data/backups:/app/storage/backups:rw
+      - ./data/french_terminology:/app/french_terminology:ro  # En lecture seule pour plus de sécurité
+      # Support de la structure legacy (en lecture seule)
+      - ./data/storage:/app/data:ro
+    # Utiliser un utilisateur non-root pour plus de sécurité
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -51,6 +98,12 @@ services:
         max-file: "10"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    # Limite des ressources pour éviter les abus
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   # Prometheus pour la collecte de métriques
   prometheus:
@@ -58,10 +111,10 @@ services:
     container_name: fhirhub-prometheus
     restart: unless-stopped
     ports:
-      - "9092:9090"
+      - "127.0.0.1:9092:9090"  # Uniquement accessible via Nginx
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./volumes/prometheus:/prometheus:rw
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus:rw
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -71,7 +124,7 @@ services:
       - '--no-scrape.adjust-timestamps'
     environment:
       - "TZ=Europe/Paris"
-    user: "root"
+    user: "${PROM_UID:-65534}:${PROM_GID:-65534}"  # nobody:nogroup pour plus de sécurité
     depends_on:
       - fhirhub
     networks:
@@ -83,6 +136,11 @@ services:
         max-file: "5"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # Grafana pour la visualisation des métriques
   grafana:
@@ -90,21 +148,23 @@ services:
     container_name: fhirhub-grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    volumes:
-      - ./volumes/grafana:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - "127.0.0.1:3000:3000"  # Uniquement accessible via Nginx
+    volumes:volumes:
+      - ./data/grafana:/var/lib/grafana:rw
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme_in_env_file}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-loki-datasource
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PATHS_LOGS=/var/lib/grafana/logs
       - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
       - GF_AUTH_ANONYMOUS_ENABLED=false
-    user: "root" 
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=strict
+    user: "${GRAFANA_UID:-472}:${GRAFANA_GID:-472}"  # Grafana default user
     depends_on:
       - prometheus
       - loki
@@ -117,6 +177,11 @@ services:
         max-file: "5"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
   # Node Exporter pour la collecte de métriques système
   node-exporter:
@@ -124,7 +189,7 @@ services:
     container_name: fhirhub-node-exporter
     restart: unless-stopped
     ports:
-      - "9100:9100"
+      - "9100:9100"  # Accessible sur le réseau
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -134,6 +199,7 @@ services:
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    user: "${NODE_EXP_UID:-65534}:${NODE_EXP_GID:-65534}"  # nobody:nogroup
     networks:
       - fhirhub-network
     logging:
@@ -143,19 +209,24 @@ services:
         max-file: "3"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-      
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
   # Loki pour la collecte et l'analyse des logs
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.8.2
     container_name: fhirhub-loki
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - "3100:3100"  # Accessible sur le réseau
     volumes:
-      - ./volumes/loki:/loki:rw
-      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./data/loki:/loki:rw
+      - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
     command: -config.file=/etc/loki/local-config.yaml
-    user: "root"
+    user: "${LOKI_UID:-10001}:${LOKI_GID:-10001}"  # Utilisateur dédié
     networks:
       - fhirhub-network
     logging:
@@ -165,19 +236,24 @@ services:
         max-file: "5"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-      
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
   # Promtail pour collecter et envoyer les logs à Loki
   promtail:
     image: grafana/promtail:latest
     container_name: fhirhub-promtail
     restart: unless-stopped
     volumes:
-      - ./volumes/logs:/var/log/fhirhub:ro
-      - ./promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./data/logs:/var/log/fhirhub:ro
+      - ./config/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
     command: -config.file=/etc/promtail/config.yaml
     depends_on:
       - loki
-    user: "root"
+    user: "${PROMTAIL_UID:-10002}:${PROMTAIL_GID:-10002}"  # Utilisateur dédié
     networks:
       - fhirhub-network
     logging:
@@ -187,7 +263,12 @@ services:
         max-file: "3"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-      
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
   # Watchtower pour les mises à jour automatiques des conteneurs
   watchtower:
     image: containrrr/watchtower:latest
@@ -202,6 +283,8 @@ services:
       - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Exécuté tous les jours à 4h00 du matin
       - WATCHTOWER_TIMEOUT=60s
       - TZ=Europe/Paris
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=${WATCHTOWER_NOTIFICATION_URL:-""}
     networks:
       - fhirhub-network
     logging:
@@ -209,8 +292,45 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
 
-# Définition des réseaux
+  # Service de sauvegarde automatique
+  backup:
+    image: alpine:latest
+    container_name: fhirhub-backup
+    command: sh -c "while true; do sleep 86400; /scripts/backup.sh; done"
+    volumes:
+      - ./data:/data:ro  # Accès en lecture seule aux données
+      - ./data/backups:/backups:rw  # Stockage des sauvegardes
+      - ./scripts:/scripts:ro  # Scripts de sauvegarde
+    environment:
+      - BACKUP_RETENTION=14  # Nombre de jours de rétention des sauvegardes
+      - TZ=Europe/Paris
+    user: "${BACKUP_UID:-10003}:${BACKUP_GID:-10003}"  # Utilisateur dédié
+    networks:
+      - fhirhub-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+# Définition des réseaux avec sécurité renforcée
 networks:
   fhirhub-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: fhirhub-br
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24  # Réseau isolé avec plage définie
