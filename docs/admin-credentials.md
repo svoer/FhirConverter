@@ -40,16 +40,44 @@ Si vous rencontrez des erreurs 403 Forbidden lors de l'accès à Grafana ou Prom
 
 ## Réinitialisation des mots de passe
 
-Si vous avez besoin de réinitialiser les mots de passe administrateur :
+Si vous avez besoin de réinitialiser les mots de passe administrateur, vous disposez de plusieurs options :
 
-1. Pour FHIRHub, utilisez le script de réinitialisation de mot de passe :
+### Option 1: Réinitialisation automatique de tous les mots de passe (recommandé)
+
+Utilisez le script de réinitialisation automatique pour mettre à jour tous les mots de passe administrateur en une seule opération :
+
+```bash
+# Réinitialiser avec le mot de passe par défaut (admin123)
+./reset-all-admin-passwords.sh
+
+# Spécifier un mot de passe personnalisé
+./reset-all-admin-passwords.sh mon_nouveau_mot_de_passe
+
+# Spécifier un mot de passe et un nom d'utilisateur
+./reset-all-admin-passwords.sh mon_nouveau_mot_de_passe mon_utilisateur
+```
+
+Ce script va automatiquement :
+- Mettre à jour le mot de passe dans la base de données
+- Modifier le fichier `.env`
+- Mettre à jour `docker-compose.yml` pour Grafana
+- Fournir des instructions pour redémarrer les services Docker
+
+### Option 2: Réinitialisation individuelle des mots de passe
+
+1. Pour FHIRHub uniquement, utilisez le script de réinitialisation amélioré :
    ```bash
+   # Format : node reset-password-pbkdf2.js [username] [nouveau_mot_de_passe]
+   # Exemple pour réinitialiser le compte admin :
    node reset-password-pbkdf2.js admin admin123
+   
+   # Pour lister les utilisateurs existants (le script les affichera si l'utilisateur n'existe pas)
+   node reset-password-pbkdf2.js non_existant
    ```
 
-2. Pour Grafana, vous pouvez :
+2. Pour Grafana uniquement, vous pouvez :
    - Modifier le fichier `docker-compose.yml` pour définir `GF_SECURITY_ADMIN_PASSWORD=admin123`
-   - Ou utiliser l'API Grafana pour réinitialiser le mot de passe
+   - Redémarrer les conteneurs : `docker-compose restart`
 
 ## Recommandations de sécurité
 
