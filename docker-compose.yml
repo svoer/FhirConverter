@@ -146,7 +146,7 @@ services:
       
   # Loki pour la collecte et l'analyse des logs
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.8.2
     container_name: fhirhub-loki
     restart: unless-stopped
     ports:
@@ -172,7 +172,7 @@ services:
       
   # Promtail pour collecter et envoyer les logs à Loki
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:2.8.2
     container_name: fhirhub-promtail
     restart: unless-stopped
     volumes:

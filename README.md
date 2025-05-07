@@ -318,6 +318,25 @@ Watchtower est configuré pour :
 - Nettoyer les anciennes images après les mises à jour
 - Respecter une temporisation de 60 secondes
 
+#### Avantages de Watchtower
+
+- **Mises à jour automatiques** - Plus besoin de mettre à jour manuellement les conteneurs
+- **Sécurité renforcée** - Les correctifs de sécurité sont appliqués rapidement
+- **Maintenance réduite** - Moins d'intervention manuelle requise
+- **Configuration flexible** - Paramétrage personnalisable pour s'adapter à vos besoins
+
+#### Surveillance des mises à jour
+
+Vous pouvez surveiller les activités de Watchtower dans les logs Docker :
+
+```bash
+# Afficher les logs de Watchtower
+docker logs fhirhub-watchtower
+
+# Suivre les logs en temps réel
+docker logs -f fhirhub-watchtower
+```
+
 #### Personnalisation des mises à jour
 
 Pour modifier la planification des mises à jour, vous pouvez éditer la variable d'environnement `WATCHTOWER_SCHEDULE` dans le fichier docker-compose.yml :
@@ -410,7 +429,13 @@ chmod +x fix-docker-loki-permissions.sh
 ./fix-docker-loki-permissions.sh
 ```
 
-Ce script corrige les problèmes de permissions courants pour Loki et Promtail.
+Ce script corrige les problèmes de permissions courants pour Loki et Promtail en :
+- Créant les sous-dossiers nécessaires pour Loki (chunks, index, cache, wal, compactor)
+- Attribuant les permissions adéquates à l'utilisateur Loki (10001)
+- Utilisant plusieurs méthodes différentes pour assurer la compatibilité avec différents environnements
+- Vérifiant le résultat des modifications pour confirmer que tout est correctement configuré
+
+Si après avoir exécuté ce script, les problèmes persistent, vous pouvez utiliser le script de redémarrage complet `docker-restart-loki.sh` qui va non seulement corriger les permissions mais aussi recréer le conteneur Loki.
 
 ##### Réinitialisation des métriques Prometheus
 
