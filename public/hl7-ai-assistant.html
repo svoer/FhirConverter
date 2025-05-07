@@ -546,6 +546,15 @@
                 
                 <!-- Tab HL7 -->
                 <div id="hl7-tab" class="tab-content active">
+                  <div class="examples-container" style="margin-bottom: 0.5rem;">
+                    <div class="example-title">Exemples:</div>
+                    <div class="example-buttons">
+                      <span class="example-button" data-example="adt-a01">ADT^A01 (Admission)</span>
+                      <span class="example-button" data-example="oru-r01">ORU^R01 (Résultats)</span>
+                      <span class="example-button" data-example="siu-s12">SIU^S12 (RDV)</span>
+                    </div>
+                  </div>
+                
                   <div class="text-area-container">
                     <textarea id="hl7-input" placeholder="Collez votre message HL7 v2.5 ici ou sélectionnez un exemple..."></textarea>
                     <div class="editor-overlay">
@@ -555,23 +564,22 @@
                     </div>
                   </div>
                   
-                  <div class="examples-container">
-                    <div class="example-title">Exemples:</div>
-                    <div class="example-buttons">
-                      <span class="example-button" data-example="adt-a01">ADT^A01 (Admission)</span>
-                      <span class="example-button" data-example="oru-r01">ORU^R01 (Résultats)</span>
-                      <span class="example-button" data-example="siu-s12">SIU^S12 (RDV)</span>
-                    </div>
-                  </div>
-                  
                   <div class="button-group">
-                    <button class="btn btn-secondary" id="convert-hl7-btn">Convertir en FHIR</button>
                     <button class="btn btn-primary" id="analyze-hl7-btn">Analyser avec IA</button>
                   </div>
                 </div>
                 
                 <!-- Tab FHIR -->
                 <div id="fhir-tab" class="tab-content">
+                  <div class="examples-container" style="margin-bottom: 0.5rem;">
+                    <div class="example-title">Exemples:</div>
+                    <div class="example-buttons">
+                      <span class="example-button" data-example="patient">Patient</span>
+                      <span class="example-button" data-example="observation">Observation</span>
+                      <span class="example-button" data-example="encounter">Encounter</span>
+                    </div>
+                  </div>
+                  
                   <div class="text-area-container">
                     <textarea id="fhir-input" placeholder="Collez votre ressource FHIR R4 (JSON) ici ou sélectionnez un exemple..."></textarea>
                     <div class="editor-overlay">
@@ -581,15 +589,6 @@
                       <button class="btn btn-sm btn-icon" id="format-json" title="Formater JSON">
                         <i class="fas fa-indent"></i>
                       </button>
-                    </div>
-                  </div>
-                  
-                  <div class="examples-container">
-                    <div class="example-title">Exemples:</div>
-                    <div class="example-buttons">
-                      <span class="example-button" data-example="patient">Patient</span>
-                      <span class="example-button" data-example="observation">Observation</span>
-                      <span class="example-button" data-example="encounter">Encounter</span>
                     </div>
                   </div>
                   
