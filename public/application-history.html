@@ -334,7 +334,6 @@
                     <th>Type</th>
                     <th>Statut</th>
                     <th>Temps</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody id="conversions-table-body">
@@ -672,10 +671,6 @@
                         </span>
                     </td>
                     <td>${conversion.processing_time || 0} ms</td>
-                    <td>
-                        <!-- Bouton détails supprimé car il ne fonctionne pas -->
-                        <span style="color: #888; font-size: 0.9em;">Détails non disponibles</span>
-                    </td>
                 `;
                 tableBody.appendChild(row);
             });
