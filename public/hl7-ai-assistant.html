@@ -1331,12 +1331,13 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         loadingIndicator.style.display = 'none';
       }
       
-      // Fonction de conversion HL7 vers FHIR (sans analyse IA)
-      async function convertHL7ToFHIR(hl7Message) {
+      // Fonction de conversion HL7 vers FHIR générique
+      async function convertHL7ToFHIRBase(hl7Message, options = {}) {
         try {
           showLoading();
           
-          const response = await fetch('/api/convert/hl7-to-fhir', {
+          // Configuration de la requête
+          const requestOptions = {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1347,110 +1348,83 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
               hl7Message,
               options: {
                 includeComments: true,
-                useIdentifiers: true
+                useIdentifiers: true,
+                ...options
               }
             })
-          });
+          };
+          
+          console.log('Conversion HL7 vers FHIR: requête vers /api/convert/hl7-to-fhir');
+          const response = await fetch('/api/convert/hl7-to-fhir', requestOptions);
           
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Erreur lors de la conversion HL7 vers FHIR');
           }
           
-          const result = await response.json();
-          
-          // Activer l'onglet FHIR et afficher le résultat
-          document.querySelector('.input-tab[data-tab="fhir-tab"]').click();
-          fhirInput.value = JSON.stringify(result.fhirResources, null, 2);
-          
-          // Afficher un message de réussite dans la sortie
-          aiOutput.style.display = 'block';
-          aiOutput.innerHTML = `
-            <div class="alert alert-success">
-              <i class="fas fa-check-circle"></i> Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).
-            </div>
-            <div class="analysis-content">
-              <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
-              <p>Vous pouvez désormais visualiser et modifier le résultat dans l'onglet "Ressource FHIR".</p>
-              <p>Pour une analyse détaillée de la qualité de la conversion, vous pouvez utiliser l'onglet "Analyse de conversion".</p>
-            </div>
-          `;
-          
-          // Afficher également une notification
-          showNotification(`Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).`, 'success');
-          
+          return await response.json();
         } catch (error) {
           console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
           displayError(error.message);
+          throw error;
         } finally {
           hideLoading();
         }
       }
       
-      // Gestionnaire d'événements pour le nouveau bouton de conversion dans l'onglet Analyse de conversion
-      convertHl7BtnTab.addEventListener('click', () => {
+      // Gestionnaire d'événements pour le bouton de conversion dans l'onglet d'analyse de conversion
+      // Utilisation d'une fonction nommée pour pouvoir détacher l'écouteur si nécessaire
+      function handleConversionTabButtonClick() {
+        console.log('Bouton de conversion dans l\'onglet Analyse de conversion cliqué');
         const hl7Message = conversionHl7Input.value.trim();
+        
         if (!hl7Message) {
           showNotification('Veuillez saisir un message HL7 à convertir.', 'warning');
           return;
         }
         
-        // Appeler l'API de conversion
-        convertHL7ToFHIRConversionTab(hl7Message);
-      });
-      
-      // Fonction de conversion HL7 vers FHIR spécifique à l'onglet Analyse de conversion
-      async function convertHL7ToFHIRConversionTab(hl7Message) {
-        try {
-          showLoading();
-          
-          const response = await fetch('/api/convert/hl7-to-fhir', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
-              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
-            },
-            body: JSON.stringify({
-              hl7Message,
-              options: {
-                includeComments: true,
-                useIdentifiers: true
-              }
-            })
+        // Appeler la fonction de conversion
+        convertHL7ToFHIRBase(hl7Message)
+          .then(result => {
+            // Afficher le résultat dans le champ FHIR de l'onglet Analyse de conversion
+            conversionFhirInput.value = JSON.stringify(result.fhirResources, null, 2);
+            
+            // Afficher un message de réussite dans la sortie
+            aiOutput.style.display = 'block';
+            aiOutput.innerHTML = `
+              <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).
+              </div>
+              <div class="analysis-content">
+                <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
+                <p>Vous pouvez maintenant analyser la qualité de la conversion en cliquant sur "Analyser la qualité de la conversion".</p>
+              </div>
+            `;
+            
+            // Afficher également une notification
+            showNotification(`Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).`, 'success');
+          })
+          .catch(error => {
+            // L'erreur est déjà gérée dans convertHL7ToFHIRBase
+            console.error('Erreur lors de la conversion (gestionnaire):', error);
           });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Erreur lors de la conversion HL7 vers FHIR');
-          }
-          
-          const result = await response.json();
-          
-          // Afficher le résultat dans le champ FHIR de l'onglet Analyse de conversion
-          conversionFhirInput.value = JSON.stringify(result.fhirResources, null, 2);
-          
-          // Afficher un message de réussite dans la sortie
-          aiOutput.style.display = 'block';
-          aiOutput.innerHTML = `
-            <div class="alert alert-success">
-              <i class="fas fa-check-circle"></i> Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).
-            </div>
-            <div class="analysis-content">
-              <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
-              <p>Vous pouvez maintenant analyser la qualité de la conversion en cliquant sur "Analyser la qualité de la conversion".</p>
-            </div>
-          `;
-          
-          // Afficher également une notification
-          showNotification(`Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).`, 'success');
-          
-        } catch (error) {
-          console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
-          displayError(error.message);
-        } finally {
-          hideLoading();
-        }
+      }
+      
+      // Supprimer tout gestionnaire d'événement existant et ajouter le nouveau
+      if (convertHl7BtnTab) {
+        // Détacher tous les gestionnaires d'événements existants
+        const newButton = convertHl7BtnTab.cloneNode(true);
+        convertHl7BtnTab.parentNode.replaceChild(newButton, convertHl7BtnTab);
+        
+        // Mettre à jour la référence
+        const convertHl7BtnTabNew = document.getElementById('convert-hl7-btn-tab');
+        
+        // Attacher le nouveau gestionnaire d'événements
+        convertHl7BtnTabNew.addEventListener('click', handleConversionTabButtonClick);
+        
+        console.log('Gestionnaire d\'événements de conversion réinitialisé');
+      } else {
+        console.error('Bouton de conversion non trouvé dans le DOM');
       }
       
       // Utilitaires
