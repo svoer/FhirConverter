@@ -19,6 +19,7 @@ services:
       - JWT_SECRET=fhirhub-secure-jwt-secret
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
+      - LOKI_URL=http://loki:3100
     volumes:
       # Volume pour la base de données
       - ./volumes/db:/app/storage/db:rw
@@ -48,6 +49,8 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # Prometheus pour la collecte de métriques
   prometheus:
@@ -78,6 +81,8 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # Grafana pour la visualisation des métriques
   grafana:
@@ -94,13 +99,15 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-loki-datasource
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PATHS_LOGS=/var/lib/grafana/logs
       - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+      - GF_AUTH_ANONYMOUS_ENABLED=false
     user: "root" 
     depends_on:
       - prometheus
+      - loki
     networks:
       - fhirhub-network
     logging:
@@ -108,6 +115,8 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   # Node Exporter pour la collecte de métriques système
   node-exporter:
@@ -125,6 +134,74 @@ services:
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - fhirhub-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      
+  # Loki pour la collecte et l'analyse des logs
+  loki:
+    image: grafana/loki:latest
+    container_name: fhirhub-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./volumes/loki:/loki:rw
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    user: "root"
+    networks:
+      - fhirhub-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      
+  # Promtail pour collecter et envoyer les logs à Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: fhirhub-promtail
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs:/var/log/fhirhub:ro
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
+    user: "root"
+    networks:
+      - fhirhub-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      
+  # Watchtower pour les mises à jour automatiques des conteneurs
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: fhirhub-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Exécuté tous les jours à 4h00 du matin
+      - WATCHTOWER_TIMEOUT=60s
+      - TZ=Europe/Paris
     networks:
       - fhirhub-network
     logging:

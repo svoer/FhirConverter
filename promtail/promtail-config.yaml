@@ -1,0 +1,63 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: fhirhub-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: fhirhub-logs
+          __path__: /var/log/fhirhub/*.log
+    
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            level: level
+            message: message
+            service: service
+            application: application
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          level:
+          service:
+          application:
+      - output:
+          source: message
+
+  - job_name: fhirhub-conversion-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: fhirhub-conversion
+          __path__: /var/log/fhirhub/conversion*.log
+    
+    pipeline_stages:
+      - json:
+          expressions:
+            timestamp: timestamp
+            status: status
+            input: input
+            output: output
+            error: error
+            applicationId: applicationId
+            duration: duration
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+      - labels:
+          status:
+          applicationId:
+      - output:
+          source: message
