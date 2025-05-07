@@ -25,15 +25,48 @@ async function logConversion(conversionData) {
       user_id: null
     };
 
+    // Normalisation des noms de champs pour gérer les différentes conventions de nommage
+    const normalizedData = { ...conversionData };
+    
+    // Gérer les différentes conventions de nommage (camelCase vs snake_case)
+    if (normalizedData.applicationId && !normalizedData.application_id) {
+      normalizedData.application_id = normalizedData.applicationId;
+    }
+    if (normalizedData.apiKeyId && !normalizedData.api_key_id) {
+      normalizedData.api_key_id = normalizedData.apiKeyId;
+    }
+    if (normalizedData.userId && !normalizedData.user_id) {
+      normalizedData.user_id = normalizedData.userId;
+    }
+    if (normalizedData.processingTime && !normalizedData.processing_time) {
+      normalizedData.processing_time = normalizedData.processingTime;
+    }
+    if (normalizedData.resourceCount && !normalizedData.resource_count) {
+      normalizedData.resource_count = normalizedData.resourceCount;
+    }
+    if (normalizedData.inputMessage && !normalizedData.input_message) {
+      normalizedData.input_message = normalizedData.inputMessage;
+    }
+    if (normalizedData.outputMessage && !normalizedData.output_message) {
+      normalizedData.output_message = normalizedData.outputMessage;
+    }
+    
     // Fusionner avec les données fournies
-    const data = { ...defaultData, ...conversionData };
+    const data = { ...defaultData, ...normalizedData };
 
     // Requête SQL dynamique pour s'adapter aux changements potentiels de schéma
     const columns = Object.keys(data).filter(key => 
       key !== 'id' && 
       key !== '_id' && 
       key !== 'application_name' && 
-      key !== 'api_key_name'
+      key !== 'api_key_name' &&
+      key !== 'applicationId' &&
+      key !== 'apiKeyId' &&
+      key !== 'userId' &&
+      key !== 'processingTime' &&
+      key !== 'resourceCount' &&
+      key !== 'inputMessage' &&
+      key !== 'outputMessage'
     );
     
     const placeholders = columns.map(() => '?').join(', ');

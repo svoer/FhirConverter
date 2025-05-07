@@ -478,6 +478,7 @@ function processHL7Conversion(hl7Message, req, res) {
         user_id: userId,
         api_key_id: req.apiKeyData ? req.apiKeyData.id : null,
         application_id: applicationId,
+        applicationId: applicationId, // Ajouter ce champ pour compatibilité
         source_type: 'api'
       }).then(() => {
         console.log('[API] Conversion enregistrée avec succès dans les logs');
