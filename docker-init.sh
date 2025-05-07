@@ -433,8 +433,6 @@ limits_config:
   reject_old_samples_max_age: 168h
   split_queries_by_interval: 15m
   max_query_parallelism: 32
-
-chunk_store_config:
   max_look_back_period: 0
 
 table_manager:
