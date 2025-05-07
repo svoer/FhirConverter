@@ -27,7 +27,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 // Charger les variables d'environnement
 dotenv_1.default.config();
 // Chemin de la base de données
-const dbPath = process.env.DB_PATH || './data/fhirhub.db';
+const dbPath = process.env.DB_PATH || './storage/db/fhirhub.db';
 // Assurer que le répertoire de la base de données existe
 const dbDir = path_1.default.dirname(dbPath);
 if (!fs_1.default.existsSync(dbDir)) {

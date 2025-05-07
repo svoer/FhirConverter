@@ -29,7 +29,7 @@ function convertToSQLiteValue(value) {
 }
 
 // Chemin de la base de données
-const DB_PATH = path.join(__dirname, '../../data/fhirhub.db');
+const DB_PATH = path.join(__dirname, '../../storage/db/fhirhub.db');
 
 // Connexion à la base de données
 let db = null;

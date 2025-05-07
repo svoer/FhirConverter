@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
 // Paramètres de connexion à la base de données
-const dbPath = './data/fhirhub.db';
+const dbPath = './storage/db/fhirhub.db';
 const username = 'admin';
 const password = 'admin123';
 
