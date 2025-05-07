@@ -299,6 +299,34 @@ Les données sont stockées dans des volumes Docker pour assurer leur persistanc
 - `fhirhub_logs` : Contient les journaux de l'application
 - `fhirhub_grafana` : Contient les configurations et données de Grafana
 - `fhirhub_prometheus` : Contient les métriques de Prometheus
+- `fhirhub_loki` : Contient les logs structurés pour analyse avancée
+
+### Mises à jour automatiques avec Watchtower 🆕
+
+FHIRHub intègre désormais Watchtower, un service qui surveille et met à jour automatiquement les conteneurs Docker :
+
+```bash
+# Démarrer tous les services, y compris Watchtower
+docker-compose up -d
+```
+
+#### Configuration de Watchtower
+
+Watchtower est configuré pour :
+- Vérifier les mises à jour toutes les nuits à 4h00 du matin
+- Mettre à jour uniquement les conteneurs marqués avec l'étiquette `com.centurylinklabs.watchtower.enable=true`
+- Nettoyer les anciennes images après les mises à jour
+- Respecter une temporisation de 60 secondes
+
+#### Personnalisation des mises à jour
+
+Pour modifier la planification des mises à jour, vous pouvez éditer la variable d'environnement `WATCHTOWER_SCHEDULE` dans le fichier docker-compose.yml :
+
+```yaml
+watchtower:
+  environment:
+    - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Format cron : exécuter à 4h00 tous les jours
+```
 
 ### Monitoring avec Grafana et Prometheus 🆕
 
@@ -353,6 +381,36 @@ Ce script est spécifiquement conçu pour l'environnement Docker et va :
 - Vérifier que les services redémarrent correctement
 - Afficher des instructions pour accéder aux tableaux de bord
 - Proposer des solutions en cas de problème
+
+##### Script de redémarrage des services de logs (Loki et Promtail)
+
+```bash
+# Donner les permissions d'exécution
+chmod +x docker-restart-loki.sh
+
+# Exécuter le script
+./docker-restart-loki.sh
+```
+
+Ce script est dédié à la gestion des services de logs et va :
+- Redémarrer les conteneurs Loki et Promtail
+- Configurer correctement les permissions des volumes
+- Vérifier la connectivité entre les services
+- Proposer des solutions de dépannage pour les problèmes courants
+
+##### Correction des permissions pour Loki 
+
+Si vous rencontrez des problèmes d'accès aux logs dans Grafana via Loki :
+
+```bash
+# Donner les permissions d'exécution
+chmod +x fix-docker-loki-permissions.sh
+
+# Exécuter le script
+./fix-docker-loki-permissions.sh
+```
+
+Ce script corrige les problèmes de permissions courants pour Loki et Promtail.
 
 ##### Réinitialisation des métriques Prometheus
 
