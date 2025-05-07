@@ -32,7 +32,6 @@
         <button class="tab-btn" onclick="openTab('endpoints')">Endpoints</button>
         <button class="tab-btn" onclick="openTab('authentication')">Authentification</button>
         <button class="tab-btn" onclick="openTab('usage')">Exemples d'utilisation</button>
-        <button class="tab-btn" onclick="openTab('swagger')">Documentation Swagger</button>
       </div>
 
       <div id="overview" class="tab-content active">
@@ -91,7 +90,7 @@
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method post">POST</span>
-              <span class="path">/api/convert</span>
+              <span class="path">/api/convert/hl7-to-fhir</span>
             </div>
             <div class="endpoint-description">
               Convertit un message HL7 en ressource(s) FHIR
@@ -125,7 +124,7 @@
               
               <h4>Exemple de requête</h4>
               <div class="code-block">
-<pre>POST /api/convert
+<pre>POST /api/convert/hl7-to-fhir
 X-API-KEY: votre-cle-api
 
 {
@@ -167,93 +166,146 @@ X-API-KEY: votre-cle-api
               </div>
             </div>
           </div>
-        </div>
-        
-        <div class="endpoint-group">
-          <h3>Analyse de messages HL7</h3>
-          
+
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method post">POST</span>
-              <span class="path">/api/hl7/parse</span>
+              <span class="path">/api/convert/fhir-to-hl7</span>
             </div>
             <div class="endpoint-description">
-              Analyse un message HL7 et renvoie sa structure
-            </div>
-            <div class="endpoint-details">
-              <h4>Paramètres</h4>
-              <table class="params-table">
-                <thead>
-                  <tr>
-                    <th>Nom</th>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Requis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>message</td>
-                    <td>string</td>
-                    <td>Message HL7 à analyser</td>
-                    <td>Oui</td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <h4>Exemple de requête</h4>
-              <div class="code-block">
-<pre>POST /api/hl7/parse
-X-API-KEY: votre-cle-api
-
-{
-  "message": "MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|20220801131415||ADT^A01^ADT_A01|20220801131415|P|2.5|"
-}</pre>
-              </div>
+              Convertit une ressource FHIR en message HL7
             </div>
           </div>
         </div>
         
         <div class="endpoint-group">
-          <h3>Gestion des ressources FHIR</h3>
+          <h3>IA et Analyse HL7</h3>
           
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method post">POST</span>
-              <span class="path">/api/fhir/:resourceType</span>
+              <span class="path">/api/hl7-ai/analyze-hl7</span>
             </div>
             <div class="endpoint-description">
-              Crée une ressource FHIR du type spécifié
+              Analyse un message HL7 avec intelligence artificielle
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/hl7-ai/analyze-fhir</span>
+            </div>
+            <div class="endpoint-description">
+              Analyse une ressource FHIR avec intelligence artificielle
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/hl7-ai/analyze-conversion</span>
+            </div>
+            <div class="endpoint-description">
+              Analyse la conversion entre HL7 et FHIR
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/hl7-ai/suggest-mapping</span>
+            </div>
+            <div class="endpoint-description">
+              Suggère un mapping entre HL7 et FHIR
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/hl7-ai/generate-documentation</span>
+            </div>
+            <div class="endpoint-description">
+              Génère de la documentation pour un message HL7 ou FHIR
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Chat IA</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/ai/chat</span>
+            </div>
+            <div class="endpoint-description">
+              Interaction avec le chatbot d'assistance IA
             </div>
           </div>
           
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method get">GET</span>
-              <span class="path">/api/fhir/:resourceType/:id</span>
+              <span class="path">/api/ai/providers/active</span>
             </div>
             <div class="endpoint-description">
-              Récupère une ressource FHIR par son type et ID
+              Liste les fournisseurs d'IA actifs
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Gestion des Fournisseurs d'IA</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/ai-providers</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les fournisseurs d'IA
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/ai-providers/supported</span>
+            </div>
+            <div class="endpoint-description">
+              Liste les types de fournisseurs d'IA supportés
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/ai-providers/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les détails d'un fournisseur d'IA
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/ai-providers</span>
+            </div>
+            <div class="endpoint-description">
+              Ajoute un nouveau fournisseur d'IA
             </div>
           </div>
           
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method put">PUT</span>
-              <span class="path">/api/fhir/:resourceType/:id</span>
+              <span class="path">/api/ai-providers/:id</span>
             </div>
             <div class="endpoint-description">
-              Met à jour une ressource FHIR existante
-            </div>
-          </div>
-          
-          <div class="endpoint">
-            <div class="endpoint-header">
-              <span class="method delete">DELETE</span>
-              <span class="path">/api/fhir/:resourceType/:id</span>
-            </div>
-            <div class="endpoint-description">
-              Supprime une ressource FHIR
+              Met à jour un fournisseur d'IA
             </div>
           </div>
         </div>
@@ -264,10 +316,10 @@ X-API-KEY: votre-cle-api
           <div class="endpoint">
             <div class="endpoint-header">
               <span class="method get">GET</span>
-              <span class="path">/api/terminology/search</span>
+              <span class="path">/api/terminology/french</span>
             </div>
             <div class="endpoint-description">
-              Recherche dans les terminologies françaises
+              Récupère les terminologies françaises
             </div>
           </div>
           
@@ -278,6 +330,288 @@ X-API-KEY: votre-cle-api
             </div>
             <div class="endpoint-description">
               Liste les fichiers de terminologie disponibles
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/terminology/files/:filename</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère un fichier de terminologie spécifique
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/terminology/files/:filename/download</span>
+            </div>
+            <div class="endpoint-description">
+              Télécharge un fichier de terminologie
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/terminology/import</span>
+            </div>
+            <div class="endpoint-description">
+              Importe un fichier de terminologie
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Cache</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/cache/stats</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les statistiques du cache
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/cache/clear</span>
+            </div>
+            <div class="endpoint-description">
+              Vide le cache du système
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Administration</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/admin/reset-environment</span>
+            </div>
+            <div class="endpoint-description">
+              Réinitialise l'environnement
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/admin/system-logs</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les logs système
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Authentification</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/auth/login</span>
+            </div>
+            <div class="endpoint-description">
+              Authentifie un utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/auth/verify</span>
+            </div>
+            <div class="endpoint-description">
+              Vérifie la validité d'un token JWT
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Gestion des Applications</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/applications</span>
+            </div>
+            <div class="endpoint-description">
+              Liste toutes les applications
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/applications/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les détails d'une application
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/applications</span>
+            </div>
+            <div class="endpoint-description">
+              Crée une nouvelle application
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Gestion des Clés API</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/api-keys</span>
+            </div>
+            <div class="endpoint-description">
+              Liste toutes les clés API
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/api-keys/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les détails d'une clé API
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/api-keys</span>
+            </div>
+            <div class="endpoint-description">
+              Crée une nouvelle clé API
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Utilisateurs</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/users</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les utilisateurs
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/users/stats</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les statistiques des utilisateurs
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/users/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les détails d'un utilisateur
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Workflows</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/workflows</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les workflows
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/workflows/application/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Liste les workflows d'une application
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/workflows/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère les détails d'un workflow
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/workflows</span>
+            </div>
+            <div class="endpoint-description">
+              Crée un nouveau workflow
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="path">/api/workflows/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Met à jour un workflow
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Développement</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/dev/key</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère la clé de développement
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/dev/generate-temp-key</span>
+            </div>
+            <div class="endpoint-description">
+              Génère une clé temporaire pour les tests
             </div>
           </div>
         </div>
@@ -621,28 +955,7 @@ class Program
         </div>
       </div>
 
-      <div id="swagger" class="tab-content">
-        <h2>Documentation Swagger</h2>
-        <p>Pour une documentation API interactive complète, consultez notre interface Swagger.</p>
-        
-        <div class="swagger-info">
-          <div class="swagger-cta">
-            <p>L'interface Swagger vous permet de :</p>
-            <ul>
-              <li>Explorer tous les endpoints disponibles</li>
-              <li>Voir les modèles de données détaillés</li>
-              <li>Tester les API directement depuis votre navigateur</li>
-              <li>Générer automatiquement du code client</li>
-            </ul>
-            <a href="/api-docs/" class="btn btn-primary swagger-btn">
-              <i class="fas fa-external-link-alt"></i> Ouvrir la documentation Swagger
-            </a>
-          </div>
-          <div class="swagger-preview">
-            <img src="/img/swagger-preview.png" alt="Aperçu de l'interface Swagger" class="swagger-img">
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
 
