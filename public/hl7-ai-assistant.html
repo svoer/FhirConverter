@@ -227,8 +227,8 @@
     .text-area-container textarea {
       width: 100%;
       height: 100%;
-      min-height: 60px;
-      max-height: 120px;
+      min-height: 100px;
+      max-height: 150px;
       resize: none;
       padding: 0.5rem;
       font-family: monospace;
@@ -555,16 +555,16 @@
                     </div>
                   </div>
                 
-                  <div class="text-area-container">
-                    <textarea id="hl7-input" placeholder="Collez votre message HL7 v2.5 ici ou sélectionnez un exemple..."></textarea>
-                    <div class="editor-overlay">
-                      <button class="btn btn-sm btn-icon" id="copy-hl7" title="Copier">
-                        <i class="fas fa-copy"></i>
-                      </button>
+                  <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div class="text-area-container" style="margin-bottom: 0;">
+                      <textarea id="hl7-input" placeholder="Collez votre message HL7 v2.5 ici ou sélectionnez un exemple..."></textarea>
+                      <div class="editor-overlay">
+                        <button class="btn btn-sm btn-icon" id="copy-hl7" title="Copier">
+                          <i class="fas fa-copy"></i>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div class="button-group">
+                    
                     <button class="btn btn-primary" id="analyze-hl7-btn">Analyser avec IA</button>
                   </div>
                 </div>
@@ -580,19 +580,19 @@
                     </div>
                   </div>
                   
-                  <div class="text-area-container">
-                    <textarea id="fhir-input" placeholder="Collez votre ressource FHIR R4 (JSON) ici ou sélectionnez un exemple..."></textarea>
-                    <div class="editor-overlay">
-                      <button class="btn btn-sm btn-icon" id="copy-fhir" title="Copier">
-                        <i class="fas fa-copy"></i>
-                      </button>
-                      <button class="btn btn-sm btn-icon" id="format-json" title="Formater JSON">
-                        <i class="fas fa-indent"></i>
-                      </button>
+                  <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div class="text-area-container" style="margin-bottom: 0;">
+                      <textarea id="fhir-input" placeholder="Collez votre ressource FHIR R4 (JSON) ici ou sélectionnez un exemple..."></textarea>
+                      <div class="editor-overlay">
+                        <button class="btn btn-sm btn-icon" id="copy-fhir" title="Copier">
+                          <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn btn-sm btn-icon" id="format-json" title="Formater JSON">
+                          <i class="fas fa-indent"></i>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div class="button-group">
+                    
                     <button class="btn btn-primary" id="analyze-fhir-btn">Analyser avec IA</button>
                   </div>
                 </div>
