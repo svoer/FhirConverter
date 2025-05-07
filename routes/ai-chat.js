@@ -276,7 +276,7 @@ router.post('/chat', async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/ai/providers/active', async (req, res) => {
+router.get('/providers/active', async (req, res) => {
   try {
     console.log('[AI] Récupération des fournisseurs d\'IA actifs pour le chatbot');
     const activeProviders = await aiProviderService.getActiveProviders();

@@ -201,7 +201,7 @@ function addEventListeners() {
 async function loadAIProvider() {
   try {
     // Récupérer la liste des fournisseurs d'IA configurés et actifs
-    const response = await fetch('/api/ai/providers/active', {
+    const response = await fetch('/api/providers/active', {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
@@ -366,7 +366,7 @@ async function getAIResponse(userMessage) {
       console.log(`Recherche de documentation pour: "${userMessage}"`);
       
       // Nouvel endpoint dédié pour le chatbot
-      const docResponse = await fetch(`/api/ai/documentation?query=${encodeURIComponent(userMessage)}`, {
+      const docResponse = await fetch(`/api/documentation?query=${encodeURIComponent(userMessage)}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -397,7 +397,7 @@ async function getAIResponse(userMessage) {
       : systemInstructions;
     
     // Construire la requête pour l'API d'IA
-    const response = await fetch('/api/ai/chat', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
