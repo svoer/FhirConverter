@@ -98,7 +98,7 @@ const cacheManager = require('../src/cache');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/stats', authCombined.checkAuth, (req, res) => {
+router.get('/stats', authCombined, (req, res) => {
   try {
     const stats = cacheManager.getStats();
     res.json({
@@ -157,7 +157,7 @@ router.get('/stats', authCombined.checkAuth, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/clear', jwtAuth.verifyToken, (req, res) => {
+router.post('/clear', jwtAuth, (req, res) => {
   // Vérifier si l'utilisateur est administrateur
   if (req.user.role !== 'admin') {
     return res.status(403).json({

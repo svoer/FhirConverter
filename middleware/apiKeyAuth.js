@@ -1,66 +1,116 @@
 /**
- * Middleware pour l'authentification par clé API
+ * Middleware d'authentification par clé API
+ * Vérifie la présence d'une clé API valide dans l'en-tête X-API-KEY
  */
-
-const crypto = require('crypto');
-const Database = require('better-sqlite3');
-const db = new Database('./storage/db/fhirhub.db', { fileMustExist: false });
 
 /**
- * Vérifie la validité d'une clé API
+ * Middleware pour vérifier l'authentification par clé API
+ * @param {Object} options - Options du middleware
+ * @param {boolean} [options.required=true] - Si true, une erreur est renvoyée si la clé est manquante
+ * @param {boolean} [options.updateLastUsed=true] - Si true, met à jour la date de dernière utilisation
+ * @returns {Function} Middleware Express
  */
-function verifyApiKey(req, res, next) {
-  // Pour les routes de documentation, autoriser sans authentification lorsqu'appelées par le chatbot
-  if (req.originalUrl.includes('/api/documentation/summary') && req.headers['x-chatbot-request'] === 'true') {
-    return next();
-  }
-
-  try {
-    // Récupérer la clé API de l'en-tête ou du paramètre de requête
-    const apiKey = req.headers['x-api-key'] || req.query.api_key || 'dev-key';
+function apiKeyAuth(options = {}) {
+  const {
+    required = true,
+    updateLastUsed = true
+  } = options;
+  
+  return async (req, res, next) => {
+    // Récupérer la clé API depuis les en-têtes
+    const apiKey = req.header('X-API-KEY');
     
-    if (!apiKey) {
-      return res.status(401).json({ error: 'Clé API requise' });
+    if (!apiKey && required) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'Clé API manquante'
+      });
     }
     
-    // Hacher la clé pour la comparer avec celle stockée en base
-    const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
-    
-    // Vérifier si la clé existe et est active
-    const apiKeyData = db.prepare(`
-      SELECT k.*, a.id as app_id, a.name as app_name
-      FROM api_keys k
-      JOIN applications a ON k.application_id = a.id
-      WHERE (k.key = ? OR k.hashed_key = ?) AND k.is_active = 1
-    `).get(apiKey, hashedKey);
-    
-    if (!apiKeyData) {
-      console.warn(`[API] Tentative d'accès avec une clé API invalide: ${apiKey.substring(0, 8)}...`);
-      return res.status(401).json({ error: 'Clé API invalide ou inactive' });
+    // Si la clé est facultative et manquante, continuer
+    if (!apiKey && !required) {
+      return next();
     }
     
-    // Mettre à jour la date de dernière utilisation
-    db.prepare(`
-      UPDATE api_keys
-      SET last_used_at = datetime('now')
-      WHERE id = ?
-    `).run(apiKeyData.id);
-    
-    // Ajouter les informations de l'application à la requête
-    req.apiKey = apiKeyData;
-    req.app = {
-      id: apiKeyData.app_id,
-      name: apiKeyData.app_name
-    };
-    
-    // Continuer
-    next();
-  } catch (error) {
-    console.error('[API] Erreur lors de la vérification de la clé API:', error);
-    return res.status(500).json({ error: 'Erreur lors de la vérification de la clé API' });
-  }
+    try {
+      // Vérifier la clé dans la base de données
+      const db = req.app.locals.db;
+      // Utiliser hashed_key qui existe selon la structure réelle de la table
+      const hashedKey = hashValue(apiKey);
+      const keyData = db.prepare(`
+        SELECT 
+          ak.id, ak.application_id, ak.key, ak.is_active, ak.expires_at,
+          a.name as app_name, a.cors_origins, a.settings
+        FROM api_keys ak
+        JOIN applications a ON ak.application_id = a.id
+        WHERE ak.hashed_key = ? AND ak.is_active = 1
+      `).get(hashedKey);
+      
+      if (!keyData) {
+        if (required) {
+          return res.status(401).json({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Clé API invalide'
+          });
+        } else {
+          return next();
+        }
+      }
+      
+      // Vérifier si la clé a expiré
+      if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
+        if (required) {
+          return res.status(401).json({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Clé API expirée'
+          });
+        } else {
+          return next();
+        }
+      }
+      
+      // Mettre à jour la date de dernière utilisation si nécessaire
+      if (updateLastUsed) {
+        db.prepare(`
+          UPDATE api_keys
+          SET last_used_at = datetime('now')
+          WHERE id = ?
+        `).run(keyData.id);
+      }
+      
+      // Ajouter les informations de clé API à la requête
+      req.apiKey = keyData;
+      req.application = {
+        id: keyData.application_id,
+        name: keyData.app_name,
+        settings: keyData.settings ? JSON.parse(keyData.settings) : {},
+        corsOrigins: keyData.cors_origins ? keyData.cors_origins.split(',') : []
+      };
+      
+      next();
+    } catch (error) {
+      console.error('[API KEY AUTH]', error);
+      
+      if (required) {
+        res.status(500).json({
+          success: false,
+          error: 'Server Error',
+          message: 'Erreur lors de la vérification de la clé API'
+        });
+      } else {
+        next();
+      }
+    }
+  };
 }
 
-module.exports = {
-  verifyApiKey
-};
+// Fonction pour hacher une valeur (comme celle utilisée pour générer hashed_key)
+function hashValue(value) {
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+module.exports = apiKeyAuth;

@@ -1,83 +1,92 @@
 /**
- * Middleware pour l'authentification par JWT
+ * Middleware d'authentification JWT
+ * Vérifie la présence d'un token JWT valide dans les en-têtes d'autorisation
  */
-
 const jwt = require('jsonwebtoken');
-const Database = require('better-sqlite3');
-const db = new Database('./storage/db/fhirhub.db', { fileMustExist: false });
 
-// Clé secrète pour signer les tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key-dev-only';
-const TOKEN_EXPIRATION = '24h';
+// Clé secrète pour vérifier les JWT (à déplacer dans une variable d'environnement en production)
+const JWT_SECRET = process.env.JWT_SECRET || 'fhirhub-secret-key';
 
 /**
- * Génère un token JWT pour un utilisateur
- * @param {Object} user - Utilisateur authentifié
- * @returns {string} Token JWT
+ * Middleware pour vérifier l'authentification JWT
+ * @param {Object} options - Options du middleware
+ * @param {boolean} [options.required=true] - Si true, une erreur est renvoyée si le token est manquant
+ * @param {Array} [options.roles] - Si défini, vérifie que le rôle de l'utilisateur est inclus dans cette liste
+ * @returns {Function} Middleware Express
  */
-function generateToken(user) {
-  const payload = {
-    id: user.id,
-    username: user.username,
-    role: user.role,
-    email: user.email
-  };
+function jwtAuth(options = {}) {
+  const {
+    required = true,
+    roles = null
+  } = options;
   
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION });
-}
-
-/**
- * Vérifie la validité du token JWT
- */
-function verifyToken(req, res, next) {
-  try {
-    // Récupérer le token de l'en-tête Authorization
+  return async (req, res, next) => {
+    // Récupérer le token depuis les en-têtes
     const authHeader = req.headers.authorization;
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next ? next('Token JWT requis') : res.status(401).json({ error: 'Token JWT requis' });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    // Pour le développement et les tests, accepter un token spécial "dev-token"
-    if (process.env.NODE_ENV !== 'production' && token === 'dev-token') {
-      // Utiliser l'utilisateur admin pour le dev-token
-      const adminUser = db.prepare('SELECT * FROM users WHERE username = ? AND role = ?').get('admin', 'admin');
-      if (adminUser) {
-        req.user = adminUser;
+      if (required) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Token JWT manquant'
+        });
+      } else {
         return next();
       }
     }
     
-    // Vérifier et décoder le token
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        console.error('[JWT] Erreur de vérification du token:', err.message);
-        return next ? next('Token invalide') : res.status(401).json({ error: 'Token invalide ou expiré' });
-      }
+    const token = authHeader.split(' ')[1];
+    
+    try {
+      // Vérifier et décoder le token
+      const decoded = jwt.verify(token, JWT_SECRET);
       
-      // Récupérer l'utilisateur correspondant
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id);
+      // Récupérer l'utilisateur depuis la base de données
+      const db = req.app.locals.db;
+      const user = db.prepare(`
+        SELECT id, username, role, created_at 
+        FROM users 
+        WHERE id = ?
+      `).get(decoded.id);
       
       if (!user) {
-        return next ? next('Utilisateur non trouvé') : res.status(401).json({ error: 'Utilisateur non trouvé' });
+        if (required) {
+          return res.status(401).json({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Utilisateur non trouvé'
+          });
+        } else {
+          return next();
+        }
+      }
+      
+      // Vérifier le rôle si nécessaire
+      if (roles && !roles.includes(user.role)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Forbidden',
+          message: 'Accès refusé'
+        });
       }
       
       // Ajouter l'utilisateur à la requête
       req.user = user;
       
-      // Mettre à jour la date de dernière activité
-      db.prepare('UPDATE users SET last_login = datetime("now") WHERE id = ?').run(user.id);
-      
       next();
-    });
-  } catch (error) {
-    console.error('[JWT] Erreur lors de la vérification du token:', error);
-    return next ? next(error) : res.status(500).json({ error: 'Erreur de serveur lors de l\'authentification' });
-  }
+    } catch (error) {
+      if (required) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Token JWT invalide ou expiré'
+        });
+      } else {
+        next();
+      }
+    }
+  };
 }
 
-module.exports = {
-  generateToken,
-  verifyToken
-};
+module.exports = jwtAuth;

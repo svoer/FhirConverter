@@ -34,7 +34,7 @@ const db = require('../src/db/dbService');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/providers/active', authCombined.checkAuth, async (req, res) => {
+router.get('/providers/active', authCombined, async (req, res) => {
   try {
     const database = db.getDb();
     
@@ -107,7 +107,7 @@ router.get('/providers/active', authCombined.checkAuth, async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/providers/:id/test', authCombined.checkAuth, async (req, res) => {
+router.post('/providers/:id/test', authCombined, async (req, res) => {
   try {
     const { id } = req.params;
     const database = db.getDb();

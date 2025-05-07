@@ -60,11 +60,7 @@ N'oublie pas:
 - Tu ne traites PAS de données patient réelles
 - Sois cordial et professionnel dans tes réponses
 - Limite tes réponses à 2-3 phrases ou points concis
-- Utilise la documentation technique fournie pour répondre aux questions des utilisateurs
-- Cite tes sources quand tu te réfères à la documentation (ex: "Selon la documentation technique...")
-
-Tu as accès à la documentation technique via l'API /api/documentation/summary.
-Je vais chercher automatiquement les informations pertinentes de la documentation et te les fournir pour enrichir tes réponses.`;
+- Quand tu ne sais pas, suggère de consulter la documentation ou de contacter le support technique`;
 
 /**
  * Initialise le chatbot
@@ -356,37 +352,6 @@ async function getAIResponse(userMessage) {
     // Historique des messages pour la conversation (limité aux 10 derniers échanges)
     const recentHistory = messageHistory.slice(-10);
     
-    // Récupérer la documentation pertinente pour la question de l'utilisateur
-    let documentationContext = "";
-    try {
-      const docResponse = await fetch(`/api/documentation/summary?topic=${encodeURIComponent(userMessage)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (docResponse.ok) {
-        const docData = await docResponse.json();
-        if (docData && docData.results && docData.results.length > 0) {
-          documentationContext = "### Documentation technique pertinente:\n\n";
-          docData.results.forEach(doc => {
-            documentationContext += `#### ${doc.title} (${doc.path})\n\n${doc.content}\n\n`;
-          });
-          
-          console.log('Documentation trouvée pour la question de l\'utilisateur');
-        }
-      }
-    } catch (docError) {
-      console.warn('Erreur lors de la récupération de la documentation:', docError);
-      // Continuer sans documentation en cas d'erreur
-    }
-    
-    // Système d'instructions enrichi avec la documentation
-    const enhancedInstructions = documentationContext
-      ? `${systemInstructions}\n\n${documentationContext}`
-      : systemInstructions;
-    
     // Construire la requête pour l'API d'IA
     const response = await fetch('/api/ai/chat', {
       method: 'POST',
@@ -397,7 +362,7 @@ async function getAIResponse(userMessage) {
       body: JSON.stringify({
         provider: aiProvider.provider_name,
         messages: [
-          { role: 'system', content: enhancedInstructions },
+          { role: 'system', content: systemInstructions },
           ...recentHistory.map(msg => ({ role: msg.role, content: msg.content })),
           { role: 'user', content: contextualizedMessage }
         ],

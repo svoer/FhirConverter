@@ -50,7 +50,7 @@ const { apiRequestCounter } = require('../src/metrics');
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-hl7', authCombined.checkAuth, apiRequestCounter, async (req, res) => {
+router.post('/analyze-hl7', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { hl7Message, provider = 'mistral' } = req.body;
 
@@ -168,7 +168,7 @@ ${hl7Message.includes('OBX|') ? '- Résultats d\'observation (OBX) présents' : 
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-fhir', authCombined.checkAuth, apiRequestCounter, async (req, res) => {
+router.post('/analyze-fhir', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { fhirResource, provider = 'mistral' } = req.body;
 
@@ -243,7 +243,7 @@ router.post('/analyze-fhir', authCombined.checkAuth, apiRequestCounter, async (r
  *       500:
  *         description: Erreur serveur
  */
-router.post('/analyze-conversion', authCombined.checkAuth, apiRequestCounter, async (req, res) => {
+router.post('/analyze-conversion', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { hl7Message, fhirResources, provider = 'mistral' } = req.body;
 
@@ -311,7 +311,7 @@ router.post('/analyze-conversion', authCombined.checkAuth, apiRequestCounter, as
  *       500:
  *         description: Erreur serveur
  */
-router.post('/suggest-mapping', authCombined.checkAuth, apiRequestCounter, async (req, res) => {
+router.post('/suggest-mapping', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { mappingTemplate, conversionExamples = [], provider = 'mistral' } = req.body;
 
@@ -385,7 +385,7 @@ router.post('/suggest-mapping', authCombined.checkAuth, apiRequestCounter, async
  *       500:
  *         description: Erreur serveur
  */
-router.post('/generate-documentation', authCombined.checkAuth, apiRequestCounter, async (req, res) => {
+router.post('/generate-documentation', authCombined, apiRequestCounter, async (req, res) => {
   try {
     const { message, type, provider = 'mistral' } = req.body;
 

@@ -5,10 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const workflowService = require('../src/services/workflowService');
+const jwtAuth = require('../middleware/jwtAuth');
 const authCombined = require('../middleware/authCombined');
-
-// Fonction d'authentification avec vérification des rôles
-const authWithRoles = authCombined.authWithRoles;
 
 /**
  * @swagger
@@ -56,7 +54,7 @@ const authWithRoles = authCombined.authWithRoles;
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.get('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const workflows = await workflowService.getAllWorkflows();
     res.json(workflows);
@@ -89,7 +87,7 @@ router.get('/', authWithRoles({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/application/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.get('/application/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const applicationId = parseInt(req.params.id);
     
@@ -130,7 +128,7 @@ router.get('/application/:id', authWithRoles({ roles: ['admin'] }), async (req, 
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.get('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -189,7 +187,7 @@ router.get('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.post('/', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     if (!req.body.application_id || !req.body.name) {
       return res.status(400).json({ error: 'L\'ID de l\'application et le nom du workflow sont obligatoires' });
@@ -247,7 +245,7 @@ router.post('/', authWithRoles({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.put('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.put('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -293,7 +291,7 @@ router.put('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.delete('/:id', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -346,7 +344,7 @@ router.delete('/:id', authWithRoles({ roles: ['admin'] }), async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id/editor', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.get('/:id/editor', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -540,7 +538,7 @@ router.post('/:id/execute', async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id/export-template', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.get('/:id/export-template', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -652,7 +650,7 @@ router.get('/:id/export-template', authWithRoles({ roles: ['admin'] }), async (r
  *       500:
  *         description: Erreur serveur
  */
-router.post('/import-template', authWithRoles({ roles: ['admin'] }), async (req, res) => {
+router.post('/import-template', jwtAuth({ roles: ['admin'] }), async (req, res) => {
   try {
     const { application_id, name, description, template } = req.body;
     
@@ -731,7 +729,7 @@ router.post('/import-template', authWithRoles({ roles: ['admin'] }), async (req,
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id/export-template', authWithRoles({ roles: ['admin', 'user'] }), async (req, res) => {
+router.get('/:id/export-template', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -782,7 +780,7 @@ router.get('/:id/export-template', authWithRoles({ roles: ['admin', 'user'] }), 
  *       500:
  *         description: Erreur serveur
  */
-router.get('/templates', authWithRoles({ roles: ['admin', 'user'] }), async (req, res) => {
+router.get('/templates', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
   try {
     // Récupérer tous les templates prédéfinis
     const templates = await workflowService.getWorkflowTemplates();
@@ -818,7 +816,7 @@ router.get('/templates', authWithRoles({ roles: ['admin', 'user'] }), async (req
  *       500:
  *         description: Erreur serveur
  */
-router.get('/templates/:templateId', authWithRoles({ roles: ['admin', 'user'] }), async (req, res) => {
+router.get('/templates/:templateId', jwtAuth({ roles: ['admin', 'user'] }), async (req, res) => {
   try {
     const templateId = req.params.templateId;
     const template = await workflowService.getWorkflowTemplateById(templateId);
