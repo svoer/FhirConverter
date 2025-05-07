@@ -16,3 +16,12 @@ datasources:
     editable: true
     jsonData:
       timeField: "timestamp"
+      
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://fhirhub:9091/loki
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000

@@ -19,6 +19,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const metrics = require('./src/metrics');
 const conversionLogsExporter = require('./src/conversionLogsExporter');
 const logsExporter = require('./src/logsExporter');
+const lokiAdapter = require('./src/lokiAdapter');
 
 // Importer le convertisseur avec cache intégré 
 const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
@@ -1049,6 +1050,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     // Ajouter le nouvel exportateur de logs pour Grafana
     metrics.metricsApp.use(logsExporter);
     console.log(`[METRICS] Nouvel exportateur de logs activé pour Grafana`);
+    
+    // Ajouter l'adaptateur Loki pour une meilleure intégration avec Grafana
+    metrics.metricsApp.use(lokiAdapter);
+    console.log(`[METRICS] Adaptateur Loki activé pour une meilleure visualisation des logs dans Grafana`);
   }
   
   // Initialiser le compteur de connexions actives

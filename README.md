@@ -30,7 +30,9 @@ Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub –
 - Interface utilisateur intuitive pour la conversion directe
 - API REST sécurisée avec authentification par clé API
 - Gestion des applications et des utilisateurs
-- Journalisation et suivi des conversions
+- Journalisation et suivi des conversions 
+- 🆕 **Tableau de bord Grafana** - Visualisation avancée des logs avec filtrage par date, heure et erreurs
+- 🆕 **Monitoring Prometheus** - Suivi en temps réel des performances et des conversions
 - Documentation Swagger intégrée
 - Environnement entièrement portable avec SQLite
 - Système de cache intelligent pour optimiser les performances
@@ -236,6 +238,44 @@ Les données sont stockées dans des volumes Docker pour assurer leur persistanc
 
 - `fhirhub_data` : Contient la base de données SQLite et les fichiers de données
 - `fhirhub_logs` : Contient les journaux de l'application
+- `fhirhub_grafana` : Contient les configurations et données de Grafana
+- `fhirhub_prometheus` : Contient les métriques de Prometheus
+
+### Monitoring avec Grafana et Prometheus 🆕
+
+FHIRHub intègre un système complet de monitoring avec Prometheus et Grafana, offrant une visualisation avancée des logs et des performances.
+
+#### Accéder aux tableaux de bord Grafana
+
+1. Accédez à Grafana via `http://localhost:3000` (ou le port configuré)
+2. Connectez-vous avec les identifiants par défaut:
+   - Identifiant: admin
+   - Mot de passe: admin123
+3. Naviguez vers les tableaux de bord disponibles:
+   - "Logs de Conversion FHIRHub" - Vue générale des métriques
+   - "Logs FHIRHub (Détaillé)" - Dashboard détaillé des logs avec filtrage
+
+#### Fonctionnalités de monitoring
+
+- **Filtrage des logs par date et heure** - Visualisation des logs sur différentes périodes
+- **Filtrage par erreurs** - Isolement rapide des conversions en échec
+- **Statistiques en temps réel** - Nombre de conversions, temps de traitement, taux d'erreurs
+- **Métriques système** - Utilisation CPU, mémoire, connexions actives
+- **Tableaux de logs détaillés** - Affichage complet des informations de conversion
+
+#### Redémarrer les services de monitoring
+
+Si vous rencontrez des problèmes avec les tableaux de bord, vous pouvez utiliser le script de redémarrage fourni:
+
+```bash
+# Donner les permissions d'exécution
+chmod +x restart-grafana-logs.sh
+
+# Exécuter le script
+./restart-grafana-logs.sh
+```
+
+Le script redémarrera les services nécessaires et vous guidera sur les étapes à suivre si les logs n'apparaissent toujours pas correctement.
 
 Pour effectuer une sauvegarde des données :
 
