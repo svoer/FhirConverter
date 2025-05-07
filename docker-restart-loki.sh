@@ -66,6 +66,7 @@ restart_container "fhirhub-loki"
 restart_container "fhirhub-promtail"
 restart_container "fhirhub"
 restart_container "fhirhub-grafana"
+# Commentaire: Les noms correspondent parfaitement à ceux définis dans docker-compose.yml
 
 echo -e "${BLUE}=================================================${NC}"
 echo -e "${GREEN}Redémarrage des services terminé!${NC}"
