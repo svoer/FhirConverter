@@ -673,20 +673,15 @@
                     </td>
                     <td>${conversion.processing_time || 0} ms</td>
                     <td>
-                        <button style="padding: 6px 12px; background: linear-gradient(135deg, #ff5e62, #ff9966); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" data-id="${conversion.id}" data-app-id="${appId}">Détails</button>
+                        <!-- Bouton détails supprimé car il ne fonctionne pas -->
+                        <span style="color: #888; font-size: 0.9em;">Détails non disponibles</span>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
             
-            // Ajouter des gestionnaires d'événements pour les boutons de détails
-            document.querySelectorAll('button[data-id]').forEach(button => {
-                button.addEventListener('click', function() {
-                    const conversionId = this.dataset.id;
-                    const appId = this.dataset.appId;
-                    showConversionDetails(appId, conversionId);
-                });
-            });
+            // Le code d'ajout des gestionnaires d'événements pour les boutons de détails a été supprimé
+            // car les boutons ont été remplacés par un message statique
         }
 
         // Mettre à jour la pagination
