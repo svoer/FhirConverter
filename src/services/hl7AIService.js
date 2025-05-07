@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Durée maximale d'une requête IA (en ms)
-const AI_REQUEST_TIMEOUT = 30000; // Augmenté à 30 secondes pour donner plus de temps à l'API
+const AI_REQUEST_TIMEOUT = 60000; // Augmenté à 60 secondes pour correspondre au timeout d'Axios
 
 // Configuration du mode hors ligne pour les analyses IA
 const OFFLINE_MODE_ENABLED = false; // Mode hors ligne désactivé suite à la demande de l'utilisateur
@@ -1005,7 +1005,11 @@ async function sendGoogleAIRequest(apiKey, apiUrl, model, messages, settings = {
       'Content-Type': 'application/json'
     };
     
-    const response = await axios.post(url, params, { headers });
+    // Timeout identique pour tous les fournisseurs
+    const response = await axios.post(url, params, { 
+      headers,
+      timeout: 60000  // 60 secondes de timeout
+    });
     
     // Extraire et retourner le texte de la réponse
     return response.data.candidates[0].content.parts[0].text;
@@ -1046,7 +1050,11 @@ async function sendOllamaRequest(apiUrl, model, messages, settings = {}) {
       'Content-Type': 'application/json'
     };
     
-    const response = await axios.post(url, params, { headers });
+    // Timeout identique pour tous les fournisseurs
+    const response = await axios.post(url, params, { 
+      headers,
+      timeout: 60000  // 60 secondes de timeout
+    });
     
     // Extraire et retourner le texte de la réponse
     return response.data.message.content;

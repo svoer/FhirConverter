@@ -10,8 +10,8 @@
  * @returns {Promise} La promesse avec gestion de timeout
  */
 async function promiseWithTimeout(promise, timeoutMs, errorMessage = 'Operation timed out') {
-  // Augmenter le timeout pour les requêtes API IA qui peuvent prendre plus de temps
-  const effectiveTimeout = Math.min(timeoutMs, 60000); // Maximum 60 secondes
+  // Utiliser le timeout demandé sans limitation arbitraire
+  const effectiveTimeout = timeoutMs;
   
   console.log(`[UTILS] Définition d'un timeout de ${effectiveTimeout}ms pour la promesse`);
   
