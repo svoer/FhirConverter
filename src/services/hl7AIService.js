@@ -831,10 +831,10 @@ async function sendMistralRequest(apiKey, apiUrl, model, messages, settings = {}
       'Authorization': `Bearer ${apiKey}`
     };
     
-    // Timeout plus court pour éviter les blocages
+    // Timeout plus long pour éviter les erreurs avec Mistral
     const response = await axios.post(url, params, { 
       headers,
-      timeout: 15000  // 15 secondes de timeout
+      timeout: 60000  // 60 secondes de timeout, pour correspondre à notre timeout global
     });
     
     console.log('[AI] Réponse Mistral reçue. Structure:', Object.keys(response.data).join(', '));
@@ -883,7 +883,11 @@ async function sendOpenAIRequest(apiKey, apiUrl, model, messages, settings = {})
       'Authorization': `Bearer ${apiKey}`
     };
     
-    const response = await axios.post(url, params, { headers });
+    // Timeout identique à celui de Mistral pour tous les fournisseurs
+    const response = await axios.post(url, params, { 
+      headers,
+      timeout: 60000  // 60 secondes de timeout
+    });
     
     // Extraire et retourner le texte de la réponse
     return response.data.choices[0].message.content;
@@ -933,7 +937,11 @@ async function sendAnthropicRequest(apiKey, apiUrl, model, messages, settings = 
       'anthropic-version': '2023-06-01'
     };
     
-    const response = await axios.post(url, params, { headers });
+    // Timeout identique pour tous les fournisseurs
+    const response = await axios.post(url, params, { 
+      headers,
+      timeout: 60000  // 60 secondes de timeout
+    });
     
     // Extraire et retourner le texte de la réponse
     return response.data.content[0].text;
