@@ -176,6 +176,36 @@ X-API-KEY: votre-cle-api
               Convertit une ressource FHIR en message HL7
             </div>
           </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert/validate</span>
+            </div>
+            <div class="endpoint-description">
+              Valide un message HL7 sans conversion
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert/raw</span>
+            </div>
+            <div class="endpoint-description">
+              Convertit un message HL7 brut (text/plain)
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/convert/mllp</span>
+            </div>
+            <div class="endpoint-description">
+              Convertit un message HL7 au format MLLP
+            </div>
+          </div>
         </div>
         
         <div class="endpoint-group">
@@ -308,6 +338,16 @@ X-API-KEY: votre-cle-api
               Met à jour un fournisseur d'IA
             </div>
           </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/ai-providers/:id/test</span>
+            </div>
+            <div class="endpoint-description">
+              Teste la connexion à un fournisseur d'IA
+            </div>
+          </div>
         </div>
         
         <div class="endpoint-group">
@@ -360,6 +400,26 @@ X-API-KEY: votre-cle-api
             </div>
             <div class="endpoint-description">
               Importe un fichier de terminologie
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/terminology/search</span>
+            </div>
+            <div class="endpoint-description">
+              Recherche dans les terminologies
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/terminology/systems</span>
+            </div>
+            <div class="endpoint-description">
+              Liste tous les systèmes de terminologie
             </div>
           </div>
         </div>
@@ -427,11 +487,31 @@ X-API-KEY: votre-cle-api
           
           <div class="endpoint">
             <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/auth/logout</span>
+            </div>
+            <div class="endpoint-description">
+              Déconnexion utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
               <span class="method get">GET</span>
               <span class="path">/api/auth/verify</span>
             </div>
             <div class="endpoint-description">
               Vérifie la validité d'un token JWT
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/auth/refresh</span>
+            </div>
+            <div class="endpoint-description">
+              Rafraîchit un token JWT
             </div>
           </div>
         </div>
@@ -468,6 +548,36 @@ X-API-KEY: votre-cle-api
               Crée une nouvelle application
             </div>
           </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="path">/api/applications/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Met à jour une application
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="path">/api/applications/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Supprime une application
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/applications/:id/history</span>
+            </div>
+            <div class="endpoint-description">
+              Historique d'une application
+            </div>
+          </div>
         </div>
         
         <div class="endpoint-group">
@@ -502,6 +612,26 @@ X-API-KEY: votre-cle-api
               Crée une nouvelle clé API
             </div>
           </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="path">/api/api-keys/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Met à jour une clé API
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="path">/api/api-keys/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Révoque une clé API
+            </div>
+          </div>
         </div>
         
         <div class="endpoint-group">
@@ -534,6 +664,46 @@ X-API-KEY: votre-cle-api
             </div>
             <div class="endpoint-description">
               Récupère les détails d'un utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/users</span>
+            </div>
+            <div class="endpoint-description">
+              Crée un nouvel utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="path">/api/users/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Met à jour un utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="path">/api/users/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Supprime un utilisateur
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/users/:id/change-password</span>
+            </div>
+            <div class="endpoint-description">
+              Change le mot de passe d'un utilisateur
             </div>
           </div>
         </div>
@@ -590,6 +760,36 @@ X-API-KEY: votre-cle-api
               Met à jour un workflow
             </div>
           </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="path">/api/workflows/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Supprime un workflow
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/workflows/:id/execute</span>
+            </div>
+            <div class="endpoint-description">
+              Exécute un workflow
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/workflows/:id/logs</span>
+            </div>
+            <div class="endpoint-description">
+              Logs d'exécution d'un workflow
+            </div>
+          </div>
         </div>
         
         <div class="endpoint-group">
@@ -612,6 +812,148 @@ X-API-KEY: votre-cle-api
             </div>
             <div class="endpoint-description">
               Génère une clé temporaire pour les tests
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Statistiques Système</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/stats</span>
+            </div>
+            <div class="endpoint-description">
+              Statistiques générales du système
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/system/version</span>
+            </div>
+            <div class="endpoint-description">
+              Version du système
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/system/health</span>
+            </div>
+            <div class="endpoint-description">
+              État de santé du système
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/system/metrics</span>
+            </div>
+            <div class="endpoint-description">
+              Métriques Prometheus du système
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>FHIR Resources REST API</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/fhir/:resourceType</span>
+            </div>
+            <div class="endpoint-description">
+              Liste des ressources d'un type
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/fhir/:resourceType/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Récupère une ressource spécifique
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/fhir/:resourceType</span>
+            </div>
+            <div class="endpoint-description">
+              Crée une nouvelle ressource
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method put">PUT</span>
+              <span class="path">/api/fhir/:resourceType/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Met à jour une ressource
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method delete">DELETE</span>
+              <span class="path">/api/fhir/:resourceType/:id</span>
+            </div>
+            <div class="endpoint-description">
+              Supprime une ressource
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/fhir/:resourceType/_search</span>
+            </div>
+            <div class="endpoint-description">
+              Recherche dans les ressources
+            </div>
+          </div>
+        </div>
+        
+        <div class="endpoint-group">
+          <h3>Bulk Operations</h3>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/fhir/$bulk-export</span>
+            </div>
+            <div class="endpoint-description">
+              Export en masse de données FHIR
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method post">POST</span>
+              <span class="path">/api/fhir/$bulk-import</span>
+            </div>
+            <div class="endpoint-description">
+              Import en masse de données FHIR
+            </div>
+          </div>
+          
+          <div class="endpoint">
+            <div class="endpoint-header">
+              <span class="method get">GET</span>
+              <span class="path">/api/fhir/$export-status/:jobId</span>
+            </div>
+            <div class="endpoint-description">
+              État d'un job d'export
             </div>
           </div>
         </div>
