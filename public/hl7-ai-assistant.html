@@ -610,6 +610,7 @@
                   </div>
                   
                   <div class="button-group" style="margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="convert-hl7-btn-tab">Convertir en FHIR</button>
                     <button class="btn btn-primary" id="analyze-conversion-btn">Analyser la qualité de la conversion</button>
                   </div>
                 </div>
@@ -1256,6 +1257,9 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         aiOutput.scrollIntoView({ behavior: 'smooth' });
       }
       
+      // Référence au nouveau bouton d'onglet de conversion
+      const convertHl7BtnTab = document.getElementById('convert-hl7-btn-tab');
+      
       function displayError(message) {
         aiOutput.style.display = 'block';
         aiOutput.innerHTML = `
@@ -1372,6 +1376,69 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
               <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
               <p>Vous pouvez désormais visualiser et modifier le résultat dans l'onglet "Ressource FHIR".</p>
               <p>Pour une analyse détaillée de la qualité de la conversion, vous pouvez utiliser l'onglet "Analyse de conversion".</p>
+            </div>
+          `;
+          
+        } catch (error) {
+          console.error('Erreur lors de la conversion HL7 vers FHIR:', error);
+          displayError(error.message);
+        } finally {
+          hideLoading();
+        }
+      }
+      
+      // Gestionnaire d'événements pour le nouveau bouton de conversion dans l'onglet Analyse de conversion
+      convertHl7BtnTab.addEventListener('click', () => {
+        const hl7Message = conversionHl7Input.value.trim();
+        if (!hl7Message) {
+          alert('Veuillez saisir un message HL7 à convertir.');
+          return;
+        }
+        
+        // Appeler l'API de conversion
+        convertHL7ToFHIRConversionTab(hl7Message);
+      });
+      
+      // Fonction de conversion HL7 vers FHIR spécifique à l'onglet Analyse de conversion
+      async function convertHL7ToFHIRConversionTab(hl7Message) {
+        try {
+          showLoading();
+          
+          const response = await fetch('/api/hl7-to-fhir', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${FHIRHubAuth.getAuthToken()}`,
+              'X-API-KEY': localStorage.getItem('devKey') || 'dev-key'
+            },
+            body: JSON.stringify({
+              hl7Message,
+              options: {
+                includeComments: true,
+                useIdentifiers: true
+              }
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de la conversion HL7 vers FHIR');
+          }
+          
+          const result = await response.json();
+          
+          // Afficher le résultat dans le champ FHIR de l'onglet Analyse de conversion
+          conversionFhirInput.value = JSON.stringify(result.fhirResources, null, 2);
+          
+          // Afficher un message de réussite dans la sortie
+          aiOutput.style.display = 'block';
+          aiOutput.innerHTML = `
+            <div class="alert alert-success">
+              <i class="fas fa-check-circle"></i> Conversion réussie : ${result.resourceCount || 0} ressource(s) FHIR générée(s).
+            </div>
+            <div class="analysis-content">
+              <p>Le message HL7 a été converti avec succès en ressources FHIR.</p>
+              <p>Vous pouvez maintenant analyser la qualité de la conversion en cliquant sur "Analyser la qualité de la conversion".</p>
             </div>
           `;
           
