@@ -29,7 +29,7 @@ const authCombined = require('../middleware/authCombined');
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', authCombined, (req, res) => {
+router.get('/', authCombined.checkAuth, (req, res) => {
   try {
     const db = req.app.locals.db;
     
@@ -79,7 +79,7 @@ router.get('/', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.get('/:id', authCombined, (req, res) => {
+router.get('/:id', authCombined.checkAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -150,7 +150,7 @@ router.get('/:id', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/', authCombined, (req, res) => {
+router.post('/', authCombined.checkAuth, (req, res) => {
   try {
     const { application_id, description, expires_at, custom_key } = req.body;
     
@@ -241,7 +241,7 @@ router.post('/', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/revoke', authCombined, (req, res) => {
+router.post('/:id/revoke', authCombined.checkAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -303,7 +303,7 @@ router.post('/:id/revoke', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.post('/:id/activate', authCombined, (req, res) => {
+router.post('/:id/activate', authCombined.checkAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;
@@ -365,7 +365,7 @@ router.post('/:id/activate', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', authCombined, (req, res) => {
+router.delete('/:id', authCombined.checkAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.app.locals.db;

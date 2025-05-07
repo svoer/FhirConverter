@@ -52,7 +52,7 @@ const { hashPassword, verifyPassword } = require('../utils/auth');
  *       403:
  *         description: Accès refusé
  */
-router.get('/', authCombined, async (req, res) => {
+router.get('/', authCombined.checkAuth, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié
     if (req.user) {
@@ -125,7 +125,7 @@ router.get('/', authCombined, async (req, res) => {
  *       401:
  *         description: Non autorisé
  */
-router.get('/stats', authCombined, async (req, res) => {
+router.get('/stats', authCombined.checkAuth, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -219,7 +219,7 @@ router.get('/stats', authCombined, async (req, res) => {
  *       404:
  *         description: Utilisateur non trouvé
  */
-router.get('/:id', authCombined, async (req, res) => {
+router.get('/:id', authCombined.checkAuth, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié
     if (req.user) {
@@ -325,7 +325,7 @@ router.get('/:id', authCombined, async (req, res) => {
  *       409:
  *         description: Conflit (nom d'utilisateur déjà utilisé)
  */
-router.post('/', authCombined, async (req, res) => {
+router.post('/', authCombined.checkAuth, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié
     if (req.user) {
@@ -466,7 +466,7 @@ router.post('/', authCombined, async (req, res) => {
  *       409:
  *         description: Conflit (nom d'utilisateur déjà utilisé)
  */
-router.put('/:id', authCombined, async (req, res) => {
+router.put('/:id', authCombined.checkAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
@@ -639,7 +639,7 @@ router.put('/:id', authCombined, async (req, res) => {
  *       404:
  *         description: Utilisateur non trouvé
  */
-router.delete('/:id', authCombined, async (req, res) => {
+router.delete('/:id', authCombined.checkAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
@@ -751,7 +751,7 @@ router.delete('/:id', authCombined, async (req, res) => {
  *       404:
  *         description: Utilisateur non trouvé
  */
-router.post('/:id/change-password', authCombined, async (req, res) => {
+router.post('/:id/change-password', authCombined.checkAuth, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié
     if (!req.user) {
@@ -874,7 +874,7 @@ router.post('/:id/change-password', authCombined, async (req, res) => {
  *       404:
  *         description: Utilisateur non trouvé
  */
-router.put('/:id/preferences', authCombined, async (req, res) => {
+router.put('/:id/preferences', authCombined.checkAuth, async (req, res) => {
   try {
     // Vérifier si l'utilisateur est authentifié
     if (!req.user) {

@@ -1,78 +1,80 @@
 /**
- * Service de gestion de la documentation technique
- * Ce service fournit des méthodes pour accéder à la documentation technique
- * et la rendre disponible pour le chatbot et les autres fonctionnalités de l'application
+ * Service de documentation technique
+ * Permet au chatbot d'accéder aux fichiers de documentation du projet
  */
 
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
+const { createHash } = require('crypto');
 const util = require('util');
+const { promisify } = util;
+const exec = promisify(require('child_process').exec);
 
-// Convertir les fonctions asynchrones à promesses
-const readdirAsync = util.promisify(fs.readdir);
-const readFileAsync = util.promisify(fs.readFile);
-const statAsync = util.promisify(fs.stat);
+// Configuration
+const DOCS_DIR = path.join(process.cwd(), 'docs');
+const CACHE_LIFETIME = 24 * 60 * 60 * 1000; // 24 heures en millisecondes
 
-// Chemin vers le dossier de documentation
-const DOCS_PATH = path.join(__dirname, '../../docs');
-const CACHE_EXPIRY = 1000 * 60 * 60; // 1 heure
-
-// Cache pour les fichiers de documentation
-let docsCache = {
-  files: {},
-  lastUpdated: null,
-  index: {}
+// Cache pour les documents et l'index de recherche
+let documentCache = {
+  lastUpdated: 0,
+  documents: {}, // {filename: {content, hash, lastUpdated}}
+  searchIndex: {} // {term: [filenames]}
 };
 
 /**
- * Initialise le service de documentation
- * @returns {Promise<void>}
- */
-async function initialize() {
-  console.log('[DOCS] Initialisation du service de documentation...');
-  
-  try {
-    await refreshCache();
-    console.log('[DOCS] Service de documentation initialisé avec succès');
-  } catch (error) {
-    console.error('[DOCS] Erreur lors de l\'initialisation du service de documentation:', error);
-    throw error;
-  }
-}
-
-/**
- * Rafraîchit le cache des fichiers de documentation
- * @returns {Promise<void>}
+ * Rafraîchit le cache de documentation
+ * Scanne le répertoire docs/, indexe tous les fichiers et les ajoute au cache
  */
 async function refreshCache() {
   console.log('[DOCS] Rafraîchissement du cache de documentation...');
   
   try {
-    // Récupérer la liste des fichiers et dossiers de documentation
-    const docFiles = await getAllDocumentationFiles(DOCS_PATH);
-    
-    // Vider le cache actuel
-    docsCache.files = {};
-    docsCache.index = {};
-    
-    // Charger le contenu de chaque fichier dans le cache
-    for (const filePath of docFiles) {
-      const relativePath = path.relative(DOCS_PATH, filePath);
-      const content = await readFileAsync(filePath, 'utf8');
+    // Vérifier que le répertoire docs existe, le créer sinon
+    try {
+      await fs.access(DOCS_DIR);
+    } catch (err) {
+      console.log('[DOCS] Création du répertoire docs...');
+      await fs.mkdir(DOCS_DIR, { recursive: true });
       
-      // Stocker le contenu dans le cache
-      docsCache.files[relativePath] = {
-        content,
-        path: relativePath,
-        lastUpdated: new Date()
-      };
-      
-      // Indexer le contenu pour la recherche
-      indexDocumentContent(relativePath, content);
+      // Création d'un fichier README.md initial
+      const readmePath = path.join(DOCS_DIR, 'README.md');
+      await fs.writeFile(readmePath, `# Documentation technique de FHIRHub\n\nCe répertoire contient la documentation technique du projet FHIRHub.\n\n## Sections\n\n- Architecture : structure générale du projet\n- Conversion : détails techniques sur la conversion HL7 vers FHIR\n- API : documentation de l'API REST\n- Workflows : documentation sur le système de workflows\n`);
     }
     
-    docsCache.lastUpdated = new Date();
-    console.log(`[DOCS] Cache rafraîchi avec ${Object.keys(docsCache.files).length} fichiers`);
+    // Réinitialiser le cache
+    documentCache = {
+      lastUpdated: Date.now(),
+      documents: {},
+      searchIndex: {}
+    };
+    
+    // Récupérer tous les fichiers Markdown du répertoire docs et ses sous-répertoires
+    const files = await getAllMarkdownFiles(DOCS_DIR);
+    
+    // Indexer chaque fichier
+    for (const filePath of files) {
+      try {
+        const relativePath = path.relative(DOCS_DIR, filePath);
+        const content = await fs.readFile(filePath, 'utf8');
+        const hash = createHash('md5').update(content).digest('hex');
+        
+        // Ajouter au cache des documents
+        documentCache.documents[relativePath] = {
+          content,
+          hash,
+          lastUpdated: Date.now(),
+          path: relativePath
+        };
+        
+        // Indexer le contenu pour la recherche
+        indexDocumentContent(relativePath, content);
+      } catch (error) {
+        console.error(`[DOCS] Erreur lors de l'indexation du fichier ${filePath}:`, error);
+      }
+    }
+    
+    console.log(`[DOCS] ${Object.keys(documentCache.documents).length} fichiers de documentation indexés.`);
+    return true;
   } catch (error) {
     console.error('[DOCS] Erreur lors du rafraîchissement du cache:', error);
     throw error;
@@ -80,244 +82,321 @@ async function refreshCache() {
 }
 
 /**
- * Récupère récursivement tous les fichiers markdown dans un dossier
- * @param {string} dirPath - Chemin du dossier à explorer
- * @returns {Promise<string[]>} - Liste des chemins complets des fichiers
- */
-async function getAllDocumentationFiles(dirPath) {
-  const files = [];
-  const entries = await readdirAsync(dirPath);
-  
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry);
-    const stats = await statAsync(fullPath);
-    
-    if (stats.isDirectory()) {
-      // Récupérer récursivement les fichiers des sous-dossiers
-      const subFiles = await getAllDocumentationFiles(fullPath);
-      files.push(...subFiles);
-    } else if (stats.isFile() && (entry.endsWith('.md') || entry.endsWith('.txt'))) {
-      // Ajouter les fichiers markdown et texte
-      files.push(fullPath);
-    }
-  }
-  
-  return files;
-}
-
-/**
- * Indexe le contenu d'un document pour la recherche
- * @param {string} filePath - Chemin relatif du fichier
+ * Découpe et indexe le contenu d'un document pour la recherche
+ * Extrait les mots-clés et les associe au fichier dans l'index de recherche
+ * @param {string} fileName - Nom du fichier à indexer
  * @param {string} content - Contenu du fichier
  */
-function indexDocumentContent(filePath, content) {
-  // Diviser le contenu en mots et les ajouter à l'index
-  const words = content.toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter(word => word.length > 2);
+function indexDocumentContent(fileName, content) {
+  // Nettoyer le contenu (supprimer les caractères spéciaux, convertir en minuscules)
+  const cleanContent = content
+    .toLowerCase()
+    .replace(/```[\s\S]*?```/g, '') // Supprimer les blocs de code
+    .replace(/[#*_\[\]()>]/g, ' ') // Supprimer les caractères Markdown
+    .replace(/\s+/g, ' ') // Remplacer plusieurs espaces par un seul
+    .trim();
   
-  // Dédupliquer les mots
-  const uniqueWords = [...new Set(words)];
+  // Extraire les mots uniques avec au moins 3 caractères
+  const words = [...new Set(cleanContent.split(' ').filter(word => word.length >= 3))];
   
-  // Ajouter à l'index
-  uniqueWords.forEach(word => {
-    if (!docsCache.index[word]) {
-      docsCache.index[word] = [];
+  // Extraire les termes techniques spécifiques (mots avec majuscules, comme HL7, FHIR, etc.)
+  const technicalTerms = content.match(/\b[A-Z0-9]{2,}(?:\.[A-Z0-9]+)*\b/g) || [];
+  
+  // Ajouter les titres avec un poids plus élevé
+  const titles = content.match(/#+\s+(.+)/g) || [];
+  const cleanTitles = titles.map(title => 
+    title.replace(/#+\s+/, '').toLowerCase().replace(/[^\w\s]/g, ' ').trim()
+  );
+  
+  // Combiner tous les termes à indexer
+  const allTerms = [...words, ...technicalTerms, ...cleanTitles];
+  
+  // Ajouter chaque terme à l'index de recherche
+  allTerms.forEach(term => {
+    if (!documentCache.searchIndex[term]) {
+      documentCache.searchIndex[term] = [];
     }
-    
-    if (!docsCache.index[word].includes(filePath)) {
-      docsCache.index[word].push(filePath);
+    if (!documentCache.searchIndex[term].includes(fileName)) {
+      documentCache.searchIndex[term].push(fileName);
     }
   });
 }
 
 /**
+ * Récupère récursivement tous les fichiers Markdown d'un répertoire et ses sous-répertoires
+ * @param {string} dir - Répertoire à scanner
+ * @returns {Promise<string[]>} Liste des chemins absolus des fichiers Markdown
+ */
+async function getAllMarkdownFiles(dir) {
+  const result = [];
+  
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      
+      if (entry.isDirectory()) {
+        const subDirFiles = await getAllMarkdownFiles(fullPath);
+        result.push(...subDirFiles);
+      } else if (entry.name.endsWith('.md')) {
+        result.push(fullPath);
+      }
+    }
+  } catch (error) {
+    console.error(`[DOCS] Erreur lors de la récupération des fichiers du répertoire ${dir}:`, error);
+  }
+  
+  return result;
+}
+
+/**
+ * Vérifie si le cache est périmé
+ * @returns {boolean} True si le cache doit être rafraîchi
+ */
+function isCacheExpired() {
+  const now = Date.now();
+  return (now - documentCache.lastUpdated) > CACHE_LIFETIME || 
+         Object.keys(documentCache.documents).length === 0;
+}
+
+/**
  * Récupère la liste des fichiers de documentation disponibles
- * @returns {Promise<string[]>} Liste des chemins relatifs des fichiers
+ * @returns {Promise<Array>} Liste des fichiers disponibles
  */
 async function getDocumentationFiles() {
-  // Vérifier si le cache doit être rafraîchi
-  if (!docsCache.lastUpdated || (Date.now() - docsCache.lastUpdated > CACHE_EXPIRY)) {
+  if (isCacheExpired()) {
     await refreshCache();
   }
   
-  return Object.keys(docsCache.files);
+  const files = Object.keys(documentCache.documents).map(fileName => {
+    const doc = documentCache.documents[fileName];
+    return {
+      path: fileName,
+      lastUpdated: doc.lastUpdated
+    };
+  });
+  
+  return {
+    files,
+    count: files.length,
+    lastUpdated: documentCache.lastUpdated
+  };
 }
 
 /**
  * Récupère le contenu d'un fichier de documentation
- * @param {string} filePath - Chemin relatif du fichier
+ * @param {string} filePath - Chemin du fichier (relatif au répertoire docs/)
  * @returns {Promise<string>} Contenu du fichier
  */
 async function getDocumentContent(filePath) {
-  // Vérifier si le cache doit être rafraîchi
-  if (!docsCache.lastUpdated || (Date.now() - docsCache.lastUpdated > CACHE_EXPIRY)) {
+  if (isCacheExpired()) {
     await refreshCache();
   }
   
-  // Vérifier si le fichier existe dans le cache
-  if (!docsCache.files[filePath]) {
-    throw new Error(`Fichier non trouvé: ${filePath}`);
+  // Normaliser le chemin pour éviter les problèmes de séparateurs
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  
+  if (!documentCache.documents[normalizedPath]) {
+    // Vérifier si le fichier existe physiquement
+    const fullPath = path.join(DOCS_DIR, normalizedPath);
+    
+    try {
+      await fs.access(fullPath);
+      
+      // Le fichier existe mais n'est pas en cache, l'ajouter au cache
+      const content = await fs.readFile(fullPath, 'utf8');
+      const hash = createHash('md5').update(content).digest('hex');
+      
+      documentCache.documents[normalizedPath] = {
+        content,
+        hash,
+        lastUpdated: Date.now(),
+        path: normalizedPath
+      };
+      
+      // Indexer le contenu pour la recherche
+      indexDocumentContent(normalizedPath, content);
+      
+      return content;
+    } catch (error) {
+      throw new Error(`Fichier de documentation non trouvé: ${normalizedPath}`);
+    }
   }
   
-  return docsCache.files[filePath].content;
+  return documentCache.documents[normalizedPath].content;
 }
 
 /**
  * Recherche dans la documentation
  * @param {string} query - Termes de recherche
- * @returns {Promise<Array<Object>>} Résultats de recherche
+ * @returns {Promise<Array>} Résultats de recherche
  */
 async function searchDocumentation(query) {
-  // Vérifier si le cache doit être rafraîchi
-  if (!docsCache.lastUpdated || (Date.now() - docsCache.lastUpdated > CACHE_EXPIRY)) {
+  if (isCacheExpired()) {
     await refreshCache();
   }
   
-  // Diviser la requête en mots
-  const searchTerms = query.toLowerCase()
+  // Nettoyer et fractionner la requête en termes individuels
+  const terms = query.toLowerCase()
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(word => word.length > 2);
+    .filter(term => term.length >= 2);
   
-  // Si aucun terme valide n'est fourni, retourner une liste vide
-  if (searchTerms.length === 0) {
-    return [];
+  if (terms.length === 0) {
+    return {
+      query,
+      results: [],
+      count: 0
+    };
   }
   
-  // Compter les occurrences de chaque fichier
-  const fileScores = {};
+  // Initialiser le score pour chaque document
+  const scores = {};
   
-  // Pour chaque terme de recherche, trouver les fichiers correspondants
-  searchTerms.forEach(term => {
-    // Rechercher des correspondances exactes
-    if (docsCache.index[term]) {
-      docsCache.index[term].forEach(filePath => {
-        if (!fileScores[filePath]) {
-          fileScores[filePath] = 0;
+  // Pour chaque terme, trouver les documents correspondants
+  terms.forEach(term => {
+    // Recherche exacte
+    if (documentCache.searchIndex[term]) {
+      documentCache.searchIndex[term].forEach(fileName => {
+        if (!scores[fileName]) {
+          scores[fileName] = 0;
         }
-        // Les correspondances exactes ont un score plus élevé
-        fileScores[filePath] += 2;
+        // Donner un score plus élevé pour les correspondances exactes
+        scores[fileName] += 10;
       });
     }
     
-    // Rechercher des correspondances partielles
-    Object.keys(docsCache.index).forEach(indexTerm => {
+    // Recherche partielle
+    Object.keys(documentCache.searchIndex).forEach(indexTerm => {
       if (indexTerm.includes(term)) {
-        docsCache.index[indexTerm].forEach(filePath => {
-          if (!fileScores[filePath]) {
-            fileScores[filePath] = 0;
+        documentCache.searchIndex[indexTerm].forEach(fileName => {
+          if (!scores[fileName]) {
+            scores[fileName] = 0;
           }
-          // Les correspondances partielles ont un score plus faible
-          fileScores[filePath] += 1;
+          // Donner un score plus faible pour les correspondances partielles
+          scores[fileName] += 5;
         });
       }
     });
   });
   
-  // Convertir en tableau de résultats
-  const results = Object.entries(fileScores)
-    .map(([filePath, score]) => ({
-      path: filePath,
-      score,
-      title: getDocumentTitle(filePath, docsCache.files[filePath].content),
-      preview: getDocumentPreview(docsCache.files[filePath].content, searchTerms)
-    }))
-    .filter(result => result.score > 0)
-    .sort((a, b) => b.score - a.score);
-  
-  return results;
-}
-
-/**
- * Extrait le titre d'un document markdown
- * @param {string} filePath - Chemin relatif du fichier
- * @param {string} content - Contenu du fichier
- * @returns {string} Titre du document
- */
-function getDocumentTitle(filePath, content) {
-  // Essayer de trouver un titre H1 dans le contenu
-  const titleMatch = content.match(/^#\s+(.+)$/m);
-  if (titleMatch) {
-    return titleMatch[1];
-  }
-  
-  // Utiliser le nom de fichier comme fallback
-  const fileName = path.basename(filePath, path.extname(filePath));
-  return fileName.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
-/**
- * Génère un aperçu du document avec le contexte des termes recherchés
- * @param {string} content - Contenu du document
- * @param {string[]} searchTerms - Termes de recherche
- * @returns {string} Aperçu du document
- */
-function getDocumentPreview(content, searchTerms) {
-  // Rechercher la première occurrence d'un terme de recherche dans le contenu
-  let previewStart = 0;
-  
-  for (const term of searchTerms) {
-    const termIndex = content.toLowerCase().indexOf(term);
-    if (termIndex !== -1) {
-      // Trouver le début de la phrase contenant le terme
-      previewStart = content.lastIndexOf('.', termIndex);
-      if (previewStart === -1) previewStart = 0;
-      else previewStart += 1; // Exclure le point
-      break;
-    }
-  }
-  
-  // Extraire un aperçu de 200 caractères autour du terme
-  let preview = content.substring(previewStart, previewStart + 200).trim();
-  
-  // Ajouter des ellipses si le preview est coupé
-  if (previewStart > 0) preview = '...' + preview;
-  if (previewStart + 200 < content.length) preview += '...';
-  
-  return preview;
-}
-
-/**
- * Récupère un résumé de la documentation pour un sujet spécifique
- * @param {string} topic - Sujet recherché
- * @returns {Promise<Object>} Résumé de la documentation
- */
-async function getDocumentationSummary(topic) {
-  // Rechercher dans la documentation
-  const searchResults = await searchDocumentation(topic);
-  
-  // Si aucun résultat n'est trouvé, retourner null
-  if (searchResults.length === 0) {
-    return null;
-  }
-  
-  // Prendre les deux meilleurs résultats
-  const topResults = searchResults.slice(0, 2);
-  
-  // Extraire le contenu pertinent
-  const relevantContent = await Promise.all(
-    topResults.map(async result => {
-      const content = await getDocumentContent(result.path);
+  // Convertir les scores en tableau de résultats
+  const results = Object.keys(scores)
+    .map(fileName => {
+      const doc = documentCache.documents[fileName];
       
-      // Tronquer pour ne pas dépasser les limites de taille
+      // Extraire un extrait contenant le premier terme de recherche
+      let excerpt = '';
+      const content = doc.content.toLowerCase();
+      
+      for (const term of terms) {
+        const index = content.indexOf(term);
+        if (index !== -1) {
+          // Extraire 50 caractères avant et après la première occurrence du terme
+          const start = Math.max(0, index - 50);
+          const end = Math.min(content.length, index + term.length + 50);
+          excerpt = '...' + content.substring(start, end) + '...';
+          break;
+        }
+      }
+      
+      // Si aucun extrait n'a été trouvé, utiliser les 100 premiers caractères
+      if (!excerpt && doc.content) {
+        excerpt = doc.content.substring(0, 100) + '...';
+      }
+      
       return {
-        title: result.title,
-        path: result.path,
-        content: content.substring(0, 1500) // Limiter à 1500 caractères par document
+        path: fileName,
+        score: scores[fileName],
+        excerpt,
+        title: extractTitle(doc.content)
       };
     })
-  );
+    .sort((a, b) => b.score - a.score);
   
   return {
-    query: topic,
-    results: relevantContent
+    query,
+    results,
+    count: results.length
   };
 }
 
+/**
+ * Extrait le titre d'un document Markdown
+ * @param {string} content - Contenu du document
+ * @returns {string} Titre du document
+ */
+function extractTitle(content) {
+  if (!content) return 'Sans titre';
+  
+  // Rechercher le premier titre de niveau 1 ou 2
+  const titleMatch = content.match(/^#\s+(.+)$/m) || content.match(/^##\s+(.+)$/m);
+  
+  if (titleMatch && titleMatch[1]) {
+    return titleMatch[1].trim();
+  }
+  
+  // Si aucun titre n'est trouvé, utiliser la première ligne non vide
+  const firstLine = content.split('\n').find(line => line.trim().length > 0);
+  if (firstLine) {
+    return firstLine.trim().substring(0, 50);
+  }
+  
+  return 'Sans titre';
+}
+
+/**
+ * Récupère un résumé de la documentation sur un sujet spécifique
+ * Utilisé par le chatbot pour obtenir des informations contextuelles
+ * @param {string} topic - Sujet de recherche
+ * @returns {Promise<Object>} Résumé de la documentation
+ */
+async function getDocumentationSummary(topic) {
+  try {
+    // Rechercher des documents pertinents
+    const searchResults = await searchDocumentation(topic);
+    
+    if (!searchResults.results.length) {
+      return null;
+    }
+    
+    // Prendre les 3 résultats les plus pertinents
+    const topResults = searchResults.results.slice(0, 3);
+    
+    // Récupérer le contenu complet de chaque document
+    const documents = await Promise.all(
+      topResults.map(async result => {
+        const content = await getDocumentContent(result.path);
+        return {
+          title: result.title,
+          path: result.path,
+          content
+        };
+      })
+    );
+    
+    return {
+      topic,
+      documents,
+      timestamp: Date.now()
+    };
+  } catch (error) {
+    console.error('[DOCS] Erreur lors de la récupération du résumé de documentation:', error);
+    return null;
+  }
+}
+
+// Initialiser le cache au démarrage
+(async () => {
+  try {
+    await refreshCache();
+  } catch (error) {
+    console.error('[DOCS] Erreur lors de l\'initialisation du cache de documentation:', error);
+  }
+})();
+
 module.exports = {
-  initialize,
   refreshCache,
   getDocumentationFiles,
   getDocumentContent,

@@ -14,11 +14,9 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
-const documentationRoutes = require('./server/routes/documentation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const metrics = require('./src/metrics');
 const conversionLogsExporter = require('./src/conversionLogsExporter');
-const documentationService = require('./src/services/documentationService');
 
 // Importer le convertisseur avec cache intégré 
 const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
@@ -76,7 +74,15 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 
 // Routes pour la documentation markdown des types de messages
+const documentationRoutes = require('./server/routes/documentation');
 app.use('/docs', documentationRoutes);
+  
+// Routes API pour accéder à la documentation technique (pour le chatbot)
+const documentationApiRoutes = require('./routes/documentation');
+app.use('/api', documentationApiRoutes);
+
+// Initialiser le service de documentation
+const documentationService = require('./src/services/documentationService');
 
 // Base de données SQLite simplifiée
 const Database = require('better-sqlite3');
@@ -519,13 +525,13 @@ function processHL7Conversion(hl7Message, req, res) {
 }
 
 // 1. Endpoint JSON qui accepte un message HL7 encapsulé dans un champ JSON
-app.post('/api/convert', authCombined, (req, res) => {
+app.post('/api/convert', authCombined.checkAuth, (req, res) => {
   const { hl7Message } = req.body;
   return processHL7Conversion(hl7Message, req, res);
 });
 
 // 2. Endpoint pour texte brut qui accepte directement le message HL7
-app.post('/api/convert/raw', authCombined, (req, res) => {
+app.post('/api/convert/raw', authCombined.checkAuth, (req, res) => {
   const hl7Message = req.body; // req.body contient directement le texte (grâce à bodyParser.text())
   
   // Enregistrement dans les logs pour le tableau de bord
@@ -538,7 +544,7 @@ app.post('/api/convert/raw', authCombined, (req, res) => {
 });
 
 // 3. Endpoint pour MLLP (Minimal Lower Layer Protocol)
-app.post('/api/convert/mllp', authCombined, (req, res) => {
+app.post('/api/convert/mllp', authCombined.checkAuth, (req, res) => {
   const hl7Message = req.mllpMessage; // Obtenu via le middleware MLLP
   if (!hl7Message) {
     return res.status(400).json({
@@ -597,7 +603,7 @@ app.post('/api/convert/mllp', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-app.post('/api/convert/validate', authCombined, (req, res) => {
+app.post('/api/convert/validate', authCombined.checkAuth, (req, res) => {
   try {
     const { hl7Message } = req.body;
     

@@ -8,7 +8,7 @@ const conversionLogService = require('../src/services/conversionLogService');
 const authCombined = require('../middleware/authCombined');
 
 // Toutes les routes nécessitent une authentification
-router.use(authCombined);
+router.use(authCombined.checkAuth);
 
 /**
  * GET /applications
