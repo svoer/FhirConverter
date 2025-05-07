@@ -116,7 +116,7 @@ else
     if ! grep -q "^$var=" .env; then
       echo -e "${YELLOW}⚠️ Variable $var manquante dans .env, ajout...${NC}"
       if [ "$var" = "PORT" ]; then
-        echo "PORT=5000" >> ./.env
+        echo "PORT=5001" >> ./.env
       elif [ "$var" = "DB_PATH" ]; then
         echo "DB_PATH=${DB_DIR}/fhirhub.db" >> ./.env
       elif [ "$var" = "METRICS_ENABLED" ]; then
@@ -390,14 +390,14 @@ if [ ! -z "$PYTHON_CMD" ]; then
   fi
 fi
 
-# Vérifier si le port 5000 est déjà utilisé et le libérer si nécessaire
+# Vérifier si le port 5001 est déjà utilisé et le libérer si nécessaire
 echo -e "${BLUE}[6/6] Préparation du serveur...${NC}"
-echo -e "${BLUE}Vérification du port 5000...${NC}"
+echo -e "${BLUE}Vérification du port 5001...${NC}"
 PORT_CHECK=""
 if command -v lsof &> /dev/null; then
-  PORT_CHECK=$(lsof -i:5000 -t 2>/dev/null)
+  PORT_CHECK=$(lsof -i:5001 -t 2>/dev/null)
 elif command -v netstat &> /dev/null; then
-  PORT_CHECK=$(netstat -tuln 2>/dev/null | grep ":5000 " | wc -l)
+  PORT_CHECK=$(netstat -tuln 2>/dev/null | grep ":5001 " | wc -l)
   if [ "$PORT_CHECK" -gt "0" ]; then
     PORT_CHECK="en_utilisation"
   else
@@ -406,14 +406,14 @@ elif command -v netstat &> /dev/null; then
 fi
 
 if [ ! -z "$PORT_CHECK" ]; then
-  echo -e "${YELLOW}⚠️ Port 5000 déjà utilisé, tentative de libération...${NC}"
+  echo -e "${YELLOW}⚠️ Port 5001 déjà utilisé, tentative de libération...${NC}"
   if command -v lsof &> /dev/null; then
-    kill -9 $PORT_CHECK 2>/dev/null && echo -e "${GREEN}✅ Port 5000 libéré${NC}" || echo -e "${YELLOW}⚠️ Impossible de libérer le port 5000${NC}"
+    kill -9 $PORT_CHECK 2>/dev/null && echo -e "${GREEN}✅ Port 5001 libéré${NC}" || echo -e "${YELLOW}⚠️ Impossible de libérer le port 5001${NC}"
   else
-    echo -e "${YELLOW}⚠️ Impossible de libérer le port 5000 automatiquement. Veuillez vérifier manuellement.${NC}"
+    echo -e "${YELLOW}⚠️ Impossible de libérer le port 5001 automatiquement. Veuillez vérifier manuellement.${NC}"
   fi
 else
-  echo -e "${GREEN}✅ Port 5000 disponible${NC}"
+  echo -e "${GREEN}✅ Port 5001 disponible${NC}"
 fi
 
 # Vérification du port des métriques
@@ -423,7 +423,7 @@ METRICS_ENABLED=$(grep -oP "(?<=METRICS_ENABLED=).*" .env 2>/dev/null || echo "t
 # Démarrage du serveur
 echo -e "${CYAN}=========================================================="
 echo -e "   Démarrage du serveur FHIRHub v${APP_VERSION}"
-echo -e "   Application: http://localhost:5000"
+echo -e "   Application: http://localhost:5001"
 if [ "$METRICS_ENABLED" = "true" ]; then
   echo -e "   Métriques Prometheus: http://localhost:${METRICS_PORT}/metrics"
 fi
