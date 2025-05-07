@@ -478,8 +478,8 @@ function processHL7Conversion(hl7Message, req, res) {
         user_id: userId,
         api_key_id: req.apiKeyData ? req.apiKeyData.id : null,
         application_id: applicationId,
-        applicationId: applicationId, // Ajouter ce champ pour compatibilité
-        source_type: 'api'
+        applicationId: applicationId // Ajouter ce champ pour compatibilité
+        // Suppression de source_type qui n'existe pas dans le schéma
       }).then(() => {
         console.log('[API] Conversion enregistrée avec succès dans les logs');
       }).catch(logError => {
@@ -527,7 +527,9 @@ app.post('/api/convert/raw', authCombined, (req, res) => {
   
   // Enregistrement dans les logs pour le tableau de bord
   console.log('[API] Requête de conversion raw reçue');
-  metrics.incrementAPIRequestCount();
+  // Utiliser la métrique correcte
+  // metrics.incrementAPIRequestCount n'existe pas, nous utilisons apiRequestCounter
+  // mais ce n'est pas nécessaire de l'appeler ici car il est déjà utilisé comme middleware
   
   return processHL7Conversion(hl7Message, req, res);
 });
