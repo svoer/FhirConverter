@@ -14,7 +14,6 @@ const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
-const { setupSwagger } = require('./swagger');
 const documentationRoutes = require('./server/routes/documentation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const metrics = require('./src/metrics');
@@ -70,8 +69,7 @@ app.use((req, res, next) => {
   }
 });
 
-// Configuration de Swagger
-setupSwagger(app);
+// Documentation API disponible à /api-reference.html
 
 // Servir les fichiers statiques
 app.use(express.static('public'));
