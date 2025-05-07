@@ -99,8 +99,9 @@ if [ ! -f "./.env" ]; then
   echo -e "${YELLOW}Création du fichier .env par défaut...${NC}"
   cat > ./.env << EOF
 # Configuration FHIRHub
-PORT=5000
+PORT=5001
 DB_PATH=${DB_DIR}/fhirhub.db
+DB_FILE=${DB_DIR}/fhirhub.db
 LOG_LEVEL=info
 NODE_ENV=development
 JWT_SECRET=$(openssl rand -hex 16)

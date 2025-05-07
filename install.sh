@@ -319,28 +319,75 @@ $NPM_CMD install
 
 # Configuration de l'environnement
 echo "[4/7] Configuration de l'environnement..."
+
+# Création du répertoire storage pour la nouvelle structure
+echo "   Création des répertoires de stockage pour la structure optimisée..."
+mkdir -p ./storage/db ./storage/logs ./storage/backups ./storage/data
+echo "   ✅ Structure de répertoires optimisée créée"
+
 if [ ! -f "./.env" ]; then
   cat > ./.env << EOF
 # Configuration FHIRHub
-PORT=5000
-DB_PATH=./data/fhirhub.db
+PORT=5001
+DB_PATH=./storage/db/fhirhub.db
+DB_FILE=./storage/db/fhirhub.db
 LOG_LEVEL=info
 JWT_SECRET=$(openssl rand -hex 32)
+METRICS_ENABLED=true
+METRICS_PORT=9091
 EOF
   echo "✅ Fichier .env créé avec succès"
 else
-  echo "ℹ️ Fichier .env existant conservé"
+  # Mettre à jour .env existant avec les nouveaux chemins
+  echo "   Mise à jour du fichier .env existant avec les nouveaux chemins..."
+  if grep -q "PORT=5000" ./.env; then
+    sed -i 's/PORT=5000/PORT=5001/g' ./.env
+    echo "   ✅ Port mis à jour de 5000 à 5001"
+  fi
+  
+  if grep -q "DB_PATH=./data/" ./.env; then
+    sed -i 's|DB_PATH=./data/|DB_PATH=./storage/db/|g' ./.env
+    echo "   ✅ Chemin DB_PATH mis à jour"
+  fi
+  
+  if grep -q "DB_FILE=./data/" ./.env; then
+    sed -i 's|DB_FILE=./data/|DB_FILE=./storage/db/|g' ./.env
+    echo "   ✅ Chemin DB_FILE mis à jour"
+  fi
+  
+  if ! grep -q "METRICS_ENABLED" ./.env; then
+    echo "METRICS_ENABLED=true" >> ./.env
+    echo "   ✅ METRICS_ENABLED ajouté"
+  fi
+  
+  if ! grep -q "METRICS_PORT" ./.env; then
+    echo "METRICS_PORT=9091" >> ./.env
+    echo "   ✅ METRICS_PORT ajouté"
+  fi
+  
+  echo "✅ Fichier .env mis à jour avec succès"
 fi
 
 # Initialisation de la base de données
 echo "[5/7] Initialisation de la base de données..."
 echo "[DB] Création des tables dans la base de données SQLite..."
 
+# Récupérer le chemin de la base de données depuis .env
+DB_PATH=$(grep -oP "(?<=DB_PATH=).*" .env 2>/dev/null || echo "./storage/db/fhirhub.db")
+echo "   Utilisation du chemin de base de données: $DB_PATH"
+
+# Vérifier si le répertoire parent existe
+DB_DIR=$(dirname "$DB_PATH")
+if [ ! -d "$DB_DIR" ]; then
+  echo "   Création du répertoire pour la base de données: $DB_DIR"
+  mkdir -p "$DB_DIR"
+fi
+
 # Vérifier si le fichier de base de données existe
-DB_PATH="./data/fhirhub.db"
 if [ ! -f "$DB_PATH" ]; then
   echo "   Création d'une nouvelle base de données: $DB_PATH"
   touch "$DB_PATH"
+  chmod 644 "$DB_PATH"  # Assurer les permissions correctes
 fi
 
 # Exécuter l'initialisation de la base de données avec Node.js
@@ -594,11 +641,11 @@ echo ""
 echo "Pour démarrer l'application :"
 echo "  ./start.sh"
 echo ""
-echo "Site web accessible sur : http://localhost:5000"
+echo "Site web accessible sur : http://localhost:5001"
 echo "Identifiants par défaut :"
 echo "  Utilisateur : admin"
 echo "  Mot de passe : admin123"
 echo ""
 echo "Clé API de test : dev-key"
-echo "Documentation API : http://localhost:5000/api-docs"
+echo "Documentation API : http://localhost:5001/api-docs"
 echo "=========================================================="
