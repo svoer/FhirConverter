@@ -288,6 +288,7 @@
   font-weight: 500;
   transition: var(--transition-quick);
   position: relative;
+  overflow: visible;
   border-left: 3px solid transparent;
   justify-content: space-between; /* Permet de mettre l'icône étoile à droite */
 }
@@ -324,6 +325,8 @@
   justify-content: center;
   width: 24px;
   height: 24px;
+  z-index: 5;
+  position: relative;
 }
 
 .favorite-btn:hover {
