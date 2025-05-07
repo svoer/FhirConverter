@@ -154,6 +154,11 @@
       // Mettre à jour l'apparence des boutons en fonction des favoris enregistrés
       favoriteButtons.forEach(btn => {
         const url = btn.getAttribute('data-url');
+        if (!url) {
+          console.warn('Bouton favori sans attribut data-url trouvé');
+          return; // Ignorer les boutons sans URL
+        }
+        
         if (favorites.includes(url)) {
           btn.classList.add('active');
           btn.innerHTML = '<i class="fas fa-star"></i>';
@@ -166,6 +171,10 @@
           e.stopPropagation();
           
           const url = this.getAttribute('data-url');
+          if (!url) {
+            console.warn('Clic sur un bouton favori sans attribut data-url');
+            return; // Ne rien faire si pas d'URL
+          }
           
           // Récupérer les favoris actuels
           let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
@@ -206,7 +215,7 @@
       const favoritesList = document.getElementById('favorites-list');
       if (!favoritesList) return;
       
-      if (favorites.length === 0) {
+      if (!favorites || favorites.length === 0) {
         favoritesList.innerHTML = '<li><p class="no-favorites">Aucun favori</p></li>';
         return;
       }
@@ -222,13 +231,17 @@
         '/workflows.html': { title: 'Workflows', icon: 'fas fa-project-diagram' },
         '/ai-settings.html': { title: 'Paramètres IA', icon: 'fas fa-robot' },
         '/documentation.html': { title: 'Documentation', icon: 'fas fa-file-alt' },
-        '/api-docs/': { title: 'API Reference', icon: 'fas fa-code' }
+        '/api-docs/': { title: 'API Reference', icon: 'fas fa-code' },
+        '/hl7-ai-assistant.html': { title: 'Assistant IA', icon: 'fas fa-robot' }
       };
       
       // Créer des éléments de menu pour chaque favori
       const items = favorites.map(url => {
         const navItem = navMap[url];
-        if (!navItem) return '';
+        if (!navItem) {
+          console.warn(`Navigation item not found for URL: ${url}`);
+          return '';
+        }
         
         return `
           <li>
@@ -240,7 +253,12 @@
             </a>
           </li>
         `;
-      });
+      }).filter(item => item !== ''); // Filtrer les éléments vides
+      
+      if (items.length === 0) {
+        favoritesList.innerHTML = '<li><p class="no-favorites">Aucun favori valide</p></li>';
+        return;
+      }
       
       favoritesList.innerHTML = items.join('');
       
