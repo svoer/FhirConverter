@@ -18,6 +18,7 @@ const documentationRoutes = require('./server/routes/documentation');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const metrics = require('./src/metrics');
 const conversionLogsExporter = require('./src/conversionLogsExporter');
+const documentationService = require('./src/services/documentationService');
 
 // Importer le convertisseur avec cache intégré 
 const { convertHL7ToFHIR } = require('./src/cacheEnabledConverter');
