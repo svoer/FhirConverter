@@ -6,8 +6,10 @@
 
 const express = require('express');
 const router = express.Router();
-const authenticateToken = require('../middleware/jwtAuth');
-const validateApiKey = require('../middleware/apiKeyAuth');
+const jwtAuth = require('../middleware/jwtAuth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
+const authenticateToken = jwtAuth.verifyToken;
+const validateApiKey = apiKeyAuth.verifyApiKey;
 const converter = require('../src/services/conversionService');
 // Le service statsService n'existe pas, utilisons le service de journalisation des conversions à la place
 const conversionLogService = require('../src/services/conversionLogService');
