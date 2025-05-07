@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: Conversion Logs
+    type: simpod-json-datasource
+    uid: conversion-logs
+    url: http://fhirhub:9091/conversion-logs
+    access: proxy
+    editable: true
+    isDefault: false
+    jsonData:
+      keepCookies: []
+      manageAlerts: false
+      timeField: "timestamp"
+    secureJsonData:
+      httpHeaderValue1: ''

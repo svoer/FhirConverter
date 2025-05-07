@@ -138,10 +138,33 @@ function startMetricsServer(port = 9091) {
   }
 }
 
+/**
+ * Ajouter les endpoints de logs de conversion pour Grafana
+ * @param {express.Router} conversionLogsRouter - Le routeur Express pour les logs de conversion
+ */
+function addConversionLogsEndpoints(conversionLogsRouter) {
+  if (conversionLogsRouter) {
+    metricsApp.use(conversionLogsRouter);
+    console.log('[METRICS] Routes de logs de conversion montées sur le serveur de métriques');
+    
+    // Ajouter une route de santé pour vérifier que le service est disponible
+    metricsApp.get('/conversion-logs-health', (req, res) => {
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        service: 'conversion-logs-exporter',
+        uptime: process.uptime()
+      });
+    });
+  }
+}
+
 module.exports = {
   apiRequestCounter,
   incrementConversionCount,
   recordConversionDuration,
   updateActiveConnections,
-  startMetricsServer
+  startMetricsServer,
+  addConversionLogsEndpoints,
+  metricsApp  // Exporter l'application pour que d'autres modules puissent y ajouter des routes
 };

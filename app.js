@@ -1014,6 +1014,10 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   const METRICS_PORT = process.env.METRICS_PORT || 9091;
   if (metrics.startMetricsServer(METRICS_PORT)) {
     console.log(`[METRICS] Serveur de métriques démarré sur le port ${METRICS_PORT}`);
+    
+    // Activer les endpoints de logs de conversion pour Grafana
+    metrics.addConversionLogsEndpoints(conversionLogsExporter.conversionLogsApp);
+    console.log(`[METRICS] Endpoints de logs de conversion activés pour Grafana`);
   }
   
   // Initialiser le compteur de connexions actives
