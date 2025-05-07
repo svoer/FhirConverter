@@ -51,10 +51,12 @@ chown -R root:root ./volumes/db
 chmod -R 755 ./volumes/db
 echo -e "${GREEN}✓ Permissions base de données SQLite corrigées${NC}"
 
-chown -R root:root ./volumes/data
-chmod -R 755 ./volumes/data
-find volumes/data -type f -exec chmod 644 {} \;
-echo -e "${GREEN}✓ Permissions données corrigées${NC}"
+# S'assurer que tous les sous-répertoires data existent
+mkdir -p ./volumes/data/cache ./volumes/data/ai_responses ./volumes/data/conversions ./volumes/data/history ./volumes/data/outputs ./volumes/data/test ./volumes/data/workflows
+
+# Attribution des droits maximaux pour résoudre les problèmes de permissions
+chmod -R 777 ./volumes/data
+echo -e "${GREEN}✓ Permissions données corrigées avec droits étendus (777)${NC}"
 
 chown -R root:root ./volumes/logs
 chmod -R 755 ./volumes/logs

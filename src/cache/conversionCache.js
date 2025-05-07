@@ -16,8 +16,8 @@ const CONFIG = {
   MAX_MEMORY_CACHE_SIZE: 500,
   // Durée de vie des entrées du cache (en secondes)
   TTL: 86400, // 24 heures par défaut
-  // Répertoire pour le cache persistant
-  DISK_CACHE_DIR: './data/cache',
+  // Répertoire pour le cache persistant (ajusté pour être compatible avec Docker)
+  DISK_CACHE_DIR: './storage/data/cache',
   // Taille maximale du cache disque (en nombre de fichiers)
   MAX_DISK_CACHE_SIZE: 5000,
   // Stratégie d'éviction : 'lru' (moins récemment utilisé) ou 'lfu' (moins fréquemment utilisé)

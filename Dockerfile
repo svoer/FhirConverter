@@ -21,10 +21,24 @@ RUN mkdir -p /app/storage/data \
              /app/storage/data/history \
              /app/storage/data/outputs \
              /app/storage/data/test \
+             /app/storage/data/cache \
+             /app/storage/data/ai_responses \
              /app/storage/logs \
              /app/storage/backups \
              /app/storage/db \
              /app/metrics
+
+# Créer des répertoires compatibles avec l'ancienne structure pour la rétrocompatibilité
+RUN mkdir -p /app/data \
+             /app/data/cache \
+             /app/data/ai_responses \
+             /app/data/conversions \
+             /app/data/history \
+             /app/data/outputs \
+             /app/data/test
+
+# S'assurer que les permissions sont correctes pour l'utilisateur non-root
+RUN chmod -R 777 /app/storage /app/data
 
 # Volume mounts points
 VOLUME ["/app/storage/db", "/app/storage/data", "/app/storage/logs", "/app/storage/backups"]

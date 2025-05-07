@@ -30,8 +30,11 @@ services:
       - ./volumes/backups:/app/storage/backups:rw
       # Volume pour les terminologies françaises
       - ./volumes/french_terminology:/app/french_terminology:rw
-    # Utiliser le même utilisateur pour éviter les problèmes de permissions
-    user: "1000:1000"
+      # Support de la structure de dossiers legacy
+      - ./volumes/data:/app/data:rw
+    # Utiliser l'utilisateur root pour éviter les problèmes de permissions
+    # Cela est sécuritaire car l'application s'exécute dans un conteneur isolé
+    user: "root"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
