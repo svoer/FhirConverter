@@ -672,12 +672,21 @@
                         </span>
                     </td>
                     <td>${conversion.processing_time || 0} ms</td>
+                    <td>
+                        <button style="padding: 6px 12px; background: linear-gradient(135deg, #ff5e62, #ff9966); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" data-id="${conversion.id}" data-app-id="${appId}">Détails</button>
+                    </td>
                 `;
                 tableBody.appendChild(row);
             });
             
-            // Le code d'ajout des gestionnaires d'événements pour les boutons de détails a été supprimé
-            // car les boutons ont été remplacés par un message statique
+            // Ajouter des gestionnaires d'événements pour les boutons Détails
+            document.querySelectorAll('button[data-id]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const conversionId = this.getAttribute('data-id');
+                    const appId = this.getAttribute('data-app-id');
+                    showConversionDetails(appId, conversionId);
+                });
+            });
         }
 
         // Mettre à jour la pagination
