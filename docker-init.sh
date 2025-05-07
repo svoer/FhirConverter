@@ -409,7 +409,7 @@ ingester:
 
 schema_config:
   configs:
-    - from: 2023-01-01
+    - from: 2020-10-24
       store: boltdb-shipper
       object_store: filesystem
       schema: v11
@@ -422,13 +422,11 @@ storage_config:
     active_index_directory: /loki/index
     cache_location: /loki/cache
     cache_ttl: 24h
-    shared_store: filesystem
   filesystem:
     directory: /loki/chunks
 
 compactor:
   working_directory: /loki/compactor
-  shared_store: filesystem
 
 limits_config:
   reject_old_samples: true
@@ -437,7 +435,7 @@ limits_config:
   max_query_parallelism: 32
 
 chunk_store_config:
-  max_look_back_period: 0s
+  max_look_back_period: 0
 
 table_manager:
   retention_deletes_enabled: false
@@ -449,10 +447,9 @@ query_range:
   cache_results: true
   results_cache:
     cache:
-      enable_fifocache: true
-      fifocache:
-        max_size_items: 1024
-        validity: 24h
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
 EOF
   echo -e "${GREEN}✓ Configuration Loki créée${NC}"
 else

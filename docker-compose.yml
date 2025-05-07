@@ -152,10 +152,14 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./volumes/loki:/loki:rw
+      - ./loki/chunks:/loki/chunks:rw
+      - ./loki/index:/loki/index:rw
+      - ./loki/cache:/loki/cache:rw
+      - ./loki/wal:/loki/wal:rw
+      - ./loki/compactor:/loki/compactor:rw
       - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml
-    user: "root"
+    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
+    user: "10001"
     networks:
       - fhirhub-network
     logging:
