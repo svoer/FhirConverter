@@ -55,7 +55,7 @@ services:
       - "9092:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./volumes/prometheus:/prometheus
+      - ./volumes/prometheus:/prometheus:rw
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -63,7 +63,9 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
       - '--no-scrape.adjust-timestamps'
-    user: "1000:1000"
+    environment:
+      - "TZ=Europe/Paris"
+    user: "root"
     depends_on:
       - fhirhub
     networks:

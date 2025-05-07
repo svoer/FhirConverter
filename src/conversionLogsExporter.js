@@ -6,6 +6,17 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const dbService = require('./db/dbService');
+
+// Assurez-vous que le répertoire de logs existe
+const logsDir = path.join(__dirname, '../logs');
+if (!fs.existsSync(logsDir)) {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log(`[LOGS] Répertoire de logs créé: ${logsDir}`);
+  } catch (error) {
+    console.error(`[LOGS] Erreur lors de la création du répertoire de logs: ${error.message}`);
+  }
+}
 const logger = require('./utils/logger');
 
 // Create an Express app for the conversion logs endpoint

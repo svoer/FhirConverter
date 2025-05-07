@@ -34,13 +34,15 @@ mkdir -p volumes/db volumes/data volumes/logs volumes/backups volumes/french_ter
 echo -e "${YELLOW}Configuration des permissions correctes pour les conteneurs Docker...${NC}"
 
 # Droits pour Prometheus (utilisateur 1000:1000)
+mkdir -p ./volumes/prometheus
 chown -R 1000:1000 ./volumes/prometheus
-chmod -R 755 ./volumes/prometheus
+chmod -R 777 ./volumes/prometheus
 echo -e "${GREEN}✓ Permissions Prometheus corrigées${NC}"
 
 # Droits pour Grafana (utilisateur 1000:1000)
+mkdir -p ./volumes/grafana
 chown -R 1000:1000 ./volumes/grafana
-chmod -R 755 ./volumes/grafana
+chmod -R 777 ./volumes/grafana
 echo -e "${GREEN}✓ Permissions Grafana corrigées${NC}"
 
 # Droits pour FHIRHub (utilisateur root:root)
