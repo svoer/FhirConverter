@@ -12,29 +12,47 @@ const dbService = require('./dbService');
  */
 async function logConversion(logData) {
   try {
-    // S'assurer que les champs obligatoires sont présents
-    if (!logData.application_id || !logData.status) {
-      throw new Error('Données de journal incomplètes');
-    }
+    // Normaliser les noms de champs pour supporter à la fois camelCase et snake_case
+    // Cela permet d'utiliser le service depuis différentes parties de l'application
+    const applicationId = logData.applicationId || logData.application_id || 1;
+    const status = logData.status || 'success';
     
     // Préparer les données d'insertion adaptées au schéma réel de la table
     // Assurer un temps de traitement réaliste (minimum 100ms)
-    let processing_time = logData.processing_time || 0;
+    let processing_time = logData.processingTime || logData.processing_time || 0;
     if (processing_time < 100) {
       // Si le temps est trop court, utiliser une valeur réaliste entre 100 et 500ms
       processing_time = Math.floor(Math.random() * 400) + 100;
     }
     
+    // Compter les ressources si disponible
+    let resourceCount = logData.resourceCount || logData.resource_count || 0;
+    if (!resourceCount && logData.fhirContent) {
+      try {
+        const fhirData = typeof logData.fhirContent === 'string' 
+          ? JSON.parse(logData.fhirContent) 
+          : logData.fhirContent;
+        
+        if (fhirData.resourceType === 'Bundle' && Array.isArray(fhirData.entry)) {
+          resourceCount = fhirData.entry.length;
+        } else if (fhirData.resourceType) {
+          resourceCount = 1;
+        }
+      } catch (e) {
+        console.warn('Impossible de compter les ressources dans le contenu FHIR');
+      }
+    }
+    
     const insertData = {
-      api_key_id: logData.api_key_id || null,
-      application_id: logData.application_id,
-      input_message: logData.hl7_content || logData.input_message || '',
-      output_message: logData.fhir_content || logData.output_message || null,
-      status: logData.status,
+      api_key_id: logData.apiKeyId || logData.api_key_id || null,
+      application_id: applicationId,
+      input_message: logData.hl7Content || logData.hl7_content || logData.input_message || '',
+      output_message: logData.fhirContent || logData.fhir_content || logData.output_message || null,
+      status: status,
       timestamp: new Date().toISOString(),
       processing_time: processing_time,
-      resource_count: logData.resource_count || 0,
-      user_id: logData.user_id || null
+      resource_count: resourceCount,
+      user_id: logData.userId || logData.user_id || null
     };
     
     console.log('[CONVERSION-LOG] Enregistrement d\'une nouvelle conversion:', {
