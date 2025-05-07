@@ -187,7 +187,7 @@ L'application sera accessible à l'adresse: http://localhost:5000
 
 Identifiants par défaut:
 - Utilisateur: admin
-- Mot de passe: adminfhirhub
+- Mot de passe: admin123
 
 ## Documentation
 

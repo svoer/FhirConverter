@@ -428,5 +428,12 @@ if [ "$METRICS_ENABLED" = "true" ]; then
 fi
 echo -e "==========================================================${NC}"
 
+# Vérification et création des répertoires pour Docker
+echo -e "${BLUE}Préparation des répertoires pour Grafana et Prometheus...${NC}"
+mkdir -p volumes/grafana volumes/prometheus 2>/dev/null
+# Correction des permissions pour Grafana et Prometheus
+chmod -R 777 volumes/grafana volumes/prometheus 2>/dev/null || true
+echo -e "${GREEN}✅ Répertoires Docker pour Grafana et Prometheus préparés${NC}"
+
 # Démarrage avec le Node.js approprié
 $NODE_CMD app.js
