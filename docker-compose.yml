@@ -15,20 +15,23 @@ services:
       - NODE_ENV=production
       - PORT=5000
       - DB_PATH=/app/storage/db/fhirhub.db
+      - DB_PERSISTENT=true
       - JWT_SECRET=fhirhub-secure-jwt-secret
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
     volumes:
       # Volume pour la base de données
-      - ./volumes/db:/app/storage/db
+      - ./volumes/db:/app/storage/db:rw
       # Volume pour les données persistantes
-      - ./volumes/data:/app/storage/data
+      - ./volumes/data:/app/storage/data:rw
       # Volume pour les logs
-      - ./volumes/logs:/app/storage/logs
+      - ./volumes/logs:/app/storage/logs:rw
       # Volume pour les sauvegardes
-      - ./volumes/backups:/app/storage/backups
+      - ./volumes/backups:/app/storage/backups:rw
       # Volume pour les terminologies françaises
-      - ./volumes/french_terminology:/app/french_terminology
+      - ./volumes/french_terminology:/app/french_terminology:rw
+    # Utiliser le même utilisateur pour éviter les problèmes de permissions
+    user: "1000:1000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
