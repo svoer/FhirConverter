@@ -446,66 +446,44 @@ function processHL7Conversion(hl7Message, req, res) {
     
     console.log(`[API] Conversion terminée en ${conversionTime}ms avec ${result.entry.length} ressources générées${fromCache ? ' (depuis le cache)' : ''}`);
     
-    // Enregistrement de la conversion
+    // Enregistrement de la conversion avec conversionLogService
     const userId = req.user ? req.user.id : null;
-    const db = req.app.locals.db;
+    
+    // Récupérer l'ID d'application depuis la clé API ou la session
+    let applicationId = req.apiKeyData ? req.apiKeyData.application_id : null;
+    if (!applicationId && req.user && req.user.default_application_id) {
+      applicationId = req.user.default_application_id;
+    }
+    // Si aucune application n'est associée, utiliser l'application par défaut
+    if (!applicationId) {
+      applicationId = 1; // Application par défaut
+    }
     
     // Adapter l'insertion au schéma existant dans la base de données
     try {
-      // Récupérer les colonnes disponibles dans conversion_logs
-      const tableInfo = db.prepare(`PRAGMA table_info(conversion_logs)`).all();
-      const columns = tableInfo.map(col => col.name);
+      const conversionLogService = require('./src/services/conversionLogService');
       
+      // Préparer les données de conversion
       const inputMsg = hl7Message.length > 1000 ? hl7Message.substring(0, 1000) + '...' : hl7Message;
       const outputMsg = JSON.stringify(result).length > 1000 ? JSON.stringify(result).substring(0, 1000) + '...' : JSON.stringify(result);
       const resourceCount = result.entry ? result.entry.length : 0;
       
-      if (columns.includes('input_message')) {
-        // Schéma avec input_message (celui que nous utilisons actuellement)
-        db.prepare(`
-          INSERT INTO conversion_logs (
-            input_message,
-            output_message,
-            status,
-            timestamp,
-            processing_time,
-            resource_count,
-            user_id
-          ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
-        `).run(
-          inputMsg,
-          outputMsg,
-          'success',
-          conversionTime,
-          resourceCount,
-          userId
-        );
-      } else if (columns.includes('hl7_content')) {
-        // Schéma avec hl7_content (celui défini dans schema.js)
-        db.prepare(`
-          INSERT INTO conversion_logs (
-            api_key_id,
-            application_id,
-            source_type,
-            hl7_content,
-            fhir_content,
-            status,
-            processing_time,
-            error_message,
-            ip_address
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          null,
-          1, // Application par défaut
-          'api',
-          inputMsg,
-          outputMsg,
-          'success',
-          conversionTime,
-          null,
-          req.ip || null
-        );
-      }
+      // Utiliser le service pour enregistrer la conversion
+      conversionLogService.logConversion({
+        input_message: inputMsg,
+        output_message: outputMsg,
+        status: 'success',
+        processing_time: conversionTime,
+        resource_count: resourceCount,
+        user_id: userId,
+        api_key_id: req.apiKeyData ? req.apiKeyData.id : null,
+        application_id: applicationId,
+        source_type: 'api'
+      }).then(() => {
+        console.log('[API] Conversion enregistrée avec succès dans les logs');
+      }).catch(logError => {
+        console.error('[CONVERSION LOG ERROR]', logError.message);
+      });
     } catch (err) {
       console.error('[CONVERSION LOG ERROR]', err.message);
       // Continue sans interrompre le processus de conversion
@@ -545,6 +523,11 @@ app.post('/api/convert', authCombined, (req, res) => {
 // 2. Endpoint pour texte brut qui accepte directement le message HL7
 app.post('/api/convert/raw', authCombined, (req, res) => {
   const hl7Message = req.body; // req.body contient directement le texte (grâce à bodyParser.text())
+  
+  // Enregistrement dans les logs pour le tableau de bord
+  console.log('[API] Requête de conversion raw reçue');
+  metrics.incrementAPIRequestCount();
+  
   return processHL7Conversion(hl7Message, req, res);
 });
 
