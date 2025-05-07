@@ -499,7 +499,9 @@ async function getConversionDetails(conversionId, applicationId) {
       WHERE id = ? AND (application_id = ? OR application_id IS NULL)
     `;
     
-    const conversion = db.prepare(sql).get(conversionId, applicationId);
+    // Utiliser la même approche que les autres fonctions
+    const params = [conversionId, applicationId];
+    const conversion = await db.get(sql, params);
     
     if (!conversion) {
       return null;
