@@ -59,12 +59,8 @@ services:
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
-      # Cette option évite les erreurs liées aux timestamps dans les métriques récoltées
       - '--no-scrape.adjust-timestamps'
-      # Logs moins verbeux pour réduire la taille des fichiers de logs
-      - '--log.level=warn'
-    # UID 65534 = nobody, qui est l'utilisateur par défaut de Prometheus
-    user: "65534:65534"
+    user: "1000:1000"
     depends_on:
       - fhirhub
     networks:
@@ -94,8 +90,7 @@ services:
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PATHS_LOGS=/var/lib/grafana/logs
       - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-    # UID 472 = utilisateur grafana standard dans l'image officielle
-    user: "472:472"
+    user: "1000:1000" 
     depends_on:
       - prometheus
     networks:
