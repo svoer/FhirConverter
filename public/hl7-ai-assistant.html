@@ -673,7 +673,8 @@
       const conversionHl7Input = document.getElementById('conversion-hl7-input');
       const conversionFhirInput = document.getElementById('conversion-fhir-input');
       
-      const convertHl7Btn = document.getElementById('convert-hl7-btn-tab'); // Remarque: Le bouton a été renommé et se trouve uniquement dans l'onglet conversion
+      // Bouton de conversion dans l'onglet "Conversion" - référence unique pour éviter les doublons
+      const convertHl7BtnTab = document.getElementById('convert-hl7-btn-tab');
       const analyzeHl7Btn = document.getElementById('analyze-hl7-btn');
       const analyzeFhirBtn = document.getElementById('analyze-fhir-btn');
       const analyzeConversionBtn = document.getElementById('analyze-conversion-btn');
@@ -1023,18 +1024,8 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         // TODO: Implémenter l'export PDF
       });
       
-      // Convertir simplement en FHIR (sans analyse IA) - bouton dans l'onglet conversion
-      if (convertHl7Btn) {  // Vérifier d'abord si le bouton existe
-        convertHl7Btn.addEventListener('click', () => {
-          const hl7Message = conversionHl7Input.value.trim();
-          if (!hl7Message) {
-            showNotification('Veuillez saisir un message HL7 à convertir.', 'warning');
-            return;
-          }
-          
-          convertHL7ToFHIR(hl7Message);
-        });
-      }
+      // Les références au bouton et les événements ont été consolidés
+      // pour éviter les doublons, voir l'événement unique défini plus bas
       
       // Analyser avec IA
       analyzeHl7Btn.addEventListener('click', () => {
@@ -1260,8 +1251,7 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         aiOutput.scrollIntoView({ behavior: 'smooth' });
       }
       
-      // Référence au nouveau bouton d'onglet de conversion
-      const convertHl7BtnTab = document.getElementById('convert-hl7-btn-tab');
+      // La référence a déjà été définie plus haut
       
       function displayError(message) {
         // Afficher une notification d'erreur
