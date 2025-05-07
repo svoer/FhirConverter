@@ -17,7 +17,8 @@
   <style>
     /* Styles UX 2025 - Design moderne avec dégradé rouge-orange */
     :root {
-      --primary-gradient: linear-gradient(135deg, #d62828, #fa7921);
+      /* Utilisons les mêmes couleurs que le header principal */
+      --primary-gradient: linear-gradient(to right, #e74c3c, #f39c12);
       --button-radius: 8px;
     }
     
@@ -42,7 +43,7 @@
     }
     
     .btn-primary {
-      background: var(--primary-gradient);
+      background: linear-gradient(to right, #e74c3c, #f39c12);
       color: white;
     }
     
@@ -68,7 +69,8 @@
     }
     
     .card-header {
-      background: linear-gradient(to right, var(--primary-gradient-start), var(--primary-gradient-end));
+      /* Utilisons le même dégradé que le header principal */
+      background: linear-gradient(to right, #e74c3c, #f39c12);
       color: white;
       padding: 1.2rem;
       border-radius: 12px 12px 0 0;
