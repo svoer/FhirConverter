@@ -673,7 +673,7 @@
       const conversionHl7Input = document.getElementById('conversion-hl7-input');
       const conversionFhirInput = document.getElementById('conversion-fhir-input');
       
-      const convertHl7Btn = document.getElementById('convert-hl7-btn');
+      const convertHl7Btn = document.getElementById('convert-hl7-btn-tab'); // Remarque: Le bouton a été renommé et se trouve uniquement dans l'onglet conversion
       const analyzeHl7Btn = document.getElementById('analyze-hl7-btn');
       const analyzeFhirBtn = document.getElementById('analyze-fhir-btn');
       const analyzeConversionBtn = document.getElementById('analyze-conversion-btn');
@@ -1023,16 +1023,18 @@ AIS|1||CARDIOLOGY^FOLLOWUP VISIT|20230915143000|20230915150000||CARDIOLOGYCLINIC
         // TODO: Implémenter l'export PDF
       });
       
-      // Convertir simplement en FHIR (sans analyse IA)
-      convertHl7Btn.addEventListener('click', () => {
-        const hl7Message = hl7Input.value.trim();
-        if (!hl7Message) {
-          alert('Veuillez saisir un message HL7 à convertir.');
-          return;
-        }
-        
-        convertHL7ToFHIR(hl7Message);
-      });
+      // Convertir simplement en FHIR (sans analyse IA) - bouton dans l'onglet conversion
+      if (convertHl7Btn) {  // Vérifier d'abord si le bouton existe
+        convertHl7Btn.addEventListener('click', () => {
+          const hl7Message = conversionHl7Input.value.trim();
+          if (!hl7Message) {
+            alert('Veuillez saisir un message HL7 à convertir.');
+            return;
+          }
+          
+          convertHL7ToFHIR(hl7Message);
+        });
+      }
       
       // Analyser avec IA
       analyzeHl7Btn.addEventListener('click', () => {
