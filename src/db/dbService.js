@@ -8,7 +8,7 @@ const path = require('path');
 const util = require('util');
 
 // Définition du chemin de la base de données
-let DB_PATH = process.env.DB_PATH || './data/fhirhub.db';
+let DB_PATH = process.env.DB_PATH || './storage/db/fhirhub.db';
 
 // S'assurer que le répertoire existe
 const dbDir = path.dirname(DB_PATH);

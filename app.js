@@ -85,7 +85,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // Définition du chemin de la base de données
-let DB_PATH = './data/fhirhub.db';
+let DB_PATH = './storage/db/fhirhub.db';
 
 // Vérification des permissions
 try {
