@@ -163,8 +163,7 @@ router.get('/documentation', async (req, res) => {
 
 router.post('/chat', async (req, res) => {
   try {
-    console.log('[AI CHAT ROUTE] Nouvelle requête de chat reçue sur /api/ai/chat');
-    console.log('[AI CHAT ROUTE] Auth JWT désactivée temporairement pour déboguer');
+    console.log('[AI CHAT ROUTE] Nouvelle requête de chat reçue sur /api/chat');
     console.log('[AI CHAT ROUTE] Body reçu:', JSON.stringify(req.body).substring(0, 1000));
     
     // Vérifiez si c'est un appel simple de test (sans body complet)
@@ -218,32 +217,98 @@ router.post('/chat', async (req, res) => {
     console.log(`[AI CHAT ROUTE] Traitement de la requête avec le fournisseur: ${provider}`);
     console.log(`[AI CHAT ROUTE] Clé API disponible:`, !!aiProvider.api_key);
     
-    // Traiter la requête selon le fournisseur d'IA
+    // Extraire la dernière question de l'utilisateur pour la recherche documentaire
+    let lastUserMessage = '';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMessage = messages[i].content;
+        break;
+      }
+    }
+    
+    // Enrichir les messages avec la documentation technique disponible
+    let enhancedMessages = [...messages];
+    
+    // Si un message utilisateur a été trouvé, rechercher de la documentation pertinente
+    if (lastUserMessage) {
+      console.log(`[AI CHAT ROUTE] Recherche de documentation pour: "${lastUserMessage}"`);
+      
+      try {
+        // Obtenir la documentation pertinente pour la question
+        const docSummary = await documentationService.getDocumentationSummary(lastUserMessage);
+        
+        if (docSummary && docSummary.documents && docSummary.documents.length > 0) {
+          console.log(`[AI CHAT ROUTE] ${docSummary.documents.length} documents pertinents trouvés`);
+          
+          // Créer un message système enrichi avec la documentation
+          let documentationContext = `### Documentation technique pertinente:\n\n`;
+          
+          // Ajouter chaque document trouvé au contexte
+          docSummary.documents.forEach(doc => {
+            documentationContext += `#### ${doc.title} (${doc.path})\n\n`;
+            // Limiter la taille pour ne pas dépasser les limites de contexte
+            documentationContext += `${doc.content.substring(0, 1000)}${doc.content.length > 1000 ? '...' : ''}\n\n`;
+          });
+          
+          // Insérer le message système enrichi au début de la conversation
+          // Si un message système existe déjà, le remplacer par une version enrichie
+          let systemMessageExists = false;
+          
+          enhancedMessages = enhancedMessages.map(msg => {
+            if (msg.role === 'system') {
+              systemMessageExists = true;
+              return {
+                role: 'system',
+                content: `${msg.content}\n\n${documentationContext}\n\nUtilise prioritairement les informations de la documentation ci-dessus pour répondre aux questions sur FHIRHub.`
+              };
+            }
+            return msg;
+          });
+          
+          // Si aucun message système n'existait, en ajouter un au début
+          if (!systemMessageExists) {
+            enhancedMessages.unshift({
+              role: 'system',
+              content: `Tu es un assistant technique pour FHIRHub. Utilise la documentation suivante pour répondre aux questions techniques:\n\n${documentationContext}`
+            });
+          }
+          
+          console.log('[AI CHAT ROUTE] Messages enrichis avec la documentation technique');
+        } else {
+          console.log('[AI CHAT ROUTE] Aucune documentation pertinente trouvée');
+        }
+      } catch (docError) {
+        console.error('[AI CHAT ROUTE] Erreur lors de la récupération de la documentation:', docError);
+        // Continuer sans documentation en cas d'erreur
+      }
+    }
+    
+    // Traiter la requête selon le fournisseur d'IA avec les messages enrichis
     let response;
     
     switch (provider.toLowerCase()) {
       case 'mistral':
-        response = await handleMistralRequest(aiProvider, messages, max_tokens);
+        response = await handleMistralRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       case 'openai':
-        response = await handleOpenAIRequest(aiProvider, messages, max_tokens);
+        response = await handleOpenAIRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       case 'anthropic':
-        response = await handleAnthropicRequest(aiProvider, messages, max_tokens);
+        response = await handleAnthropicRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       case 'google':
-        response = await handleGoogleRequest(aiProvider, messages, max_tokens);
+        response = await handleGoogleRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       case 'deepseek':
-        response = await handleDeepSeekRequest(aiProvider, messages, max_tokens);
+        response = await handleDeepSeekRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       case 'ollama':
-        response = await handleOllamaRequest(aiProvider, messages, max_tokens);
+        response = await handleOllamaRequest(aiProvider, enhancedMessages, max_tokens);
         break;
         
       default:
