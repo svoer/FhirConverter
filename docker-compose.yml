@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # Nginx comme proxy inverse pour sécuriser l'accès
   nginx:
@@ -42,7 +44,7 @@ services:
       - ./data/nginx/certbot/www:/var/www/certbot:rw
     depends_on:
       - nginx
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait ${!}; done;'"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - fhirhub-network
     logging:
@@ -66,7 +68,7 @@ services:
       - PORT=5000
       - DB_PATH=/app/storage/db/fhirhub.db
       - DB_PERSISTENT=true
-      - JWT_SECRET=$${JWT_SECRET:-changeme_in_env_file}  # Secret stocké dans un fichier .env
+      - JWT_SECRET=${JWT_SECRET:-changeme_in_env_file}  # Secret stocké dans un fichier .env
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
       - LOKI_URL=http://loki:3100
@@ -147,7 +149,7 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"  # Uniquement accessible via Nginx
-    volumes:volumes:
+    volumes:
       - ./data/grafana:/var/lib/grafana:rw
       - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
