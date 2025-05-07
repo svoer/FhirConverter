@@ -767,6 +767,33 @@ app.get('/api/stats', (req, res) => {
       `;
       
       conversionStats = db.prepare(statsQuery).get();
+      
+      // Ajouter les statistiques par application si la colonne application_id existe
+      if (columns.includes('application_id')) {
+        try {
+          const appStatsQuery = `
+            SELECT 
+              a.id as app_id,
+              a.name as app_name,
+              COUNT(c.id) as conversion_count,
+              AVG(c.${processingTimeCol}) as avg_time,
+              MAX(c.${processingTimeCol}) as max_time,
+              MIN(c.${processingTimeCol}) as min_time,
+              AVG(c.${resourceCountCol}) as avg_resources
+            FROM conversion_logs c
+            LEFT JOIN applications a ON c.application_id = a.id
+            WHERE c.${processingTimeCol} > 0
+            GROUP BY c.application_id
+            ORDER BY conversion_count DESC
+          `;
+          
+          applicationStats = db.prepare(appStatsQuery).all() || [];
+          console.log('[STATS] Statistiques par application récupérées:', applicationStats.length);
+        } catch (appStatErr) {
+          console.warn('[STATS] Erreur lors de la récupération des statistiques par application:', appStatErr.message);
+          applicationStats = [];
+        }
+      }
     } catch (err) {
       console.warn('[STATS] Erreur lors de la récupération des statistiques:', err.message);
     }
