@@ -1071,23 +1071,21 @@ async function sendOllamaRequest(apiUrl, model, messages, settings = {}) {
  */
 async function getAIProvider(providerName) {
   try {
-    const db = dbService.getDb();
-    
     // Rechercher le fournisseur dans la base de données
-    const provider = db.prepare(`
+    const provider = await dbService.get(`
       SELECT * FROM ai_providers 
       WHERE provider_name = ? AND enabled = 1
-    `).get(providerName);
+    `, [providerName]);
     
     if (!provider) {
       // Rechercher un fournisseur par défaut si celui demandé n'est pas trouvé
       console.log(`Fournisseur '${providerName}' non trouvé, utilisation du fournisseur par défaut`);
-      return db.prepare(`
+      return await dbService.get(`
         SELECT * FROM ai_providers 
         WHERE enabled = 1 
         ORDER BY id ASC 
         LIMIT 1
-      `).get();
+      `);
     }
     
     return provider;
@@ -1104,16 +1102,14 @@ async function getAIProvider(providerName) {
  */
 async function updateProviderUsage(providerId) {
   try {
-    const db = dbService.getDb();
-    
     // Mettre à jour le compteur d'utilisation et la date de dernière utilisation
-    db.prepare(`
+    await dbService.run(`
       UPDATE ai_providers 
       SET usage_count = usage_count + 1, 
           current_usage = current_usage + 1,
-          last_used_at = datetime('now')
+          last_used_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(providerId);
+    `, [providerId]);
     
   } catch (error) {
     console.error('Erreur lors de la mise à jour du compteur d\'utilisation:', error);
