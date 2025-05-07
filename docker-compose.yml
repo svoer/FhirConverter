@@ -146,20 +146,16 @@ services:
       
   # Loki pour la collecte et l'analyse des logs
   loki:
-    image: grafana/loki:2.8.2
+    image: grafana/loki:latest
     container_name: fhirhub-loki
     restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
-      - ./loki/chunks:/loki/chunks:rw
-      - ./loki/index:/loki/index:rw
-      - ./loki/cache:/loki/cache:rw
-      - ./loki/wal:/loki/wal:rw
-      - ./loki/compactor:/loki/compactor:rw
+      - ./volumes/loki:/loki:rw
       - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
-    user: "10001"
+    command: -config.file=/etc/loki/local-config.yaml
+    user: "root"
     networks:
       - fhirhub-network
     logging:
@@ -172,7 +168,7 @@ services:
       
   # Promtail pour collecter et envoyer les logs à Loki
   promtail:
-    image: grafana/promtail:2.8.2
+    image: grafana/promtail:latest
     container_name: fhirhub-promtail
     restart: unless-stopped
     volumes:

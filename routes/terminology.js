@@ -12,13 +12,16 @@ const multer = require('multer');
 const archiver = require('archiver');
 const authCombined = require('../middleware/authCombined');
 
-// Middleware d'authentification
+// Middleware pour vérifier si l'utilisateur est administrateur
 const jwtAuth = require('../middleware/jwtAuth');
-const authMiddleware = require('../middleware/authMiddleware');
 
 // Middleware d'authentification administrateur combinée (JWT ou API Key)
-// Utilisons authenticatedOrApiKey du middleware/authMiddleware pour permettre l'accès avec une clé API
-const adminAuthMiddleware = authMiddleware.authenticatedOrApiKey;
+// Le middleware authCombined ne bloque pas la requête, il ajoute juste req.isAuthenticated()
+// Nous continuons à utiliser jwtAuth pour les routes qui nécessitent un rôle spécifique
+const adminAuthMiddleware = jwtAuth({
+  required: true,
+  roles: ['admin']
+});
 
 // Configuration de multer pour l'upload de fichiers
 const storage = multer.diskStorage({
