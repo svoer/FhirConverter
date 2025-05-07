@@ -155,7 +155,9 @@ function initDb() {
       user_id INTEGER,
       processing_time INTEGER DEFAULT 0,
       resource_count INTEGER DEFAULT 0,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      application_id INTEGER,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL
     )`);
     
     // Table des utilisateurs
