@@ -541,7 +541,8 @@
                 <div class="input-tabs">
                   <div class="input-tab active" data-tab="hl7-tab">Message HL7</div>
                   <div class="input-tab" data-tab="fhir-tab">Ressource FHIR</div>
-                  <div class="input-tab" data-tab="conversion-tab">Analyse de conversion</div>
+                  <!-- Tab d'analyse de conversion temporairement désactivé -->
+                  <!-- <div class="input-tab" data-tab="conversion-tab">Analyse de conversion</div> -->
                 </div>
                 
                 <!-- Tab HL7 -->
@@ -597,23 +598,9 @@
                   </div>
                 </div>
                 
-                <!-- Tab Conversion -->
-                <div id="conversion-tab" class="tab-content">
-                  <div class="comparison-view">
-                    <div class="comparison-column">
-                      <h4>Message HL7 d'origine</h4>
-                      <textarea id="conversion-hl7-input" placeholder="Collez votre message HL7 v2.5 original ici..."></textarea>
-                    </div>
-                    <div class="comparison-column">
-                      <h4>Ressources FHIR générées</h4>
-                      <textarea id="conversion-fhir-input" placeholder="Collez les ressources FHIR générées (JSON) ici..."></textarea>
-                    </div>
-                  </div>
-                  
-                  <div class="button-group" style="margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="convert-hl7-btn-tab">Convertir en FHIR</button>
-                    <button class="btn btn-primary" id="analyze-conversion-btn">Analyser la qualité de la conversion</button>
-                  </div>
+                <!-- Tab Conversion - temporairement désactivé -->
+                <div id="conversion-tab" class="tab-content" style="display: none;">
+                  <!-- Contenu désactivé -->
                 </div>
               </div>
             </div>
