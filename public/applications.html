@@ -702,19 +702,6 @@
           
           <div class="app-stats">
             <div class="stat-item">
-              <button class="refresh-button" onclick="refreshAppStats('${app.id}')" title="Rafraîchir les statistiques"><i class="fas fa-sync-alt"></i></button>
-              <div id="app-${app.id}-conversions" class="stat-value stat-conversions-today">${conversionsToday}</div>
-              <div class="stat-label">Conversions aujourd'hui</div>
-            </div>
-            <div class="stat-item">
-              <div id="app-${app.id}-apikeys" class="stat-value stat-api-keys">${apiKeys}</div>
-              <div class="stat-label">Clés API</div>
-            </div>
-            <div class="stat-item">
-              <div id="app-${app.id}-errors" class="stat-value stat-errors">${errors}</div>
-              <div class="stat-label">Erreurs</div>
-            </div>
-            <div class="stat-item">
               <div id="app-${app.id}-totalconversions" class="stat-value stat-total-conversions" style="font-size: 16px;">${totalConversions}</div>
               <div class="stat-label">Total conversions</div>
               <a href="/application-history.html?id=${app.id}" class="button-secondary" style="margin-top: 10px;">

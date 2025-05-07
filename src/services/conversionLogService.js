@@ -486,6 +486,32 @@ async function getAppStats(applicationId) {
   }
 }
 
+/**
+ * Récupère les détails d'une conversion spécifique
+ * @param {string|number} conversionId - ID de la conversion à récupérer
+ * @param {string|number} applicationId - ID de l'application associée
+ * @returns {Object} - Détails de la conversion
+ */
+async function getConversionDetails(conversionId, applicationId) {
+  try {
+    const sql = `
+      SELECT * FROM conversion_logs
+      WHERE id = ? AND (application_id = ? OR application_id IS NULL)
+    `;
+    
+    const conversion = db.prepare(sql).get(conversionId, applicationId);
+    
+    if (!conversion) {
+      return null;
+    }
+    
+    return conversion;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des détails de conversion:', error);
+    return null;
+  }
+}
+
 module.exports = {
   logConversion,
   getConversionLogs,
@@ -494,5 +520,6 @@ module.exports = {
   getConversionStats,
   getApplicationsForFilter,
   getConversions,
-  getAppStats
+  getAppStats,
+  getConversionDetails
 };
