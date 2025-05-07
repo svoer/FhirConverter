@@ -867,6 +867,17 @@ app.get('/api/stats', (req, res) => {
     const timeSavedPerConversion = traditionalTimePerConversionSeconds - ourTimePerConversionSeconds;
     const timeSavedHours = ((timeSavedPerConversion * conversions) / 3600).toFixed(1); // Conversion en heures
     
+    // Formatter les statistiques par application si elles existent
+    const formattedAppStats = Array.isArray(applicationStats) ? applicationStats.map(app => ({
+      id: app.app_id,
+      name: app.app_name || 'Application Inconnue',
+      count: app.conversion_count || 0,
+      avgTime: Math.round(app.avg_time) || 0,
+      maxTime: Math.round(app.max_time) || 0,
+      minTime: Math.round(app.min_time) || 0,
+      avgResources: Math.round(app.avg_resources) || 0
+    })) : [];
+
     res.json({
       success: true,
       data: {
@@ -881,7 +892,9 @@ app.get('/api/stats', (req, res) => {
           avgResources: conversionStats ? Math.round(conversionStats.avg_resources || 0) : 0,
           lastTime: lastProcessingTime,
           lastResources: lastConversion ? lastConversion.resource_count : 0
-        }
+        },
+        // Ajouter les statistiques par application
+        applicationStats: formattedAppStats
       }
     });
   } catch (error) {
