@@ -44,10 +44,6 @@ if [ -f "./docker-compose.yml" ]; then
   docker-compose down -v
 fi
 
-if [ -f "./docker-compose-minimal.yml" ]; then
-  docker-compose -f docker-compose-minimal.yml down -v
-fi
-
 echo -e "${GREEN}✅ Conteneurs docker-compose arrêtés et volumes supprimés${NC}"
 
 echo -e "${BLUE}[2/5] Nettoyage des conteneurs liés à FHIRHub...${NC}"
@@ -110,6 +106,6 @@ echo -e "${GREEN}✅ Réseau Docker nettoyé${NC}"
 echo -e "${CYAN}=========================================================="
 echo -e "   ✅ Nettoyage terminé avec succès!"
 echo -e ""
-echo -e "   Pour réinstaller une configuration minimale:"
-echo -e "   ./start-minimal.sh"
+echo -e "   Pour réinstaller l'application:"
+echo -e "   docker-compose up -d"
 echo -e "==========================================================${NC}"
