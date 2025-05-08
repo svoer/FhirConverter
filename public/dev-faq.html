@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="/css/sidebar-menu.css">
     <link rel="stylesheet" href="/css/dev-faq.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/include-sidebar.js" defer></script>
+    <script src="/js/dev-faq.js" defer></script>
 </head>
 <body class="with-sidebar">
     <!-- Le menu latéral sera injecté ici -->
@@ -23,13 +25,16 @@
             </div>
         </header>
 
-        <nav class="category-nav">
-            <ul id="categoryList">
+        <div class="section-nav">
+            <div class="nav-items-container" id="categoryList">
                 <!-- Les catégories seront générées dynamiquement par JavaScript -->
-            </ul>
-        </nav>
+            </div>
 
-
+            <!-- Bouton retour en haut de page -->
+            <a href="#" id="back-to-top" class="back-to-top" title="Retour en haut de page">
+                <i class="fas fa-arrow-up"></i>
+            </a>
+        </div>
 
         <div class="faq-container">
             <!-- Section Système de terminologie -->

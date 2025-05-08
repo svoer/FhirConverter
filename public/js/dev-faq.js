@@ -32,13 +32,17 @@ document.addEventListener('DOMContentLoaded', function() {
         categoryList.innerHTML = '';
         
         faqCategories.forEach(category => {
-            const li = document.createElement('li');
             const a = document.createElement('a');
             a.href = `#${category.id}`;
             a.textContent = category.name;
             a.dataset.category = category.id;
-            li.appendChild(a);
-            categoryList.appendChild(li);
+            
+            // Ajouter une icône pour chaque catégorie
+            const icon = document.createElement('i');
+            icon.className = getCategoryIcon(category.id);
+            a.insertBefore(icon, a.firstChild);
+            
+            categoryList.appendChild(a);
         });
         
         // Ajouter les gestionnaires d'événements
@@ -49,6 +53,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.classList.add('active');
             });
         });
+    }
+    
+    // Fonction pour obtenir l'icône appropriée pour chaque catégorie
+    function getCategoryIcon(categoryId) {
+        const icons = {
+            'terminology': 'fas fa-language',
+            'conversion': 'fas fa-exchange-alt',
+            'ai-integration': 'fas fa-robot',
+            'auth-security': 'fas fa-shield-alt',
+            'database': 'fas fa-database',
+            'workflows': 'fas fa-sitemap',
+            'ui': 'fas fa-desktop',
+            'architecture': 'fas fa-cubes',
+            'api': 'fas fa-plug',
+            'errors-logging': 'fas fa-exclamation-triangle',
+            'performance': 'fas fa-tachometer-alt',
+            'internationalization': 'fas fa-globe'
+        };
+        
+        return icons[categoryId] || 'fas fa-question-circle';
     }
     
     // Générer la table des matières
@@ -285,6 +309,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Fonction pour gérer le bouton retour en haut de page
+    function setupBackToTop() {
+        const backToTopButton = document.getElementById('back-to-top');
+        if (backToTopButton) {
+            // Afficher le bouton quand on descend
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    backToTopButton.classList.add('visible');
+                } else {
+                    backToTopButton.classList.remove('visible');
+                }
+            });
+            
+            // Revenir en haut lors du clic
+            backToTopButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+        }
+    }
+    
     // Fonction pour naviguer vers une FAQ spécifique si l'URL contient un hash
     function navigateToHash() {
         if (window.location.hash) {
@@ -332,6 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupFAQInteractions();
         setupTOCToggle();
         setupSearch();
+        setupBackToTop();
         
         // Naviguer vers le hash après que tout soit initialisé
         setTimeout(navigateToHash, 100);
