@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script d'arrêt pour la configuration minimale de FHIRHub avec Prometheus et Grafana
-# Version 1.0.0
+# Script d'arrêt pour la configuration minimale de FHIRHub
+# Version 1.3.0
 
 # Définition des couleurs pour une meilleure lisibilité des logs
 RED='\033[0;31m'
@@ -11,53 +11,32 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Bannière d'arrêt
 echo -e "${CYAN}=========================================================="
-echo -e "   Arrêt de FHIRHub - Configuration Minimale"
+echo -e "   FHIRHub - Arrêt du service (version minimale)"
 echo -e "   $(date '+%Y-%m-%d %H:%M:%S')"
 echo -e "==========================================================${NC}"
 
-# Vérifier que Docker est installé
-if ! command -v docker &> /dev/null; then
-  echo -e "${RED}Erreur: Docker n'est pas installé.${NC}"
-  exit 1
+# Vérification de Docker
+echo -e "${BLUE}[1/2] Vérification de Docker...${NC}"
+if ! command -v docker &> /dev/null || ! command -v docker-compose &> /dev/null; then
+    echo -e "${RED}Erreur: Docker et/ou Docker Compose ne sont pas installés.${NC}"
+    echo -e "${YELLOW}Veuillez installer Docker et Docker Compose, puis réessayer.${NC}"
+    exit 1
 fi
+echo -e "${GREEN}✓ Docker et Docker Compose sont disponibles${NC}"
 
-# Vérifier que Docker Compose est installé
-if ! command -v docker-compose &> /dev/null; then
-  echo -e "${RED}Erreur: Docker Compose n'est pas installé.${NC}"
-  exit 1
-fi
+# Arrêt des services
+echo -e "${BLUE}[2/2] Arrêt du service FHIRHub...${NC}"
+docker-compose -f docker-compose-minimal.yml down
 
-# Vérifier si les arguments sont fournis
-if [ "$1" = "--clean" ] || [ "$1" = "-c" ]; then
-  echo -e "${YELLOW}Mode nettoyage activé: les conteneurs et les volumes seront supprimés${NC}"
-  CLEAN_MODE=true
+# Vérification de l'arrêt
+if ! docker ps | grep fhirhub &> /dev/null; then
+    echo -e "${GREEN}✓ Service FHIRHub arrêté avec succès${NC}"
 else
-  CLEAN_MODE=false
+    echo -e "${RED}Erreur: Impossible d'arrêter le service FHIRHub.${NC}"
+    echo -e "${YELLOW}Essayez d'arrêter manuellement avec: docker stop fhirhub${NC}"
+    exit 1
 fi
 
-# Arrêt des conteneurs
-echo -e "${BLUE}Arrêt des conteneurs Docker...${NC}"
-
-if [ "$CLEAN_MODE" = true ]; then
-  docker-compose -f docker-compose-minimal.yml down -v
-  echo -e "${GREEN}Conteneurs et volumes arrêtés et supprimés${NC}"
-  
-  read -p "Voulez-vous aussi supprimer les données locales (./data) ? [y/N] " -n 1 -r
-  echo
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Suppression des données locales...${NC}"
-    rm -rf ./data/*
-    echo -e "${GREEN}Données locales supprimées${NC}"
-  else
-    echo -e "${BLUE}Les données locales ont été conservées${NC}"
-  fi
-else
-  docker-compose -f docker-compose-minimal.yml down
-  echo -e "${GREEN}Conteneurs arrêtés${NC}"
-  echo -e "${BLUE}Note: Les volumes Docker sont conservés. Utilisez --clean pour les supprimer.${NC}"
-fi
-
-echo -e "${CYAN}=========================================================="
-echo -e "   Services FHIRHub arrêtés avec succès"
-echo -e "==========================================================${NC}"
+echo -e "${CYAN}Le service FHIRHub a été arrêté avec succès.${NC}"

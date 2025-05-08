@@ -1,0 +1,90 @@
+# FHIRHub - Simplification de l'Infrastructure
+
+## Introduction
+
+Ce document décrit les modifications apportées à l'infrastructure Docker de FHIRHub pour la simplifier et la rendre plus légère. Cette version allégée permet un déploiement plus rapide et utilise moins de ressources système tout en conservant toutes les fonctionnalités essentielles du convertisseur.
+
+## Changements Apportés
+
+### 1. Suppression des Services Non Essentiels
+
+Les services suivants ont été supprimés de la configuration Docker pour alléger l'infrastructure :
+
+- **Grafana** : Outil de visualisation
+- **Prometheus** : Stockage et requêtage des métriques
+- **Loki** : Agrégation et stockage des logs
+- **Promtail** : Agent de collecte de logs
+
+### 2. Simplification de la Structure des Dossiers
+
+La structure des dossiers a été simplifiée comme suit :
+
+```
+data/
+  ├── db/                # Base de données SQLite
+  ├── app_data/          # Données de l'application
+  ├── logs/              # Fichiers de logs
+  ├── backups/           # Sauvegardes
+  └── french_terminology/ # Terminologies françaises
+```
+
+### 3. Nouveaux Scripts
+
+De nouveaux scripts ont été créés pour gérer la version simplifiée :
+
+- **docker-init-simple.sh** : Initialise la structure minimale des dossiers
+- **start-minimal.sh** : Démarre l'application avec la configuration minimale
+- **stop-minimal.sh** : Arrête l'application dans sa version minimale
+
+### 4. Nouvelle Configuration Docker
+
+Un nouveau fichier `docker-compose-minimal.yml` a été créé avec uniquement le service FHIRHub essentiel.
+
+## Utilisation
+
+### Initialisation
+
+Pour initialiser l'environnement simplifié :
+
+```bash
+./docker-init-simple.sh
+```
+
+### Démarrage
+
+Pour démarrer l'application en mode simplifié :
+
+```bash
+./start-minimal.sh
+```
+
+### Arrêt
+
+Pour arrêter l'application en mode simplifié :
+
+```bash
+./stop-minimal.sh
+```
+
+## Avantages
+
+- **Empreinte réduite** : Moins de services Docker = moins de consommation de ressources
+- **Simplicité** : Infrastructure plus simple à comprendre et à maintenir
+- **Performance** : Temps de démarrage réduit
+- **Portabilité** : Plus facile à déployer dans différents environnements
+
+## Limitations
+
+- Les fonctionnalités avancées de monitoring avec Grafana ne sont pas disponibles
+- L'agrégation centralisée des logs avec Loki n'est pas disponible
+
+## Fonctionnalités Conservées
+
+Toutes les fonctionnalités essentielles du convertisseur HL7 vers FHIR sont conservées :
+
+- Conversion complète de messages HL7v2.5 vers FHIR R4
+- Support des terminologies françaises
+- API REST pour l'intégration
+- Interface utilisateur complète
+- Métriques de base exposées sur le port 9091
+- Persistance des données avec SQLite
