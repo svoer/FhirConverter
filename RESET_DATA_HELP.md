@@ -5,7 +5,8 @@ Ce document explique comment utiliser les scripts de réinitialisation des donn�
 ## Fichiers disponibles
 
 - `reset-data.sh` : Script pour les installations standard (non-Docker)
-- `reset-data-docker.sh` : Script pour les installations Docker
+- `reset-data-docker.sh` : Script pour les installations Docker (méthode classique)
+- `reset-docker-volumes.sh` : Script spécialisé pour nettoyer les volumes Docker nommés
 
 ## Utilisation du script standard
 
@@ -21,9 +22,9 @@ Ce script va :
 3. Créer une sauvegarde de la base de données avant toute modification
 4. Proposer de redémarrer l'application si elle est en cours d'exécution
 
-## Utilisation du script Docker
+## Utilisation du script Docker classique
 
-Pour les installations Docker, utilisez le script `reset-data-docker.sh` :
+Pour les installations Docker, vous pouvez utiliser le script `reset-data-docker.sh` :
 
 ```bash
 ./reset-data-docker.sh
@@ -33,6 +34,23 @@ Ce script va :
 1. Vider les dossiers de conversion à l'intérieur du conteneur Docker
 2. Réinitialiser les tables de la base de données SQLite dans le conteneur
 3. Proposer de redémarrer les conteneurs pour appliquer les changements
+
+## Utilisation du script pour volumes Docker nommés
+
+Pour les installations Docker qui utilisent les volumes nommés (comme configuré dans les nouveaux fichiers docker-compose), utilisez le script `reset-docker-volumes.sh` :
+
+```bash
+./reset-docker-volumes.sh
+```
+
+Ce script, plus avancé, va :
+1. Identifier automatiquement les volumes Docker nommés utilisés par FHIRHub
+2. Arrêter temporairement les conteneurs pour accéder aux volumes
+3. Proposer de faire une sauvegarde des volumes avant nettoyage
+4. Réinitialiser complètement les volumes (deux méthodes disponibles)
+5. Redémarrer les conteneurs avec des volumes propres
+
+> **Recommandation** : Pour les installations utilisant les nouveaux fichiers docker-compose.yml ou docker-compose-minimal.yml avec volumes nommés, utilisez de préférence `reset-docker-volumes.sh`.
 
 ## Précautions
 
@@ -48,10 +66,16 @@ Pour exécuter le script automatiquement (par exemple via une tâche cron), vous
 ./reset-data.sh -y
 ```
 
-Ou pour Docker :
+Pour le script Docker classique :
 
 ```bash
 ./reset-data-docker.sh -y
+```
+
+Pour le script de volumes Docker nommés :
+
+```bash
+./reset-docker-volumes.sh -y
 ```
 
 Cette option est particulièrement utile pour les tâches planifiées ou les scripts de maintenance automatisés. Par exemple, vous pouvez configurer une tâche cron pour réinitialiser les données chaque semaine :
