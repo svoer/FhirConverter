@@ -788,10 +788,10 @@
           totalConversions = logs.length;
           console.log(`Nombre total de conversions trouvées: ${totalConversions}`);
           
-          // Obtenir la date d'aujourd'hui au format YYYY-MM-DD dans le fuseau horaire français (UTC+2)
-          const now = new Date();
-          // Ajouter 2 heures pour la France (UTC+2)
-          const nowInFrance = new Date(now.getTime() + (2 * 60 * 60 * 1000));
+          // Obtenir la date d'aujourd'hui au format YYYY-MM-DD dans le fuseau horaire français
+          // Utiliser une méthode qui gère automatiquement l'heure d'été/hiver
+          const options = { timeZone: 'Europe/Paris' };
+          const nowInFrance = new Date(new Date().toLocaleString('fr-FR', options));
           
           const todayYear = nowInFrance.getFullYear();
           const todayMonth = String(nowInFrance.getMonth() + 1).padStart(2, '0');
@@ -811,8 +811,9 @@
                 // Essayer d'extraire la date à partir de différents formats
                 const date = new Date(log.timestamp);
                 
-                // Ajuster pour le fuseau horaire français (UTC+2)
-                const dateInFrance = new Date(date.getTime() + (2 * 60 * 60 * 1000));
+                // Ajuster pour le fuseau horaire français (gère automatiquement l'heure d'été/hiver)
+                const options = { timeZone: 'Europe/Paris' };
+                const dateInFrance = new Date(date.toLocaleString('fr-FR', options));
                 
                 // Formater la date dans le même format que notre date d'aujourd'hui
                 const year = dateInFrance.getFullYear();

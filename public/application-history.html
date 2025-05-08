@@ -908,19 +908,17 @@
                 return dateString; // Retourner la chaîne originale en cas d'échec
             }
             
-            // Ajouter le décalage horaire pour la France (UTC+2)
             // Le serveur stocke les dates en UTC
-            const dateInFranceTimezone = new Date(date.getTime() + (2 * 60 * 60 * 1000));
-            
-            // Formater la date selon le format français
-            return dateInFranceTimezone.toLocaleString('fr-FR', {
+            // Utiliser directement le fuseau horaire 'Europe/Paris' sans ajout manuel d'heures
+            // cela prendra automatiquement en compte l'heure d'été/hiver
+            return date.toLocaleString('fr-FR', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                timeZone: 'Europe/Paris' // Assurer que c'est bien le fuseau horaire français
+                timeZone: 'Europe/Paris' // Fuseau horaire français (UTC+1 en hiver, UTC+2 en été)
             });
         }
 
