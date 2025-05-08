@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
         { id: 'ai-integration', name: 'Intégration IA' },
         { id: 'auth-security', name: 'Authentification et sécurité' },
         { id: 'database', name: 'Base de données' },
-        { id: 'workflows', name: 'Workflows et EAI' },
         { id: 'ui', name: 'Interface utilisateur' },
         { id: 'architecture', name: 'Architecture système' },
         { id: 'api', name: 'API et intégration' },
@@ -64,7 +63,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'ai-integration': 'fas fa-robot',
             'auth-security': 'fas fa-shield-alt',
             'database': 'fas fa-database',
-            'workflows': 'fas fa-sitemap',
             'ui': 'fas fa-desktop',
             'architecture': 'fas fa-cubes',
             'api': 'fas fa-plug',
@@ -380,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
         generateTableOfContents();
         setupFAQInteractions();
         setupTOCToggle();
-        setupSearch();
+        // setupSearch() est désactivé car les éléments de recherche sont commentés
         setupBackToTop();
         
         // Naviguer vers le hash après que tout soit initialisé
