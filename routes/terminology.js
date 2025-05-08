@@ -786,6 +786,9 @@ function getJsonFileContent(filename) {
   try {
     const filePath = path.join(TERMINOLOGY_DIR, filename);
     
+    console.log(`[TERMINOLOGY DEBUG] Tentative de lecture du fichier: ${filename}`);
+    console.log(`[TERMINOLOGY DEBUG] Chemin complet: ${filePath}`);
+    
     if (!fs.existsSync(filePath)) {
       console.warn(`[TERMINOLOGY] Fichier non trouvé: ${filename} (chemin: ${filePath})`);
       
@@ -796,8 +799,31 @@ function getJsonFileContent(filename) {
       return null;
     }
     
+    // Log la taille du fichier
+    const stats = fs.statSync(filePath);
+    console.log(`[TERMINOLOGY DEBUG] Taille du fichier: ${stats.size} octets`);
+    
+    // Lire le contenu
     const content = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(content);
+    console.log(`[TERMINOLOGY DEBUG] Contenu lu, longueur de la chaîne: ${content.length} caractères`);
+    
+    // Vérifier si le contenu est valide
+    if (!content || content.trim() === '') {
+      console.error(`[TERMINOLOGY] Fichier vide ou uniquement avec des espaces: ${filename}`);
+      return {};
+    }
+    
+    // Parser le JSON
+    try {
+      const jsonData = JSON.parse(content);
+      console.log(`[TERMINOLOGY DEBUG] JSON parsé avec succès, clés principales: ${Object.keys(jsonData).join(', ')}`);
+      return jsonData;
+    } catch (parseError) {
+      console.error(`[TERMINOLOGY] Erreur de parsing JSON pour ${filename}:`, parseError.message);
+      console.log(`[TERMINOLOGY DEBUG] Premiers 100 caractères du contenu: ${content.substring(0, 100)}...`);
+      // En cas d'erreur de parsing, on renvoie un objet vide plutôt que null
+      return {};
+    }
   } catch (error) {
     console.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier ${filename} :`, error);
     
@@ -808,7 +834,8 @@ function getJsonFileContent(filename) {
       console.error(`[TERMINOLOGY] Erreur de parsing JSON pour le fichier: ${filename}`);
     }
     
-    return null;
+    // En cas d'erreur, on renvoie un objet vide plutôt que null
+    return {};
   }
 }
 
