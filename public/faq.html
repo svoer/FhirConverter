@@ -1888,14 +1888,6 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
     </footer>
 
     <script src="/js/footer-version.js"></script>
-    <div class="faq-toc" style="display:none;">
-        <div class="toc-header">
-            <button id="tocToggle" class="toc-toggle">
-                Table des matières <i class="fas fa-chevron-down"></i>
-            </button>
-        </div>
-        <ul id="tocList" class="toc-list"></ul>
-    </div>
     <script src="/js/sidebar-menu-new.js"></script>
     
     <!-- Solution directe pour les flèches FAQ -->
@@ -1920,20 +1912,8 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
 
             // Éléments DOM - correction des sélecteurs
             const categoryList = document.querySelector('.nav-items-container');
-            const tocList = document.getElementById('tocList');
-            const tocToggle = document.getElementById('tocToggle');
             const faqSearch = document.getElementById('faqSearch');
             const searchButton = document.getElementById('searchButton');
-            
-            // Déplacer la table des matières à l'endroit approprié
-            const tocElement = document.querySelector('.faq-toc');
-            if (tocElement) {
-                tocElement.style.display = '';
-                const sectionNav = document.querySelector('.section-nav');
-                if (sectionNav) {
-                    sectionNav.appendChild(tocElement);
-                }
-            }
             
             // Générer la navigation par catégorie
             function generateCategoryNav() {
@@ -2007,70 +1987,6 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
                 }
             }
             
-            // Générer la table des matières
-            function generateTableOfContents() {
-                if (!tocList) return;
-                
-                tocList.innerHTML = '';
-                
-                // Parcourir toutes les sections FAQ
-                document.querySelectorAll('.faq-section').forEach(section => {
-                    const sectionId = section.id;
-                    const sectionTitle = section.querySelector('h2').textContent;
-                    
-                    // Ajouter le titre de la section
-                    const sectionLi = document.createElement('li');
-                    sectionLi.classList.add('section-title');
-                    sectionLi.textContent = sectionTitle;
-                    tocList.appendChild(sectionLi);
-                    
-                    // Ajouter chaque question de la section
-                    section.querySelectorAll('.faq-item h3').forEach(question => {
-                        const questionId = question.id;
-                        const questionText = question.textContent;
-                        
-                        const questionLi = document.createElement('li');
-                        const questionLink = document.createElement('a');
-                        questionLink.href = `#${questionId}`;
-                        questionLink.textContent = questionText;
-                        questionLink.dataset.section = sectionId;
-                        
-                        questionLi.appendChild(questionLink);
-                        tocList.appendChild(questionLi);
-                    });
-                });
-                
-                // Ajouter les événements de clic
-                tocList.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        // Activer la catégorie correspondante
-                        const section = this.dataset.section;
-                        categoryList.querySelectorAll('a').forEach(a => {
-                            if (a.dataset.category === section) {
-                                a.classList.add('active');
-                            } else {
-                                a.classList.remove('active');
-                            }
-                        });
-                        
-                        // Ouvrir l'élément FAQ correspondant
-                        const targetId = this.getAttribute('href').substring(1);
-                        const targetElement = document.getElementById(targetId);
-                        if (targetElement) {
-                            const faqItem = targetElement.closest('.faq-item');
-                            if (faqItem && !faqItem.classList.contains('active')) {
-                                faqItem.classList.add('active');
-                            }
-                            
-                            // Faire défiler jusqu'à la question après un court délai
-                            setTimeout(() => {
-                                targetElement.scrollIntoView({ behavior: 'smooth' });
-                            }, 100);
-                        }
-                    });
-                });
-            }
-            
             // Configurer les interactions des FAQ items
             function setupFAQInteractions() {
                 document.querySelectorAll('.faq-item h3').forEach(header => {
@@ -2093,20 +2009,6 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
                         // Toggle l'état de cette FAQ
                         parent.classList.toggle('active');
                     });
-                });
-            }
-            
-            // Gestionnaire pour le toggle de la table des matières
-            function setupTOCToggle() {
-                if (!tocToggle) return;
-                
-                tocToggle.addEventListener('click', function() {
-                    const list = document.getElementById('tocList');
-                    if (!list) return;
-                    
-                    list.classList.toggle('visible');
-                    this.querySelector('i').classList.toggle('fa-chevron-down');
-                    this.querySelector('i').classList.toggle('fa-chevron-up');
                 });
             }
             
@@ -2261,9 +2163,7 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
                 });
             }
             
-            generateTableOfContents();
             setupFAQInteractions();
-            setupTOCToggle();
             setupSearch();
             setupBackToTop();
             
