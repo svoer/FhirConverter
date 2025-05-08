@@ -110,18 +110,57 @@
         </div>
       </div>
       
-      <!-- Métriques système -->
+      <!-- Métriques système et médicales -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Métriques système</h2>
+          <h2 class="card-title">Métriques avancées</h2>
+          <div class="metric-controls">
+            <button id="resetOrderBtn" class="btn-metric-control" title="Réinitialiser l'ordre des graphiques">
+              <i class="fas fa-undo"></i>
+            </button>
+            <div class="metric-info">Pour réorganiser les graphiques, faites-les glisser par leur titre</div>
+          </div>
         </div>
         
-        <div class="system-metrics">
-          <div>
-            <canvas id="cpuChart"></canvas>
+        <div class="system-metrics" id="draggableMetrics">
+          <!-- Graphique mémoire -->
+          <div class="metric-container" data-metric-id="memory" draggable="true">
+            <div class="metric-header">Utilisation mémoire</div>
+            <div class="metric-body">
+              <canvas id="memoryChart"></canvas>
+            </div>
           </div>
-          <div>
-            <canvas id="memoryChart"></canvas>
+          
+          <!-- Tendances temps de conversion -->
+          <div class="metric-container" data-metric-id="conversionTime" draggable="true">
+            <div class="metric-header">Tendances temps de conversion (ms)</div>
+            <div class="metric-body">
+              <canvas id="conversionTrendChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Distribution des ressources FHIR -->
+          <div class="metric-container" data-metric-id="resourceDist" draggable="true">
+            <div class="metric-header">Distribution ressources FHIR</div>
+            <div class="metric-body">
+              <canvas id="resourceDistChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Taux de réussite -->
+          <div class="metric-container" data-metric-id="successRate" draggable="true">
+            <div class="metric-header">Taux de réussite des conversions</div>
+            <div class="metric-body">
+              <canvas id="successRateChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Types de messages HL7 -->
+          <div class="metric-container" data-metric-id="messageTypes" draggable="true">
+            <div class="metric-header">Types de messages HL7</div>
+            <div class="metric-body">
+              <canvas id="messageTypesChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -186,11 +225,17 @@
       // Initialiser les graphiques de métriques système
       initCharts();
       
+      // Initialiser la fonctionnalité de drag-and-drop pour les métriques
+      initDraggableMetrics();
+      
       // Initialisation du chatbot de support
       initChatbot();
       
       // Configurer l'intervalle de rafraîchissement des métriques
       setInterval(fetchStats, 20000); // Rafraîchir toutes les 20 secondes
+      
+      // Ajouter l'indicateur de dernière mise à jour
+      updateLastRefreshTime();
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
@@ -511,6 +556,118 @@
         data: memoryData,
         options: options
       });
+    }
+    
+    // Initialisation de la fonctionnalité de drag-and-drop pour les métriques
+    function initDraggableMetrics() {
+      const metricsContainer = document.getElementById('draggableMetrics');
+      if (!metricsContainer) return;
+      
+      let draggedItem = null;
+      
+      // Sauvegarder l'ordre des métriques dans le localStorage
+      function saveMetricsOrder() {
+        const metricContainers = document.querySelectorAll('.metric-container');
+        const order = Array.from(metricContainers).map(container => container.getAttribute('data-metric-id'));
+        localStorage.setItem('metricsOrder', JSON.stringify(order));
+      }
+      
+      // Restaurer l'ordre des métriques depuis le localStorage
+      function restoreMetricsOrder() {
+        const savedOrder = localStorage.getItem('metricsOrder');
+        if (!savedOrder) return;
+        
+        try {
+          const order = JSON.parse(savedOrder);
+          const metricContainers = Array.from(document.querySelectorAll('.metric-container'));
+          
+          // Trier les conteneurs selon l'ordre sauvegardé
+          order.forEach(metricId => {
+            const container = metricContainers.find(c => c.getAttribute('data-metric-id') === metricId);
+            if (container) {
+              metricsContainer.appendChild(container);
+            }
+          });
+        } catch (error) {
+          console.error('Erreur lors de la restauration de l\'ordre des métriques:', error);
+        }
+      }
+      
+      // Initialiser les événements de glisser-déposer
+      document.querySelectorAll('.metric-container').forEach(container => {
+        container.addEventListener('dragstart', function(e) {
+          draggedItem = this;
+          setTimeout(() => {
+            this.classList.add('dragging');
+          }, 0);
+        });
+        
+        container.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+          draggedItem = null;
+          saveMetricsOrder();
+        });
+        
+        container.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (draggedItem === this) return;
+          
+          const rect = this.getBoundingClientRect();
+          const y = e.clientY - rect.top;
+          
+          if (y < rect.height / 2) {
+            metricsContainer.insertBefore(draggedItem, this);
+          } else {
+            metricsContainer.insertBefore(draggedItem, this.nextSibling);
+          }
+        });
+      });
+      
+      // Initialiser le bouton de réinitialisation de l'ordre
+      const resetOrderBtn = document.getElementById('resetOrderBtn');
+      if (resetOrderBtn) {
+        resetOrderBtn.addEventListener('click', function() {
+          localStorage.removeItem('metricsOrder');
+          location.reload();
+        });
+      }
+      
+      // Restaurer l'ordre précédemment sauvegardé
+      restoreMetricsOrder();
+    }
+    
+    // Fonction pour mettre à jour l'horodatage de dernière actualisation
+    function updateLastRefreshTime() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString();
+      const dateStr = now.toLocaleDateString();
+      
+      // Ajouter l'élément d'horodatage s'il n'existe pas
+      if (!document.querySelector('.metrics-refresh-time')) {
+        const metricsCard = document.querySelector('.card:has(.system-metrics)');
+        if (metricsCard) {
+          const refreshDiv = document.createElement('div');
+          refreshDiv.className = 'metrics-refresh-time';
+          refreshDiv.innerHTML = `Dernière mise à jour: <span id="lastUpdateTime">${timeStr}</span> - ${dateStr}`;
+          
+          // Insérer avant le premier élément dans metrics-container
+          const header = metricsCard.querySelector('.card-header');
+          if (header) {
+            header.appendChild(refreshDiv);
+          }
+        }
+      } else {
+        document.getElementById('lastUpdateTime').textContent = timeStr;
+      }
+      
+      // Mettre à jour l'horodatage chaque fois que les statistiques sont rafraîchies
+      const originalFetchStats = fetchStats;
+      fetchStats = function() {
+        originalFetchStats();
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString();
+        document.getElementById('lastUpdateTime').textContent = timeStr;
+      };
     }
   </script>
 
