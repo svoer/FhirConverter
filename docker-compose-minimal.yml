@@ -1,113 +1,32 @@
 version: '3.8'
 
 services:
-  # Application principale FHIRHub
   fhirhub:
+    container_name: fhirhub
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fhirhub
-    restart: unless-stopped
     ports:
-      - "5001:5001"
+      - "5000:5001"
       - "9091:9091"
+    volumes:
+      - ./data/db:/app/storage/db
+      - ./data/app_data:/app/storage/data
+      - ./data/logs:/app/storage/logs
+      - ./data/backups:/app/storage/backups
+      - ./data/french_terminology:/app/french_terminology
     environment:
       - NODE_ENV=production
       - PORT=5001
-      - DB_PATH=/app/storage/db/fhirhub.db
-      - DB_FILE=/app/storage/db/fhirhub.db
-      - DB_PERSISTENT=true
-      - JWT_SECRET=fhirhub-secure-jwt-secret
-      - METRICS_ENABLED=true
       - METRICS_PORT=9091
-    volumes:
-      # Structure de données optimisée
-      - ./data/db:/app/storage/db:rw
-      - ./data/app_data:/app/storage/data:rw
-      - ./data/logs:/app/storage/logs:rw
-      - ./data/backups:/app/storage/backups:rw
-      - ./data/french_terminology:/app/french_terminology:rw
-    user: "root" # Pour éviter les problèmes de permissions
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-
-  # Prometheus pour la collecte de métriques
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
+      - METRICS_ENABLED=true
+      - DB_PATH=/app/storage/db/fhirhub.db
+      - LOG_LEVEL=info
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-VNjTxMwJ1UwOpQBDERIAwdWKK4LHsCXd}
     restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./data/prometheus:/prometheus:rw
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    environment:
-      - "TZ=Europe/Paris"
-    user: "root"
-    depends_on:
-      - fhirhub
     networks:
       - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
 
-  # Grafana pour la visualisation des métriques
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: on-failure:3
-    # Limiter le nombre de redémarrages en cas d'échec persistant
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data/grafana:/var/lib/grafana:rw
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-      # Installer uniquement des plugins stables et sans dépendance externe
-      - GF_INSTALL_PLUGINS=grafana-clock-panel
-      # Valeur vide pour désactiver l'installation automatique des plugins lors du démarrage
-      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=
-      # Force le redémarrage du conteneur uniquement 3 fois maximum en cas d'échec
-      - GF_PATHS_DATA=/var/lib/grafana
-      - GF_PATHS_LOGS=/var/lib/grafana/logs
-      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-      - GF_AUTH_ANONYMOUS_ENABLED=false
-    user: "root"
-    depends_on:
-      - prometheus
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
-
-# Définition des réseaux
 networks:
   fhirhub-network:
     driver: bridge
