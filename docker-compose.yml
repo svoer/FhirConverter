@@ -1,7 +1,20 @@
 version: '3.8'
 
+# Utilisation de volumes nommés pour isoler complètement les données
+volumes:
+  fhirhub_db:
+    name: fhirhub_db
+  fhirhub_data:
+    name: fhirhub_data
+  fhirhub_logs:
+    name: fhirhub_logs
+  fhirhub_backups:
+    name: fhirhub_backups
+  fhirhub_terminology:
+    name: fhirhub_terminology
+
 services:
-  # Application principale FHIRHub simplifiée
+  # Application principale FHIRHub optimisée
   fhirhub:
     build:
       context: .
@@ -19,14 +32,18 @@ services:
       - JWT_SECRET=fhirhub-secure-jwt-secret
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
+      - LOG_LEVEL=info
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-VNjTxMwJ1UwOpQBDERIAwdWKK4LHsCXd}
     volumes:
-      # Structure simplifiée des volumes
-      - ./data/db:/app/storage/db:rw
-      - ./data/app_data:/app/storage/data:rw
-      - ./data/logs:/app/storage/logs:rw
-      - ./data/backups:/app/storage/backups:rw
-      - ./data/french_terminology:/app/french_terminology:rw
-    user: "root"
+      # Utilisation de volumes nommés pour une meilleure isolation et portabilité
+      - fhirhub_db:/app/storage/db:rw
+      - fhirhub_data:/app/storage/data:rw
+      - fhirhub_logs:/app/storage/logs:rw
+      - fhirhub_backups:/app/storage/backups:rw
+      - fhirhub_terminology:/app/french_terminology:rw
+      # Dossiers mappés pour faciliter l'import/export de données (optionnel, peuvent être commentés)
+      - ./import:/app/import:ro
+      - ./export:/app/export:rw
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
