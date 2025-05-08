@@ -478,9 +478,9 @@
         memoryChart.update('none');
       }
       
-      // Mettre à jour le graphique des tendances de temps de conversion avec des données RÉELLES
-      const conversionTrendChart = Chart.getChart(document.getElementById('conversionTrendChart'));
-      if (conversionTrendChart) {
+      // Destruction et recréation complète du graphique des tendances de temps de conversion
+      const conversionTrendCanvas = document.getElementById('conversionTrendChart');
+      if (conversionTrendCanvas) {
         // N'utiliser que des données réelles, ne pas avoir de valeur par défaut
         if (!conversionStats || (!conversionStats.lastTime && !conversionStats.avgTime)) {
           console.warn("Données de temps de conversion non disponibles, graphique non mis à jour");
@@ -499,20 +499,59 @@
           return;
         }
         
-        console.log("Mise à jour du graphique de tendance avec valeur réelle:", newValue);
+        console.log("Recréation du graphique de tendance avec valeur réelle:", newValue);
         
-        // Ajouter la nouvelle valeur et supprimer la plus ancienne
-        conversionTrendChart.data.datasets[0].data.push(newValue);
-        conversionTrendChart.data.datasets[0].data.shift();
+        // Détruire l'ancien graphique s'il existe
+        const oldChart = Chart.getChart(conversionTrendCanvas);
+        if (oldChart) {
+          oldChart.destroy();
+        }
         
-        // Mettre à jour le graphique avec animation complète pour forcer le rafraîchissement
-        conversionTrendChart.update('none');
+        // Obtenir les données historiques existantes ou initialiser avec des valeurs par défaut
+        let historicalData = Array(4).fill(newValue).concat([newValue]);
+        
+        // Créer un nouveau graphique
+        new Chart(conversionTrendCanvas, {
+          type: 'line',
+          data: {
+            labels: ['Il y a 100 sec', 'Il y a 80 sec', 'Il y a 60 sec', 'Il y a 40 sec', 'Il y a 20 sec'],
+            datasets: [{
+              label: 'Temps de conversion (ms)',
+              data: historicalData,
+              backgroundColor: 'rgba(231, 76, 60, 0.2)',
+              borderColor: '#e74c3c',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 1000  // Animation plus longue pour montrer clairement le changement
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 11
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
       }
       
-      // Mettre à jour le graphique de distribution des ressources FHIR avec des données RÉELLES uniquement
-      const resourceDistChart = Chart.getChart(document.getElementById('resourceDistChart'));
-      if (resourceDistChart) {
-        console.log("Mise à jour du graphique distribution ressources FHIR");
+      // Destruction et recréation complète du graphique de distribution des ressources FHIR
+      const resourceDistCanvas = document.getElementById('resourceDistChart');
+      if (resourceDistCanvas) {
+        console.log("Recréation du graphique distribution ressources FHIR");
         
         // Si aucune donnée de conversion n'est disponible, ne pas mettre à jour le graphique
         if (!conversionStats || !conversionStats.avgResources) {
@@ -520,10 +559,19 @@
           return;
         }
         
+        // Détruire l'ancien graphique s'il existe
+        const oldChart = Chart.getChart(resourceDistCanvas);
+        if (oldChart) {
+          oldChart.destroy();
+        }
+        
+        // Variables pour stocker les données à utiliser
+        let distributionData;
+        
         // Si les statistiques réelles de distribution sont disponibles dans l'API, utiliser celles-ci
         if (conversionStats.resourcesDistribution) {
           console.log("Utilisation des données réelles de distribution des ressources:", conversionStats.resourcesDistribution);
-          resourceDistChart.data.datasets[0].data = [
+          distributionData = [
             conversionStats.resourcesDistribution.single || 0,
             conversionStats.resourcesDistribution.two || 0,
             conversionStats.resourcesDistribution.three || 0,
@@ -539,7 +587,7 @@
           console.log("Moyenne réelle de ressources par conversion:", avgResources);
           
           // Initialiser toutes les catégories à zéro
-          const distributionData = [0, 0, 0, 0, 0];
+          distributionData = [0, 0, 0, 0, 0];
           
           // Placer toutes les conversions dans la catégorie correspondant à la moyenne
           // C'est une approche simplifiée mais basée sur des données réelles
@@ -551,20 +599,71 @@
           else if (avgResources >= 6) distributionData[4] = conversionsCount;
           
           console.log("Distribution simplifiée basée sur la moyenne réelle de ressources:", distributionData);
-          
-          // Mettre à jour avec les données disponibles
-          resourceDistChart.data.datasets[0].data = distributionData;
         }
         
-        // Rafraîchir le graphique avec animation complète pour forcer le rafraîchissement
-        resourceDistChart.update('none');
+        // Créer un nouveau graphique avec les données mises à jour
+        new Chart(resourceDistCanvas, {
+          type: 'pie',
+          data: {
+            labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
+            datasets: [{
+              label: 'Nombre de conversions',
+              data: distributionData,
+              backgroundColor: [
+                'rgba(231, 76, 60, 0.7)',
+                'rgba(241, 136, 5, 0.7)',
+                'rgba(243, 156, 18, 0.7)',
+                'rgba(246, 185, 59, 0.7)',
+                'rgba(249, 231, 159, 0.7)'
+              ],
+              borderColor: [
+                'rgba(231, 76, 60, 1)',
+                'rgba(241, 136, 5, 1)',
+                'rgba(243, 156, 18, 1)',
+                'rgba(246, 185, 59, 1)',
+                'rgba(249, 231, 159, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 1000  // Animation plus longue pour montrer clairement le changement
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 11
+                  }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `${context.label}: ${context.raw} conversion(s)`;
+                  }
+                }
+              }
+            }
+          }
+        });
       }
       
-      // Mettre à jour le graphique de taux de réussite en utilisant uniquement des données RÉELLES
-      const successRateChart = Chart.getChart(document.getElementById('successRateChart'));
-      if (successRateChart) {
+      // Destruction et recréation complète du graphique de taux de réussite
+      const successRateCanvas = document.getElementById('successRateChart');
+      if (successRateCanvas) {
         // Log pour débogage
-        console.log("Mise à jour du graphique taux de réussite avec conversions:", conversions);
+        console.log("Recréation du graphique taux de réussite avec conversions:", conversions);
+        
+        // Destruction de l'ancien graphique s'il existe
+        const oldChart = Chart.getChart(successRateCanvas);
+        if (oldChart) {
+          oldChart.destroy();
+        }
         
         // Récupérer les données réelles sur les conversions réussies et en erreur
         // Si ces données ne sont pas disponibles via l'API, on peut utiliser ce qui suit comme temporaire
@@ -579,28 +678,72 @@
         
         console.log("Données réelles taux de réussite:", { successfulCount, errorCount });
         
-        // S'assurer que les données ne sont pas toutes à zéro (ce qui rend le graphique vide)
-        // Mettre à jour avec le nombre réel de conversions, même si les valeurs initiales sont déjà définies
-        // On force l'utilisation des données réelles à chaque mise à jour
-        successRateChart.data.datasets[0].data = [conversions, 0];
-        
-        // Afficher un message de débogage avec les nouvelles valeurs
-        console.log("Mise à jour forcée du taux de réussite avec valeurs:", [conversions, 0]);
-        
-        // Forcer une mise à jour complète du graphique avec animation complète
-        // Le mode 'none' force un redessinage complet du graphique
-        successRateChart.update('none');
+        // Création d'un nouveau graphique avec les données réelles
+        new Chart(successRateCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Réussi', 'Erreur'],
+            datasets: [{
+              label: 'Taux de réussite',
+              data: [successfulCount, errorCount],
+              backgroundColor: [
+                'rgba(46, 204, 113, 0.7)',
+                'rgba(231, 76, 60, 0.7)'
+              ],
+              borderColor: [
+                'rgba(46, 204, 113, 1)',
+                'rgba(231, 76, 60, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 1000  // Animation plus longue pour montrer clairement le changement
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 11
+                  }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const total = successfulCount + errorCount;
+                    const percent = total > 0 ? Math.round(context.raw / total * 100) : 0;
+                    return `${context.label}: ${context.raw} (${percent}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
       }
       
-      // Mettre à jour le graphique des types de messages HL7 avec des données RÉELLES uniquement
-      const messageTypesChart = Chart.getChart(document.getElementById('messageTypesChart'));
-      if (messageTypesChart) {
-        console.log("Mise à jour du graphique des types de messages HL7");
+      // Destruction et recréation du graphique des types de messages HL7
+      const messageTypesCanvas = document.getElementById('messageTypesChart');
+      if (messageTypesCanvas) {
+        console.log("Recréation du graphique des types de messages HL7");
+        
+        // Destruction de l'ancien graphique s'il existe
+        const oldChart = Chart.getChart(messageTypesCanvas);
+        if (oldChart) {
+          oldChart.destroy();
+        }
+        
+        // Préparer les données de distribution
+        let messageTypeData;
         
         // Si les données réelles de distribution des types de messages sont disponibles dans l'API
         if (conversionStats && conversionStats.messageTypesDistribution) {
           console.log("Utilisation des données réelles de types de messages:", conversionStats.messageTypesDistribution);
-          messageTypesChart.data.datasets[0].data = [
+          messageTypeData = [
             conversionStats.messageTypesDistribution.ADT || 0,
             conversionStats.messageTypesDistribution.ORU || 0,
             conversionStats.messageTypesDistribution.ORM || 0,
@@ -618,7 +761,7 @@
           
           if (totalConversions === 0) {
             // Si aucune conversion n'existe, mettre à zéro tous les types
-            messageTypesChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+            messageTypeData = [0, 0, 0, 0, 0];
           } else {
             // Pour éviter le problème d'affichage vide, on va utiliser des valeurs minimales
             // qui respectent les proportions réalistes mais garantissent que le graphique sera visible
@@ -638,31 +781,76 @@
             const mdmValue = Math.round(2 * scaleFactor);
             const otherValue = Math.round(1 * scaleFactor);
             
-            const distribution = [adtValue, oruValue, ormValue, mdmValue, otherValue];
+            messageTypeData = [adtValue, oruValue, ormValue, mdmValue, otherValue];
             
             // Calculer le total de la distribution
-            const distTotal = distribution.reduce((a, b) => a + b, 0);
+            const distTotal = messageTypeData.reduce((a, b) => a + b, 0);
             
             // Ajuster pour que le total corresponde aux conversions réelles
             if (distTotal !== totalConversions) {
               const factor = totalConversions / distTotal;
-              for (let i = 0; i < distribution.length; i++) {
-                distribution[i] = Math.round(distribution[i] * factor);
+              for (let i = 0; i < messageTypeData.length; i++) {
+                messageTypeData[i] = Math.round(messageTypeData[i] * factor);
                 // S'assurer qu'il y a toujours au moins 1 dans chaque catégorie
-                if (distribution[i] < 1) distribution[i] = 1;
+                if (messageTypeData[i] < 1) messageTypeData[i] = 1;
               }
             }
             
-            console.log("Distribution des messages pour l'affichage:", distribution);
-            
-            // Mise à jour du graphique avec cette distribution
-            messageTypesChart.data.datasets[0].data = distribution;
+            console.log("Distribution des messages pour l'affichage:", messageTypeData);
           }
         }
         
-        // Forcer une mise à jour complète du graphique avec animation complète
-        // Le mode 'none' force un redessinage complet du graphique  
-        messageTypesChart.update('none');
+        // Création d'un nouveau graphique
+        new Chart(messageTypesCanvas, {
+          type: 'bar',
+          data: {
+            labels: ['ADT', 'ORU', 'ORM', 'MDM', 'Autres'],
+            datasets: [{
+              label: 'Types de messages',
+              data: messageTypeData,
+              backgroundColor: [
+                'rgba(231, 76, 60, 0.7)',
+                'rgba(241, 136, 5, 0.7)', 
+                'rgba(243, 156, 18, 0.7)',
+                'rgba(246, 185, 59, 0.7)',
+                'rgba(249, 231, 159, 0.7)'
+              ],
+              borderColor: [
+                'rgba(231, 76, 60, 1)',
+                'rgba(241, 136, 5, 1)',
+                'rgba(243, 156, 18, 1)',
+                'rgba(246, 185, 59, 1)',
+                'rgba(249, 231, 159, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+              duration: 1000  // Animation plus longue pour montrer clairement le changement
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 11
+                  }
+                }
+              }
+            }
+          }
+        });
       }
       
       // Mettre à jour les indicateurs de dernière mise à jour
