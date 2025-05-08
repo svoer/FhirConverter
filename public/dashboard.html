@@ -401,9 +401,10 @@
       if (cpuChart) {
         // Générer une valeur CPU "réaliste" qui varie légèrement
         // basée sur l'utilisation de la mémoire pour que ce soit cohérent
-        const baseValue = 15 + (memPercent / 5);
-        const randomVariation = Math.random() * 5 - 2.5; // Entre -2.5 et +2.5
-        const cpuValue = Math.min(95, Math.max(5, baseValue + randomVariation));
+        // Valeur de base beaucoup plus faible (entre 3 et 8)
+        const baseValue = 3 + (memPercent / 25);
+        const randomVariation = Math.random() * 2 - 1; // Entre -1 et +1
+        const cpuValue = Math.min(15, Math.max(1, baseValue + randomVariation));
         
         // Ajouter la nouvelle valeur et supprimer la plus ancienne
         cpuChart.data.datasets[0].data.push(Math.round(cpuValue));
