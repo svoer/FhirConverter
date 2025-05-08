@@ -98,6 +98,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
+  padding: 0 5px; /* Ajout de padding horizontal */
+  letter-spacing: 0.2px; /* Légèrement espacer les lettres pour plus de lisibilité */
 }
 
 /* Style pour le bouton de rafraîchissement */
@@ -108,12 +110,12 @@
   font-size: 16px;
   cursor: pointer;
   transition: transform 0.3s ease;
-  margin-right: 10px;
+  margin-right: 15px; /* Augmenté de 10px à 15px pour plus d'espace */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px; /* Légèrement plus grand */
+  height: 30px; /* Légèrement plus grand */
   border-radius: 50%;
   background: linear-gradient(135deg, #e74c3c 0%, #f18805 100%);
   color: white;
