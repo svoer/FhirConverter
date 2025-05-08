@@ -1,10 +1,10 @@
 /* Styles pour la page FAQ développeur FHIRHub */
 
 :root {
-    --primary-gradient-start: #ff5e62;
-    --primary-gradient-end: #ff9966;
-    --primary-hover-gradient-start: #ff5258;
-    --primary-hover-gradient-end: #ff8c59;
+    --primary-gradient-start: #FF5733; /* Rouge vif */
+    --primary-gradient-end: #FF9900; /* Orange */
+    --primary-hover-gradient-start: #F04C23; /* Rouge vif plus foncé */
+    --primary-hover-gradient-end: #F08C00; /* Orange plus foncé */
     --sidebar-width: 250px;
     --header-height: 60px;
     --border-radius: 8px;
@@ -22,21 +22,23 @@ body {
     padding: 0;
 }
 
-.main-content {
+/* Compatibilité avec la structure de menu latéral existante */
+body.with-sidebar {
+    padding-top: var(--header-height);
+}
+
+.main-content.with-sidebar {
     margin-left: var(--sidebar-width);
     padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding-left: calc(var(--sidebar-width) + 20px);
-    padding-right: 20px;
     padding-top: 30px;
     transition: var(--transition-standard);
 }
 
 @media (max-width: 768px) {
-    .main-content {
-        padding-left: 20px;
+    .main-content.with-sidebar {
         margin-left: 0;
+        padding-left: 20px;
+        padding-right: 20px;
     }
 }
 
