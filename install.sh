@@ -335,6 +335,9 @@ LOG_LEVEL=info
 JWT_SECRET=$(openssl rand -hex 32)
 METRICS_ENABLED=true
 METRICS_PORT=9091
+# Installation locale de Prometheus et Grafana
+PROMETHEUS_LOCAL=false
+GRAFANA_LOCAL=false
 EOF
   echo "✅ Fichier .env créé avec succès"
 else
@@ -363,6 +366,18 @@ else
   if ! grep -q "METRICS_PORT" ./.env; then
     echo "METRICS_PORT=9091" >> ./.env
     echo "   ✅ METRICS_PORT ajouté"
+  fi
+  
+  # Ajouter les options d'installation locale de Prometheus et Grafana
+  if ! grep -q "PROMETHEUS_LOCAL" ./.env; then
+    echo "# Installation locale de Prometheus et Grafana" >> ./.env
+    echo "PROMETHEUS_LOCAL=false" >> ./.env
+    echo "   ✅ Option PROMETHEUS_LOCAL ajoutée"
+  fi
+  
+  if ! grep -q "GRAFANA_LOCAL" ./.env; then
+    echo "GRAFANA_LOCAL=false" >> ./.env
+    echo "   ✅ Option GRAFANA_LOCAL ajoutée"
   fi
   
   echo "✅ Fichier .env mis à jour avec succès"
@@ -640,6 +655,12 @@ echo "=========================================================="
 echo ""
 echo "Pour démarrer l'application :"
 echo "  ./start.sh"
+echo ""
+echo "Pour démarrer avec Prometheus et Grafana locaux (sans Docker) :"
+echo "  1. Modifiez le fichier .env pour activer l'installation locale :"
+echo "     PROMETHEUS_LOCAL=true"
+echo "     GRAFANA_LOCAL=true"
+echo "  2. Ou utilisez directement : PROMETHEUS_LOCAL=true GRAFANA_LOCAL=true ./start.sh"
 echo ""
 echo "Site web accessible sur : http://localhost:5001"
 echo "Identifiants par défaut :"
