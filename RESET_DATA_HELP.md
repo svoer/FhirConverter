@@ -50,7 +50,7 @@ Ce script, plus avancé, va :
 4. Réinitialiser complètement les volumes (deux méthodes disponibles)
 5. Redémarrer les conteneurs avec des volumes propres
 
-> **Recommandation** : Pour les installations utilisant les nouveaux fichiers docker-compose.yml ou docker-compose-minimal.yml avec volumes nommés, utilisez de préférence `reset-docker-volumes.sh`.
+> **Recommandation** : Pour les installations utilisant docker-compose.yml avec volumes nommés, utilisez de préférence `reset-docker-volumes.sh`.
 
 ## Précautions
 

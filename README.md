@@ -10,48 +10,47 @@ FHIRHub est une application robuste et légère qui convertit les messages HL7v2
 - Base de données SQLite pour les logs et la persistance des données
 - Terminologies médicales françaises préchargées
 - Fonctionnement hors-ligne sans appels API externes
-- Support pour les workflows personnalisés (EAI)
+- Éditeur de workflow visuel (EAI)
 - Export/import de templates en JSON
 - Interface intuitive pour la conversion de messages et la visualisation des résultats
 
-## Architecture simplifiée
+## Architecture optimisée
 
-Cette version utilise une architecture Docker simplifiée qui inclut uniquement les composants essentiels :
+Cette version utilise une architecture Docker optimisée qui:
 
-- Application Node.js principale
-- Base de données SQLite intégrée
-- Volume de données persistant
-
-Les services non essentiels (Grafana, Prometheus, Loki) ont été supprimés pour une empreinte plus légère et un déploiement simplifié.
+- Utilise des volumes Docker nommés pour une meilleure isolation et persistance des données
+- Inclut uniquement les composants essentiels (application Node.js, base de données SQLite)
+- Propose une solution légère sans services de monitoring supplémentaires
 
 ## Installation
 
 ### Prérequis
 
-- Docker et Docker Compose
+- Docker et Docker Compose (v2.0+)
 
-### Installation automatique
-
-```bash
-./docker-init-simple.sh
-```
-
-### Démarrage
+### Installation et démarrage
 
 ```bash
-./start-minimal.sh
+# Cloner le dépôt (ou télécharger l'archive)
+git clone https://github.com/votre-organisation/fhirhub.git
+cd fhirhub
+
+# Démarrer l'application avec Docker
+docker-compose up -d
 ```
 
 ### Arrêt
 
 ```bash
-./stop-minimal.sh
+docker-compose down
 ```
 
 ## Accès à l'application
 
-- Interface Web: http://localhost:3000
-- API: http://localhost:3000/api
+- Interface Web: http://localhost:5001
+- API: http://localhost:5001/api
+
+**Important**: L'application utilise désormais le port 5001 (au lieu de 5000) pour éviter les conflits avec d'autres services.
 
 ## Identifiants par défaut
 
@@ -60,19 +59,33 @@ Les services non essentiels (Grafana, Prometheus, Loki) ont été supprimés pou
 
 ## Structure des dossiers
 
-- `data/` - Données persistantes (base de données SQLite, terminologies, logs)
+- `data/` - Données persistantes pour les installations non-Docker
+- `storage/` - Structure optimisée pour les données locales
+  - `db/` - Base de données SQLite
+  - `data/` - Conversions, historique et sorties
+  - `logs/` - Journaux d'application
+  - `backups/` - Sauvegardes automatiques
+- `french_terminology/` - Terminologies médicales françaises
 - `src/` - Code source de l'application
 - `public/` - Fichiers statiques pour l'interface utilisateur
 - `routes/` - Routes API
 - `test_data/` - Données de test
 
-## Gestion des données
+## Réinitialisation des données
 
-Toutes les données sont stockées localement dans le dossier du projet, assurant qu'aucune information n'est perdue lors des mises à jour.
+FHIRHub inclut des scripts pour réinitialiser les données de conversion:
+
+- `reset-data.sh` - Pour installations standard (non-Docker)
+- `reset-data-docker.sh` - Pour installations Docker
+- `reset-docker-volumes.sh` - Pour nettoyer les volumes Docker nommés
+
+Ces scripts supportent l'option `-y` pour une exécution non-interactive (compatible cron).
+
+Pour plus d'informations, consultez `RESET_DATA_HELP.md`.
 
 ## Documentation technique
 
-Pour plus de détails sur le fonctionnement interne du code, consultez la documentation technique disponible à l'adresse `/api-reference.html` après le démarrage de l'application.
+Pour plus de détails sur le fonctionnement interne du code, consultez la documentation technique disponible à l'adresse `/documentation.html` après le démarrage de l'application.
 
 ## Support et maintenance
 

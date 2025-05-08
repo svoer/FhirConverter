@@ -4,24 +4,25 @@
 
 FHIRHub propose une solution de déploiement basée sur Docker qui facilite grandement l'installation, la maintenance et la mise à jour de l'application. Cette approche est particulièrement adaptée aux environnements de production.
 
-## Architecture Docker
+## Architecture Docker Optimisée
 
-L'architecture Docker de FHIRHub utilise des volumes persistants pour garantir la pérennité des données entre les redémarrages et les mises à jour :
+L'architecture Docker de FHIRHub utilise des volumes nommés pour garantir la pérennité et l'isolation des données entre les redémarrages et les mises à jour :
 
 ```mermaid
 graph TD
     A[Image Docker FHIRHub] --> B[Conteneur FHIRHub]
-    B --> |bind mount| C[Volume /data]
-    B --> |bind mount| D[Volume /logs]
-    B --> |bind mount| E[Volume /backups]
-    B --> |bind mount| F[Volume /french_terminology]
-    C --> G[Base de données SQLite]
-    C --> H[Cache persistant]
-    C --> I[Historique des conversions]
-    D --> J[Logs d'application]
-    D --> K[Logs d'accès API]
-    E --> L[Sauvegardes automatiques]
-    F --> M[Terminologies françaises]
+    B --> |volume nommé| C[fhirhub_db]
+    B --> |volume nommé| D[fhirhub_data]
+    B --> |volume nommé| E[fhirhub_logs]
+    B --> |volume nommé| F[fhirhub_backups]
+    B --> |volume nommé| G[fhirhub_terminology]
+    B --> |bind mount optionnel| H[./import]
+    B --> |bind mount optionnel| I[./export]
+    C --> J[Base de données SQLite]
+    D --> K[Conversions et résultats]
+    E --> L[Logs d'application]
+    F --> M[Sauvegardes automatiques]
+    G --> N[Terminologies françaises]
 ```
 
 ## Prérequis
@@ -31,55 +32,21 @@ graph TD
 - 2 Go de RAM minimum (4 Go recommandés)
 - 1 Go d'espace disque minimum
 
-## Méthodes de Déploiement
+## Méthode de Déploiement
 
-### Méthode Rapide (Recommandée)
+### Démarrage Standard
 
-Cette méthode utilise le script d'initialisation fourni pour configurer automatiquement l'environnement :
+Le déploiement a été simplifié pour utiliser un seul fichier de configuration docker-compose.yml :
 
-1. **Exécuter le script d'initialisation** :
-
-```bash
-./docker-init.sh
-```
-
-2. **Démarrer l'application** :
+1. **Démarrer l'application** :
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
 
-3. **Accéder à l'application** : 
-   - URL : `http://localhost:5000`
-   - Identifiants par défaut : `admin` / `adminfhirhub`
-
-### Méthode Manuelle
-
-Pour les utilisateurs qui préfèrent configurer manuellement ou qui ont besoin de personnaliser l'installation :
-
-1. **Créer la structure de dossiers pour les volumes** :
-
-```bash
-mkdir -p volumes/data volumes/logs volumes/backups volumes/french_terminology
-mkdir -p volumes/data/conversions volumes/data/history volumes/data/outputs volumes/data/test
-```
-
-2. **Créer le fichier `.env`** :
-
-```ini
-PORT=5000
-JWT_SECRET=fhirhub-secure-jwt-secret-change-me
-DATA_DIR=./volumes/data
-LOGS_DIR=./volumes/logs
-BACKUPS_DIR=./volumes/backups
-TERMINOLOGY_DIR=./volumes/french_terminology
-```
-
-3. **Démarrer l'application** :
-
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
+2. **Accéder à l'application** : 
+   - URL : `http://localhost:5001`
+   - Identifiants par défaut : `admin` / `admin123`
 
 ## Gestion du Conteneur
 
@@ -87,25 +54,29 @@ docker-compose -f docker-compose.prod.yml up -d
 
 | Opération | Commande |
 |-----------|----------|
-| Démarrer  | `docker-compose -f docker-compose.prod.yml up -d` |
-| Arrêter   | `docker-compose -f docker-compose.prod.yml down` |
-| Redémarrer| `docker-compose -f docker-compose.prod.yml restart` |
-| Logs      | `docker-compose -f docker-compose.prod.yml logs -f` |
-| Mise à jour | `docker-compose -f docker-compose.prod.yml up -d --build` |
+| Démarrer  | `docker-compose up -d` |
+| Arrêter   | `docker-compose down` |
+| Redémarrer| `docker-compose restart` |
+| Logs      | `docker-compose logs -f` |
+| Mise à jour | `docker-compose up -d --build` |
 
 ### Configuration des Ports
 
-Par défaut, FHIRHub utilise le port 5000. Pour modifier le port, éditez le fichier `.env` :
+Par défaut, FHIRHub utilise le port 5001 (changement par rapport à la version précédente qui utilisait 5000). Pour modifier le port, éditez le fichier `docker-compose.yml` :
 
-```ini
-PORT=8080  # Remplacez 5000 par le port souhaité
+```yaml
+services:
+  fhirhub:
+    # ...
+    ports:
+      - "8080:5001"  # Remplacez 5001 par le port externe souhaité
 ```
 
 Puis redémarrez le conteneur :
 
 ```bash
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose down
+docker-compose up -d
 ```
 
 ## Persistance des Données
@@ -121,42 +92,59 @@ Les données de FHIRHub sont stockées dans quatre volumes principaux :
 
 ### Sauvegarde et Restauration
 
-#### Créer une Sauvegarde Manuelle
+#### Créer une Sauvegarde des Volumes Nommés
 
 ```bash
 # Arrêter d'abord le conteneur
-docker-compose -f docker-compose.prod.yml down
+docker-compose down
 
-# Créer une archive de sauvegarde
-tar -czf fhirhub_backup_$(date +%Y%m%d).tar.gz volumes/
+# Sauvegarder les volumes nommés
+docker run --rm -v fhirhub_db:/source -v $(pwd)/backups:/dest -w /source alpine tar czf /dest/fhirhub_db_backup_$(date +%Y%m%d).tar.gz .
+docker run --rm -v fhirhub_data:/source -v $(pwd)/backups:/dest -w /source alpine tar czf /dest/fhirhub_data_backup_$(date +%Y%m%d).tar.gz .
+docker run --rm -v fhirhub_terminology:/source -v $(pwd)/backups:/dest -w /source alpine tar czf /dest/fhirhub_terminology_backup_$(date +%Y%m%d).tar.gz .
 
 # Redémarrer le conteneur
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
+
+Un script utilitaire `backup-docker-data.sh` est également fourni pour automatiser cette opération.
 
 #### Restaurer une Sauvegarde
 
 ```bash
 # Arrêter d'abord le conteneur
-docker-compose -f docker-compose.prod.yml down
+docker-compose down
 
-# Extraire l'archive de sauvegarde
-tar -xzf fhirhub_backup_YYYYMMDD.tar.gz
+# Restaurer les volumes nommés
+docker run --rm -v fhirhub_db:/dest -v $(pwd)/backups:/source -w /dest alpine sh -c "rm -rf ./* && tar xzf /source/fhirhub_db_backup_YYYYMMDD.tar.gz"
+docker run --rm -v fhirhub_data:/dest -v $(pwd)/backups:/source -w /dest alpine sh -c "rm -rf ./* && tar xzf /source/fhirhub_data_backup_YYYYMMDD.tar.gz"
+docker run --rm -v fhirhub_terminology:/dest -v $(pwd)/backups:/source -w /dest alpine sh -c "rm -rf ./* && tar xzf /source/fhirhub_terminology_backup_YYYYMMDD.tar.gz"
 
 # Redémarrer le conteneur
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 ```
+
+## Réinitialisation des Données
+
+Pour réinitialiser les données des volumes nommés, utilisez le script fourni :
+
+```bash
+./reset-docker-volumes.sh
+```
+
+Ce script détecte automatiquement les volumes nommés de FHIRHub et propose différentes options pour les réinitialiser. Il prend en charge l'option `-y` pour une exécution automatique dans des scripts de maintenance.
 
 ## Sécurité
 
 ### Bonnes Pratiques
 
-1. **Modifier le Secret JWT** dans le fichier `.env` :
-   ```ini
-   JWT_SECRET=votre-secret-très-sécurisé-et-unique
+1. **Modifier le Secret JWT** dans le fichier `docker-compose.yml` :
+   ```yaml
+   environment:
+     - JWT_SECRET=votre-secret-très-sécurisé-et-unique
    ```
 
-2. **Changer le mot de passe administrateur** après la première connexion
+2. **Changer le mot de passe administrateur** après la première connexion (par défaut : `admin` / `admin123`)
 
 3. **Limiter l'accès au port** en utilisant un pare-feu ou en plaçant FHIRHub derrière un reverse proxy
 
@@ -176,7 +164,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/fhirhub.example.com/privkey.pem;
 
     location / {
-        proxy_pass http://localhost:5000;
+        proxy_pass http://localhost:5001;  # Noter le changement de port à 5001
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -197,10 +185,10 @@ server {
 
 2. **Reconstruire et redémarrer le conteneur** :
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d --build
+   docker-compose up -d --build
    ```
 
-Les données existantes seront préservées grâce aux volumes persistants.
+Les données existantes seront préservées grâce aux volumes nommés persistants.
 
 ## Dépannage
 
@@ -208,10 +196,11 @@ Les données existantes seront préservées grâce aux volumes persistants.
 
 | Problème | Solution |
 |----------|----------|
-| Le conteneur ne démarre pas | Vérifier les logs : `docker-compose -f docker-compose.prod.yml logs` |
-| Problèmes de permissions | Corriger les permissions : `chmod -R 755 volumes/` |
-| Port déjà utilisé | Modifier le port dans le fichier `.env` |
-| Base de données corrompue | Restaurer à partir d'une sauvegarde |
+| Le conteneur ne démarre pas | Vérifier les logs : `docker-compose logs` |
+| Problèmes de permissions | Vérifier les permissions des volumes : `docker volume inspect fhirhub_db` |
+| Port déjà utilisé | Modifier le port dans le fichier `docker-compose.yml` |
+| Base de données corrompue | Utiliser `reset-docker-volumes.sh` ou restaurer à partir d'une sauvegarde |
+| Volumes manquants | Vérifier la liste des volumes : `docker volume ls | grep fhirhub` |
 
 ### Vérification de l'État
 
@@ -221,20 +210,11 @@ docker ps | grep fhirhub
 
 # Vérifier les ressources utilisées
 docker stats fhirhub
+
+# Inspecter les volumes nommés
+docker volume ls | grep fhirhub
 ```
 
 ## Environnements Spécifiques
 
-### Déploiement en Production
-
-Pour un environnement de production, utilisez toujours `docker-compose.prod.yml` qui inclut des optimisations de performances et de sécurité.
-
-### Déploiement de Développement
-
-Pour le développement, vous pouvez utiliser le fichier standard :
-
-```bash
-docker-compose up -d
-```
-
-Ce mode monte le code source en volume pour permettre un développement en temps réel.
+FHIRHub peut être déployé dans différents environnements avec le même fichier de configuration `docker-compose.yml`. Les volumes nommés garantissent que les données sont isolées et préservées quels que soient les changements apportés au conteneur.
