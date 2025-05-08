@@ -128,77 +128,71 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Configurer les interactions des FAQ items
+    // Configurer les interactions des FAQ items - Approche simplifiée
     function setupFAQInteractions() {
-        console.log('Configuration des interactions FAQ...');
-        
-        // Nombre d'éléments trouvés pour le débogage
-        const headers = document.querySelectorAll('.faq-item h3');
-        console.log(`Nombre d'en-têtes FAQ trouvés: ${headers.length}`);
-        
-        headers.forEach(header => {
-            // Enlever les gestionnaires existants pour éviter les doublons
-            const newHeader = header.cloneNode(true);
-            header.parentNode.replaceChild(newHeader, header);
+        // Solution simple et directe avec jQuery pour garantir que les clics fonctionnent
+        let script = document.createElement('script');
+        script.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+        script.onload = function() {
+            console.log('jQuery chargé pour simplicité');
             
-            // Ajouter le nouveau gestionnaire d'événements
-            newHeader.addEventListener('click', function(e) {
-                e.preventDefault();
-                const parent = this.parentElement;
-                
-                // Toggle l'état actif
-                const isActive = parent.classList.contains('active');
-                console.log(`État actif: ${isActive ? 'oui' : 'non'} pour l'élément: ${this.textContent.trim().substring(0, 30)}...`);
+            // Solution simple et robuste avec jQuery
+            $('.faq-item h3').off('click').on('click', function() {
+                let parent = $(this).parent();
                 
                 // Si on ouvre cette FAQ, fermer les autres
-                if (!isActive) {
-                    const siblings = parent.parentElement.querySelectorAll('.faq-item');
-                    siblings.forEach(item => {
-                        if (item !== parent && item.classList.contains('active')) {
-                            item.classList.remove('active');
-                        }
-                    });
+                if (!parent.hasClass('active')) {
+                    parent.siblings('.faq-item.active').removeClass('active');
                 }
                 
                 // Toggle l'état de cette FAQ
-                parent.classList.toggle('active');
+                parent.toggleClass('active');
+                return false; // Empêcher la propagation
             });
-        });
-        
-        // Mode alternatif de capture des événements
-        document.addEventListener('click', function(e) {
-            // Vérifier si on a cliqué sur un en-tête FAQ ou son contenu
-            let target = e.target;
-            while (target && !target.matches('.faq-item h3') && target !== document.body) {
-                if (target.parentElement) {
-                    target = target.parentElement;
-                } else {
-                    break;
-                }
-            }
             
-            // Si c'est un en-tête FAQ
-            if (target && target.matches('.faq-item h3')) {
-                const header = target;
-                const parent = header.parentElement;
-                
-                // Toggle l'état actif
-                const isActive = parent.classList.contains('active');
-                
-                // Si on ouvre cette FAQ, fermer les autres
-                if (!isActive) {
-                    const siblings = parent.parentElement.querySelectorAll('.faq-item');
-                    siblings.forEach(item => {
-                        if (item !== parent && item.classList.contains('active')) {
-                            item.classList.remove('active');
-                        }
-                    });
+            // Pour les petits écrans et appareils tactiles
+            $('.faq-item').off('click').on('click', function(e) {
+                if (e.target === this || $(e.target).closest('h3').length > 0) {
+                    let parent = $(this);
+                    
+                    // Si on ouvre cette FAQ, fermer les autres
+                    if (!parent.hasClass('active')) {
+                        parent.siblings('.faq-item.active').removeClass('active');
+                    }
+                    
+                    // Toggle l'état de cette FAQ
+                    parent.toggleClass('active');
                 }
-                
-                // Toggle l'état de cette FAQ
-                parent.classList.toggle('active');
+            });
+            
+            // Fallback sans jQuery si nécessaire
+            if (!window.jQuery) {
+                console.log('Fallback sans jQuery');
+                document.querySelectorAll('.faq-item h3').forEach(function(header) {
+                    header.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        
+                        var parent = this.parentElement;
+                        var isActive = parent.classList.contains('active');
+                        
+                        // Fermer les autres éléments ouverts
+                        if (!isActive) {
+                            document.querySelectorAll('.faq-item.active').forEach(function(item) {
+                                if (item !== parent) {
+                                    item.classList.remove('active');
+                                }
+                            });
+                        }
+                        
+                        // Toggle l'état de cette FAQ
+                        parent.classList.toggle('active');
+                        return false;
+                    });
+                });
             }
-        });
+        };
+        document.head.appendChild(script);
     }
     
     // Gestionnaire pour le toggle de la table des matières
