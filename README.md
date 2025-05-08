@@ -1,111 +1,56 @@
-# 🔥 FHIRHub - Convertisseur HL7 v2.5 vers FHIR R4
-
-## Le futur du partage de données santé, dès aujourd'hui.
-
-FHIRHub est une solution complète pour convertir vos messages HL7 v2.5 en ressources FHIR R4, compatible avec les spécifications françaises de l'ANS (Agence du Numérique en Santé).
-
-Modernisez votre interopérabilité, sans refonte, sans complexité. FHIRHub – L'upgrade FHIR, aussi simple qu'un glisser-déposer.
+# 🔥 FHIRHub
 
 ![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
-![Licence](https://img.shields.io/badge/licence-Propriétaire-red.svg)
 ![Node.js](https://img.shields.io/badge/node-18.x%20%7C%2020.x-green.svg)
+![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)
 
-## Prérequis
+**Convertisseur HL7 v2.5 vers FHIR R4 pour l'écosystème e-santé français**
 
-- **Node.js** : Support automatique intégré 🆕
-  - ✅ Node.js v20.15.1 est automatiquement intégré dans les scripts d'installation
-  - ✅ Aucune installation préalable de Node.js n'est nécessaire
-  - Si Node.js est déjà installé sur votre système, vous pourrez choisir d'utiliser votre version système ou la version intégrée
-  - Versions compatibles : 18.x ou 20.x
-  - ⚠️ Node.js 22+ n'est pas compatible avec certaines dépendances
-- Git (uniquement pour le clonage du dépôt)
-- Connexion Internet temporaire (uniquement pour l'installation initiale)
-- Pour l'utilisation des scripts Python (en option) : Python 3.6 ou supérieur
+<div align="center">
+  <img src="generated-icon.png" alt="FHIRHub Logo" width="120"/>
+  <br>
+  <em>Le futur du partage de données santé, dès aujourd'hui</em>
+</div>
 
-## Caractéristiques
+## ✨ Principales fonctionnalités
 
-- 🆕 **Runtime Node.js intégré** - Installation automatique de Node.js v20.15.1 pour une compatibilité garantie
-- Conversion complète de messages HL7 v2.5 vers FHIR R4
-- Support des terminologies françaises (compatible ANS)
-- Interface utilisateur intuitive pour la conversion directe
-- API REST sécurisée avec authentification par clé API
-- Gestion des applications et des utilisateurs
-- Journalisation et suivi des conversions 
-- 🆕 **Tableau de bord Grafana** - Visualisation avancée des logs avec filtrage par date, heure et erreurs
-- 🆕 **Monitoring Prometheus** - Suivi en temps réel des performances et des conversions
-- Documentation Swagger intégrée
-- Environnement entièrement portable avec SQLite
-- Système de cache intelligent pour optimiser les performances
-- Scripts d'installation et de démarrage pour Windows, Linux et macOS
-- Déploiement facilité via Docker
+| 🚀 Conversion | 🔒 Sécurité | 📊 Monitoring | 🔄 Intégration |
+|-------------|----------|-----------|------------|
+| Conversion complète HL7 v2.5 → FHIR R4 | Authentification JWT & API Keys | Tableaux de bord Grafana | API REST complète |
+| Support terminologies ANS | RBAC (contrôle d'accès) | Métriques Prometheus | Export/import JSON |
+| Mappage personnalisable | Journalisation avancée | Filtrage logs par date/erreur | Architecture modulaire |
+| Mode online & offline | Audit trail complet | Alertes personnalisables | Docker multi-services |
 
-## Node.js intégré 🆕
+## 🚀 Démarrage rapide
 
-FHIRHub intègre désormais Node.js v20.15.1 directement dans ses scripts d'installation, offrant plusieurs avantages majeurs :
-
-- **Aucune installation préalable requise** - Fonctionne sur des machines sans Node.js préinstallé
-- **Compatibilité garantie** - Évite les problèmes avec des versions non compatibles de Node.js
-- **Installation homogène** - Expérience d'installation identique sur tous les systèmes
-- **Isolation** - Évite les conflits avec d'autres applications Node.js installées sur le système
-- **Portabilité accrue** - Peut fonctionner dans des environnements restreints sans accès administrateur
-
-Ce système :
-1. Détecte si Node.js est déjà installé sur le système
-2. Propose d'utiliser la version système si elle est compatible (v18.x ou v20.x)
-3. Télécharge et installe automatiquement Node.js v20.15.1 localement si nécessaire
-4. Configure les scripts de démarrage pour utiliser la version appropriée
-5. Préserve l'information dans un fichier `.nodejsrc` pour une utilisation cohérente
-
-## Installation
-
-FHIRHub peut être installé et déployé facilement sur Windows, Linux et macOS. Le projet inclut des scripts d'installation et de démarrage pour chaque plateforme.
-
-### Windows
+### Installation locale
 
 ```bash
 # Cloner le dépôt
 git clone https://github.com/votre-organisation/fhirhub.git
 cd fhirhub
 
-# Lancer le script d'installation
+# Linux/macOS: Donner les permissions d'exécution et installer
+chmod +x install.sh start.sh
+./install.sh
+
+# Windows: Lancer le script d'installation
 install.bat
 
 # Démarrer l'application
-start.bat
+./start.sh   # Linux/macOS
+start.bat    # Windows
 ```
 
-### Linux
+### Déploiement Docker
 
 ```bash
-# Cloner le dépôt
-git clone https://github.com/votre-organisation/fhirhub.git
-cd fhirhub
+# Configuration minimale avec monitoring (recommandée)
+./start-minimal.sh
 
-# Donner les permissions d'exécution aux scripts
-chmod +x install.sh start.sh
-
-# Lancer le script d'installation
-./install.sh
-
-# Démarrer l'application
-./start.sh
-```
-
-### macOS
-
-```bash
-# Cloner le dépôt
-git clone https://github.com/votre-organisation/fhirhub.git
-cd fhirhub
-
-# Donner les permissions d'exécution aux scripts
-chmod +x install.sh start.sh
-
-# Lancer le script d'installation
-./install.sh
-
-# Démarrer l'application
-./start.sh
+# OU configuration complète avec tous les services
+./docker-init.sh
+docker-compose up -d
 ```
 
 Les scripts d'installation effectuent les opérations suivantes automatiquement :
@@ -150,49 +95,35 @@ mkdir -p data/conversions data/history data/outputs data/test logs backups
 node app.js
 ```
 
-## Utilisation
-
-Accédez à l'application via `http://localhost:5000` et connectez-vous avec les identifiants par défaut:
-
-- Identifiant: admin
-- Mot de passe: adminfhirhub
-
-## Structure du Projet
+## 🧩 Architecture
 
 ```
-fhirhub/
-├── api/                    # Modules API
-├── data/                   # Stockage SQLite et logs
-├── french_terminology/     # Mappings pour terminologies françaises
-├── middleware/             # Middleware Express
-├── public/                 # Interface utilisateur
-├── routes/                 # Routes Express
-├── src/                    # Code source principal
-├── utils/                  # Utilitaires et fonctions d'aide
-├── vendor/                 # 🆕 Dépendances intégrées (Node.js local)
-│   └── nodejs/             # 🆕 Installation locale de Node.js v20.15.1
-├── app.js                  # Point d'entrée principal
-├── hl7Parser.js            # Parseur HL7 optimisé
-├── hl7ToFhirAdvancedConverter.js  # Convertisseur HL7 vers FHIR
-├── install.sh              # Script d'installation Linux/macOS
-├── install.bat             # Script d'installation Windows
-├── start.sh                # Script de démarrage Linux/macOS
-├── start.bat               # Script de démarrage Windows
-├── .nodejsrc               # 🆕 Configuration de Node.js intégré
-└── server.js               # Configuration du serveur
+FHIRHub
+ ┣ 📂 API RESTful
+ ┃  ┣ 🔒 Authentification
+ ┃  ┣ 📄 Conversion
+ ┃  ┗ 📊 Statistiques
+ ┣ 📂 Convertisseurs
+ ┃  ┣ 🔄 HL7 Parser
+ ┃  ┗ 🔄 FHIR Generator
+ ┣ 📂 Interface utilisateur
+ ┃  ┣ 📱 Conversion directe
+ ┃  ┣ 📊 Tableaux de bord
+ ┃  ┗ ⚙️ Administration
+ ┗ 📂 Monitoring
+    ┣ 📈 Prometheus
+    ┣ 📊 Grafana
+    ┗ 📋 Loki/Promtail
 ```
 
-## Développement
+## 📚 Documentation
 
-Pour le développement, vous pouvez utiliser les commandes suivantes:
+Pour une documentation complète, consultez le dossier `/docs` ou les pages suivantes:
 
-```bash
-# Lancer en mode développement avec hot-reload
-npm run dev
-
-# Exécuter les tests
-npm test
-```
+- [Guide de démarrage rapide](docs/quickstart.md)
+- [Configuration avancée](docs/advanced-configuration.md)
+- [API Reference](http://localhost:5001/api-docs)
+- [FAQ](docs/faq.md)
 
 ## Déploiement avec Docker
 
@@ -327,6 +258,55 @@ watchtower:
   environment:
     - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Format cron : exécuter à 4h00 tous les jours
 ```
+
+## 🌐 Accès aux interfaces
+
+| Service | URL | Identifiants par défaut |
+|---------|-----|------------------------|
+| **FHIRHub** | http://localhost:5001 | admin / adminfhirhub |
+| **Grafana** | http://localhost:3000 | admin / admin123 |
+| **Prometheus** | http://localhost:9090 | - |
+| **API Documentation** | http://localhost:5001/api-docs | - |
+
+## 📦 Modes de déploiement
+
+### ⚙️ Configuration minimale
+
+Idéale pour les déploiements légers ou les environnements de développement:
+
+```bash
+./start-minimal.sh
+```
+
+Cette configuration inclut:
+- Application FHIRHub principale
+- Prometheus pour les métriques
+- Grafana pour la visualisation
+- Base de données SQLite
+- Terminologies françaises
+
+### 🏢 Configuration complète
+
+Pour les environnements de production nécessitant des fonctionnalités avancées:
+
+```bash
+docker-compose up -d
+```
+
+Cette configuration ajoute:
+- Loki pour la gestion avancée des logs
+- Promtail pour la collecte des logs
+- Node Exporter pour les métriques système
+- Watchtower pour les mises à jour automatiques
+
+## 🧰 Outils de maintenance
+
+| Script | Description |
+|--------|-------------|
+| `clean-docker.sh` | Nettoie complètement l'environnement Docker |
+| `fix-docker-loki-permissions.sh` | Résout les problèmes de permissions |
+| `docker-restart-grafana.sh` | Redémarre les services de monitoring |
+| `backup-docker-data.sh` | Sauvegarde les données importantes |
 
 ### Monitoring avec Grafana et Prometheus 🆕
 
