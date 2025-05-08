@@ -319,6 +319,40 @@
           }, 1000);
         });
       }
+      
+      // Ajouter le gestionnaire d'événement pour le bouton de réinitialisation
+      const resetStatsBtn = document.getElementById('resetStatsBtn');
+      const resetConfirmModal = document.getElementById('resetConfirmModal');
+      const cancelResetBtn = document.getElementById('cancelResetBtn');
+      const confirmResetBtn = document.getElementById('confirmResetBtn');
+      
+      if (resetStatsBtn) {
+        resetStatsBtn.addEventListener('click', function() {
+          // Afficher la boîte de dialogue de confirmation
+          resetConfirmModal.style.display = 'block';
+        });
+        
+        // Gérer le clic sur le bouton Annuler
+        cancelResetBtn.addEventListener('click', function() {
+          resetConfirmModal.style.display = 'none';
+        });
+        
+        // Gérer le clic en dehors de la boîte de dialogue
+        window.addEventListener('click', function(event) {
+          if (event.target === resetConfirmModal) {
+            resetConfirmModal.style.display = 'none';
+          }
+        });
+        
+        // Gérer le clic sur le bouton Confirmer
+        confirmResetBtn.addEventListener('click', function() {
+          // Fermer la boîte de dialogue
+          resetConfirmModal.style.display = 'none';
+          
+          // Appeler l'API de réinitialisation
+          resetStats();
+        });
+      }
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
@@ -400,6 +434,51 @@
       });
     }
     
+    // Fonction pour réinitialiser les statistiques via l'API
+    function resetStats() {
+      // Afficher un indicateur de chargement
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading-overlay';
+      loadingDiv.innerHTML = `
+        <div class="loading-spinner"></div>
+        <div class="loading-message">Réinitialisation en cours...</div>
+      `;
+      document.body.appendChild(loadingDiv);
+      
+      // Appeler l'API de réinitialisation
+      fetch('/api/reset-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Erreur lors de la réinitialisation des statistiques');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Supprimer l'indicateur de chargement
+        document.body.removeChild(loadingDiv);
+        
+        // Afficher un message de succès
+        alert('Les statistiques ont été réinitialisées avec succès');
+        
+        // Rafraîchir les statistiques
+        fetchStats();
+      })
+      .catch(error => {
+        // Supprimer l'indicateur de chargement
+        document.body.removeChild(loadingDiv);
+        
+        // Afficher un message d'erreur
+        console.error('Erreur lors de la réinitialisation:', error);
+        alert('Une erreur est survenue lors de la réinitialisation des statistiques. Veuillez réessayer plus tard.');
+      });
+    }
+
     function fetchStats() {
       fetch('/api/stats', {
         method: 'GET',
