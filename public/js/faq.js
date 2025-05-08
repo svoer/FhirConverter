@@ -20,33 +20,22 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     // Éléments DOM
-    const categoryList = document.getElementById('categoryList');
+    const categoryList = document.querySelector('.nav-items-container');
     const tocList = document.getElementById('tocList');
     const tocToggle = document.getElementById('tocToggle');
     // Éléments de recherche désactivés pour éviter les problèmes de performance
     // const faqSearch = document.getElementById('faqSearch');
     // const searchButton = document.getElementById('searchButton');
     
-    // Générer la navigation par catégorie
+    // Configurer les gestionnaires d'événements pour la navigation
     function generateCategoryNav() {
-        categoryList.innerHTML = '';
-        
-        faqCategories.forEach(category => {
-            const a = document.createElement('a');
-            a.href = `#${category.id}`;
-            a.textContent = category.name;
-            a.dataset.category = category.id;
+        // Au lieu de générer le menu, utiliser les éléments existants et ajouter dataset
+        categoryList.querySelectorAll('a.nav-item').forEach(link => {
+            // Extraire l'ID de la catégorie à partir du href
+            const categoryId = link.getAttribute('href').substring(1);
+            link.dataset.category = categoryId;
             
-            // Ajouter une icône pour chaque catégorie
-            const icon = document.createElement('i');
-            icon.className = getCategoryIcon(category.id);
-            a.insertBefore(icon, a.firstChild);
-            
-            categoryList.appendChild(a);
-        });
-        
-        // Ajouter les gestionnaires d'événements
-        categoryList.querySelectorAll('a').forEach(link => {
+            // Ajouter le gestionnaire d'événements pour le clic
             link.addEventListener('click', function(e) {
                 // Activer le lien cliqué
                 categoryList.querySelectorAll('a').forEach(a => a.classList.remove('active'));
@@ -76,10 +65,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Générer la table des matières
     function generateTableOfContents() {
+        if (!tocList) return;
+        
         tocList.innerHTML = '';
         
-        // Parcourir toutes les sections FAQ
-        document.querySelectorAll('.faq-section').forEach(section => {
+        // Parcourir toutes les sections de documentation
+        document.querySelectorAll('.documentation-section').forEach(section => {
             const sectionId = section.id;
             const sectionTitle = section.querySelector('h2').textContent;
             
@@ -111,7 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Activer la catégorie correspondante
                 const section = this.dataset.section;
                 categoryList.querySelectorAll('a').forEach(a => {
-                    if (a.dataset.category === section) {
+                    const categoryId = a.getAttribute('href').substring(1);
+                    if (categoryId === section) {
                         a.classList.add('active');
                     } else {
                         a.classList.remove('active');
