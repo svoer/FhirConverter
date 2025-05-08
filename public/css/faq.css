@@ -467,3 +467,18 @@ body.with-sidebar {
 .highlight-pulse {
     animation: highlight-pulse 1s ease-in-out;
 }
+
+/* Ajustements pour le footer dans la page FAQ */
+body.with-sidebar .footer {
+    width: 100%;
+    margin-left: 0;
+    padding: 1.5rem 0;
+    margin-top: 3rem;
+}
+
+body.with-sidebar .footer .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
