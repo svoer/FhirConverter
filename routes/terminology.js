@@ -53,10 +53,73 @@ const upload = multer({
 });
 
 // Répertoire des terminologies
-// Utiliser le répertoire volumes/french_terminology pour la compatibilité avec Docker
-const TERMINOLOGY_DIR = fs.existsSync(path.join(__dirname, '../volumes/french_terminology')) ? 
-  path.join(__dirname, '../volumes/french_terminology') : 
-  path.join(__dirname, '../french_terminology');
+// Logique améliorée pour choisir le répertoire contenant des fichiers valides
+let TERMINOLOGY_DIR = '';
+
+// Définir tous les emplacements possibles de terminologies
+const possibleTerminologyDirs = [
+  path.join(__dirname, '../french_terminology'),
+  path.join(__dirname, '../volumes/french_terminology'),
+  path.join(__dirname, '../../french_terminology'),
+  path.join(process.cwd(), 'french_terminology'),
+  path.join('/home/runner/workspace/volumes/french_terminology')
+];
+
+// Fonction pour valider le répertoire (vérifier s'il contient des fichiers JSON non vides)
+function isValidTerminologyDir(dir) {
+  if (!fs.existsSync(dir)) return false;
+  
+  try {
+    const files = fs.readdirSync(dir).filter(file => file.endsWith('.json'));
+    if (files.length === 0) return false;
+    
+    // Vérifier au moins un fichier non vide
+    for (const file of files) {
+      const stats = fs.statSync(path.join(dir, file));
+      if (stats.size > 50) return true; // Au moins un fichier valide (plus de 50 octets)
+    }
+    return false;
+  } catch (error) {
+    console.error(`[TERMINOLOGY] Erreur lors de la validation du répertoire ${dir}:`, error);
+    return false;
+  }
+}
+
+// Choisir le premier répertoire valide dans notre liste de priorité
+for (const dir of possibleTerminologyDirs) {
+  if (isValidTerminologyDir(dir)) {
+    TERMINOLOGY_DIR = dir;
+    console.log(`[TERMINOLOGY] Répertoire valide trouvé: ${dir}`);
+    break;
+  }
+}
+
+// Si aucun répertoire valide n'est trouvé, utiliser le premier qui existe simplement
+if (!TERMINOLOGY_DIR) {
+  for (const dir of possibleTerminologyDirs) {
+    if (fs.existsSync(dir)) {
+      TERMINOLOGY_DIR = dir;
+      console.warn(`[TERMINOLOGY] ATTENTION: Aucun répertoire valide trouvé, utilisation du répertoire existant: ${dir}`);
+      break;
+    }
+  }
+}
+
+// Dernier recours : utiliser le répertoire par défaut même s'il n'existe pas
+if (!TERMINOLOGY_DIR) {
+  TERMINOLOGY_DIR = path.join(__dirname, '../french_terminology');
+  console.error(`[TERMINOLOGY] ERREUR CRITIQUE: Aucun répertoire de terminologie trouvé. Utilisation du répertoire par défaut: ${TERMINOLOGY_DIR}`);
+  
+  // Créer le répertoire si nécessaire
+  if (!fs.existsSync(TERMINOLOGY_DIR)) {
+    try {
+      fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
+      console.log(`[TERMINOLOGY] Répertoire créé: ${TERMINOLOGY_DIR}`);
+    } catch (error) {
+      console.error(`[TERMINOLOGY] Impossible de créer le répertoire: ${TERMINOLOGY_DIR}`, error);
+    }
+  }
+}
 
 /**
  * @swagger
@@ -778,63 +841,232 @@ router.put('/files/:filename/metadata', adminAuthMiddleware, async (req, res) =>
 });
 
 /**
- * Récupérer le contenu d'un fichier JSON
+ * Récupérer le contenu d'un fichier JSON avec stratégie de fallback robuste
  * @param {string} filename - Nom du fichier
  * @returns {Object} Contenu du fichier JSON
  */
 function getJsonFileContent(filename) {
   try {
-    const filePath = path.join(TERMINOLOGY_DIR, filename);
+    // Chercher le fichier dans tous les emplacements possibles pour une fiabilité maximale
+    let filePath = path.join(TERMINOLOGY_DIR, filename);
+    let fileContent = null;
+    let validContent = false;
+    let jsonData = null;
     
-    console.log(`[TERMINOLOGY DEBUG] Tentative de lecture du fichier: ${filename}`);
-    console.log(`[TERMINOLOGY DEBUG] Chemin complet: ${filePath}`);
+    console.log(`[TERMINOLOGY] Tentative principale de lecture du fichier: ${filename}`);
+    console.log(`[TERMINOLOGY] Chemin principal: ${filePath}`);
     
+    // Vérifier si le fichier principal existe
     if (!fs.existsSync(filePath)) {
-      console.warn(`[TERMINOLOGY] Fichier non trouvé: ${filename} (chemin: ${filePath})`);
+      console.warn(`[TERMINOLOGY] Fichier principal non trouvé: ${filename} (chemin: ${filePath})`);
       
-      // Log additionnel pour faciliter le débogage
-      console.log(`[TERMINOLOGY] Répertoire courant: ${TERMINOLOGY_DIR}`);
-      console.log(`[TERMINOLOGY] Fichiers disponibles: ${fs.readdirSync(TERMINOLOGY_DIR).join(', ')}`);
+      // Chercher dans tous les autres emplacements possibles
+      for (const dir of possibleTerminologyDirs) {
+        if (dir === TERMINOLOGY_DIR) continue; // Déjà essayé
+        
+        const alternatePath = path.join(dir, filename);
+        if (fs.existsSync(alternatePath)) {
+          console.log(`[TERMINOLOGY] Fichier alternatif trouvé: ${alternatePath}`);
+          
+          try {
+            const stats = fs.statSync(alternatePath);
+            if (stats.size > 50) { // Minimum de taille pour un JSON valide
+              filePath = alternatePath;
+              console.log(`[TERMINOLOGY] Utilisation du fichier alternatif: ${filePath} (${stats.size} octets)`);
+              break;
+            } else {
+              console.warn(`[TERMINOLOGY] Fichier alternatif trop petit (${stats.size} octets): ${alternatePath}`);
+            }
+          } catch (statError) {
+            console.error(`[TERMINOLOGY] Erreur lors de l'analyse du fichier alternatif: ${alternatePath}`, statError);
+          }
+        }
+      }
       
-      return null;
+      // Si toujours pas trouvé, essayer la création d'un fichier de secours pour ce type
+      if (!fs.existsSync(filePath)) {
+        console.warn(`[TERMINOLOGY] Fichier ${filename} introuvable dans tous les emplacements possibles`);
+        
+        // Créer un objet par défaut selon le type de fichier
+        if (filename === 'ans_common_codes.json') {
+          jsonData = { 
+            metadata: {
+              version: "1.0.0",
+              description: "Fichier de secours pour common_codes",
+              created: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              source: "Secours automatique"
+            },
+            common_codes: {}
+          };
+          console.log(`[TERMINOLOGY] Création d'un objet de secours pour ${filename}`);
+          validContent = true;
+        } else if (filename === 'ans_oids.json') {
+          jsonData = {
+            metadata: {
+              version: "1.0.0",
+              description: "Fichier de secours pour oids",
+              created: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              source: "Secours automatique"
+            },
+            identifier_systems: {}
+          };
+          console.log(`[TERMINOLOGY] Création d'un objet de secours pour ${filename}`);
+          validContent = true;
+        } else if (filename === 'ans_terminology_systems.json') {
+          jsonData = {
+            metadata: {
+              version: "1.0.0",
+              description: "Fichier de secours pour terminology_systems",
+              created: new Date().toISOString(),
+              lastUpdated: new Date().toISOString(),
+              source: "Secours automatique"
+            },
+            systems: {}
+          };
+          console.log(`[TERMINOLOGY] Création d'un objet de secours pour ${filename}`);
+          validContent = true;
+        } else {
+          console.error(`[TERMINOLOGY] Impossible de créer un objet de secours pour ${filename}, type de fichier inconnu`);
+          // Retourner un objet vide par défaut
+          return {};
+        }
+        
+        // Si un fichier de secours a été créé dans la mémoire, retourner cet objet
+        if (validContent && jsonData) {
+          console.log(`[TERMINOLOGY] Utilisation d'un objet de secours en mémoire pour ${filename}`);
+          
+          // Essayer d'écrire ce fichier pour les futurs appels
+          try {
+            if (!fs.existsSync(TERMINOLOGY_DIR)) {
+              fs.mkdirSync(TERMINOLOGY_DIR, { recursive: true });
+            }
+            fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2), 'utf8');
+            console.log(`[TERMINOLOGY] Fichier de secours créé sur disque: ${filePath}`);
+          } catch (writeError) {
+            console.error(`[TERMINOLOGY] Impossible d'écrire le fichier de secours: ${filePath}`, writeError);
+          }
+          
+          return jsonData;
+        }
+        
+        return {};
+      }
     }
     
-    // Log la taille du fichier
-    const stats = fs.statSync(filePath);
-    console.log(`[TERMINOLOGY DEBUG] Taille du fichier: ${stats.size} octets`);
-    
-    // Lire le contenu
-    const content = fs.readFileSync(filePath, 'utf8');
-    console.log(`[TERMINOLOGY DEBUG] Contenu lu, longueur de la chaîne: ${content.length} caractères`);
-    
-    // Vérifier si le contenu est valide
-    if (!content || content.trim() === '') {
-      console.error(`[TERMINOLOGY] Fichier vide ou uniquement avec des espaces: ${filename}`);
-      return {};
-    }
-    
-    // Parser le JSON
+    // À ce stade, nous avons soit le fichier original, soit un alternatif valide
     try {
-      const jsonData = JSON.parse(content);
-      console.log(`[TERMINOLOGY DEBUG] JSON parsé avec succès, clés principales: ${Object.keys(jsonData).join(', ')}`);
-      return jsonData;
-    } catch (parseError) {
-      console.error(`[TERMINOLOGY] Erreur de parsing JSON pour ${filename}:`, parseError.message);
-      console.log(`[TERMINOLOGY DEBUG] Premiers 100 caractères du contenu: ${content.substring(0, 100)}...`);
-      // En cas d'erreur de parsing, on renvoie un objet vide plutôt que null
+      // Log la taille du fichier
+      const stats = fs.statSync(filePath);
+      console.log(`[TERMINOLOGY] Taille du fichier: ${stats.size} octets`);
+      
+      // Lire le contenu
+      fileContent = fs.readFileSync(filePath, 'utf8');
+      console.log(`[TERMINOLOGY] Contenu lu, longueur de la chaîne: ${fileContent.length} caractères`);
+      
+      // Vérifier si le contenu est valide
+      if (!fileContent || fileContent.trim() === '') {
+        console.error(`[TERMINOLOGY] Fichier vide ou uniquement avec des espaces: ${filename}`);
+        
+        // Rechercher une copie de sauvegarde récente
+        for (const dir of possibleTerminologyDirs) {
+          const backupPath = path.join(dir, `backup_${filename}`);
+          if (fs.existsSync(backupPath)) {
+            try {
+              const backupStats = fs.statSync(backupPath);
+              if (backupStats.size > 50) {
+                console.log(`[TERMINOLOGY] Utilisation d'une sauvegarde: ${backupPath}`);
+                fileContent = fs.readFileSync(backupPath, 'utf8');
+                break;
+              }
+            } catch (backupError) {
+              console.error(`[TERMINOLOGY] Erreur lors de la lecture de la sauvegarde: ${backupPath}`, backupError);
+            }
+          }
+        }
+        
+        // Si toujours pas de contenu valide
+        if (!fileContent || fileContent.trim() === '') {
+          return {};
+        }
+      }
+      
+      // Parser le JSON
+      try {
+        jsonData = JSON.parse(fileContent);
+        const keys = Object.keys(jsonData);
+        console.log(`[TERMINOLOGY] JSON parsé avec succès, clés principales: ${keys.join(', ')}`);
+        
+        // Vérification supplémentaire sur le contenu
+        if (keys.length === 0) {
+          console.warn(`[TERMINOLOGY] Fichier JSON valide mais vide: ${filename}`);
+          return {};
+        }
+        
+        // Création automatique d'une sauvegarde
+        try {
+          const backupPath = path.join(TERMINOLOGY_DIR, `backup_${filename}`);
+          fs.writeFileSync(backupPath, fileContent, 'utf8');
+          console.log(`[TERMINOLOGY] Sauvegarde créée: ${backupPath}`);
+        } catch (backupError) {
+          console.error(`[TERMINOLOGY] Impossible de créer une sauvegarde: ${backupError.message}`);
+        }
+        
+        return jsonData;
+      } catch (parseError) {
+        console.error(`[TERMINOLOGY] Erreur de parsing JSON pour ${filename}:`, parseError.message);
+        console.log(`[TERMINOLOGY] Premiers 100 caractères du contenu: ${fileContent.substring(0, 100)}...`);
+        
+        // Essayer de réparer le JSON
+        try {
+          // Tentative 1: Ajouter des accolades manquantes
+          if (!fileContent.trim().startsWith('{')) {
+            fileContent = '{' + fileContent;
+          }
+          if (!fileContent.trim().endsWith('}')) {
+            fileContent = fileContent + '}';
+          }
+          jsonData = JSON.parse(fileContent);
+          console.log(`[TERMINOLOGY] JSON réparé automatiquement (accolades): ${filename}`);
+          return jsonData;
+        } catch (repair1Error) {
+          // Tentative 2: Forcer un objet minimal valide basé sur le nom du fichier
+          if (filename === 'ans_common_codes.json') {
+            return { common_codes: {} };
+          } else if (filename === 'ans_oids.json') {
+            return { identifier_systems: {} };
+          } else if (filename === 'ans_terminology_systems.json') {
+            return { systems: {} };
+          } else {
+            return {};
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier ${filename} :`, error);
+      
+      // Log supplémentaire pour débogage
+      if (error.code === 'ENOENT') {
+        console.error(`[TERMINOLOGY] Fichier introuvable (ENOENT): ${filePath}`);
+      } else if (error instanceof SyntaxError) {
+        console.error(`[TERMINOLOGY] Erreur de parsing JSON pour le fichier: ${filename}`);
+      }
+      
+      // Pour les fichiers spécifiques, créer des objets de secours vides
+      if (filename === 'ans_common_codes.json') {
+        return { common_codes: {} };
+      } else if (filename === 'ans_oids.json') {
+        return { identifier_systems: {} };
+      } else if (filename === 'ans_terminology_systems.json') {
+        return { systems: {} };
+      }
+      
+      // En cas d'erreur, on renvoie un objet vide
       return {};
     }
-  } catch (error) {
-    console.error(`[TERMINOLOGY] Erreur lors de la lecture du fichier ${filename} :`, error);
-    
-    // Log supplémentaire pour débogage
-    if (error.code === 'ENOENT') {
-      console.error(`[TERMINOLOGY] Fichier introuvable (ENOENT): ${filePath}`);
-    } else if (error instanceof SyntaxError) {
-      console.error(`[TERMINOLOGY] Erreur de parsing JSON pour le fichier: ${filename}`);
-    }
-    
-    // En cas d'erreur, on renvoie un objet vide plutôt que null
+  } catch (criticalError) {
+    console.error(`[TERMINOLOGY] Erreur critique lors de la récupération de ${filename}:`, criticalError);
     return {};
   }
 }
