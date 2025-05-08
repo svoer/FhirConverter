@@ -85,6 +85,84 @@
   margin-left: 10px;
 }
 
+/* Statistiques de conversion avec gradient */
+.conversion-stats {
+  padding: 10px 0;
+}
+
+.refresh-info {
+  font-size: 0.8rem;
+  color: #777;
+  margin-left: auto;
+}
+
+#statsUpdateTime, #lastUpdateTime {
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.metric-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.gradient-card {
+  background: linear-gradient(135deg, #fff 0%, #fff 80%, rgba(241, 136, 5, 0.1) 100%);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(to bottom, #e74c3c, #f18805);
+  border-image-slice: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.metric-icon {
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  background: linear-gradient(135deg, #e74c3c 0%, #f18805 100%);
+  box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+}
+
+.metric-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.metric-label {
+  font-size: 0.85rem;
+  color: #777;
+}
+
 /* Indicateur de temps de la dernière mise à jour */
 .metrics-refresh-time {
   font-size: 0.8rem;
@@ -93,14 +171,9 @@
   text-align: right;
 }
 
-#lastUpdateTime {
-  font-weight: bold;
-  color: #e74c3c;
-}
-
 /* Media queries pour la responsivité */
 @media (max-width: 768px) {
-  .system-metrics {
+  .system-metrics, .metrics-grid {
     grid-template-columns: 1fr;
   }
   
@@ -119,5 +192,9 @@
   .metric-info {
     margin-left: 0;
     margin-top: 5px;
+  }
+  
+  .metric-card {
+    margin-bottom: 10px;
   }
 }

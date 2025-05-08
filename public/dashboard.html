@@ -79,34 +79,52 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Statistiques de conversion</h2>
+          <div class="refresh-info">
+            Dernière mise à jour: <span id="statsUpdateTime"></span>
+          </div>
         </div>
         
         <div class="conversion-stats">
           <div class="metrics-grid">
-            <div class="metric-card">
-              <span class="metric-label">Temps moyen de conversion</span>
-              <span class="metric-value" id="avg-conversion-time">0 ms</span>
+            <div class="metric-card gradient-card">
+              <div class="metric-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-value" id="avg-conversion-time">0 ms</span>
+                <span class="metric-label">Temps moyen de conversion</span>
+              </div>
             </div>
             
-            <div class="metric-card">
-              <span class="metric-label">Dernière conversion</span>
-              <span class="metric-value" id="last-conversion-time">0 ms</span>
+            <div class="metric-card gradient-card">
+              <div class="metric-icon">
+                <i class="fas fa-bolt"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-value" id="last-conversion-time">0 ms</span>
+                <span class="metric-label">Dernière conversion</span>
+              </div>
             </div>
             
-            <div class="metric-card">
-              <span class="metric-label">Temps min/max</span>
-              <span class="metric-value" id="minmax-conversion-time">0 / 0 ms</span>
+            <div class="metric-card gradient-card">
+              <div class="metric-icon">
+                <i class="fas fa-tachometer-alt"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-value" id="minmax-conversion-time">0 / 0 ms</span>
+                <span class="metric-label">Temps min/max</span>
+              </div>
             </div>
             
-            <div class="metric-card">
-              <span class="metric-label">Ressources moyennes générées</span>
-              <span class="metric-value" id="avg-resources">0</span>
+            <div class="metric-card gradient-card">
+              <div class="metric-icon">
+                <i class="fas fa-cubes"></i>
+              </div>
+              <div class="metric-content">
+                <span class="metric-value" id="avg-resources">0</span>
+                <span class="metric-label">Ressources moyennes générées</span>
+              </div>
             </div>
-          </div>
-          
-          <!-- Espace réservé pour des indicateurs supplémentaires -->
-          <div id="metricsUpdateIndicator" class="update-indicator">
-            Métriques mises à jour <span id="lastUpdateTime"></span>
           </div>
         </div>
       </div>
@@ -513,12 +531,20 @@
         messageTypesChart.update();
       }
       
-      // Mettre à jour l'indicateur de dernière mise à jour
+      // Mettre à jour les indicateurs de dernière mise à jour
       const now = new Date();
       const timeStr = now.toLocaleTimeString();
+      
+      // Mise à jour pour les métriques avancées
       const lastUpdateElement = document.getElementById('lastUpdateTime');
       if (lastUpdateElement) {
         lastUpdateElement.textContent = timeStr;
+      }
+      
+      // Mise à jour pour les statistiques de conversion
+      const statsUpdateElement = document.getElementById('statsUpdateTime');
+      if (statsUpdateElement) {
+        statsUpdateElement.textContent = timeStr;
       }
     }
     
@@ -825,7 +851,7 @@
       const timeStr = now.toLocaleTimeString();
       const dateStr = now.toLocaleDateString();
       
-      // Ajouter l'élément d'horodatage s'il n'existe pas
+      // Ajouter l'élément d'horodatage pour les métriques avancées s'il n'existe pas
       if (!document.querySelector('.metrics-refresh-time')) {
         const metricsCard = document.querySelector('.card:has(.system-metrics)');
         if (metricsCard) {
@@ -840,16 +866,36 @@
           }
         }
       } else {
-        document.getElementById('lastUpdateTime').textContent = timeStr;
+        const lastUpdateElement = document.getElementById('lastUpdateTime');
+        if (lastUpdateElement) {
+          lastUpdateElement.textContent = timeStr;
+        }
       }
       
-      // Mettre à jour l'horodatage chaque fois que les statistiques sont rafraîchies
+      // Mise à jour de l'horodatage pour les statistiques de conversion
+      const statsUpdateElement = document.getElementById('statsUpdateTime');
+      if (statsUpdateElement) {
+        statsUpdateElement.textContent = timeStr;
+      }
+      
+      // Mettre à jour les horodatages chaque fois que les statistiques sont rafraîchies
       const originalFetchStats = fetchStats;
       fetchStats = function() {
         originalFetchStats();
         const now = new Date();
         const timeStr = now.toLocaleTimeString();
-        document.getElementById('lastUpdateTime').textContent = timeStr;
+        
+        // Mise à jour pour les métriques avancées
+        const lastUpdateElement = document.getElementById('lastUpdateTime');
+        if (lastUpdateElement) {
+          lastUpdateElement.textContent = timeStr;
+        }
+        
+        // Mise à jour pour les statistiques de conversion
+        const statsUpdateElement = document.getElementById('statsUpdateTime');
+        if (statsUpdateElement) {
+          statsUpdateElement.textContent = timeStr;
+        }
       };
     }
   </script>
