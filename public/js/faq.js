@@ -24,8 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const categoryList = document.getElementById('categoryList');
     const tocList = document.getElementById('tocList');
     const tocToggle = document.getElementById('tocToggle');
-    const faqSearch = document.getElementById('faqSearch');
-    const searchButton = document.getElementById('searchButton');
+    // Éléments de recherche désactivés pour éviter les problèmes de performance
+    // const faqSearch = document.getElementById('faqSearch');
+    // const searchButton = document.getElementById('searchButton');
     
     // Générer la navigation par catégorie
     function generateCategoryNav() {
