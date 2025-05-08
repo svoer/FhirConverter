@@ -21,8 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Éléments DOM
     const categoryList = document.querySelector('.nav-items-container');
-    const tocList = document.getElementById('tocList');
-    const tocToggle = document.getElementById('tocToggle');
     // Éléments de recherche désactivés pour éviter les problèmes de performance
     // const faqSearch = document.getElementById('faqSearch');
     // const searchButton = document.getElementById('searchButton');
@@ -63,70 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return icons[categoryId] || 'fas fa-question-circle';
     }
     
-    // Générer la table des matières
-    function generateTableOfContents() {
-        if (!tocList) return;
-        
-        tocList.innerHTML = '';
-        
-        // Parcourir toutes les sections de documentation
-        document.querySelectorAll('.documentation-section').forEach(section => {
-            const sectionId = section.id;
-            const sectionTitle = section.querySelector('h2').textContent;
-            
-            // Ajouter le titre de la section
-            const sectionLi = document.createElement('li');
-            sectionLi.classList.add('section-title');
-            sectionLi.textContent = sectionTitle;
-            tocList.appendChild(sectionLi);
-            
-            // Ajouter chaque question de la section
-            section.querySelectorAll('.faq-item h3').forEach(question => {
-                const questionId = question.id;
-                const questionText = question.textContent;
-                
-                const questionLi = document.createElement('li');
-                const questionLink = document.createElement('a');
-                questionLink.href = `#${questionId}`;
-                questionLink.textContent = questionText;
-                questionLink.dataset.section = sectionId;
-                
-                questionLi.appendChild(questionLink);
-                tocList.appendChild(questionLi);
-            });
-        });
-        
-        // Ajouter les événements de clic
-        tocList.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', function(e) {
-                // Activer la catégorie correspondante
-                const section = this.dataset.section;
-                categoryList.querySelectorAll('a').forEach(a => {
-                    const categoryId = a.getAttribute('href').substring(1);
-                    if (categoryId === section) {
-                        a.classList.add('active');
-                    } else {
-                        a.classList.remove('active');
-                    }
-                });
-                
-                // Ouvrir l'élément FAQ correspondant
-                const targetId = this.getAttribute('href').substring(1);
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
-                    const faqItem = targetElement.closest('.faq-item');
-                    if (faqItem && !faqItem.classList.contains('active')) {
-                        faqItem.classList.add('active');
-                    }
-                    
-                    // Faire défiler jusqu'à la question après un court délai
-                    setTimeout(() => {
-                        targetElement.scrollIntoView({ behavior: 'smooth' });
-                    }, 100);
-                }
-            });
-        });
-    }
+    // Fonction supprimée : generateTableOfContents
     
     // Configurer les interactions des FAQ items - Approche simplifiée
     function setupFAQInteractions() {
@@ -195,15 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(script);
     }
     
-    // Gestionnaire pour le toggle de la table des matières
-    function setupTOCToggle() {
-        tocToggle.addEventListener('click', function() {
-            const list = document.getElementById('tocList');
-            list.classList.toggle('visible');
-            this.querySelector('i').classList.toggle('fa-chevron-down');
-            this.querySelector('i').classList.toggle('fa-chevron-up');
-        });
-    }
+    // Fonction supprimée : setupTOCToggle
     
     // Fonction de recherche
     function setupSearch() {
@@ -409,9 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser tous les composants
     function init() {
         generateCategoryNav();
-        generateTableOfContents();
         setupFAQInteractions();
-        setupTOCToggle();
         // setupSearch() est désactivé car les éléments de recherche sont commentés
         setupBackToTop();
         
