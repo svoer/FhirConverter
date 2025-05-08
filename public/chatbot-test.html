@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test du Chatbot Circulaire FHIRHub</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <!-- Inclusions pour le chatbot de support - version workflows (design circulaire) -->
+    <link rel="stylesheet" href="/css/support-chatbot.css">
+    <link rel="stylesheet" href="/css/support-chatbot-circular.css">
+    <script src="/js/workflow-chatbot.js" defer></script>
+    <script src="/js/support-chatbot-circular.js" defer></script>
+    
+    <style>
+        body {
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        p {
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h1>Test du Nouveau Chatbot Circulaire</h1>
+        <p>Cette page teste le nouveau design circulaire du bouton de support FHIRHub.</p>
+        <p>Vous devriez voir un cercle rouge-orange en bas à droite de l'écran. Cliquez dessus pour ouvrir le chatbot.</p>
+        <p>Le bouton de support fonctionne comme suit :</p>
+        <ul>
+            <li>À l'état fermé : une icône ronde avec un dégradé rouge-orange</li>
+            <li>À l'état ouvert : une fenêtre de chat complète avec les fonctionnalités normales</li>
+        </ul>
+        <p>Cette conception améliore l'expérience utilisateur en rendant l'interface plus moderne et moins intrusive.</p>
+    </div>
+    
+    <!-- Structure HTML du chatbot -->
+    <div class="chatbot-container">
+        <div class="chatbot-header">
+            <div class="chatbot-title">
+                <i class="fas fa-comment-dots"></i> Assistant FHIRHub
+            </div>
+        </div>
+        <div class="chatbot-body">
+            <div class="chatbot-messages">
+                <div class="message system">
+                    Bonjour ! Je suis l'assistant FHIRHub. Comment puis-je vous aider aujourd'hui ?
+                </div>
+            </div>
+            <div class="chatbot-input-container">
+                <input type="text" id="chatbot-input" placeholder="Posez votre question ici...">
+                <button id="chatbot-send">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
