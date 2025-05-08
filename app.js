@@ -733,12 +733,23 @@ app.post('/api/convert/validate', authCombined, (req, res) => {
  *         description: Erreur serveur
  */
 app.get('/api/stats', (req, res) => {
+  // Ajout d'un en-tête pour éviter la mise en cache côté client
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  
   try {
+    // Générer un timestamp unique pour garantir des données fraîches à chaque requête
+    const timestamp = new Date().getTime();
+    
     let conversionCount = { count: 0 };
     let conversionStats = null;
     let lastConversion = null;
 
     try {
+      // Ajout d'un log pour débogage
+      console.log('[STATS] Récupération des statistiques avec timestamp:', timestamp);
       conversionCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
     } catch (err) {
       console.warn('[STATS] Erreur lors du comptage des conversions:', err.message);
@@ -884,6 +895,7 @@ app.get('/api/stats', (req, res) => {
       success: true,
       data: {
         conversions: conversions,
+        timestamp: timestamp, // Ajouter un timestamp pour éviter la mise en cache côté client
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         timeSavedHours: parseFloat(timeSavedHours), // Ajouter cette métrique
