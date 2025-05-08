@@ -3,13 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ - FHIRHub</title>
+    <title>FAQ Technique | FHIRHub</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/sidebar-menu.css">
     <link rel="stylesheet" href="/css/faq.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="/js/include-sidebar.js" defer></script>
-    <script src="/js/faq.js" defer></script>
+    <style>
+        /* Styles pour le bouton "Retour en haut" */
+        .back-to-top {
+            display: block;
+            position: fixed;
+            bottom: 40px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
+            border-radius: 50%;
+            color: white;
+            text-align: center;
+            line-height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-decoration: none;
+        }
+        
+        .back-to-top.visible {
+            opacity: 1;
+        }
+        
+        /* Styles pour les surlignages de recherche */
+        mark.highlight {
+            background: #FFEB3B;
+            padding: 0 3px;
+            border-radius: 2px;
+            box-shadow: 0 0 1px rgba(0,0,0,0.2);
+        }
+        
+        mark.highlight-pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { background-color: #FFEB3B; }
+            50% { background-color: #FFD54F; }
+            100% { background-color: #FFEB3B; }
+        }
+        
+        /* Style pour le message "Aucun résultat" */
+        .no-results {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+    </style>
 </head>
 <body class="with-sidebar">
     <!-- Le menu latéral sera injecté ici -->
