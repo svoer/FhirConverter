@@ -445,13 +445,18 @@
     }
     
     function updateSystemMetrics(memory, conversionStats, applicationStats) {
-      // Continuer même si memory est null, ne pas retourner
+      // Continuer uniquement avec des données réelles, ne pas utiliser de valeurs par défaut
       
-      // Calculer l'utilisation de la mémoire en MB, avec des valeurs par défaut si memory est null
-      const usedMemory = memory ? Math.round(memory.heapUsed / 1024 / 1024) : 18;
-      const totalMemory = memory ? Math.round(memory.heapTotal / 1024 / 1024) : 24;
+      // Calculer l'utilisation de la mémoire en MB, avec des valeurs réelles uniquement
+      const usedMemory = memory ? Math.round(memory.heapUsed / 1024 / 1024) : null;
       
-      // Mettre à jour le graphique de mémoire
+      // Si la mémoire réelle n'est pas disponible, ne pas mettre à jour le graphique
+      if (usedMemory === null) {
+        console.warn("Données mémoire non disponibles, graphique non mis à jour");
+        return;
+      }
+      
+      // Mettre à jour le graphique de mémoire avec des données RÉELLES seulement
       const memoryChart = Chart.getChart(document.getElementById('memoryChart'));
       if (memoryChart) {
         // Ajouter la nouvelle valeur et supprimer la plus ancienne
@@ -462,20 +467,28 @@
         memoryChart.update();
       }
       
-      // Mettre à jour le graphique des tendances de temps de conversion
-      // Toujours mettre à jour même si les statistiques de conversion ne sont pas disponibles
+      // Mettre à jour le graphique des tendances de temps de conversion avec des données RÉELLES
       const conversionTrendChart = Chart.getChart(document.getElementById('conversionTrendChart'));
       if (conversionTrendChart) {
-        // Déterminer la valeur à utiliser pour la mise à jour
-        let newValue = 250; // Valeur par défaut si aucune donnée n'est disponible
-        
-        if (conversionStats) {
-          if (conversionStats.lastTime && conversionStats.lastTime > 0) {
-            newValue = conversionStats.lastTime;
-          } else if (conversionStats.avgTime && conversionStats.avgTime > 0) {
-            newValue = conversionStats.avgTime;
-          }
+        // N'utiliser que des données réelles, ne pas avoir de valeur par défaut
+        if (!conversionStats || (!conversionStats.lastTime && !conversionStats.avgTime)) {
+          console.warn("Données de temps de conversion non disponibles, graphique non mis à jour");
+          return;
         }
+        
+        // Déterminer la valeur réelle à utiliser pour la mise à jour
+        let newValue;
+        
+        if (conversionStats.lastTime && conversionStats.lastTime > 0) {
+          newValue = conversionStats.lastTime;
+        } else if (conversionStats.avgTime && conversionStats.avgTime > 0) {
+          newValue = conversionStats.avgTime;
+        } else {
+          console.warn("Aucune donnée valide de temps de conversion disponible");
+          return;
+        }
+        
+        console.log("Mise à jour du graphique de tendance avec valeur réelle:", newValue);
         
         // Ajouter la nouvelle valeur et supprimer la plus ancienne
         conversionTrendChart.data.datasets[0].data.push(newValue);
@@ -485,97 +498,77 @@
         conversionTrendChart.update();
       }
       
-      // Mettre à jour le graphique de distribution des ressources FHIR
-      // Distribution basée sur les données des conversions réelles
+      // Mettre à jour le graphique de distribution des ressources FHIR avec des données RÉELLES uniquement
       const resourceDistChart = Chart.getChart(document.getElementById('resourceDistChart'));
       if (resourceDistChart) {
-        // Calculer la distribution basée sur les statistiques disponibles
-        // 5 catégories: 1, 2, 3, 4-5, 6+
-        let distributionData = [0, 0, 0, 0, 0];
+        console.log("Mise à jour du graphique distribution ressources FHIR");
         
-        // Toujours calculer une distribution, même si conversionStats n'est pas disponible
-        const avgResources = conversionStats && conversionStats.avgResources > 0 ? 
-                            Math.round(conversionStats.avgResources) : 3; // Valeur par défaut = 3
+        // Si aucune donnée de conversion n'est disponible, ne pas mettre à jour le graphique
+        if (!conversionStats || !conversionStats.avgResources) {
+          console.warn("Données de ressources FHIR non disponibles, graphique non mis à jour");
+          return;
+        }
         
-        // Distribution par défaut basée sur le nombre moyen de ressources et nombre total de conversions
-        // Assurer qu'il y a toujours au moins une valeur non nulle pour éviter les graphiques vides
-        console.log("Mise à jour du graphique distribution ressources FHIR, conversions:", conversions);
-        console.log("Moyenne de ressources par conversion:", avgResources);
-        const totalConversions = Math.max(10, conversions); // Au moins 10 conversions pour meilleure visualisation
-        
-        if (avgResources === 1) {
-          distributionData = [
-            Math.max(4, Math.round(totalConversions * 0.7)),  // 70% ont 1 ressource
-            Math.max(3, Math.round(totalConversions * 0.2)),  // 20% ont 2 ressources
-            Math.max(2, Math.round(totalConversions * 0.08)), // 8% ont 3 ressources
-            Math.max(1, Math.round(totalConversions * 0.02)), // 2% ont 4-5 ressources
-            Math.max(1, 0)                                    // 0% ont 6+ ressources (mais au moins 1)
-          ];
-        } else if (avgResources === 2) {
-          distributionData = [
-            Math.max(3, Math.round(totalConversions * 0.2)),  // 20% ont 1 ressource
-            Math.max(4, Math.round(totalConversions * 0.6)),  // 60% ont 2 ressources
-            Math.max(3, Math.round(totalConversions * 0.15)), // 15% ont 3 ressources
-            Math.max(1, Math.round(totalConversions * 0.05)), // 5% ont 4-5 ressources
-            Math.max(1, 0)                                    // 0% ont 6+ ressources (mais au moins 1)
-          ];
-        } else if (avgResources === 3) {
-          distributionData = [
-            Math.max(2, Math.round(totalConversions * 0.1)),  // 10% ont 1 ressource
-            Math.max(3, Math.round(totalConversions * 0.25)), // 25% ont 2 ressources
-            Math.max(4, Math.round(totalConversions * 0.5)),  // 50% ont 3 ressources
-            Math.max(2, Math.round(totalConversions * 0.15)), // 15% ont 4-5 ressources
-            Math.max(1, 0)                                    // 0% ont 6+ ressources (mais au moins 1)
-          ];
-        } else if (avgResources >= 4 && avgResources <= 5) {
-          distributionData = [
-            Math.max(1, Math.round(totalConversions * 0.05)), // 5% ont 1 ressource
-            Math.max(2, Math.round(totalConversions * 0.1)),  // 10% ont 2 ressources
-            Math.max(3, Math.round(totalConversions * 0.25)), // 25% ont 3 ressources
-            Math.max(4, Math.round(totalConversions * 0.55)), // 55% ont 4-5 ressources
-            Math.max(2, Math.round(totalConversions * 0.05))  // 5% ont 6+ ressources
+        // Si les statistiques réelles de distribution sont disponibles dans l'API, utiliser celles-ci
+        if (conversionStats.resourcesDistribution) {
+          console.log("Utilisation des données réelles de distribution des ressources:", conversionStats.resourcesDistribution);
+          resourceDistChart.data.datasets[0].data = [
+            conversionStats.resourcesDistribution.single || 0,
+            conversionStats.resourcesDistribution.two || 0,
+            conversionStats.resourcesDistribution.three || 0,
+            conversionStats.resourcesDistribution.fourToFive || 0,
+            conversionStats.resourcesDistribution.sixPlus || 0
           ];
         } else {
-          distributionData = [
-            Math.max(1, 0),                                   // 0% ont 1 ressource (mais au moins 1)
-            Math.max(2, Math.round(totalConversions * 0.05)), // 5% ont 2 ressources
-            Math.max(3, Math.round(totalConversions * 0.15)), // 15% ont 3 ressources
-            Math.max(3, Math.round(totalConversions * 0.3)),  // 30% ont 4-5 ressources
-            Math.max(4, Math.round(totalConversions * 0.5))   // 50% ont 6+ ressources
-          ];
+          // Utiliser une approche simplifiée basée sur les données réelles disponibles
+          console.log("Données de distribution détaillée non disponibles, utilisation de l'approche simplifiée");
+          
+          // Afficher simplement le nombre total de conversions dans la catégorie correspondant à la moyenne
+          const avgResources = Math.round(conversionStats.avgResources);
+          console.log("Moyenne réelle de ressources par conversion:", avgResources);
+          
+          // Initialiser toutes les catégories à zéro
+          const distributionData = [0, 0, 0, 0, 0];
+          
+          // Placer toutes les conversions dans la catégorie correspondant à la moyenne
+          // C'est une approche simplifiée mais basée sur des données réelles
+          const conversionsCount = parseInt(conversions);
+          if (avgResources === 1) distributionData[0] = conversionsCount;
+          else if (avgResources === 2) distributionData[1] = conversionsCount;
+          else if (avgResources === 3) distributionData[2] = conversionsCount;
+          else if (avgResources >= 4 && avgResources <= 5) distributionData[3] = conversionsCount;
+          else if (avgResources >= 6) distributionData[4] = conversionsCount;
+          
+          console.log("Distribution simplifiée basée sur la moyenne réelle de ressources:", distributionData);
+          
+          // Mettre à jour avec les données disponibles
+          resourceDistChart.data.datasets[0].data = distributionData;
         }
         
-        // Assurer que la somme des distributions correspond au total des conversions
-        const distributionSum = distributionData.reduce((a, b) => a + b, 0);
-        if (distributionSum < totalConversions) {
-          // Distribuer la différence proportionnellement
-          const diff = totalConversions - distributionSum;
-          const maxIndex = distributionData.indexOf(Math.max(...distributionData));
-          distributionData[maxIndex] += diff; // Ajouter le reste à la catégorie la plus peuplée
-        }
-        
-        // Mettre à jour les données du graphique
-        resourceDistChart.data.datasets[0].data = distributionData;
+        // Rafraîchir le graphique
         resourceDistChart.update();
       }
       
-      // Mettre à jour le graphique de taux de réussite
-      // Utiliser les données réelles de conversions
+      // Mettre à jour le graphique de taux de réussite en utilisant uniquement des données RÉELLES
       const successRateChart = Chart.getChart(document.getElementById('successRateChart'));
       if (successRateChart) {
         // Log pour débogage
         console.log("Mise à jour du graphique taux de réussite avec conversions:", conversions);
         
-        // Pour garantir qu'il y a toujours au moins une conversion réussie affichée
-        // même si les données réelles sont à zéro, pour éviter les graphiques vides
-        const totalSuccessful = Math.max(20, conversions); // Au moins 20 pour être visible
+        // Récupérer les données réelles sur les conversions réussies et en erreur
+        // Si ces données ne sont pas disponibles via l'API, on peut utiliser ce qui suit comme temporaire
+        // jusqu'à ce que l'API soit mise à jour pour fournir ces données
+        const successfulCount = conversionStats && typeof conversionStats.successCount !== 'undefined' 
+          ? conversionStats.successCount 
+          : conversions; // Par défaut, toutes les conversions sont réussies
         
-        // Simuler un petit nombre d'erreurs pour avoir un graphique représentatif (~5%)
-        const totalErrors = Math.max(1, Math.round(totalSuccessful * 0.05));
+        const errorCount = conversionStats && typeof conversionStats.errorCount !== 'undefined'
+          ? conversionStats.errorCount
+          : 0; // Par défaut, pas d'erreurs si non spécifié
         
-        console.log("Données taux de réussite:", { totalSuccessful, totalErrors });
+        console.log("Données réelles taux de réussite:", { successfulCount, errorCount });
         
-        successRateChart.data.datasets[0].data = [totalSuccessful, totalErrors];
+        successRateChart.data.datasets[0].data = [successfulCount, errorCount];
         successRateChart.update();
       }
       
