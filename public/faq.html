@@ -1099,17 +1099,746 @@ async function validateFHIRResource(resource, profile = null) {
             <!-- Ajoutez les autres sections ici... -->
             <section id="ai-integration" class="faq-section">
                 <h2>Intégration IA</h2>
-                <!-- Ajoutez les FAQ sur l'intégration IA ici -->
+                
+                <div class="faq-item">
+                    <h3 id="ai-provider-architecture">Comment est structurée l'architecture d'intégration des modèles d'IA dans FHIRHub ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise une architecture modulaire d'intégration IA basée sur le pattern "Provider". Cette architecture permet de connecter différents modèles d'IA sans modifier le code de base, en suivant ces principes :</p>
+                        
+                        <ol>
+                            <li><strong>Table ai_providers :</strong> Stocke les configurations des différents fournisseurs d'IA (clés API, endpoints, paramètres)</li>
+                            <li><strong>Factory pattern :</strong> La classe AIProviderFactory dans <code>src/services/hl7AIService.js</code> instancie dynamiquement le bon provider basé sur les enregistrements de la base de données</li>
+                            <li><strong>Interface commune :</strong> Chaque provider implémente la même interface avec des méthodes comme <code>analyzeMessage()</code> et <code>suggestMapping()</code></li>
+                        </ol>
+                        
+                        <p>Le code clé de cette architecture est :</p>
+                        
+                        <pre><code>// src/services/hl7AIService.js
+class AIProviderFactory {
+  static createProvider(config) {
+    switch(config.type.toLowerCase()) {
+      case 'mistral':
+        return new MistralProvider(config);
+      case 'openai':
+        return new OpenAIProvider(config);
+      case 'local':
+        return new LocalLLMProvider(config);
+      default:
+        throw new Error(`Provider type non supporté: ${config.type}`);
+    }
+  }
+}
+
+// Instanciation dynamique du provider actif
+const createActiveAIProvider = async () => {
+  const activeProviders = await db.getAllActiveProviders();
+  if (activeProviders.length === 0) {
+    return new FallbackProvider();
+  }
+  // Prendre le premier provider actif (priorité)
+  return AIProviderFactory.createProvider(activeProviders[0]);
+};</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="ai-mistral-integration">Comment l'intégration avec le modèle Mistral est-elle implémentée techniquement ?</h3>
+                    <div class="faq-answer">
+                        <p>L'intégration avec Mistral AI est implémentée à travers un adaptateur dédié qui gère l'authentification, les requêtes API et le formatage des réponses :</p>
+                        
+                        <pre><code>// src/services/providers/mistralProvider.js
+class MistralProvider {
+  constructor(config) {
+    this.apiKey = config.api_key;
+    this.apiEndpoint = config.endpoint || 'https://api.mistral.ai/v1';
+    this.model = config.model_name || 'mistral-large';
+    this.maxTokens = config.max_tokens || 1024;
+    this.temperature = config.temperature || 0.7;
+    
+    // Validation de la configuration
+    if (!this.apiKey) {
+      throw new Error('Clé API Mistral manquante');
+    }
+  }
+
+  async analyzeMessage(hl7Message) {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      };
+      
+      const response = await fetch(`${this.apiEndpoint}/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: 'system', content: systemPromptTemplate },
+            { role: 'user', content: `Analyse ce message HL7:\n\n${hl7Message}` }
+          ],
+          max_tokens: this.maxTokens,
+          temperature: this.temperature
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur API Mistral: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return {
+        analysis: data.choices[0].message.content,
+        modelUsed: this.model,
+        provider: 'mistral'
+      };
+    } catch (error) {
+      logger.error(`Erreur lors de l'analyse avec Mistral: ${error.message}`);
+      throw error;
+    }
+  }
+}</code></pre>
+
+                        <p>Cette implémentation permet :</p>
+                        <ul>
+                            <li>La gestion d'erreurs robuste avec logging détaillé</li>
+                            <li>La configuration flexible des paramètres du modèle (température, tokens max)</li>
+                            <li>L'adaptation des prompts système pour des tâches spécifiques</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="ai-request-caching">Comment le système optimise-t-il les performances des requêtes IA ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub optimise les performances des requêtes IA grâce à plusieurs mécanismes :</p>
+                        
+                        <ol>
+                            <li><strong>Mise en cache des résultats :</strong> Les réponses précédentes pour des messages HL7 identiques sont stockées en base de données pour éviter des appels redondants aux API d'IA.</li>
+                            <li><strong>Stratégie de retry intelligente :</strong> En cas d'erreur temporaire (timeout, erreur réseau), le système réessaie automatiquement avec un délai exponentiel.</li>
+                            <li><strong>Compression des contextes :</strong> Pour optimiser l'utilisation des tokens, les messages HL7 volumineux sont prétraités et compressés avant l'envoi à l'API.</li>
+                        </ol>
+                        
+                        <p>Le code de mise en cache est implémenté dans le service central :</p>
+                        
+                        <pre><code>async function getAIAnalysis(hl7Message) {
+  // Générer une clé de cache unique basée sur le contenu du message
+  const cacheKey = crypto
+    .createHash('md5')
+    .update(hl7Message.trim())
+    .digest('hex');
+    
+  // Vérifier si une analyse existe déjà en cache
+  const cachedAnalysis = await db.getAIAnalysisFromCache(cacheKey);
+  if (cachedAnalysis) {
+    logger.info(`Utilisation de l'analyse en cache pour le message (${cacheKey})`);
+    return {
+      ...cachedAnalysis,
+      fromCache: true
+    };
+  }
+  
+  // Aucun résultat en cache, effectuer une nouvelle analyse
+  const provider = await createActiveAIProvider();
+  const analysis = await provider.analyzeMessage(hl7Message);
+  
+  // Stocker le résultat en cache pour les futures requêtes
+  await db.saveAIAnalysisToCache(cacheKey, analysis);
+  
+  return {
+    ...analysis,
+    fromCache: false
+  };
+}</code></pre>
+                    </div>
+                </div>
             </section>
 
             <section id="auth-security" class="faq-section">
                 <h2>Authentification et sécurité</h2>
-                <!-- Ajoutez les FAQ sur l'authentification et sécurité ici -->
+                
+                <div class="faq-item">
+                    <h3 id="auth-mechanisms">Quels mécanismes d'authentification sont implémentés dans FHIRHub ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente une architecture de sécurité à plusieurs couches avec trois mécanismes d'authentification principaux :</p>
+                        
+                        <ol>
+                            <li><strong>Authentification par session (JWT) :</strong> Utilisée pour l'interface utilisateur web avec une durée de validité configurable</li>
+                            <li><strong>Authentification par clé API :</strong> Pour les intégrations machine-to-machine et les appels d'API externes</li>
+                            <li><strong>Authentification hors-ligne :</strong> Mécanisme spécial pour les environnements sans connexion internet</li>
+                        </ol>
+                        
+                        <p>L'implémentation pour les clés API se trouve dans le middleware <code>apiKeyAuthMiddleware.js</code> :</p>
+                        
+                        <pre><code>// middleware/apiKeyAuthMiddleware.js
+const { db } = require('../services/database');
+const logger = require('../services/logger');
+
+async function apiKeyAuthMiddleware(req, res, next) {
+  try {
+    // Récupérer la clé API de l'en-tête ou des paramètres de requête
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    
+    if (!apiKey) {
+      return res.status(401).json({ 
+        error: 'Unauthorized', 
+        message: 'Clé API requise' 
+      });
+    }
+    
+    // Valider la clé API dans la base de données
+    const keyInfo = await db.getApiKeyInfo(apiKey);
+    
+    if (!keyInfo || !keyInfo.is_active) {
+      logger.warn(`Tentative d'accès avec une clé API invalide: ${apiKey}`);
+      return res.status(401).json({ 
+        error: 'Unauthorized', 
+        message: 'Clé API invalide ou inactive' 
+      });
+    }
+    
+    // Vérifier les restrictions d'origine (CORS)
+    if (keyInfo.origin_restrictions) {
+      const origin = req.headers.origin || req.headers.referer;
+      const allowed = keyInfo.origin_restrictions.split(',')
+        .some(allowed => origin && origin.includes(allowed));
+      
+      if (!allowed) {
+        logger.warn(`Tentative d'accès depuis une origine non autorisée: ${origin}`);
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: 'Origine non autorisée' 
+        });
+      }
+    }
+    
+    // Attacher les informations de l'API et de l'application à la requête pour un usage ultérieur
+    req.apiKey = keyInfo;
+    req.application = {
+      id: keyInfo.application_id,
+      name: keyInfo.application_name
+    };
+    
+    // Mettre à jour le compteur d'utilisation
+    await db.incrementApiKeyUsage(apiKey);
+    
+    next();
+  } catch (error) {
+    logger.error(`Erreur d'authentification API: ${error.message}`);
+    res.status(500).json({ 
+      error: 'Server Error', 
+      message: 'Erreur lors de la validation de la clé API' 
+    });
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="offline-auth">Comment fonctionne l'authentification en mode hors-ligne ?</h3>
+                    <div class="faq-answer">
+                        <p>Le mode d'authentification hors-ligne est une fonctionnalité spéciale conçue pour les environnements isolés. Son fonctionnement repose sur plusieurs principes :</p>
+                        
+                        <ul>
+                            <li><strong>Stockage local :</strong> Les informations d'identification sont conservées localement dans un fichier chiffré</li>
+                            <li><strong>Validation périodique :</strong> Si une connexion internet devient disponible, le système peut synchroniser avec le serveur central</li>
+                            <li><strong>Sceau temporel :</strong> Les identifiants ont une limite de temps après laquelle ils expirent, même hors-ligne</li>
+                        </ul>
+                        
+                        <p>L'implémentation se trouve dans <code>middleware/offlineAuthMiddleware.js</code> :</p>
+                        
+                        <pre><code>// middleware/offlineAuthMiddleware.js
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const logger = require('../services/logger');
+
+// Chemin vers le fichier d'informations d'authentification hors-ligne
+const OFFLINE_AUTH_FILE = path.join(__dirname, '../data/secure/offline_auth.enc');
+const OFFLINE_AUTH_KEY = process.env.OFFLINE_AUTH_KEY || 'default-offline-key';
+
+function decryptAuthData(encryptedData) {
+  try {
+    const algorithm = 'aes-256-cbc';
+    // Utiliser les 32 premiers caractères de la clé comme clé AES
+    const key = crypto.createHash('sha256').update(OFFLINE_AUTH_KEY).digest('base64').substr(0, 32);
+    // Extraire l'IV (vecteur d'initialisation) des 16 premiers octets
+    const iv = Buffer.from(encryptedData.slice(0, 16));
+    // Obtenir les données chiffrées (le reste après l'IV)
+    const encryptedText = encryptedData.slice(16);
+    // Créer un déchiffreur avec la clé et l'IV
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    // Déchiffrer les données
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    // Convertir les données déchiffrées en objet JSON
+    return JSON.parse(decrypted.toString());
+  } catch (error) {
+    logger.error(`Erreur lors du déchiffrement des données d'authentification: ${error.message}`);
+    return null;
+  }
+}
+
+function offlineAuthMiddleware(req, res, next) {
+  try {
+    // Vérifier si le fichier d'authentification hors-ligne existe
+    if (!fs.existsSync(OFFLINE_AUTH_FILE)) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Configuration d\'authentification hors-ligne non trouvée'
+      });
+    }
+
+    // Lire et déchiffrer les données d'authentification
+    const encryptedData = fs.readFileSync(OFFLINE_AUTH_FILE);
+    const authData = decryptAuthData(encryptedData);
+
+    if (!authData) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Données d\'authentification hors-ligne corrompues'
+      });
+    }
+
+    // Vérifier l'expiration des informations d'authentification
+    const now = Date.now();
+    if (authData.expiresAt < now) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentification hors-ligne expirée'
+      });
+    }
+
+    // Attacher les données d'authentification à la requête
+    req.offlineAuth = authData;
+    req.application = {
+      id: authData.applicationId,
+      name: authData.applicationName
+    };
+
+    next();
+  } catch (error) {
+    logger.error(`Erreur d'authentification hors-ligne: ${error.message}`);
+    res.status(500).json({
+      error: 'Server Error',
+      message: 'Erreur lors de la validation de l'authentification hors-ligne'
+    });
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="jwt-implementation">Comment sont implémentés les JWT pour l'authentification des sessions ?</h3>
+                    <div class="faq-answer">
+                        <p>L'authentification par JWT (JSON Web Token) est utilisée pour sécuriser les sessions utilisateur dans l'interface web. Voici les aspects clés de cette implémentation :</p>
+                        
+                        <ol>
+                            <li><strong>Signature HMAC-SHA256 :</strong> Les tokens sont signés avec l'algorithme HS256 pour assurer leur intégrité</li>
+                            <li><strong>Rotation des secrets :</strong> Le secret de signature des JWT est automatiquement changé à intervalle régulier</li>
+                            <li><strong>Gestion de la révocation :</strong> Une liste de révocation en cache permet d'invalider des tokens spécifiques avant leur expiration</li>
+                        </ol>
+                        
+                        <p>Voici un extrait du code d'authentification par JWT :</p>
+                        
+                        <pre><code>// services/authService.js
+const jwt = require('jsonwebtoken');
+const { promisify } = require('util');
+const redis = require('../services/redis');
+const logger = require('../services/logger');
+
+// Promisifier les fonctions JWT pour utiliser async/await
+const signAsync = promisify(jwt.sign);
+const verifyAsync = promisify(jwt.verify);
+
+// Clé secrète pour signer les JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'default-jwt-secret';
+// Durée de validité des tokens (24 heures par défaut)
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '24h';
+
+// Préfixe pour stocker les tokens révoqués dans Redis
+const REVOKED_TOKEN_PREFIX = 'revoked:';
+
+async function generateToken(user) {
+  try {
+    // Création du payload avec les informations de l'utilisateur
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+      // Identifiant unique pour ce token spécifique
+      jti: crypto.randomBytes(16).toString('hex')
+    };
+    
+    // Options JWT
+    const options = {
+      expiresIn: JWT_EXPIRATION,
+      algorithm: 'HS256'
+    };
+    
+    // Générer le token
+    const token = await signAsync(payload, JWT_SECRET, options);
+    
+    // Stocker des métadonnées du token (facultatif)
+    await redis.set(
+      `token:${payload.jti}`,
+      JSON.stringify({
+        userId: user.id,
+        createdAt: Date.now(),
+        userAgent: user.userAgent,
+        ip: user.ip
+      }),
+      'EX',
+      86400 // Expire après 24h
+    );
+    
+    return {
+      token,
+      expiresIn: JWT_EXPIRATION
+    };
+  } catch (error) {
+    logger.error(`Erreur lors de la génération du token: ${error.message}`);
+    throw new Error('Erreur lors de la génération du token');
+  }
+}
+
+async function verifyToken(token) {
+  try {
+    // Vérifier la validité du token (signature, expiration)
+    const decoded = await verifyAsync(token, JWT_SECRET);
+    
+    // Vérifier si le token a été révoqué
+    const isRevoked = await redis.exists(`${REVOKED_TOKEN_PREFIX}${decoded.jti}`);
+    if (isRevoked) {
+      throw new Error('Token révoqué');
+    }
+    
+    return decoded;
+  } catch (error) {
+    logger.warn(`Validation de token échouée: ${error.message}`);
+    throw new Error(`Token invalide: ${error.message}`);
+  }
+}
+
+async function revokeToken(token) {
+  try {
+    // Décoder le token sans vérifier la signature pour obtenir le jti
+    const decoded = jwt.decode(token);
+    if (!decoded || !decoded.jti) {
+      throw new Error('Token malformé');
+    }
+    
+    // Calculer le temps restant avant expiration
+    const expirationTime = decoded.exp - Math.floor(Date.now() / 1000);
+    if (expirationTime <= 0) {
+      return true; // Le token est déjà expiré
+    }
+    
+    // Ajouter le jti à la liste de révocation jusqu'à son expiration
+    await redis.set(
+      `${REVOKED_TOKEN_PREFIX}${decoded.jti}`,
+      '1',
+      'EX',
+      expirationTime
+    );
+    
+    return true;
+  } catch (error) {
+    logger.error(`Erreur lors de la révocation du token: ${error.message}`);
+    throw error;
+  }
+}</code></pre>
+                    </div>
+                </div>
             </section>
 
             <section id="database" class="faq-section">
                 <h2>Base de données et persistance</h2>
-                <!-- Ajoutez les FAQ sur la base de données ici -->
+                
+                <div class="faq-item">
+                    <h3 id="sqlite-architecture">Comment FHIRHub utilise-t-il SQLite pour garantir la portabilité ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise SQLite comme moteur de base de données principal pour maximiser la portabilité et minimiser les dépendances externes. Voici comment cette architecture est implémentée :</p>
+                        
+                        <ol>
+                            <li><strong>Fichier unique :</strong> Toutes les données sont stockées dans un fichier unique, facilitant les sauvegardes et la portabilité</li>
+                            <li><strong>Mode WAL (Write-Ahead Logging) :</strong> Activé pour améliorer les performances et la concurrence</li>
+                            <li><strong>Migrations automatiques :</strong> Structure de schéma évolutive avec migrations versionnées</li>
+                        </ol>
+                        
+                        <p>Le code d'initialisation de la base de données illustre cette approche :</p>
+                        
+                        <pre><code>// services/database.js
+const sqlite3 = require('sqlite3').verbose();
+const { open } = require('sqlite');
+const path = require('path');
+const fs = require('fs');
+const logger = require('./logger');
+
+// Répertoire de stockage des données
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+// Chemin du fichier de base de données
+const DB_FILE = path.join(DATA_DIR, 'fhirhub.db');
+// Version actuelle du schéma
+const SCHEMA_VERSION = 7;
+
+// S'assurer que le répertoire de données existe
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+async function initDatabase() {
+  try {
+    // Ouvrir la connexion à la base de données
+    const db = await open({
+      filename: DB_FILE,
+      driver: sqlite3.Database
+    });
+    
+    // Activer le mode WAL pour de meilleures performances
+    await db.exec('PRAGMA journal_mode = WAL;');
+    // Forcer les contraintes de clés étrangères
+    await db.exec('PRAGMA foreign_keys = ON;');
+    
+    // Vérifier et créer la table de version du schéma si nécessaire
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS schema_version (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        version INTEGER NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    // Obtenir la version actuelle du schéma
+    const versionRow = await db.get('SELECT version FROM schema_version WHERE id = 1');
+    const currentVersion = versionRow ? versionRow.version : 0;
+    
+    // Appliquer les migrations nécessaires
+    if (currentVersion < SCHEMA_VERSION) {
+      logger.info(`Migration de la base de données de la version ${currentVersion} vers ${SCHEMA_VERSION}`);
+      
+      // Débuter une transaction
+      await db.exec('BEGIN TRANSACTION;');
+      
+      try {
+        // Appliquer chaque migration dans l'ordre
+        for (let v = currentVersion + 1; v <= SCHEMA_VERSION; v++) {
+          const migrationFile = path.join(__dirname, `../migrations/v${v}.sql`);
+          
+          if (fs.existsSync(migrationFile)) {
+            const migration = fs.readFileSync(migrationFile, 'utf8');
+            await db.exec(migration);
+            logger.info(`Migration v${v} appliquée avec succès`);
+          }
+        }
+        
+        // Mettre à jour la version du schéma
+        if (currentVersion === 0) {
+          await db.run('INSERT INTO schema_version (id, version) VALUES (1, ?)', SCHEMA_VERSION);
+        } else {
+          await db.run('UPDATE schema_version SET version = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1', SCHEMA_VERSION);
+        }
+        
+        // Valider la transaction
+        await db.exec('COMMIT;');
+        logger.info(`Base de données migrée avec succès vers la version ${SCHEMA_VERSION}`);
+      } catch (error) {
+        // Annuler la transaction en cas d'erreur
+        await db.exec('ROLLBACK;');
+        logger.error(`Erreur lors de la migration de la base de données: ${error.message}`);
+        throw error;
+      }
+    }
+    
+    return db;
+  } catch (error) {
+    logger.error(`Erreur lors de l'initialisation de la base de données: ${error.message}`);
+    throw error;
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="db-backup-strategy">Quelle stratégie de sauvegarde est implémentée pour protéger les données ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente une stratégie de sauvegarde robuste en plusieurs couches pour garantir l'intégrité et la récupération des données :</p>
+                        
+                        <ol>
+                            <li><strong>Sauvegardes automatiques planifiées :</strong> Exécutées à intervalles réguliers (par défaut toutes les 24 heures)</li>
+                            <li><strong>Sauvegardes avant opérations critiques :</strong> Avant les mises à jour de schéma ou les imports massifs</li>
+                            <li><strong>Rotation des sauvegardes :</strong> Conservation des 7 dernières sauvegardes quotidiennes, 4 hebdomadaires et 3 mensuelles</li>
+                        </ol>
+                        
+                        <p>Le code de sauvegarde utilise les fonctionnalités natives de SQLite :</p>
+                        
+                        <pre><code>// services/backupService.js
+const sqlite3 = require('sqlite3').verbose();
+const { open } = require('sqlite');
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+const logger = require('./logger');
+
+// Répertoire des sauvegardes
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '../backups');
+// Fichier de base de données principal
+const DB_FILE = path.join(__dirname, '../data/fhirhub.db');
+
+// S'assurer que le répertoire de sauvegarde existe
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
+
+/**
+ * Crée une sauvegarde complète de la base de données
+ * @param {string} suffix - Suffixe à ajouter au nom du fichier (ex: 'pre-update')
+ * @returns {Promise<string>} - Chemin du fichier de sauvegarde
+ */
+async function createBackup(suffix = '') {
+  try {
+    // Générer un nom de fichier de sauvegarde avec timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupName = `fhirhub-backup${suffix ? '-' + suffix : ''}-${timestamp}.db`;
+    const backupPath = path.join(BACKUP_DIR, backupName);
+    
+    // Ouvrir la base de données source
+    const sourceDb = new sqlite3.Database(DB_FILE);
+    
+    // Créer une nouvelle base de données pour la sauvegarde
+    const backupDb = new sqlite3.Database(backupPath);
+    
+    // Attendre que la sauvegarde soit terminée
+    await new Promise((resolve, reject) => {
+      // Utiliser l'API de sauvegarde native de SQLite
+      const backup = sourceDb.backup(backupDb, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+      
+      // Afficher la progression pour les grandes bases de données
+      backup.step(100); // Nombre de pages à copier à chaque étape
+    });
+    
+    // Fermer les connexions
+    await new Promise(resolve => sourceDb.close(resolve));
+    await new Promise(resolve => backupDb.close(resolve));
+    
+    logger.info(`Sauvegarde créée avec succès: ${backupPath}`);
+    
+    // Optimiser le fichier de sauvegarde (facultatif)
+    try {
+      execSync(`sqlite3 "${backupPath}" "VACUUM;"`);
+      logger.info(`Optimisation de la sauvegarde terminée: ${backupPath}`);
+    } catch (optimizeError) {
+      logger.warn(`Impossible d'optimiser la sauvegarde: ${optimizeError.message}`);
+    }
+    
+    return backupPath;
+  } catch (error) {
+    logger.error(`Erreur lors de la création de la sauvegarde: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Restaure la base de données à partir d'une sauvegarde
+ * @param {string} backupPath - Chemin du fichier de sauvegarde 
+ * @returns {Promise<boolean>} - true si la restauration a réussi
+ */
+async function restoreFromBackup(backupPath) {
+  try {
+    if (!fs.existsSync(backupPath)) {
+      throw new Error(`Fichier de sauvegarde non trouvé: ${backupPath}`);
+    }
+    
+    // Fermer toutes les connexions à la base de données principale
+    // Note: Ceci est simplifié ici, mais nécessite une mise en œuvre plus robuste en production
+    
+    // Créer une sauvegarde de sécurité avant la restauration
+    const tempBackup = DB_FILE + '.pre-restore';
+    fs.copyFileSync(DB_FILE, tempBackup);
+    
+    // Copier la sauvegarde vers le fichier de base de données principal
+    fs.copyFileSync(backupPath, DB_FILE);
+    
+    logger.info(`Base de données restaurée avec succès depuis: ${backupPath}`);
+    
+    // Supprimer la sauvegarde temporaire si tout s'est bien passé
+    fs.unlinkSync(tempBackup);
+    
+    return true;
+  } catch (error) {
+    logger.error(`Erreur lors de la restauration de la sauvegarde: ${error.message}`);
+    
+    // Tenter de restaurer la sauvegarde de sécurité en cas d'échec
+    const tempBackup = DB_FILE + '.pre-restore';
+    if (fs.existsSync(tempBackup)) {
+      try {
+        fs.copyFileSync(tempBackup, DB_FILE);
+        logger.info(`Restauration d'urgence effectuée depuis: ${tempBackup}`);
+      } catch (restoreError) {
+        logger.error(`Échec de la restauration d'urgence: ${restoreError.message}`);
+      }
+    }
+    
+    throw error;
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="log-db-schema">Comment est structuré le schéma de la base de données des journaux de conversion ?</h3>
+                    <div class="faq-answer">
+                        <p>Le schéma de la base de données pour les journaux de conversion est conçu pour optimiser les performances des requêtes tout en stockant des informations détaillées sur chaque conversion :</p>
+                        
+                        <pre><code>CREATE TABLE conversion_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  application_id INTEGER NOT NULL,
+  message_type VARCHAR(10),
+  message_event VARCHAR(10),
+  message_id VARCHAR(255),
+  processing_time INTEGER,
+  source_size INTEGER,
+  result_size INTEGER,
+  resource_count INTEGER,
+  status VARCHAR(20) NOT NULL,
+  error_details TEXT,
+  input_hash VARCHAR(64),
+  timestamp INTEGER DEFAULT (strftime('%s','now') * 1000),
+  input_sample TEXT,
+  output_sample TEXT,
+  client_ip VARCHAR(50),
+  user_agent VARCHAR(255),
+  FOREIGN KEY (application_id) REFERENCES applications(id)
+);</code></pre>
+                        
+                        <p>Cette structure permet :</p>
+                        <ul>
+                            <li><strong>Analyse des performances :</strong> Les champs processing_time et resource_count permettent de suivre la performance des conversions</li>
+                            <li><strong>Déduplication :</strong> Le champ input_hash permet d'identifier rapidement les messages identiques</li>
+                            <li><strong>Analyses statistiques :</strong> Les indexes sur application_id, message_type et status optimisent les requêtes d'analyse</li>
+                            <li><strong>Traçabilité :</strong> L'échantillonnage des entrées/sorties permet un diagnostic rapide sans stocker l'intégralité des messages</li>
+                        </ul>
+                        
+                        <p>Les index principaux sont configurés ainsi :</p>
+                        
+                        <pre><code>-- Index pour les recherches fréquentes
+CREATE INDEX idx_conversion_logs_app_id ON conversion_logs(application_id);
+CREATE INDEX idx_conversion_logs_status ON conversion_logs(status);
+CREATE INDEX idx_conversion_logs_timestamp ON conversion_logs(timestamp);
+CREATE INDEX idx_conversion_logs_message_type ON conversion_logs(message_type);
+
+-- Index composite pour les analyses par application et période
+CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, timestamp);</code></pre>
+                        
+                        <p>Cette conception permet de générer efficacement les statistiques de performance et les tableaux de bord sans impact sur les performances de l'application principale.</p>
+                    </div>
+                </div>
             </section>
 
 
