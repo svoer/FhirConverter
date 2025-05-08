@@ -107,12 +107,15 @@ NODE_ENV=development
 JWT_SECRET=$(openssl rand -hex 16)
 METRICS_ENABLED=true
 METRICS_PORT=9091
+# Installation locale de Prometheus et Grafana
+PROMETHEUS_LOCAL=false
+GRAFANA_LOCAL=false
 EOF
   echo -e "${GREEN}✅ Fichier .env créé avec succès${NC}"
 else
   # Vérifier que les variables essentielles sont définies
   env_missing=0
-  for var in PORT DB_PATH METRICS_ENABLED METRICS_PORT; do
+  for var in PORT DB_PATH METRICS_ENABLED METRICS_PORT PROMETHEUS_LOCAL GRAFANA_LOCAL; do
     if ! grep -q "^$var=" .env; then
       echo -e "${YELLOW}⚠️ Variable $var manquante dans .env, ajout...${NC}"
       if [ "$var" = "PORT" ]; then
@@ -123,6 +126,10 @@ else
         echo "METRICS_ENABLED=true" >> ./.env
       elif [ "$var" = "METRICS_PORT" ]; then
         echo "METRICS_PORT=9091" >> ./.env
+      elif [ "$var" = "PROMETHEUS_LOCAL" ]; then
+        echo "PROMETHEUS_LOCAL=false" >> ./.env
+      elif [ "$var" = "GRAFANA_LOCAL" ]; then
+        echo "GRAFANA_LOCAL=false" >> ./.env
       fi
       env_missing=$((env_missing+1))
     fi
@@ -429,12 +436,242 @@ if [ "$METRICS_ENABLED" = "true" ]; then
 fi
 echo -e "==========================================================${NC}"
 
-# Vérification et création des répertoires pour Docker
-echo -e "${BLUE}Préparation des répertoires pour Grafana et Prometheus...${NC}"
-mkdir -p volumes/grafana volumes/prometheus 2>/dev/null
-# Correction des permissions pour Grafana et Prometheus
-chmod -R 777 volumes/grafana volumes/prometheus 2>/dev/null || true
-echo -e "${GREEN}✅ Répertoires Docker pour Grafana et Prometheus préparés${NC}"
+# Vérification et création des répertoires pour Loki, Grafana et Prometheus
+echo -e "${BLUE}Préparation des répertoires pour Loki, Grafana et Prometheus...${NC}"
+mkdir -p volumes/grafana volumes/prometheus volumes/loki volumes/loki/chunks volumes/loki/index volumes/loki/wal volumes/loki/compactor 2>/dev/null
+# Correction des permissions des répertoires
+chmod -R 777 volumes/grafana volumes/prometheus volumes/loki 2>/dev/null || true
+echo -e "${GREEN}✅ Répertoires pour Loki, Grafana et Prometheus préparés${NC}"
+
+# Installation locale de Prometheus et Grafana sans Docker
+if [ "$PROMETHEUS_LOCAL" = "true" ] || [ "$GRAFANA_LOCAL" = "true" ]; then
+  echo -e "${BLUE}Installation locale de Prometheus et Grafana (sans Docker)...${NC}"
+  
+  # Détection du système d'exploitation
+  OS="unknown"
+  if [ -f "/etc/os-release" ]; then
+    . /etc/os-release
+    OS="$ID"
+  elif command -v uname &> /dev/null; then
+    if uname -a | grep -q "Darwin"; then
+      OS="macos"
+    elif uname -a | grep -q "MINGW\|MSYS"; then
+      OS="windows"
+    fi
+  fi
+  
+  TOOLS_DIR="./tools"
+  mkdir -p "$TOOLS_DIR" 2>/dev/null
+  
+  # Installation locale de Prometheus
+  if [ "$PROMETHEUS_LOCAL" = "true" ]; then
+    echo -e "${YELLOW}Installation locale de Prometheus...${NC}"
+    PROMETHEUS_VERSION="2.45.0"
+    PROMETHEUS_DIR="$TOOLS_DIR/prometheus"
+    
+    if [ ! -d "$PROMETHEUS_DIR" ]; then
+      mkdir -p "$PROMETHEUS_DIR" 2>/dev/null
+      
+      # Téléchargement et extraction de Prometheus selon le système d'exploitation
+      if [ "$OS" = "linux" ] || [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ] || [ "$OS" = "rhel" ] || [ "$OS" = "almalinux" ] || [ "$OS" = "centos" ]; then
+        PROMETHEUS_ARCHIVE="prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+        echo -e "${YELLOW}Téléchargement de Prometheus ${PROMETHEUS_VERSION} pour Linux...${NC}"
+        curl -L -o "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/$PROMETHEUS_ARCHIVE" --progress-bar || \
+        wget -O "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/$PROMETHEUS_ARCHIVE" --show-progress
+        
+        echo -e "${YELLOW}Extraction de Prometheus...${NC}"
+        tar -xzf "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" -C "$TOOLS_DIR"
+        mv "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.linux-amd64"/* "$PROMETHEUS_DIR/"
+        rm -rf "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.linux-amd64"
+        rm -f "$TOOLS_DIR/$PROMETHEUS_ARCHIVE"
+      elif [ "$OS" = "macos" ]; then
+        PROMETHEUS_ARCHIVE="prometheus-${PROMETHEUS_VERSION}.darwin-amd64.tar.gz"
+        echo -e "${YELLOW}Téléchargement de Prometheus ${PROMETHEUS_VERSION} pour macOS...${NC}"
+        curl -L -o "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/$PROMETHEUS_ARCHIVE" --progress-bar
+        
+        echo -e "${YELLOW}Extraction de Prometheus...${NC}"
+        tar -xzf "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" -C "$TOOLS_DIR"
+        mv "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.darwin-amd64"/* "$PROMETHEUS_DIR/"
+        rm -rf "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.darwin-amd64"
+        rm -f "$TOOLS_DIR/$PROMETHEUS_ARCHIVE"
+      elif [ "$OS" = "windows" ]; then
+        PROMETHEUS_ARCHIVE="prometheus-${PROMETHEUS_VERSION}.windows-amd64.zip"
+        echo -e "${YELLOW}Téléchargement de Prometheus ${PROMETHEUS_VERSION} pour Windows...${NC}"
+        curl -L -o "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/$PROMETHEUS_ARCHIVE" --progress-bar
+        
+        echo -e "${YELLOW}Extraction de Prometheus...${NC}"
+        if command -v unzip &> /dev/null; then
+          unzip -q "$TOOLS_DIR/$PROMETHEUS_ARCHIVE" -d "$TOOLS_DIR"
+          mv "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.windows-amd64"/* "$PROMETHEUS_DIR/"
+          rm -rf "$TOOLS_DIR/prometheus-${PROMETHEUS_VERSION}.windows-amd64"
+        else
+          echo -e "${RED}⚠️ Impossible d'extraire Prometheus. Veuillez installer unzip ou extraire manuellement ${PROMETHEUS_ARCHIVE}${NC}"
+        fi
+        rm -f "$TOOLS_DIR/$PROMETHEUS_ARCHIVE"
+      else
+        echo -e "${RED}⚠️ Système d'exploitation non pris en charge pour l'installation locale de Prometheus: $OS${NC}"
+      fi
+      
+      # Création de la configuration Prometheus
+      if [ -d "$PROMETHEUS_DIR" ]; then
+        cat > "$PROMETHEUS_DIR/prometheus.yml" << 'EOF'
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'fhirhub'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9091']
+EOF
+        echo -e "${GREEN}✅ Configuration Prometheus créée${NC}"
+      fi
+    fi
+    
+    # Vérification de l'installation de Prometheus
+    if [ -f "$PROMETHEUS_DIR/prometheus" ] || [ -f "$PROMETHEUS_DIR/prometheus.exe" ]; then
+      echo -e "${GREEN}✅ Prometheus installé localement${NC}"
+      
+      # Démarrage automatique de Prometheus
+      echo -e "${YELLOW}Démarrage de Prometheus...${NC}"
+      if [ -f "$PROMETHEUS_DIR/prometheus" ]; then
+        chmod +x "$PROMETHEUS_DIR/prometheus"
+        nohup "$PROMETHEUS_DIR/prometheus" --config.file="$PROMETHEUS_DIR/prometheus.yml" --storage.tsdb.path="$PROMETHEUS_DIR/data" > "$TOOLS_DIR/prometheus.log" 2>&1 &
+      elif [ -f "$PROMETHEUS_DIR/prometheus.exe" ]; then
+        start /b "$PROMETHEUS_DIR/prometheus.exe" --config.file="$PROMETHEUS_DIR/prometheus.yml" --storage.tsdb.path="$PROMETHEUS_DIR/data" > "$TOOLS_DIR/prometheus.log" 2>&1
+      fi
+      echo -e "${GREEN}✅ Prometheus démarré sur http://localhost:9090${NC}"
+    else
+      echo -e "${RED}⚠️ Installation de Prometheus échouée${NC}"
+    fi
+  fi
+  
+  # Installation locale de Grafana
+  if [ "$GRAFANA_LOCAL" = "true" ]; then
+    echo -e "${YELLOW}Installation locale de Grafana...${NC}"
+    GRAFANA_VERSION="10.1.0"
+    GRAFANA_DIR="$TOOLS_DIR/grafana"
+    
+    if [ ! -d "$GRAFANA_DIR" ]; then
+      mkdir -p "$GRAFANA_DIR" 2>/dev/null
+      
+      # Téléchargement et extraction de Grafana selon le système d'exploitation
+      if [ "$OS" = "linux" ] || [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ] || [ "$OS" = "rhel" ] || [ "$OS" = "almalinux" ] || [ "$OS" = "centos" ]; then
+        GRAFANA_ARCHIVE="grafana-${GRAFANA_VERSION}.linux-amd64.tar.gz"
+        echo -e "${YELLOW}Téléchargement de Grafana ${GRAFANA_VERSION} pour Linux...${NC}"
+        curl -L -o "$TOOLS_DIR/$GRAFANA_ARCHIVE" "https://dl.grafana.com/oss/release/$GRAFANA_ARCHIVE" --progress-bar || \
+        wget -O "$TOOLS_DIR/$GRAFANA_ARCHIVE" "https://dl.grafana.com/oss/release/$GRAFANA_ARCHIVE" --show-progress
+        
+        echo -e "${YELLOW}Extraction de Grafana...${NC}"
+        tar -xzf "$TOOLS_DIR/$GRAFANA_ARCHIVE" -C "$TOOLS_DIR"
+        mv "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"/* "$GRAFANA_DIR/"
+        rm -rf "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"
+        rm -f "$TOOLS_DIR/$GRAFANA_ARCHIVE"
+      elif [ "$OS" = "macos" ]; then
+        GRAFANA_ARCHIVE="grafana-${GRAFANA_VERSION}.darwin-amd64.tar.gz"
+        echo -e "${YELLOW}Téléchargement de Grafana ${GRAFANA_VERSION} pour macOS...${NC}"
+        curl -L -o "$TOOLS_DIR/$GRAFANA_ARCHIVE" "https://dl.grafana.com/oss/release/$GRAFANA_ARCHIVE" --progress-bar
+        
+        echo -e "${YELLOW}Extraction de Grafana...${NC}"
+        tar -xzf "$TOOLS_DIR/$GRAFANA_ARCHIVE" -C "$TOOLS_DIR"
+        mv "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"/* "$GRAFANA_DIR/"
+        rm -rf "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"
+        rm -f "$TOOLS_DIR/$GRAFANA_ARCHIVE"
+      elif [ "$OS" = "windows" ]; then
+        GRAFANA_ARCHIVE="grafana-${GRAFANA_VERSION}.windows-amd64.zip"
+        echo -e "${YELLOW}Téléchargement de Grafana ${GRAFANA_VERSION} pour Windows...${NC}"
+        curl -L -o "$TOOLS_DIR/$GRAFANA_ARCHIVE" "https://dl.grafana.com/oss/release/$GRAFANA_ARCHIVE" --progress-bar
+        
+        echo -e "${YELLOW}Extraction de Grafana...${NC}"
+        if command -v unzip &> /dev/null; then
+          unzip -q "$TOOLS_DIR/$GRAFANA_ARCHIVE" -d "$TOOLS_DIR"
+          mv "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"/* "$GRAFANA_DIR/"
+          rm -rf "$TOOLS_DIR/grafana-${GRAFANA_VERSION}"
+        else
+          echo -e "${RED}⚠️ Impossible d'extraire Grafana. Veuillez installer unzip ou extraire manuellement ${GRAFANA_ARCHIVE}${NC}"
+        fi
+        rm -f "$TOOLS_DIR/$GRAFANA_ARCHIVE"
+      else
+        echo -e "${RED}⚠️ Système d'exploitation non pris en charge pour l'installation locale de Grafana: $OS${NC}"
+      fi
+      
+      # Configuration de Grafana pour utiliser Prometheus
+      if [ -d "$GRAFANA_DIR" ]; then
+        mkdir -p "$GRAFANA_DIR/conf/provisioning/datasources"
+        cat > "$GRAFANA_DIR/conf/provisioning/datasources/prometheus.yaml" << 'EOF'
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://localhost:9090
+    isDefault: true
+    editable: true
+    
+  - name: FHIRHub Logs
+    type: simplejson
+    access: proxy
+    url: http://localhost:9091/api/logs
+    isDefault: false
+    editable: true
+    jsonData:
+      timeField: "timestamp"
+EOF
+        echo -e "${GREEN}✅ Configuration Grafana créée${NC}"
+      
+        # Copier les dashboards depuis le répertoire Grafana
+        if [ -d "./grafana/dashboards" ]; then
+          mkdir -p "$GRAFANA_DIR/conf/provisioning/dashboards"
+          mkdir -p "$GRAFANA_DIR/dashboards"
+          cp ./grafana/dashboards/*.json "$GRAFANA_DIR/dashboards/" 2>/dev/null
+          
+          # Création du fichier de configuration pour les dashboards
+          cat > "$GRAFANA_DIR/conf/provisioning/dashboards/default.yaml" << 'EOF'
+apiVersion: 1
+
+providers:
+  - name: 'FHIRHub Dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+EOF
+          echo -e "${GREEN}✅ Dashboards Grafana copiés${NC}"
+        fi
+      fi
+    fi
+    
+    # Vérifier l'installation de Grafana
+    if [ -f "$GRAFANA_DIR/bin/grafana-server" ] || [ -f "$GRAFANA_DIR/bin/grafana-server.exe" ]; then
+      echo -e "${GREEN}✅ Grafana installé localement${NC}"
+      
+      # Démarrage automatique de Grafana
+      echo -e "${YELLOW}Démarrage de Grafana...${NC}"
+      if [ -f "$GRAFANA_DIR/bin/grafana-server" ]; then
+        chmod +x "$GRAFANA_DIR/bin/grafana-server"
+        nohup "$GRAFANA_DIR/bin/grafana-server" --homepath="$GRAFANA_DIR" > "$TOOLS_DIR/grafana.log" 2>&1 &
+      elif [ -f "$GRAFANA_DIR/bin/grafana-server.exe" ]; then
+        start /b "$GRAFANA_DIR/bin/grafana-server.exe" --homepath="$GRAFANA_DIR" > "$TOOLS_DIR/grafana.log" 2>&1
+      fi
+      echo -e "${GREEN}✅ Grafana démarré sur http://localhost:3000${NC}"
+      echo -e "${YELLOW}Identifiants par défaut:${NC}"
+      echo -e "${YELLOW}  Utilisateur: admin${NC}"
+      echo -e "${YELLOW}  Mot de passe: admin${NC}"
+    else
+      echo -e "${RED}⚠️ Installation de Grafana échouée${NC}"
+    fi
+  fi
+fi
 
 # Démarrage avec le Node.js approprié
 $NODE_CMD app.js
