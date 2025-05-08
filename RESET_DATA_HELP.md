@@ -54,6 +54,13 @@ Ou pour Docker :
 ./reset-data-docker.sh -y
 ```
 
+Cette option est particulièrement utile pour les tâches planifiées ou les scripts de maintenance automatisés. Par exemple, vous pouvez configurer une tâche cron pour réinitialiser les données chaque semaine :
+
+```bash
+# Exemple d'entrée crontab pour réinitialiser les données tous les dimanches à 2h du matin
+0 2 * * 0 /chemin/vers/reset-data.sh -y >> /var/log/fhirhub-reset.log 2>&1
+```
+
 ## En cas de problème
 
 Si vous rencontrez des problèmes lors de l'exécution des scripts :

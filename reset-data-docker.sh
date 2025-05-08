@@ -10,8 +10,20 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Variable pour auto-confirmer toutes les actions
+AUTO_CONFIRM=false
+
+# Vérifier si l'option -y est utilisée
+if [[ "$1" == "-y" ]]; then
+    AUTO_CONFIRM=true
+fi
+
 # Fonction pour afficher un message de confirmation et demander à l'utilisateur de confirmer
 confirm() {
+    if [ "$AUTO_CONFIRM" = true ]; then
+        return 0
+    fi
+    
     read -p "$(echo -e "${YELLOW}$1 [y/N] ${NC}")" response
     case "$response" in
         [yY][eE][sS]|[yY]) 
