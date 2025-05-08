@@ -732,6 +732,95 @@ app.post('/api/convert/validate', authCombined, (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
+/**
+ * @swagger
+ * /api/reset-stats:
+ *   post:
+ *     summary: Réinitialise toutes les données statistiques et vide les répertoires temporaires
+ *     description: Supprime les données de conversion, statistiques et vide les dossiers de l'historique, données IN/OUT, etc.
+ *     tags:
+ *       - Statistics
+ *     responses:
+ *       200:
+ *         description: Réinitialisation réussie
+ *       500:
+ *         description: Erreur serveur
+ */
+app.post('/api/reset-stats', async (req, res) => {
+  try {
+    console.log('[RESET] Début de la réinitialisation des données');
+    
+    // Vider la base de données des statistiques
+    const tables = ['conversion_logs', 'applications'];
+    for (const table of tables) {
+      try {
+        db.prepare(`DELETE FROM ${table}`).run();
+        console.log(`[RESET] Table ${table} vidée avec succès`);
+      } catch (err) {
+        console.error(`[RESET] Erreur lors du vidage de la table ${table}:`, err);
+      }
+    }
+    
+    // Réinitialiser les séquences d'ID
+    try {
+      db.prepare('UPDATE sqlite_sequence SET seq = 0 WHERE name IN ("conversion_logs", "applications")').run();
+      console.log('[RESET] Séquences d\'ID réinitialisées');
+    } catch (err) {
+      console.error('[RESET] Erreur lors de la réinitialisation des séquences:', err);
+    }
+    
+    // Vider les répertoires de données
+    const dirsToEmpty = [
+      './data/conversions', 
+      './data/history', 
+      './data/outputs',
+      './data/in',
+      './data/out',
+      './data/temp',
+      './data/uploads',
+      './attached_assets'
+    ];
+    
+    const fs = require('fs');
+    const path = require('path');
+    
+    for (const dir of dirsToEmpty) {
+      try {
+        if (fs.existsSync(dir)) {
+          const files = fs.readdirSync(dir);
+          
+          for (const file of files) {
+            // Ne pas supprimer les fichiers .gitkeep et les dossiers
+            if (file !== '.gitkeep') {
+              const filePath = path.join(dir, file);
+              if (fs.lstatSync(filePath).isFile()) {
+                fs.unlinkSync(filePath);
+              }
+            }
+          }
+          console.log(`[RESET] Répertoire ${dir} vidé avec succès`);
+        }
+      } catch (err) {
+        console.error(`[RESET] Erreur lors du vidage du répertoire ${dir}:`, err);
+      }
+    }
+    
+    // Insertion d'une application par défaut
+    try {
+      db.prepare('INSERT INTO applications (name, api_key, active) VALUES (?, ?, ?)').run('Default', 'FHIRHUB_DEFAULT_KEY', 1);
+      console.log('[RESET] Application par défaut recréée');
+    } catch (err) {
+      console.error('[RESET] Erreur lors de la création de l\'application par défaut:', err);
+    }
+    
+    console.log('[RESET] Réinitialisation terminée avec succès');
+    res.status(200).json({ success: true, message: 'Réinitialisation terminée avec succès' });
+  } catch (error) {
+    console.error('[RESET] Erreur de réinitialisation:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/stats', (req, res) => {
   // Ajout d'en-têtes pour empêcher strictement la mise en cache côté client
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
