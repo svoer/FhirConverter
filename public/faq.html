@@ -1918,8 +1918,8 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
                 { id: 'internationalization', name: 'Internationalisation' }
             ];
 
-            // Éléments DOM
-            const categoryList = document.getElementById('categoryList');
+            // Éléments DOM - correction des sélecteurs
+            const categoryList = document.querySelector('.nav-items-container');
             const tocList = document.getElementById('tocList');
             const tocToggle = document.getElementById('tocToggle');
             const faqSearch = document.getElementById('faqSearch');
@@ -2250,7 +2250,17 @@ CREATE INDEX idx_conversion_logs_app_time ON conversion_logs(application_id, tim
             }
             
             // Initialiser tous les composants
-            generateCategoryNav();
+            // Désactivé : ne pas générer la navigation, utiliser l'existante
+            // generateCategoryNav();
+            
+            // Préparation des catégories dans le menu existant
+            if (categoryList) {
+                categoryList.querySelectorAll('a.nav-item').forEach(link => {
+                    const categoryId = link.getAttribute('href').substring(1);
+                    link.dataset.category = categoryId;
+                });
+            }
+            
             generateTableOfContents();
             setupFAQInteractions();
             setupTOCToggle();
