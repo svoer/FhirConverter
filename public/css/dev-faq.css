@@ -108,9 +108,21 @@ body.with-sidebar {
 
 /* Category Navigation */
 .category-nav {
-    margin-bottom: 30px;
-    overflow-x: auto;
-    padding-bottom: 5px;
+    position: sticky;
+    top: 60px;
+    z-index: 100;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    backdrop-filter: blur(5px);
+    transition: all 0.4s ease;
+    max-height: 500px;
+    overflow-y: auto;
 }
 
 #categoryList {
@@ -119,6 +131,9 @@ body.with-sidebar {
     padding: 0;
     margin: 0;
     gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
 }
 
 #categoryList li {
@@ -126,27 +141,26 @@ body.with-sidebar {
 }
 
 #categoryList a {
-    display: block;
-    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
     background: white;
-    color: #333;
+    color: #444;
     text-decoration: none;
-    border-radius: var(--border-radius);
-    transition: var(--transition-standard);
+    border-radius: 30px;
+    transition: all 0.3s ease;
     box-shadow: var(--shadow-soft);
     font-weight: 500;
     font-size: 0.9rem;
     white-space: nowrap;
+    border: 1px solid transparent;
 }
 
-#categoryList a:hover {
-    box-shadow: var(--shadow-medium);
-    transform: translateY(-2px);
-}
-
-#categoryList a.active {
+#categoryList a:hover, #categoryList a.active {
     background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(231, 76, 60, 0.3);
 }
 
 /* Table of Contents */
@@ -283,6 +297,9 @@ body.with-sidebar {
     position: relative;
     padding-right: 40px;
     border-left: 4px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .faq-item h3::after {
@@ -293,7 +310,8 @@ body.with-sidebar {
     right: 20px;
     top: 50%;
     transform: translateY(-50%);
-    transition: var(--transition-standard);
+    transition: transform 0.3s ease, color 0.3s ease;
+    color: var(--primary-gradient-start);
 }
 
 .faq-item h3:hover {
@@ -301,21 +319,30 @@ body.with-sidebar {
     border-left-color: var(--primary-gradient-end);
 }
 
+.faq-item.active h3 {
+    border-left-color: var(--primary-gradient-start);
+    background: linear-gradient(to right, rgba(255, 87, 34, 0.05), transparent);
+}
+
 .faq-item.active h3::after {
     transform: translateY(-50%) rotate(180deg);
+    color: var(--primary-gradient-start);
 }
 
 .faq-answer {
-    padding: 0 20px;
+    padding: 0;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.5s ease, padding 0.5s ease;
+    opacity: 0;
 }
 
 .faq-item.active .faq-answer {
     max-height: 5000px;
     padding: 20px;
     border-top: 1px solid #f0f0f0;
+    opacity: 1;
+    transition: max-height 0.5s ease, padding 0.5s ease, opacity 0.3s 0.2s ease;
 }
 
 .faq-answer p {
