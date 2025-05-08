@@ -190,7 +190,7 @@
       initChatbot();
       
       // Configurer l'intervalle de rafraîchissement des métriques
-      setInterval(fetchStats, 5000); // Rafraîchir toutes les 5 secondes
+      setInterval(fetchStats, 20000); // Rafraîchir toutes les 20 secondes
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
@@ -462,10 +462,10 @@
     function initCharts() {
       // Données fictives pour la démo
       const cpuData = {
-        labels: ['Il y a 1 min', 'Il y a 2 min', 'Il y a 3 min', 'Il y a 4 min', 'Il y a 5 min'],
+        labels: ['Il y a 20 sec', 'Il y a 40 sec', 'Il y a 60 sec', 'Il y a 80 sec', 'Il y a 100 sec'],
         datasets: [{
           label: 'Utilisation CPU (%)',
-          data: [15, 20, 18, 25, 22],
+          data: [5, 4, 6, 5, 7],
           backgroundColor: 'rgba(231, 76, 60, 0.2)',
           borderColor: '#e74c3c',
           borderWidth: 2
@@ -473,7 +473,7 @@
       };
       
       const memoryData = {
-        labels: ['Il y a 1 min', 'Il y a 2 min', 'Il y a 3 min', 'Il y a 4 min', 'Il y a 5 min'],
+        labels: ['Il y a 20 sec', 'Il y a 40 sec', 'Il y a 60 sec', 'Il y a 80 sec', 'Il y a 100 sec'],
         datasets: [{
           label: 'Utilisation mémoire (MB)',
           data: [120, 125, 130, 128, 135],
