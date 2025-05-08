@@ -71,9 +71,11 @@ echo -e "${GREEN}Migration des données terminée avec succès!${NC}"
 echo -e "${YELLOW}IMPORTANT: Votre configuration Docker a été mise à jour. Les données sont maintenant stockées dans des volumes Docker nommés.${NC}"
 echo -e "${YELLOW}Les anciens dossiers dans ./data sont maintenant sauvegardés mais ne seront plus utilisés.${NC}"
 echo -e "${YELLOW}Si vous souhaitez les supprimer après avoir vérifié que tout fonctionne correctement, vous pouvez le faire manuellement.${NC}"
+echo -e "${YELLOW}IMPORTANT: L'application utilise désormais le port 5001 au lieu de 5000 pour éviter les conflits.${NC}"
 echo -e "\nPour démarrer FHIRHub avec la nouvelle configuration, exécutez:"
 echo -e "${BLUE}docker-compose up -d${NC}"
 echo -e "ou pour la version minimale:"
 echo -e "${BLUE}docker-compose -f docker-compose-minimal.yml up -d${NC}"
+echo -e "\nL'application sera accessible à l'adresse: ${GREEN}http://localhost:5001${NC}"
 
 exit 0
