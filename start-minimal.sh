@@ -88,6 +88,7 @@ datasources:
     isDefault: true
     editable: true
     
+  # Simplejson datasource pour les logs d'application FHIRHub
   - name: FHIRHub Logs
     type: simplejson
     access: proxy

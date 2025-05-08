@@ -87,6 +87,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      # Ne pas installer le plugin Loki pour éviter les erreurs
       - GF_PATHS_DATA=/var/lib/grafana
       - GF_PATHS_LOGS=/var/lib/grafana/logs
       - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
