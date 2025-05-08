@@ -880,8 +880,8 @@
           console.warn("Données détaillées de types de messages non disponibles dans l'API");
           console.log("Utilisation d'une distribution uniforme temporaire avec données réelles");
           
-          // Nombre total réel de conversions
-          const totalConversions = parseInt(conversions) || 10; // Valeur minimale si aucune conversion
+          // Nombre total réel de conversions (utiliser la valeur totalConversions déjà récupérée)
+          // Pas besoin de redéfinir totalConversions car il est déjà défini en haut de la fonction
           
           // Pour éviter le problème d'affichage vide, on va utiliser des valeurs minimales
           // qui respectent les proportions réalistes mais garantissent que le graphique sera visible
