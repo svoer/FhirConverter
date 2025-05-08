@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Application principale FHIRHub
+  # Application principale FHIRHub simplifiée
   fhirhub:
     build:
       context: .
@@ -19,22 +19,13 @@ services:
       - JWT_SECRET=fhirhub-secure-jwt-secret
       - METRICS_ENABLED=true
       - METRICS_PORT=9091
-      - LOKI_URL=http://loki:3100
     volumes:
-      # Volume pour la base de données
-      - ./volumes/db:/app/storage/db:rw
-      # Volume pour les données persistantes
-      - ./volumes/data:/app/storage/data:rw
-      # Volume pour les logs
-      - ./volumes/logs:/app/storage/logs:rw
-      # Volume pour les sauvegardes
-      - ./volumes/backups:/app/storage/backups:rw
-      # Volume pour les terminologies françaises
-      - ./volumes/french_terminology:/app/french_terminology:rw
-      # Support de la structure de dossiers legacy
-      - ./volumes/data:/app/data:rw
-    # Utiliser l'utilisateur root pour éviter les problèmes de permissions
-    # Cela est sécuritaire car l'application s'exécute dans un conteneur isolé
+      # Structure simplifiée des volumes
+      - ./data/db:/app/storage/db:rw
+      - ./data/app_data:/app/storage/data:rw
+      - ./data/logs:/app/storage/logs:rw
+      - ./data/backups:/app/storage/backups:rw
+      - ./data/french_terminology:/app/french_terminology:rw
     user: "root"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
@@ -48,167 +39,7 @@ services:
       driver: "json-file"
       options:
         max-size: "50m"
-        max-file: "10"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
-  # Prometheus pour la collecte de métriques
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: fhirhub-prometheus
-    restart: unless-stopped
-    ports:
-      - "9092:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./volumes/prometheus:/prometheus:rw
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--no-scrape.adjust-timestamps'
-    environment:
-      - "TZ=Europe/Paris"
-    user: "root"
-    depends_on:
-      - fhirhub
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
         max-file: "5"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
-  # Grafana pour la visualisation des métriques
-  grafana:
-    image: grafana/grafana:latest
-    container_name: fhirhub-grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./volumes/grafana:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-loki-datasource
-      - GF_PATHS_DATA=/var/lib/grafana
-      - GF_PATHS_LOGS=/var/lib/grafana/logs
-      - GF_PATHS_PLUGINS=/var/lib/grafana/plugins
-      - GF_AUTH_ANONYMOUS_ENABLED=false
-    user: "root" 
-    depends_on:
-      - prometheus
-      - loki
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
-  # Node Exporter pour la collecte de métriques système
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: fhirhub-node-exporter
-    restart: unless-stopped
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-      
-  # Loki pour la collecte et l'analyse des logs
-  loki:
-    image: grafana/loki:latest
-    container_name: fhirhub-loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./volumes/loki:/loki:rw
-      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml
-    user: "root"
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-      
-  # Promtail pour collecter et envoyer les logs à Loki
-  promtail:
-    image: grafana/promtail:latest
-    container_name: fhirhub-promtail
-    restart: unless-stopped
-    volumes:
-      - ./volumes/logs:/var/log/fhirhub:ro
-      - ./promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
-    command: -config.file=/etc/promtail/config.yaml
-    depends_on:
-      - loki
-    user: "root"
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-      
-  # Watchtower pour les mises à jour automatiques des conteneurs
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: fhirhub-watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_INCLUDE_STOPPED=false
-      - WATCHTOWER_SCHEDULE=0 0 4 * * *  # Exécuté tous les jours à 4h00 du matin
-      - WATCHTOWER_TIMEOUT=60s
-      - TZ=Europe/Paris
-    networks:
-      - fhirhub-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 # Définition des réseaux
 networks:
