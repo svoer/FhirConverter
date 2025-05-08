@@ -505,8 +505,8 @@
         conversionTrendChart.data.datasets[0].data.push(newValue);
         conversionTrendChart.data.datasets[0].data.shift();
         
-        // Mettre à jour le graphique
-        conversionTrendChart.update();
+        // Mettre à jour le graphique avec animation complète pour forcer le rafraîchissement
+        conversionTrendChart.update('none');
       }
       
       // Mettre à jour le graphique de distribution des ressources FHIR avec des données RÉELLES uniquement
@@ -556,8 +556,8 @@
           resourceDistChart.data.datasets[0].data = distributionData;
         }
         
-        // Rafraîchir le graphique
-        resourceDistChart.update();
+        // Rafraîchir le graphique avec animation complète pour forcer le rafraîchissement
+        resourceDistChart.update('none');
       }
       
       // Mettre à jour le graphique de taux de réussite en utilisant uniquement des données RÉELLES
@@ -587,9 +587,9 @@
         // Afficher un message de débogage avec les nouvelles valeurs
         console.log("Mise à jour forcée du taux de réussite avec valeurs:", [conversions, 0]);
         
-        // Forcer une mise à jour complète du graphique
-        // Forcer un rafraîchissement complet
-        successRateChart.update(); // 'none' force une animation complète
+        // Forcer une mise à jour complète du graphique avec animation complète
+        // Le mode 'none' force un redessinage complet du graphique
+        successRateChart.update('none');
       }
       
       // Mettre à jour le graphique des types de messages HL7 avec des données RÉELLES uniquement
@@ -660,9 +660,9 @@
           }
         }
         
-        // Forcer une mise à jour complète du graphique
-        // Forcer un rafraîchissement complet sans utiliser 'none'
-        messageTypesChart.update();
+        // Forcer une mise à jour complète du graphique avec animation complète
+        // Le mode 'none' force un redessinage complet du graphique  
+        messageTypesChart.update('none');
       }
       
       // Mettre à jour les indicateurs de dernière mise à jour

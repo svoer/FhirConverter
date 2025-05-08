@@ -733,11 +733,17 @@ app.post('/api/convert/validate', authCombined, (req, res) => {
  *         description: Erreur serveur
  */
 app.get('/api/stats', (req, res) => {
-  // Ajout d'un en-tête pour éviter la mise en cache côté client
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  // Ajout d'en-têtes pour empêcher strictement la mise en cache côté client
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
+  res.setHeader('Expires', '-1');
   res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('X-Timestamp', Date.now()); // Ajouter un timestamp unique pour chaque réponse
+  
+  // Ajouter des en-têtes CORS pour permettre tous les domaines et éviter les problèmes d'accès
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   try {
     // Générer un timestamp unique pour garantir des données fraîches à chaque requête
