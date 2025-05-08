@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/css/sidebar-menu.css">
   <link rel="stylesheet" href="/css/metrics-dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/dashboard-charts.js"></script>
   
   <!-- Inclusions du chatbot de support -->
   <link rel="stylesheet" href="/css/support-chatbot.css">
@@ -376,6 +377,11 @@
             data.data.conversionStats,
             data.data.applicationStats
           );
+          
+          // Utiliser la nouvelle fonction de mise à jour des graphiques
+          if (window.updateDashboardCharts) {
+            window.updateDashboardCharts(data.data);
+          }
         }
       })
       .catch(error => {
