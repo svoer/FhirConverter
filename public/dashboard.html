@@ -83,6 +83,9 @@
         <div class="card-header">
           <h2 class="card-title">Statistiques de conversion</h2>
           <div class="refresh-info">
+            <button id="refreshStatsBtn" class="btn-refresh" title="Rafraîchir les statistiques">
+              <i class="fas fa-sync-alt"></i>
+            </button>
             Dernière mise à jour: <span id="statsUpdateTime"></span>
           </div>
         </div>
@@ -140,7 +143,6 @@
             <button id="resetOrderBtn" class="btn-metric-control" title="Réinitialiser l'ordre des graphiques">
               <i class="fas fa-undo"></i>
             </button>
-            <span class="metric-info">Pour réorganiser les graphiques, faites-les glisser par leur titre</span>
           </div>
         </div>
         
@@ -297,6 +299,23 @@
       
       // Ajouter l'indicateur de dernière mise à jour
       updateLastRefreshTime();
+      
+      // Ajouter le gestionnaire d'événement pour le bouton de rafraîchissement
+      const refreshStatsBtn = document.getElementById('refreshStatsBtn');
+      if (refreshStatsBtn) {
+        refreshStatsBtn.addEventListener('click', function() {
+          // Ajouter une classe pour l'animation de rotation
+          this.classList.add('refreshing');
+          
+          // Rafraîchir les statistiques
+          fetchStats();
+          
+          // Retirer la classe après l'animation
+          setTimeout(() => {
+            this.classList.remove('refreshing');
+          }, 1000);
+        });
+      }
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
