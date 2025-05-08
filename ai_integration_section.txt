@@ -1,0 +1,132 @@
+            <div id="ai-integration" class="documentation-section">
+                <h2>Intégration IA</h2>
+                
+                <div class="faq-item">
+                    <h3 id="ai-security">Comment FHIRHub sécurise-t-il les échanges avec les API d'intelligence artificielle ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente plusieurs couches de sécurité pour les échanges avec les API d'intelligence artificielle :</p>
+                        
+                        <ol>
+                            <li><strong>Chiffrement TLS :</strong> Toutes les communications avec les API d'IA externes utilisent le protocole HTTPS avec TLS 1.2 ou supérieur.</li>
+                            <li><strong>Gestion sécurisée des secrets :</strong> Les clés API sont stockées de manière chiffrée et ne sont jamais exposées dans les logs ou les interfaces utilisateur.</li>
+                            <li><strong>Sanitisation des données :</strong> Les données sensibles sont automatiquement détectées et supprimées avant d'être envoyées aux API d'IA.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation de la couche de sécurité dans <code>src/services/hl7AIService.js</code> :</p>
+                        
+                        <pre><code>// Fonction pour détecter et masquer les données sensibles
+function sanitizeHealthData(text) {
+  // Masquer les identifiants de patients (numéros de sécurité sociale, etc.)
+  let sanitized = text.replace(/\b\d{13,15}\b/g, '[IDENTIFIANT_MASQUÉ]');
+  
+  // Masquer les noms de patients (heuristique pour les segments PID)
+  sanitized = sanitized.replace(/PID\|.*?\|.*?\|(.*?)\|/g, (match, group) => {
+    return match.replace(group, '[NOM_MASQUÉ]');
+  });
+  
+  // Masquer les adresses email
+  sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_MASQUÉ]');
+  
+  return sanitized;
+}</code></pre>
+                        
+                        <p>Cette architecture sécurisée garantit que les données médicales sensibles sont protégées lors de l'utilisation des fonctionnalités d'IA.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="ai-prompting">Comment FHIRHub optimise-t-il les prompts pour l'analyse HL7 par intelligence artificielle ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise des techniques avancées de prompt engineering pour optimiser les interactions avec les modèles d'IA :</p>
+                        
+                        <ol>
+                            <li><strong>Prompts structurés :</strong> Chaque prompt suit une structure précise avec contexte, instruction et format de réponse attendu.</li>
+                            <li><strong>Few-shot learning :</strong> Des exemples pertinents sont inclus dans les prompts pour guider le modèle.</li>
+                            <li><strong>Format JSON :</strong> Les réponses sont structurées en JSON pour faciliter leur traitement.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation d'un constructeur de prompt dans <code>src/services/hl7AIService.js</code> :</p>
+                        
+                        <pre><code>function buildHL7Prompt(hl7Message, task, options = {}) {
+  // Définir les exemples few-shot selon la tâche
+  const examples = getFewShotExamples(task);
+  
+  // Construire le système de prompt
+  const systemPrompt = `Vous êtes un expert en messages HL7 v2.5 et en standard FHIR R4. 
+Votre tâche est d'${task === 'explain' ? 'expliquer' : task === 'transform' ? 'transformer' : 'valider'} le message HL7 fourni ${task === 'transform' ? 'en une structure FHIR équivalente' : ''}.
+
+RÈGLES IMPORTANTES:
+1. Analysez précisément chaque segment et champ du message HL7.
+2. ${task === 'transform' ? 'Respectez strictement la structure FHIR R4 et les règles de mapping.' : ''}
+3. Répondez au format JSON structuré comme dans les exemples.
+4. Ne faites pas de suppositions sur des données manquantes.
+
+${examples.length > 0 ? 'EXEMPLES DE RÉFÉRENCE:\n' + examples.join('\n\n') : ''}`;
+
+  // Selon le modèle utilisé, formater différemment la requête
+  const provider = options.provider || 'mistral';
+  
+  if (provider === 'mistral') {
+    return {
+      model: options.model || "mistral-large",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: hl7Message }
+      ],
+      temperature: options.temperature || 0.1,
+      response_format: { type: "json_object" }
+    };
+  }
+}</code></pre>
+                        
+                        <p>Cette approche structurée garantit des réponses de haute qualité de la part des modèles d'IA et facilite leur intégration dans le processus de conversion HL7-FHIR.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="ai-fallback">Comment FHIRHub gère-t-il les situations où l'IA est indisponible ou renvoie des résultats incorrects ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente plusieurs mécanismes de repli (fallback) robustes pour garantir la continuité du service même en cas de défaillance de l'IA :</p>
+                        
+                        <ol>
+                            <li><strong>Validation des résultats :</strong> Toute réponse de l'IA est systématiquement validée avant utilisation.</li>
+                            <li><strong>Circuit-breaker pattern :</strong> En cas d'échecs répétés, le système désactive temporairement les appels à l'IA.</li>
+                            <li><strong>Mécanisme de repli :</strong> Un système de conversion basé sur des règles traditionnelles prend le relais automatiquement.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation du mécanisme de fallback dans <code>src/services/hl7AIService.js</code> :</p>
+                        
+                        <pre><code>// Classe implémentant le pattern Circuit Breaker
+class AICircuitBreaker {
+  constructor(options = {}) {
+    this.failureThreshold = options.failureThreshold || 3;
+    this.resetTimeout = options.resetTimeout || 60000; // 1 minute par défaut
+    this.failureCount = 0;
+    this.lastFailureTime = null;
+    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+  }
+  
+  // Vérifier si le circuit est ouvert (trop d'échecs récents)
+  isOpen() {
+    if (this.state === 'CLOSED') {
+      return false;
+    }
+    
+    if (this.state === 'OPEN') {
+      // Vérifier si le temps de reset est écoulé
+      const now = Date.now();
+      if (now - this.lastFailureTime >= this.resetTimeout) {
+        this.state = 'HALF_OPEN';
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
+  }
+}</code></pre>
+                        
+                        <p>Cette architecture garantit que le système continue de fonctionner de manière fiable même en cas d'indisponibilité des services d'IA.</p>
+                    </div>
+                </div>
+            </div>

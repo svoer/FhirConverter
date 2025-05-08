@@ -1,0 +1,192 @@
+            <div id="conversion" class="documentation-section">
+                <h2>Conversion HL7 vers FHIR</h2>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-parsing">Comment FHIRHub analyse-t-il les segments HL7 avant la conversion vers FHIR ?</h3>
+                    <div class="faq-answer">
+                        <p>Le processus d'analyse des segments HL7 dans FHIRHub utilise une approche en deux phases :</p>
+                        
+                        <ol>
+                            <li><strong>Analyse lexicale et syntaxique :</strong> Le message HL7 est d'abord décomposé en segments, champs, composants et sous-composants selon la syntaxe standard HL7v2.5.</li>
+                            <li><strong>Construction d'un modèle intermédiaire :</strong> Ces éléments sont ensuite organisés dans une structure arborescente qui facilite l'accès aux données pendant la phase de conversion.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation principale du parser HL7 dans <code>hl7Parser.js</code> :</p>
+                        
+                        <pre><code>function parseHL7Message(message) {
+  // Normaliser les séparateurs de segments
+  const normalizedMessage = message.replace(/\r\n|\n\r|\r|\n/g, '\r');
+  
+  // Diviser en segments
+  const segments = normalizedMessage.split('\r');
+  
+  // Extraire les séparateurs depuis le MSH
+  if (!segments[0] || !segments[0].startsWith('MSH')) {
+    throw new Error('Message invalide : segment MSH manquant ou incorrect');
+  }
+  
+  // MSH|^~\&|... - Les séparateurs sont définis après "MSH"
+  const delimiters = {
+    field: segments[0].charAt(3) || '|',
+    component: segments[0].charAt(4) || '^',
+    repetition: segments[0].charAt(5) || '~',
+    escape: segments[0].charAt(6) || '\\',
+    subcomponent: segments[0].charAt(7) || '&'
+  };
+  
+  // Analyser chaque segment
+  const parsedSegments = segments.map(segment => {
+    if (!segment.trim()) return null;
+    
+    // Diviser le segment en champs
+    const fields = segment.split(delimiters.field);
+    const segmentName = fields[0];
+    
+    // Analyser chaque champ (à partir du champ 1, le champ 0 est le nom du segment)
+    const parsedFields = fields.map((field, index) => {
+      // Traitement spécial pour MSH-1 et MSH-2 qui contiennent les délimiteurs
+      if (segmentName === 'MSH' && (index === 1 || index === 2)) {
+        return field;
+      }
+      
+      // Vérifier si le champ a des répétitions
+      if (field.includes(delimiters.repetition)) {
+        return field.split(delimiters.repetition).map(rep => 
+          parseComponents(rep, delimiters)
+        );
+      }
+      
+      return parseComponents(field, delimiters);
+    });
+    
+    return {
+      name: segmentName,
+      fields: parsedFields.slice(1), // Exclure le nom du segment
+      raw: segment
+    };
+  }).filter(Boolean); // Filtrer les segments vides
+  
+  return {
+    segments: parsedSegments,
+    delimiters,
+    raw: message
+  };
+}</code></pre>
+                        
+                        <p>Cette approche permet de gérer correctement les délimiteurs spécifiques à chaque message et offre une robustesse face aux variations syntaxiques que l'on peut rencontrer dans les messages HL7.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-mappings">Comment sont gérées les mappings complexes entre segments HL7 et ressources FHIR ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un système de mappings flexibles pour gérer les conversions complexes entre segments HL7 et ressources FHIR :</p>
+                        
+                        <ol>
+                            <li><strong>Mappings déclaratifs :</strong> Des fichiers de configuration décrivent les relations entre champs HL7 et attributs FHIR.</li>
+                            <li><strong>Transformateurs spécialisés :</strong> Pour les conversions complexes qui nécessitent une logique métier ou des règles conditionnelles.</li>
+                            <li><strong>Moteur de règles :</strong> Un système basé sur des règles qui peut appliquer des transformations contextuelles.</li>
+                        </ol>
+                        
+                        <p>Exemple de définition d'un mapping pour les données patient (PID → Patient) :</p>
+                        
+                        <pre><code>// Extrait du fichier de mapping HL7 vers FHIR
+const patientMapping = {
+  resourceType: 'Patient',
+  sourceSegment: 'PID',
+  mappings: [
+    {
+      source: { segment: 'PID', field: 3 },  // PID-3: Patient Identifier List
+      target: 'identifier',
+      transform: transformPatientIdentifiers,
+      required: true
+    },
+    {
+      source: { segment: 'PID', field: 5 },  // PID-5: Patient Name
+      target: 'name',
+      transform: transformPatientName
+    },
+    {
+      source: { segment: 'PID', field: 7 },  // PID-7: Date/Time of Birth
+      target: 'birthDate',
+      transform: (value) => formatHL7Date(value)
+    },
+    {
+      source: { segment: 'PID', field: 8 },  // PID-8: Administrative Sex
+      target: 'gender',
+      transform: transformGender,
+      valueMap: {
+        'M': 'male',
+        'F': 'female',
+        'O': 'other',
+        'U': 'unknown',
+        'A': 'other',  // Ambiguous
+        'N': 'unknown' // Not applicable
+      }
+    }
+  ]
+};</code></pre>
+                        
+                        <p>Ce système permet d'adapter la conversion aux besoins spécifiques de chaque client tout en maintenant la conformité avec les standards FHIR et HL7.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-validation">Comment FHIRHub valide-t-il les ressources FHIR générées après conversion ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un système de validation à plusieurs niveaux pour garantir la conformité des ressources FHIR générées :</p>
+                        
+                        <ol>
+                            <li><strong>Validation structurelle :</strong> Vérification que les ressources FHIR respectent les contraintes structurelles définies dans les spécifications FHIR R4.</li>
+                            <li><strong>Validation sémantique :</strong> Vérification que les valeurs respectent les règles métier et les contraintes de cardinalité.</li>
+                            <li><strong>Validation des références :</strong> Vérification de l'intégrité des références entre ressources FHIR.</li>
+                        </ol>
+                        
+                        <p>Implémentation du processus de validation dans <code>src/services/conversionService.js</code> :</p>
+                        
+                        <pre><code>async function validateFHIRResources(resources, validationLevel = 'standard') {
+  const validationResults = {
+    valid: true,
+    errors: [],
+    warnings: []
+  };
+  
+  // Niveau de validation configurable
+  const validationOptions = {
+    checkReferences: validationLevel !== 'minimal',
+    checkTerminology: validationLevel === 'strict',
+    checkCardinality: validationLevel !== 'minimal',
+    checkProfiles: validationLevel === 'strict'
+  };
+  
+  for (const resource of resources) {
+    try {
+      // Validation structurelle basique
+      const structuralErrors = validateResourceStructure(resource);
+      if (structuralErrors.length > 0) {
+        validationResults.valid = false;
+        validationResults.errors.push({
+          resourceType: resource.resourceType,
+          id: resource.id,
+          type: 'structural',
+          details: structuralErrors
+        });
+      }
+    } catch (error) {
+      validationResults.valid = false;
+      validationResults.errors.push({
+        resourceType: resource.resourceType,
+        id: resource.id || 'unknown',
+        type: 'exception',
+        details: error.message
+      });
+    }
+  }
+  
+  return validationResults;
+}</code></pre>
+                        
+                        <p>Cette validation approfondie permet de garantir que les ressources FHIR générées seront compatibles avec les systèmes cibles.</p>
+                    </div>
+                </div>
+            </div>

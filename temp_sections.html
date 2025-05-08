@@ -1,0 +1,2018 @@
+<!-- SECTION CONVERSION HL7 VERS FHIR -->
+<div id="conversion" class="documentation-section">
+    <h2>Conversion HL7 vers FHIR</h2>
+    
+    <div class="faq-item">
+        <h3 id="conversion-parsing">Comment FHIRHub analyse-t-il les segments HL7 avant la conversion vers FHIR ?</h3>
+        <div class="faq-answer">
+            <p>Le processus d'analyse des segments HL7 dans FHIRHub utilise une approche en deux phases :</p>
+            
+            <ol>
+                <li><strong>Analyse lexicale et syntaxique :</strong> Le message HL7 est d'abord décomposé en segments, champs, composants et sous-composants selon la syntaxe standard HL7v2.5.</li>
+                <li><strong>Construction d'un modèle intermédiaire :</strong> Ces éléments sont ensuite organisés dans une structure arborescente qui facilite l'accès aux données pendant la phase de conversion.</li>
+            </ol>
+            
+            <p>Voici l'implémentation principale du parser HL7 dans <code>hl7Parser.js</code> :</p>
+            
+            <pre><code>function parseHL7Message(message) {
+  // Normaliser les séparateurs de segments
+  const normalizedMessage = message.replace(/\r\n|\n\r|\r|\n/g, '\r');
+  
+  // Diviser en segments
+  const segments = normalizedMessage.split('\r');
+  
+  // Extraire les séparateurs depuis le MSH
+  if (!segments[0] || !segments[0].startsWith('MSH')) {
+    throw new Error('Message invalide : segment MSH manquant ou incorrect');
+  }
+  
+  // MSH|^~\&|... - Les séparateurs sont définis après "MSH"
+  const delimiters = {
+    field: segments[0].charAt(3) || '|',
+    component: segments[0].charAt(4) || '^',
+    repetition: segments[0].charAt(5) || '~',
+    escape: segments[0].charAt(6) || '\\',
+    subcomponent: segments[0].charAt(7) || '&'
+  };
+  
+  // Analyser chaque segment
+  const parsedSegments = segments.map(segment => {
+    if (!segment.trim()) return null;
+    
+    // Diviser le segment en champs
+    const fields = segment.split(delimiters.field);
+    const segmentName = fields[0];
+    
+    // Analyser chaque champ (à partir du champ 1, le champ 0 est le nom du segment)
+    const parsedFields = fields.map((field, index) => {
+      // Traitement spécial pour MSH-1 et MSH-2 qui contiennent les délimiteurs
+      if (segmentName === 'MSH' && (index === 1 || index === 2)) {
+        return field;
+      }
+      
+      // Vérifier si le champ a des répétitions
+      if (field.includes(delimiters.repetition)) {
+        return field.split(delimiters.repetition).map(rep => 
+          parseComponents(rep, delimiters)
+        );
+      }
+      
+      return parseComponents(field, delimiters);
+    });
+    
+    return {
+      name: segmentName,
+      fields: parsedFields.slice(1), // Exclure le nom du segment
+      raw: segment
+    };
+  }).filter(Boolean); // Filtrer les segments vides
+  
+  return {
+    segments: parsedSegments,
+    delimiters,
+    raw: message
+  };
+}</code></pre>
+            
+            <p>Cette approche permet de gérer correctement les délimiteurs spécifiques à chaque message et offre une robustesse face aux variations syntaxiques que l'on peut rencontrer dans les messages HL7.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="conversion-mappings">Comment sont gérées les mappings complexes entre segments HL7 et ressources FHIR ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente un système de mappings flexibles pour gérer les conversions complexes entre segments HL7 et ressources FHIR :</p>
+            
+            <ol>
+                <li><strong>Mappings déclaratifs :</strong> Des fichiers de configuration décrivent les relations entre champs HL7 et attributs FHIR.</li>
+                <li><strong>Transformateurs spécialisés :</strong> Pour les conversions complexes qui nécessitent une logique métier ou des règles conditionnelles.</li>
+                <li><strong>Moteur de règles :</strong> Un système basé sur des règles qui peut appliquer des transformations contextuelles.</li>
+            </ol>
+            
+            <p>Exemple de définition d'un mapping pour les données patient (PID → Patient) :</p>
+            
+            <pre><code>// Extrait du fichier de mapping HL7 vers FHIR
+const patientMapping = {
+  resourceType: 'Patient',
+  sourceSegment: 'PID',
+  mappings: [
+    {
+      source: { segment: 'PID', field: 3 },  // PID-3: Patient Identifier List
+      target: 'identifier',
+      transform: transformPatientIdentifiers,
+      required: true
+    },
+    {
+      source: { segment: 'PID', field: 5 },  // PID-5: Patient Name
+      target: 'name',
+      transform: transformPatientName
+    },
+    {
+      source: { segment: 'PID', field: 7 },  // PID-7: Date/Time of Birth
+      target: 'birthDate',
+      transform: (value) => formatHL7Date(value)
+    },
+    {
+      source: { segment: 'PID', field: 8 },  // PID-8: Administrative Sex
+      target: 'gender',
+      transform: transformGender,
+      valueMap: {
+        'M': 'male',
+        'F': 'female',
+        'O': 'other',
+        'U': 'unknown',
+        'A': 'other',  // Ambiguous
+        'N': 'unknown' // Not applicable
+      }
+    }
+  ]
+};</code></pre>
+            
+            <p>Ce système permet d'adapter la conversion aux besoins spécifiques de chaque client tout en maintenant la conformité avec les standards FHIR et HL7.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="conversion-validation">Comment FHIRHub valide-t-il les ressources FHIR générées après conversion ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente un système de validation à plusieurs niveaux pour garantir la conformité des ressources FHIR générées :</p>
+            
+            <ol>
+                <li><strong>Validation structurelle :</strong> Vérification que les ressources FHIR respectent les contraintes structurelles définies dans les spécifications FHIR R4.</li>
+                <li><strong>Validation sémantique :</strong> Vérification que les valeurs respectent les règles métier et les contraintes de cardinalité.</li>
+                <li><strong>Validation des références :</strong> Vérification de l'intégrité des références entre ressources FHIR.</li>
+            </ol>
+            
+            <p>Implémentation du processus de validation dans <code>src/services/conversionService.js</code> :</p>
+            
+            <pre><code>async function validateFHIRResources(resources, validationLevel = 'standard') {
+  const validationResults = {
+    valid: true,
+    errors: [],
+    warnings: []
+  };
+  
+  // Niveau de validation configurable
+  const validationOptions = {
+    checkReferences: validationLevel !== 'minimal',
+    checkTerminology: validationLevel === 'strict',
+    checkCardinality: validationLevel !== 'minimal',
+    checkProfiles: validationLevel === 'strict'
+  };
+  
+  for (const resource of resources) {
+    try {
+      // Validation structurelle basique
+      const structuralErrors = validateResourceStructure(resource);
+      if (structuralErrors.length > 0) {
+        validationResults.valid = false;
+        validationResults.errors.push({
+          resourceType: resource.resourceType,
+          id: resource.id,
+          type: 'structural',
+          details: structuralErrors
+        });
+      }
+    } catch (error) {
+      validationResults.valid = false;
+      validationResults.errors.push({
+        resourceType: resource.resourceType,
+        id: resource.id || 'unknown',
+        type: 'exception',
+        details: error.message
+      });
+    }
+  }
+  
+  return validationResults;
+}</code></pre>
+            
+            <p>Cette validation approfondie permet de garantir que les ressources FHIR générées seront compatibles avec les systèmes cibles.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION INTÉGRATION IA -->
+<div id="ai-integration" class="documentation-section">
+    <h2>Intégration IA</h2>
+    
+    <div class="faq-item">
+        <h3 id="ai-security">Comment FHIRHub sécurise-t-il les échanges avec les API d'intelligence artificielle ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente plusieurs couches de sécurité pour les échanges avec les API d'intelligence artificielle :</p>
+            
+            <ol>
+                <li><strong>Chiffrement TLS :</strong> Toutes les communications avec les API d'IA externes utilisent le protocole HTTPS avec TLS 1.2 ou supérieur.</li>
+                <li><strong>Gestion sécurisée des secrets :</strong> Les clés API sont stockées de manière chiffrée et ne sont jamais exposées dans les logs ou les interfaces utilisateur.</li>
+                <li><strong>Sanitisation des données :</strong> Les données sensibles sont automatiquement détectées et supprimées avant d'être envoyées aux API d'IA.</li>
+            </ol>
+            
+            <p>Voici l'implémentation de la couche de sécurité dans <code>src/services/hl7AIService.js</code> :</p>
+            
+            <pre><code>// Fonction pour détecter et masquer les données sensibles
+function sanitizeHealthData(text) {
+  // Masquer les identifiants de patients (numéros de sécurité sociale, etc.)
+  let sanitized = text.replace(/\b\d{13,15}\b/g, '[IDENTIFIANT_MASQUÉ]');
+  
+  // Masquer les noms de patients (heuristique pour les segments PID)
+  sanitized = sanitized.replace(/PID\|.*?\|.*?\|(.*?)\|/g, (match, group) => {
+    return match.replace(group, '[NOM_MASQUÉ]');
+  });
+  
+  // Masquer les adresses email
+  sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_MASQUÉ]');
+  
+  return sanitized;
+}</code></pre>
+            
+            <p>Cette architecture sécurisée garantit que les données médicales sensibles sont protégées lors de l'utilisation des fonctionnalités d'IA.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="ai-prompting">Comment FHIRHub optimise-t-il les prompts pour l'analyse HL7 par intelligence artificielle ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub utilise des techniques avancées de prompt engineering pour optimiser les interactions avec les modèles d'IA :</p>
+            
+            <ol>
+                <li><strong>Prompts structurés :</strong> Chaque prompt suit une structure précise avec contexte, instruction et format de réponse attendu.</li>
+                <li><strong>Few-shot learning :</strong> Des exemples pertinents sont inclus dans les prompts pour guider le modèle.</li>
+                <li><strong>Format JSON :</strong> Les réponses sont structurées en JSON pour faciliter leur traitement.</li>
+            </ol>
+            
+            <p>Voici l'implémentation d'un constructeur de prompt dans <code>src/services/hl7AIService.js</code> :</p>
+            
+            <pre><code>function buildHL7Prompt(hl7Message, task, options = {}) {
+  // Définir les exemples few-shot selon la tâche
+  const examples = getFewShotExamples(task);
+  
+  // Construire le système de prompt
+  const systemPrompt = `Vous êtes un expert en messages HL7 v2.5 et en standard FHIR R4. 
+Votre tâche est d'${task === 'explain' ? 'expliquer' : task === 'transform' ? 'transformer' : 'valider'} le message HL7 fourni ${task === 'transform' ? 'en une structure FHIR équivalente' : ''}.
+
+RÈGLES IMPORTANTES:
+1. Analysez précisément chaque segment et champ du message HL7.
+2. ${task === 'transform' ? 'Respectez strictement la structure FHIR R4 et les règles de mapping.' : ''}
+3. Répondez au format JSON structuré comme dans les exemples.
+4. Ne faites pas de suppositions sur des données manquantes.
+
+${examples.length > 0 ? 'EXEMPLES DE RÉFÉRENCE:\n' + examples.join('\n\n') : ''}`;
+
+  // Selon le modèle utilisé, formater différemment la requête
+  const provider = options.provider || 'mistral';
+  
+  if (provider === 'mistral') {
+    return {
+      model: options.model || "mistral-large",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: hl7Message }
+      ],
+      temperature: options.temperature || 0.1,
+      response_format: { type: "json_object" }
+    };
+  }
+}</code></pre>
+            
+            <p>Cette approche structurée garantit des réponses de haute qualité de la part des modèles d'IA et facilite leur intégration dans le processus de conversion HL7-FHIR.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="ai-fallback">Comment FHIRHub gère-t-il les situations où l'IA est indisponible ou renvoie des résultats incorrects ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente plusieurs mécanismes de repli (fallback) robustes pour garantir la continuité du service même en cas de défaillance de l'IA :</p>
+            
+            <ol>
+                <li><strong>Validation des résultats :</strong> Toute réponse de l'IA est systématiquement validée avant utilisation.</li>
+                <li><strong>Circuit-breaker pattern :</strong> En cas d'échecs répétés, le système désactive temporairement les appels à l'IA.</li>
+                <li><strong>Mécanisme de repli :</strong> Un système de conversion basé sur des règles traditionnelles prend le relais automatiquement.</li>
+            </ol>
+            
+            <p>Voici l'implémentation du mécanisme de fallback dans <code>src/services/hl7AIService.js</code> :</p>
+            
+            <pre><code>// Classe implémentant le pattern Circuit Breaker
+class AICircuitBreaker {
+  constructor(options = {}) {
+    this.failureThreshold = options.failureThreshold || 3;
+    this.resetTimeout = options.resetTimeout || 60000; // 1 minute par défaut
+    this.failureCount = 0;
+    this.lastFailureTime = null;
+    this.state = 'CLOSED'; // CLOSED, OPEN, HALF_OPEN
+  }
+  
+  // Vérifier si le circuit est ouvert (trop d'échecs récents)
+  isOpen() {
+    if (this.state === 'CLOSED') {
+      return false;
+    }
+    
+    if (this.state === 'OPEN') {
+      // Vérifier si le temps de reset est écoulé
+      const now = Date.now();
+      if (now - this.lastFailureTime >= this.resetTimeout) {
+        this.state = 'HALF_OPEN';
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
+  }
+}</code></pre>
+            
+            <p>Cette architecture garantit que le système continue de fonctionner de manière fiable même en cas d'indisponibilité des services d'IA.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION DATABASE -->
+<div id="database" class="documentation-section">
+    <h2>Base de données</h2>
+    
+    <div class="faq-item">
+        <h3 id="database-schema">Comment est organisé le schéma de base de données de FHIRHub ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub utilise un schéma de base de données SQLite optimisé pour les performances et la portabilité :</p>
+            
+            <ol>
+                <li><strong>Tables principales :</strong> Utilisateurs, Applications, API Keys, Logs de conversion</li>
+                <li><strong>Contraintes d'intégrité :</strong> Clés étrangères avec DELETE CASCADE pour maintenir la cohérence</li>
+                <li><strong>Indexes optimisés :</strong> Sur les colonnes fréquemment recherchées pour accélérer les requêtes</li>
+            </ol>
+            
+            <p>Voici un extrait du script de création de la base de données :</p>
+            
+            <pre><code>// Création de la table de logs de conversion
+db.exec(`
+CREATE TABLE IF NOT EXISTS conversion_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id TEXT,
+  application_id INTEGER,
+  user_id INTEGER,
+  message_type TEXT,
+  status TEXT NOT NULL,
+  input_message TEXT,
+  output_bundle TEXT,
+  processing_time INTEGER,
+  resource_count INTEGER,
+  error_message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+)`);
+
+// Création des indexes pour optimiser les performances
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_application_id ON conversion_logs(application_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_timestamp ON conversion_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_status ON conversion_logs(status);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_message_type ON conversion_logs(message_type);
+`);</code></pre>
+            
+            <p>Cette organisation permet une exécution efficace des requêtes même sur des appareils avec des ressources limitées, tout en maintenant l'intégrité des données.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="database-migrations">Comment FHIRHub gère-t-il les migrations de schéma de base de données ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente un système de migrations de base de données robuste pour gérer les évolutions du schéma :</p>
+            
+            <ol>
+                <li><strong>Migrations versionnées :</strong> Chaque changement de schéma est numéroté et appliqué séquentiellement</li>
+                <li><strong>Transactions atomiques :</strong> Les migrations s'exécutent dans des transactions pour garantir la cohérence</li>
+                <li><strong>Vérification de version :</strong> Le système vérifie la version actuelle avant d'appliquer les migrations</li>
+            </ol>
+            
+            <p>Voici le code du gestionnaire de migrations dans <code>src/database/migrations.js</code> :</p>
+            
+            <pre><code>// Système de migrations pour SQLite
+async function runMigrations(db) {
+  // Créer la table de suivi des migrations si elle n'existe pas
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Récupérer la version actuelle
+  const currentVersionRow = db.prepare('SELECT MAX(version) as version FROM schema_migrations').get();
+  const currentVersion = currentVersionRow.version || 0;
+  
+  console.log(`Version actuelle de la base de données: ${currentVersion}`);
+  
+  // Liste des migrations disponibles
+  const migrations = [
+    {
+      version: 1,
+      description: 'Création des tables initiales',
+      up: `
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          email TEXT UNIQUE,
+          role TEXT NOT NULL DEFAULT 'user',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS applications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          user_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+      `
+    },
+    {
+      version: 2,
+      description: 'Ajout de la table api_keys',
+      up: `
+        CREATE TABLE IF NOT EXISTS api_keys (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT NOT NULL UNIQUE,
+          application_id INTEGER NOT NULL,
+          description TEXT,
+          active BOOLEAN NOT NULL DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME,
+          FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+        );
+      `
+    }
+    // Autres migrations...
+  ];
+  
+  // Appliquer les migrations manquantes
+  for (const migration of migrations) {
+    if (migration.version > currentVersion) {
+      console.log(`Application de la migration ${migration.version}: ${migration.description}`);
+      
+      try {
+        // Démarrer une transaction
+        db.exec('BEGIN TRANSACTION');
+        
+        // Exécuter la migration
+        db.exec(migration.up);
+        
+        // Enregistrer la migration appliquée
+        db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run(migration.version);
+        
+        // Valider la transaction
+        db.exec('COMMIT');
+        
+        console.log(`Migration ${migration.version} appliquée avec succès`);
+      } catch (error) {
+        // Annuler la transaction en cas d'erreur
+        db.exec('ROLLBACK');
+        console.error(`Erreur lors de l'application de la migration ${migration.version}:`, error);
+        throw error;
+      }
+    }
+  }
+  
+  console.log('Migrations terminées');
+}</code></pre>
+            
+            <p>Ce système de migrations garantit que la base de données évolue de manière contrôlée, sans risque de perte de données, tout en maintenant la compatibilité avec les versions précédentes de l'application.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="database-backup">Comment FHIRHub implémente-t-il la sauvegarde et la restauration de la base de données ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub utilise un système de sauvegarde et restauration robuste pour protéger les données critiques :</p>
+            
+            <ol>
+                <li><strong>Sauvegardes périodiques :</strong> Planifiées automatiquement à des intervalles configurables</li>
+                <li><strong>Sauvegardes incrémentales :</strong> Pour minimiser l'espace disque tout en préservant l'historique</li>
+                <li><strong>Compression des sauvegardes :</strong> Pour réduire l'espace de stockage nécessaire</li>
+                <li><strong>Restauration point-in-time :</strong> Permet de restaurer à un moment précis</li>
+            </ol>
+            
+            <p>Voici l'implémentation du mécanisme de sauvegarde dans <code>src/services/backupService.js</code> :</p>
+            
+            <pre><code>const fs = require('fs');
+const path = require('path');
+const archiver = require('archiver');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+
+async function createDatabaseBackup(dbPath, backupDir) {
+  // Créer le répertoire de sauvegarde s'il n'existe pas
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  
+  // Générer un nom de fichier avec horodatage
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupFileName = `backup-${timestamp}.zip`;
+  const backupPath = path.join(backupDir, backupFileName);
+  
+  // Créer un flux de sortie pour l'archive ZIP
+  const output = fs.createWriteStream(backupPath);
+  const archive = archiver('zip', {
+    zlib: { level: 9 } // Niveau de compression maximal
+  });
+  
+  // Pipe archive data to the output file
+  archive.pipe(output);
+  
+  try {
+    // Utiliser SQLite3 pour créer une sauvegarde cohérente
+    const backupTempFile = path.join(backupDir, `temp-${timestamp}.db`);
+    
+    // Utiliser sqlite3 .backup pour créer une copie cohérente
+    await execAsync(`sqlite3 "${dbPath}" ".backup '${backupTempFile}'"`);
+    
+    // Ajouter le fichier temporaire à l'archive
+    archive.file(backupTempFile, { name: path.basename(dbPath) });
+    
+    // Finaliser l'archive
+    await archive.finalize();
+    
+    // Supprimer le fichier temporaire
+    fs.unlinkSync(backupTempFile);
+    
+    // Nettoyer les anciennes sauvegardes (garder seulement les 10 dernières)
+    await cleanupOldBackups(backupDir, 10);
+    
+    console.log(`Sauvegarde de la base de données créée avec succès: ${backupPath}`);
+    return backupPath;
+  } catch (error) {
+    console.error(`Erreur lors de la création de la sauvegarde:`, error);
+    throw error;
+  }
+}
+
+async function restoreDatabase(backupPath, dbPath) {
+  try {
+    // Créer un répertoire temporaire pour extraire l'archive
+    const tempDir = path.join(path.dirname(backupPath), 'temp-restore');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    // Extraire l'archive
+    await execAsync(`unzip -o "${backupPath}" -d "${tempDir}"`);
+    
+    // Trouver le fichier de base de données dans le répertoire temporaire
+    const extractedDbFile = path.join(tempDir, path.basename(dbPath));
+    
+    // Fermer les connexions à la base de données actuelle
+    await execAsync(`sqlite3 "${dbPath}" ".exit"`);
+    
+    // Remplacer la base de données actuelle par la sauvegarde
+    fs.copyFileSync(extractedDbFile, dbPath);
+    
+    // Nettoyer le répertoire temporaire
+    fs.rmdirSync(tempDir, { recursive: true });
+    
+    console.log(`Base de données restaurée avec succès depuis ${backupPath}`);
+    return true;
+  } catch (error) {
+    console.error(`Erreur lors de la restauration de la base de données:`, error);
+    throw error;
+  }
+}</code></pre>
+            
+            <p>Ce système de sauvegarde et restauration garantit que les données critiques sont protégées contre les pertes accidentelles, les corruptions ou les erreurs utilisateur, tout en permettant une récupération rapide en cas de problème.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION INTERFACE UTILISATEUR -->
+<div id="ui" class="documentation-section">
+    <h2>Interface utilisateur</h2>
+    
+    <div class="faq-item">
+        <h3 id="ui-responsive">Comment FHIRHub adapte-t-il son interface aux différentes tailles d'écran ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub utilise un design responsive sophistiqué pour s'adapter à tous les dispositifs :</p>
+            
+            <ol>
+                <li><strong>CSS Grid et Flexbox :</strong> Pour une mise en page flexible qui s'adapte automatiquement</li>
+                <li><strong>Media queries :</strong> Pour appliquer des styles spécifiques selon la taille de l'écran</li>
+                <li><strong>Unités relatives :</strong> Utilisation de rem, em, vh et vw pour un dimensionnement adaptatif</li>
+            </ol>
+            
+            <p>Voici un extrait du code CSS responsive dans <code>public/css/styles.css</code> :</p>
+            
+            <pre><code>/* Base styles for all devices */
+:root {
+  --primary-gradient-start: #FF416C;
+  --primary-gradient-end: #FF4B2B;
+  --border-radius: 8px;
+  --spacing-unit: 1rem;
+  --header-height: 60px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 60px;
+}
+
+/* Layout container with sidebar */
+.main-container {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.3s ease;
+}
+
+.main-container.sidebar-collapsed {
+  grid-template-columns: var(--sidebar-collapsed-width) 1fr;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    z-index: 100;
+    transition: left 0.3s ease;
+  }
+  
+  .sidebar.visible {
+    left: 0;
+  }
+  
+  .mobile-menu-toggle {
+    display: block;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --spacing-unit: 0.75rem;
+    --header-height: 50px;
+  }
+  
+  .card {
+    padding: var(--spacing-unit);
+  }
+  
+  .form-group {
+    flex-direction: column;
+  }
+  
+  .form-group label {
+    margin-bottom: 0.5rem;
+  }
+}</code></pre>
+            
+            <p>Ces techniques permettent à l'interface de FHIRHub de s'adapter parfaitement aux smartphones, tablettes et écrans d'ordinateur, offrant une expérience utilisateur optimale sur tous les dispositifs.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="ui-accessibility">Quelles fonctionnalités d'accessibilité sont implémentées dans l'interface de FHIRHub ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub intègre de nombreuses fonctionnalités d'accessibilité pour garantir une utilisation par tous les utilisateurs :</p>
+            
+            <ol>
+                <li><strong>Conformité WCAG 2.1 :</strong> Respect des directives d'accessibilité web internationales</li>
+                <li><strong>Navigation au clavier :</strong> Tous les éléments interactifs sont accessibles au clavier</li>
+                <li><strong>Attributs ARIA :</strong> Pour améliorer la compatibilité avec les lecteurs d'écran</li>
+                <li><strong>Contrastes de couleurs :</strong> Conformes aux exigences d'accessibilité</li>
+            </ol>
+            
+            <p>Voici un exemple d'implémentation d'accessibilité dans <code>public/js/accessibility.js</code> :</p>
+            
+            <pre><code>// Gestionnaire de focus pour améliorer la navigation au clavier
+function setupFocusManagement() {
+  const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  
+  // Piéger le focus dans les modales ouvertes
+  document.addEventListener('keydown', function(e) {
+    // Vérifier si une modale est ouverte
+    const openModal = document.querySelector('.modal.open');
+    if (!openModal) return;
+    
+    // Capturer la touche Tab
+    if (e.key === 'Tab') {
+      const focusableContent = openModal.querySelectorAll(focusableElements);
+      const firstFocusable = focusableContent[0];
+      const lastFocusable = focusableContent[focusableContent.length - 1];
+      
+      // Boucler le focus à l'intérieur de la modale
+      if (e.shiftKey && document.activeElement === firstFocusable) {
+        e.preventDefault();
+        lastFocusable.focus();
+      } else if (!e.shiftKey && document.activeElement === lastFocusable) {
+        e.preventDefault();
+        firstFocusable.focus();
+      }
+    }
+    
+    // Support de la touche Escape pour fermer les modales
+    if (e.key === 'Escape') {
+      closeModal(openModal);
+    }
+  });
+}
+
+// Améliorer l'accessibilité des composants interactifs
+function enhanceComponentsAccessibility() {
+  // Améliorer les interrupteurs (toggle switches)
+  document.querySelectorAll('.toggle-switch').forEach(toggle => {
+    const input = toggle.querySelector('input[type="checkbox"]');
+    const label = toggle.querySelector('label');
+    
+    if (input && label) {
+      // S'assurer que l'input et le label sont correctement associés
+      if (!input.id) {
+        input.id = 'toggle-' + Math.random().toString(36).substring(2, 9);
+      }
+      label.setAttribute('for', input.id);
+      
+      // Ajouter des attributs ARIA
+      toggle.setAttribute('role', 'switch');
+      toggle.setAttribute('aria-checked', input.checked.toString());
+      
+      // Mettre à jour l'état ARIA lors des changements
+      input.addEventListener('change', () => {
+        toggle.setAttribute('aria-checked', input.checked.toString());
+      });
+    }
+  });
+  
+  // Améliorer les accordéons
+  document.querySelectorAll('.accordion-header').forEach(header => {
+    const content = header.nextElementSibling;
+    if (content && content.classList.contains('accordion-content')) {
+      // Configurer les attributs ARIA
+      header.setAttribute('role', 'button');
+      header.setAttribute('aria-expanded', 'false');
+      content.setAttribute('aria-hidden', 'true');
+      
+      if (!header.id) {
+        header.id = 'accordion-' + Math.random().toString(36).substring(2, 9);
+      }
+      content.setAttribute('aria-labelledby', header.id);
+      
+      // Gérer les événements
+      header.addEventListener('click', () => {
+        const expanded = header.getAttribute('aria-expanded') === 'true';
+        header.setAttribute('aria-expanded', (!expanded).toString());
+        content.setAttribute('aria-hidden', expanded.toString());
+      });
+      
+      // Support du clavier
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          header.click();
+        }
+      });
+      
+      // S'assurer que l'élément est focusable
+      if (!header.hasAttribute('tabindex')) {
+        header.setAttribute('tabindex', '0');
+      }
+    }
+  });
+}</code></pre>
+            
+            <p>Ces fonctionnalités d'accessibilité permettent à FHIRHub d'être utilisable par tous, y compris les personnes ayant des handicaps visuels, moteurs ou cognitifs, conformément aux standards internationaux d'accessibilité web.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="ui-theme">Comment le système de thèmes et de personnalisation visuelle est-il implémenté dans FHIRHub ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub utilise un système de thèmes flexible basé sur des variables CSS et des préférences utilisateur persistantes :</p>
+            
+            <ol>
+                <li><strong>Variables CSS :</strong> Toutes les couleurs et dimensions sont définies via des variables CSS</li>
+                <li><strong>Thèmes prédéfinis :</strong> Plusieurs thèmes sont disponibles (clair, sombre, à contraste élevé)</li>
+                <li><strong>Préférences utilisateur :</strong> Les choix de thème sont stockés localement pour chaque utilisateur</li>
+            </ol>
+            
+            <p>Voici l'implémentation du gestionnaire de thèmes dans <code>public/js/theme-manager.js</code> :</p>
+            
+            <pre><code>// Gestionnaire de thèmes pour FHIRHub
+class ThemeManager {
+  constructor() {
+    this.themes = {
+      light: {
+        '--bg-color': '#ffffff',
+        '--text-color': '#333333',
+        '--primary-gradient-start': '#FF416C',
+        '--primary-gradient-end': '#FF4B2B',
+        '--card-bg-color': '#f8f9fa',
+        '--border-color': '#e1e4e8'
+      },
+      dark: {
+        '--bg-color': '#1a1a1a',
+        '--text-color': '#f0f0f0',
+        '--primary-gradient-start': '#FF416C',
+        '--primary-gradient-end': '#FF4B2B',
+        '--card-bg-color': '#2d2d2d',
+        '--border-color': '#444444'
+      },
+      highContrast: {
+        '--bg-color': '#000000',
+        '--text-color': '#ffffff',
+        '--primary-gradient-start': '#ffff00',
+        '--primary-gradient-end': '#ff9900',
+        '--card-bg-color': '#0d0d0d',
+        '--border-color': '#ffffff'
+      }
+    };
+    
+    // Initialiser le thème
+    this.init();
+  }
+  
+  // Initialiser le gestionnaire de thèmes
+  init() {
+    // Récupérer le thème enregistré ou utiliser le thème par défaut
+    const savedTheme = localStorage.getItem('fhirhub-theme') || 'light';
+    this.applyTheme(savedTheme);
+    
+    // Vérifier si l'utilisateur a une préférence système pour le mode sombre
+    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    prefersDarkScheme.addEventListener('change', (e) => {
+      if (!localStorage.getItem('fhirhub-theme')) {
+        this.applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+    
+    // Configurer les boutons de changement de thème
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+      button.addEventListener('click', () => {
+        const theme = button.dataset.themeToggle;
+        this.applyTheme(theme);
+        localStorage.setItem('fhirhub-theme', theme);
+      });
+    });
+  }
+  
+  // Appliquer un thème spécifique
+  applyTheme(themeName) {
+    const theme = this.themes[themeName];
+    if (!theme) return;
+    
+    // Appliquer les variables CSS du thème
+    Object.entries(theme).forEach(([property, value]) => {
+      document.documentElement.style.setProperty(property, value);
+    });
+    
+    // Mettre à jour la classe du corps pour des styles spécifiques au thème
+    document.body.className = document.body.className
+      .replace(/theme-\w+/g, '')
+      .trim();
+    document.body.classList.add(`theme-${themeName}`);
+    
+    // Mettre à jour l'attribut data-theme pour les sélecteurs CSS
+    document.documentElement.setAttribute('data-theme', themeName);
+    
+    // Mettre à jour les boutons de thème
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+      button.setAttribute('aria-pressed', button.dataset.themeToggle === themeName);
+    });
+    
+    // Événement personnalisé pour notifier le changement de thème
+    document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: themeName } }));
+  }
+  
+  // Obtenir le thème actuel
+  getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme');
+  }
+}</code></pre>
+            
+            <p>Ce système de thèmes flexible permet aux utilisateurs de personnaliser l'interface selon leurs préférences tout en maintenant l'identité visuelle distinctive de FHIRHub avec son dégradé rouge-orange.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION ARCHITECTURE SYSTÈME -->
+<div id="architecture" class="documentation-section">
+    <h2>Architecture système</h2>
+    
+    <div class="faq-item">
+        <h3 id="arch-modularity">Comment FHIRHub est-il organisé pour assurer la modularité et l'extensibilité du code ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub est construit sur une architecture modulaire qui favorise la séparation des préoccupations et la réutilisation du code :</p>
+            
+            <ol>
+                <li><strong>Architecture en couches :</strong> Séparation claire entre routes, contrôleurs, services et modèles</li>
+                <li><strong>Injection de dépendances :</strong> Les dépendances sont injectées plutôt que codées en dur</li>
+                <li><strong>Design patterns :</strong> Utilisation de patterns Factory, Repository, Strategy et Observer</li>
+            </ol>
+            
+            <p>Voici un exemple de conception modulaire dans la structure du projet :</p>
+            
+            <pre><code>// src/services/conversionService.js - Service de conversion isolé
+
+// Import des dépendances
+const hl7Parser = require('../utils/hl7Parser');
+const fhirBuilder = require('../utils/fhirBuilder');
+const terminologyService = require('./terminologyService');
+const validationService = require('./validationService');
+const logger = require('../utils/logger');
+
+// Factory pour les stratégies de conversion
+const conversionStrategies = {
+  'ORU_R01': require('../strategies/ORU_R01Strategy'),
+  'ADT_A01': require('../strategies/ADT_A01Strategy'),
+  'MDM_T02': require('../strategies/MDM_T02Strategy'),
+  // Autres stratégies...
+};
+
+// Service de conversion exposant l'API publique
+class ConversionService {
+  constructor(options = {}) {
+    this.parser = options.parser || hl7Parser;
+    this.builder = options.builder || fhirBuilder;
+    this.terminologyService = options.terminologyService || terminologyService;
+    this.validationService = options.validationService || validationService;
+    this.strategies = options.strategies || conversionStrategies;
+    this.logger = options.logger || logger;
+    
+    // Liste des observateurs pour le pattern Observer
+    this.observers = [];
+  }
+  
+  // API publique
+  async convertHL7ToFHIR(hl7Message, options = {}) {
+    try {
+      this.logger.debug('Début de la conversion HL7 vers FHIR');
+      
+      // Analyser le message
+      const parsedMessage = this.parser.parseHL7Message(hl7Message);
+      
+      // Déterminer le type de message
+      const messageType = this.getMessageType(parsedMessage);
+      this.logger.info(`Type de message détecté: ${messageType}`);
+      
+      // Sélectionner la stratégie appropriée
+      const strategy = this.getConversionStrategy(messageType);
+      
+      // Effectuer la conversion
+      const result = await strategy.convert(parsedMessage, {
+        terminologyService: this.terminologyService,
+        builder: this.builder,
+        ...options
+      });
+      
+      // Valider le résultat si demandé
+      if (options.validate !== false) {
+        const validationResult = await this.validationService.validateFHIRResources(
+          result.resources,
+          options.validationLevel || 'standard'
+        );
+        
+        result.validation = validationResult;
+      }
+      
+      // Notifier les observateurs
+      this.notifyObservers({
+        type: 'conversion-completed',
+        messageType,
+        resourceCount: result.resources.length,
+        validationResult: result.validation
+      });
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Erreur lors de la conversion: ${error.message}`, error);
+      this.notifyObservers({
+        type: 'conversion-error',
+        error: error.message
+      });
+      throw error;
+    }
+  }
+  
+  // Méthodes internes
+  getMessageType(parsedMessage) {
+    // Extraire le type de message depuis le segment MSH
+    const mshSegment = parsedMessage.segments.find(s => s.name === 'MSH');
+    if (!mshSegment) {
+      throw new Error('Segment MSH manquant dans le message');
+    }
+    
+    // MSH-9 contient le type de message (e.g., "ORU^R01")
+    const messageTypeField = mshSegment.fields[8]; // MSH-9
+    if (!messageTypeField) {
+      throw new Error('Type de message (MSH-9) manquant');
+    }
+    
+    const messageType = Array.isArray(messageTypeField) 
+      ? messageTypeField[0] + "_" + messageTypeField[1]
+      : messageTypeField.replace('^', '_');
+    
+    return messageType;
+  }
+  
+  getConversionStrategy(messageType) {
+    // Sélectionner la stratégie appropriée ou utiliser une stratégie par défaut
+    const Strategy = this.strategies[messageType] || this.strategies.default;
+    if (!Strategy) {
+      throw new Error(`Aucune stratégie de conversion disponible pour le type de message: ${messageType}`);
+    }
+    
+    return new Strategy();
+  }
+  
+  // Pattern Observer pour les notifications
+  addObserver(observer) {
+    this.observers.push(observer);
+    return this;
+  }
+  
+  removeObserver(observer) {
+    this.observers = this.observers.filter(obs => obs !== observer);
+    return this;
+  }
+  
+  notifyObservers(event) {
+    this.observers.forEach(observer => {
+      try {
+        observer(event);
+      } catch (error) {
+        this.logger.error(`Erreur dans un observateur: ${error.message}`);
+      }
+    });
+  }
+}
+
+// Exporter une instance singleton pour l'usage normal
+const defaultService = new ConversionService();
+module.exports = defaultService;
+
+// Exporter aussi la classe pour permettre l'instanciation personnalisée
+module.exports.ConversionService = ConversionService;</code></pre>
+            
+            <p>Cette architecture modulaire facilite les tests unitaires, permet l'ajout de nouvelles fonctionnalités sans modifier le code existant, et offre une grande flexibilité pour adapter le système aux besoins spécifiques des clients.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="arch-offline">Comment FHIRHub assure-t-il le fonctionnement en mode hors-ligne ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente plusieurs mécanismes pour assurer un fonctionnement optimal en mode hors-ligne :</p>
+            
+            <ol>
+                <li><strong>Préchargement des terminologies :</strong> Les fichiers de terminologie sont embarqués localement</li>
+                <li><strong>Base de données locale :</strong> Utilisation de SQLite pour un stockage local sans dépendance réseau</li>
+                <li><strong>Gestion de file d'attente :</strong> Les opérations sont mises en file d'attente et synchronisées ultérieurement</li>
+            </ol>
+            
+            <p>Voici l'implémentation du mode hors-ligne dans <code>src/services/offlineManager.js</code> :</p>
+            
+            <pre><code>const fs = require('fs');
+const path = require('path');
+const sqlite3 = require('better-sqlite3');
+const { promisify } = require('util');
+const logger = require('../utils/logger');
+
+// Gestionnaire du mode hors-ligne
+class OfflineManager {
+  constructor(options = {}) {
+    this.dbPath = options.dbPath || path.join(__dirname, '../../storage/db/fhirhub.db');
+    this.terminologyDir = options.terminologyDir || path.join(__dirname, '../../french_terminology');
+    this.queueDir = options.queueDir || path.join(__dirname, '../../storage/queue');
+    this.isOnline = true;
+    
+    // Créer le répertoire de file d'attente s'il n'existe pas
+    if (!fs.existsSync(this.queueDir)) {
+      fs.mkdirSync(this.queueDir, { recursive: true });
+    }
+    
+    // Initialiser la file d'attente
+    this.initQueue();
+  }
+  
+  // Vérifier si les ressources nécessaires au mode hors-ligne sont disponibles
+  async checkOfflineReadiness() {
+    try {
+      // Vérifier la base de données
+      const dbExists = fs.existsSync(this.dbPath);
+      
+      // Vérifier les fichiers de terminologie
+      const terminologyFiles = fs.readdirSync(this.terminologyDir)
+        .filter(file => file.endsWith('.json'))
+        .map(file => path.join(this.terminologyDir, file));
+      
+      const requiredFiles = [
+        'ans_terminology_systems.json',
+        'ans_oids.json',
+        'ans_common_codes.json'
+      ];
+      
+      const missingFiles = requiredFiles.filter(file => 
+        !terminologyFiles.some(tf => tf.includes(file))
+      );
+      
+      return {
+        ready: dbExists && missingFiles.length === 0,
+        database: dbExists,
+        terminology: missingFiles.length === 0,
+        missingFiles
+      };
+    } catch (error) {
+      logger.error(`Erreur lors de la vérification du mode hors-ligne: ${error.message}`);
+      return {
+        ready: false,
+        error: error.message
+      };
+    }
+  }
+  
+  // Initialiser la file d'attente des opérations
+  initQueue() {
+    try {
+      // Charger les opérations en attente
+      const queuedOperations = fs.readdirSync(this.queueDir)
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          try {
+            const data = fs.readFileSync(path.join(this.queueDir, file), 'utf8');
+            return JSON.parse(data);
+          } catch (error) {
+            logger.error(`Erreur lors de la lecture de l'opération ${file}: ${error.message}`);
+            return null;
+          }
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      
+      logger.info(`${queuedOperations.length} opérations en attente chargées`);
+      
+      // Essayer de synchroniser si des opérations sont en attente
+      if (queuedOperations.length > 0 && this.isOnline) {
+        this.processPendingOperations();
+      }
+    } catch (error) {
+      logger.error(`Erreur lors de l'initialisation de la file d'attente: ${error.message}`);
+    }
+  }
+  
+  // Mettre une opération en file d'attente
+  queueOperation(operation) {
+    const operationId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    const queuedOperation = {
+      id: operationId,
+      timestamp: Date.now(),
+      operation
+    };
+    
+    const filePath = path.join(this.queueDir, `${operationId}.json`);
+    
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(queuedOperation, null, 2));
+      logger.info(`Opération mise en file d'attente: ${operationId}`);
+      return operationId;
+    } catch (error) {
+      logger.error(`Erreur lors de la mise en file d'attente de l'opération: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  // Changer l'état de la connexion
+  setOnlineStatus(isOnline) {
+    if (this.isOnline !== isOnline) {
+      this.isOnline = isOnline;
+      logger.info(`Mode ${isOnline ? 'en ligne' : 'hors-ligne'} activé`);
+      
+      // Traiter les opérations en attente si on passe en ligne
+      if (isOnline) {
+        this.processPendingOperations();
+      }
+    }
+  }
+  
+  // Traiter les opérations en attente
+  async processPendingOperations() {
+    if (!this.isOnline) return;
+    
+    try {
+      // Charger les opérations en attente
+      const queuedOperations = fs.readdirSync(this.queueDir)
+        .filter(file => file.endsWith('.json'))
+        .map(file => {
+          try {
+            const data = fs.readFileSync(path.join(this.queueDir, file), 'utf8');
+            return {
+              file,
+              operation: JSON.parse(data)
+            };
+          } catch (error) {
+            logger.error(`Erreur lors de la lecture de l'opération ${file}: ${error.message}`);
+            return null;
+          }
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.operation.timestamp - b.operation.timestamp);
+      
+      if (queuedOperations.length === 0) {
+        logger.info('Aucune opération en attente à traiter');
+        return;
+      }
+      
+      logger.info(`Traitement de ${queuedOperations.length} opérations en attente`);
+      
+      // Traiter chaque opération séquentiellement
+      for (const { file, operation } of queuedOperations) {
+        try {
+          // Traiter l'opération (code spécifique à chaque type d'opération)
+          await this.processOperation(operation.operation);
+          
+          // Supprimer l'opération de la file d'attente
+          fs.unlinkSync(path.join(this.queueDir, file));
+          logger.info(`Opération ${operation.id} traitée avec succès`);
+        } catch (error) {
+          logger.error(`Erreur lors du traitement de l'opération ${operation.id}: ${error.message}`);
+          
+          // Marquer l'opération comme ayant échoué
+          const updatedOperation = {
+            ...operation,
+            failedAttempts: (operation.failedAttempts || 0) + 1,
+            lastError: error.message,
+            lastAttempt: Date.now()
+          };
+          
+          fs.writeFileSync(
+            path.join(this.queueDir, file),
+            JSON.stringify(updatedOperation, null, 2)
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(`Erreur lors du traitement des opérations en attente: ${error.message}`);
+    }
+  }
+  
+  // Traiter une opération spécifique
+  async processOperation(operation) {
+    // Logique spécifique au type d'opération
+    switch (operation.type) {
+      case 'conversion':
+        // Traiter une conversion en attente
+        return await this.processConversionOperation(operation);
+      
+      case 'log':
+        // Synchroniser un log
+        return await this.processSyncLogOperation(operation);
+      
+      default:
+        throw new Error(`Type d'opération non pris en charge: ${operation.type}`);
+    }
+  }
+}
+
+// Exporter l'instance singleton
+const offlineManager = new OfflineManager();
+module.exports = offlineManager;</code></pre>
+            
+            <p>Ce système de gestion du mode hors-ligne permet à FHIRHub de fonctionner de manière autonome même sans connexion réseau, en garantissant que toutes les opérations seront correctement synchronisées lorsque la connexion sera rétablie.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="arch-security">Quelles mesures architecturales assurent la sécurité des données dans FHIRHub ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub intègre de nombreuses mesures de sécurité à différents niveaux de l'architecture :</p>
+            
+            <ol>
+                <li><strong>Défense en profondeur :</strong> Multiples couches de sécurité à tous les niveaux de l'application</li>
+                <li><strong>Principe du moindre privilège :</strong> Chaque composant n'a accès qu'aux ressources strictement nécessaires</li>
+                <li><strong>Isolation des données :</strong> Ségrégation stricte des données entre les différents clients</li>
+            </ol>
+            
+            <p>Voici l'implémentation de mesures de sécurité dans <code>src/security/securityManager.js</code> :</p>
+            
+            <pre><code>const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const helmet = require('helmet');
+const { v4: uuidv4 } = require('uuid');
+const logger = require('../utils/logger');
+
+// Gestionnaire de sécurité centralisé
+class SecurityManager {
+  constructor(options = {}) {
+    // Clé de chiffrement principale (générée à l'installation)
+    this.masterKeyPath = options.masterKeyPath || path.join(__dirname, '../../security/master.key');
+    
+    // Charger ou générer la clé maître
+    this.masterKey = this.loadOrGenerateMasterKey();
+    
+    // Initialiser les configurations de sécurité pour Express
+    this.helmetOptions = {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'"],
+          frameSrc: ["'none'"],
+          objectSrc: ["'none'"]
+        }
+      },
+      hsts: {
+        maxAge: 15552000, // 180 jours
+        includeSubDomains: true
+      },
+      frameguard: {
+        action: 'deny'
+      },
+      referrerPolicy: {
+        policy: 'strict-origin-when-cross-origin'
+      },
+      permittedCrossDomainPolicies: {
+        permittedPolicies: 'none'
+      }
+    };
+  }
+  
+  // Configurer un middleware Express pour la sécurité
+  configureExpressApp(app) {
+    // Appliquer Helmet avec les options configurées
+    app.use(helmet(this.helmetOptions));
+    
+    // Ajouter un identifiant unique pour chaque requête
+    app.use((req, res, next) => {
+      req.requestId = uuidv4();
+      next();
+    });
+    
+    // Middleware de journal de sécurité
+    app.use((req, res, next) => {
+      // Enregistrer les requêtes sensibles
+      if (this.isSensitiveRoute(req.path)) {
+        logger.security(`Accès à un chemin sensible: ${req.method} ${req.path} (ID: ${req.requestId})`);
+      }
+      
+      // Interception des réponses pour journaliser les événements de sécurité
+      const originalEnd = res.end;
+      res.end = function(...args) {
+        // Journaliser les réponses 401, 403 et 500
+        if (res.statusCode === 401) {
+          logger.security(`Tentative d'accès non autorisé: ${req.method} ${req.path} (ID: ${req.requestId})`);
+        } else if (res.statusCode === 403) {
+          logger.security(`Tentative d'accès interdit: ${req.method} ${req.path} (ID: ${req.requestId})`);
+        } else if (res.statusCode >= 500) {
+          logger.security(`Erreur serveur lors de l'accès à: ${req.method} ${req.path} (ID: ${req.requestId})`);
+        }
+        
+        return originalEnd.apply(this, args);
+      };
+      
+      next();
+    });
+    
+    // Middleware de limitation de débit (rate limiting)
+    app.use(this.createRateLimiter());
+    
+    // Anti-CSRF pour les routes mutables
+    app.use(this.createCSRFProtection());
+    
+    return app;
+  }
+  
+  // Charger ou générer la clé maître
+  loadOrGenerateMasterKey() {
+    try {
+      // Vérifier si la clé existe
+      if (fs.existsSync(this.masterKeyPath)) {
+        // Charger la clé existante
+        return fs.readFileSync(this.masterKeyPath, 'utf8').trim();
+      } else {
+        // Générer une nouvelle clé
+        const newKey = crypto.randomBytes(32).toString('hex');
+        
+        // Créer le répertoire si nécessaire
+        const keyDir = path.dirname(this.masterKeyPath);
+        if (!fs.existsSync(keyDir)) {
+          fs.mkdirSync(keyDir, { recursive: true, mode: 0o700 });
+        }
+        
+        // Écrire la clé avec des permissions restreintes
+        fs.writeFileSync(this.masterKeyPath, newKey, { mode: 0o600 });
+        
+        logger.info('Nouvelle clé maître de sécurité générée');
+        return newKey;
+      }
+    } catch (error) {
+      logger.error(`Erreur lors du chargement de la clé maître: ${error.message}`);
+      // Fallback à une clé générée en mémoire
+      return crypto.randomBytes(32).toString('hex');
+    }
+  }
+  
+  // Chiffrer des données sensibles
+  encryptData(data) {
+    try {
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv(
+        'aes-256-gcm',
+        Buffer.from(this.masterKey, 'hex'),
+        iv
+      );
+      
+      let encrypted = cipher.update(typeof data === 'string' ? data : JSON.stringify(data), 'utf8', 'base64');
+      encrypted += cipher.final('base64');
+      
+      const authTag = cipher.getAuthTag().toString('base64');
+      
+      return {
+        iv: iv.toString('base64'),
+        encryptedData: encrypted,
+        authTag
+      };
+    } catch (error) {
+      logger.error(`Erreur de chiffrement: ${error.message}`);
+      throw new Error('Erreur lors du chiffrement des données');
+    }
+  }
+  
+  // Déchiffrer des données sensibles
+  decryptData(encryptedPackage) {
+    try {
+      const decipher = crypto.createDecipheriv(
+        'aes-256-gcm',
+        Buffer.from(this.masterKey, 'hex'),
+        Buffer.from(encryptedPackage.iv, 'base64')
+      );
+      
+      decipher.setAuthTag(Buffer.from(encryptedPackage.authTag, 'base64'));
+      
+      let decrypted = decipher.update(encryptedPackage.encryptedData, 'base64', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      try {
+        // Essayer de parser en JSON si possible
+        return JSON.parse(decrypted);
+      } catch {
+        // Sinon retourner la chaîne déchiffrée
+        return decrypted;
+      }
+    } catch (error) {
+      logger.error(`Erreur de déchiffrement: ${error.message}`);
+      throw new Error('Erreur lors du déchiffrement des données');
+    }
+  }
+  
+  // Vérifier si un chemin d'accès est sensible
+  isSensitiveRoute(path) {
+    const sensitivePaths = [
+      '/api/users',
+      '/api/auth',
+      '/api/keys',
+      '/admin',
+      '/api/settings',
+      '/api/system'
+    ];
+    
+    return sensitivePaths.some(p => path.startsWith(p));
+  }
+}
+
+// Exporter une instance singleton
+const securityManager = new SecurityManager();
+module.exports = securityManager;</code></pre>
+            
+            <p>Cette architecture de sécurité multicouche protège les données sensibles tout au long de leur cycle de vie dans l'application, depuis leur réception jusqu'à leur stockage, en passant par leur traitement, garantissant ainsi la confidentialité, l'intégrité et la disponibilité des informations médicales.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION API ET INTÉGRATION -->
+<div id="api" class="documentation-section">
+    <h2>API et intégration</h2>
+    
+    <div class="faq-item">
+        <h3 id="api-structure">Comment est structurée l'API RESTful de FHIRHub ?</h3>
+        <div class="faq-answer">
+            <p>L'API RESTful de FHIRHub suit les meilleures pratiques de conception d'API :</p>
+            
+            <ol>
+                <li><strong>Architecture RESTful :</strong> Utilisation cohérente des méthodes HTTP et des codes de statut</li>
+                <li><strong>Versionnement :</strong> Les API sont versionnées pour assurer la compatibilité ascendante</li>
+                <li><strong>Documentation OpenAPI :</strong> Spécification complète au format OpenAPI/Swagger</li>
+            </ol>
+            
+            <p>Voici un extrait de la définition des routes de l'API dans <code>routes/api.js</code> :</p>
+            
+            <pre><code>const express = require('express');
+const router = express.Router();
+const conversionController = require('../controllers/conversionController');
+const authMiddleware = require('../middleware/authMiddleware');
+const rateLimitMiddleware = require('../middleware/rateLimitMiddleware');
+const validationMiddleware = require('../middleware/validationMiddleware');
+const { body, param, query } = require('express-validator');
+
+/**
+ * @swagger
+ * /api/v1/convert:
+ *   post:
+ *     summary: Convertir un message HL7 en ressources FHIR
+ *     tags: [Conversion]
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Message HL7 au format texte
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   validate:
+ *                     type: boolean
+ *                     default: true
+ *                   includeOriginal:
+ *                     type: boolean
+ *                     default: false
+ *     responses:
+ *       200:
+ *         description: Conversion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bundle:
+ *                   $ref: '#/components/schemas/Bundle'
+ *                 metadata:
+ *                   type: object
+ *                   properties:
+ *                     processingTime:
+ *                       type: number
+ *                     resourceCount:
+ *                       type: number
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       422:
+ *         $ref: '#/components/responses/ValidationError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+router.post('/v1/convert',
+  authMiddleware.apiKeyAuth(['convert']),
+  rateLimitMiddleware.limit('convert', 100),
+  [
+    body('message').isString().notEmpty().withMessage('Le message HL7 est requis'),
+    body('options').optional().isObject()
+  ],
+  validationMiddleware.validate,
+  conversionController.convertHL7ToFHIR
+);
+
+/**
+ * @swagger
+ * /api/v1/convert/{id}:
+ *   get:
+ *     summary: Récupérer le résultat d'une conversion précédente
+ *     tags: [Conversion]
+ *     security:
+ *       - ApiKeyAuth: []
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identifiant de la conversion
+ *     responses:
+ *       200:
+ *         description: Résultat de conversion récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ConversionResult'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+router.get('/v1/convert/:id',
+  authMiddleware.apiKeyAuth(['read']),
+  [
+    param('id').isString().notEmpty().withMessage('L\'identifiant de conversion est requis')
+  ],
+  validationMiddleware.validate,
+  conversionController.getConversionById
+);
+
+// ... autres routes
+
+module.exports = router;</code></pre>
+            
+            <p>Cette structuration claire de l'API facilite son utilisation par les développeurs et assure que toutes les intégrations resteront fonctionnelles même lors des mises à jour du système.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="api-rate-limiting">Comment FHIRHub implémente-t-il la limitation de débit (rate limiting) pour les API ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente un système sophistiqué de limitation de débit pour protéger les API contre les abus :</p>
+            
+            <ol>
+                <li><strong>Limitations par client :</strong> Chaque client dispose de quotas configurables</li>
+                <li><strong>Fenêtres glissantes :</strong> La limitation s'applique sur des périodes mobiles</li>
+                <li><strong>Hiérarchie de limites :</strong> Limites par seconde, minute, heure et jour</li>
+            </ol>
+            
+            <p>Voici l'implémentation du middleware de limitation de débit dans <code>middleware/rateLimitMiddleware.js</code> :</p>
+            
+            <pre><code>const db = require('../src/database');
+const logger = require('../utils/logger');
+
+// Classes pour le stockage des compteurs de requêtes
+class MemoryStore {
+  constructor() {
+    this.counters = new Map();
+    
+    // Nettoyage périodique des compteurs expirés
+    setInterval(() => this.cleanup(), 60000);
+  }
+  
+  increment(key, windowMs) {
+    const now = Date.now();
+    const windowKey = `${key}:${windowMs}`;
+    const counter = this.counters.get(windowKey) || { count: 0, resetAt: now + windowMs };
+    
+    // Si le compteur a expiré, le réinitialiser
+    if (now > counter.resetAt) {
+      counter.count = 1;
+      counter.resetAt = now + windowMs;
+    } else {
+      counter.count += 1;
+    }
+    
+    this.counters.set(windowKey, counter);
+    return counter.count;
+  }
+  
+  getCount(key, windowMs) {
+    const now = Date.now();
+    const windowKey = `${key}:${windowMs}`;
+    const counter = this.counters.get(windowKey);
+    
+    if (!counter || now > counter.resetAt) {
+      return 0;
+    }
+    
+    return counter.count;
+  }
+  
+  cleanup() {
+    const now = Date.now();
+    for (const [key, counter] of this.counters.entries()) {
+      if (now > counter.resetAt) {
+        this.counters.delete(key);
+      }
+    }
+  }
+}
+
+// Store pour le stockage en mémoire (pour les environnements simples)
+const memoryStore = new MemoryStore();
+
+// Middleware de limitation de débit
+const rateLimitMiddleware = {
+  // Configurer des limites pour différentes actions
+  limits: {
+    convert: {
+      perSecond: 5,
+      perMinute: 100,
+      perHour: 1000,
+      perDay: 10000
+    },
+    query: {
+      perSecond: 10,
+      perMinute: 200,
+      perHour: 2000,
+      perDay: 20000
+    },
+    default: {
+      perSecond: 2,
+      perMinute: 60,
+      perHour: 600,
+      perDay: 6000
+    }
+  },
+  
+  // Middleware pour appliquer la limitation de débit
+  limit: function(action, customLimit) {
+    return async function(req, res, next) {
+      try {
+        // Déterminer l'identifiant du client
+        const clientId = req.apiKey?.id || req.auth?.userId || req.ip;
+        
+        // Récupérer les limites pour cette action
+        const actionLimits = rateLimitMiddleware.limits[action] || rateLimitMiddleware.limits.default;
+        
+        // Récupérer les limites personnalisées pour ce client
+        let clientLimits = null;
+        if (req.apiKey?.id) {
+          clientLimits = await db.getApiKeyLimits(req.apiKey.id);
+        }
+        
+        // Appliquer des limites personnalisées si disponibles
+        const limits = {
+          perSecond: customLimit?.perSecond || clientLimits?.perSecond || actionLimits.perSecond,
+          perMinute: customLimit?.perMinute || clientLimits?.perMinute || actionLimits.perMinute,
+          perHour: customLimit?.perHour || clientLimits?.perHour || actionLimits.perHour,
+          perDay: customLimit?.perDay || clientLimits?.perDay || actionLimits.perDay
+        };
+        
+        // Vérifier les différentes fenêtres temporelles
+        const windowsMs = {
+          perSecond: 1000,
+          perMinute: 60 * 1000,
+          perHour: 60 * 60 * 1000,
+          perDay: 24 * 60 * 60 * 1000
+        };
+        
+        // Vérifier chaque fenêtre
+        for (const [window, limit] of Object.entries(limits)) {
+          const ms = windowsMs[window];
+          const key = `ratelimit:${clientId}:${action}:${window}`;
+          
+          // Incrémenter le compteur
+          const count = memoryStore.increment(key, ms);
+          
+          // Vérifier si la limite est dépassée
+          if (count > limit) {
+            // Ajouter les en-têtes de limitation
+            res.setHeader('X-RateLimit-Limit', limit);
+            res.setHeader('X-RateLimit-Remaining', 0);
+            res.setHeader('X-RateLimit-Reset', Math.floor((Date.now() + ms) / 1000));
+            res.setHeader('Retry-After', Math.ceil(ms / 1000));
+            
+            // Journaliser l'événement
+            logger.warn(`Limite de débit dépassée pour ${clientId} sur ${action} (${window})`);
+            
+            // Retourner une erreur 429 (Too Many Requests)
+            return res.status(429).json({
+              error: 'Too Many Requests',
+              message: `Limite de requêtes dépassée pour ${window}. Veuillez réessayer plus tard.`,
+              retryAfter: Math.ceil(ms / 1000)
+            });
+          }
+          
+          // Ajouter les en-têtes d'information
+          res.setHeader('X-RateLimit-Limit', limit);
+          res.setHeader('X-RateLimit-Remaining', limit - count);
+          res.setHeader('X-RateLimit-Reset', Math.floor((Date.now() + ms) / 1000));
+        }
+        
+        // Si toutes les vérifications passent, continuer au middleware suivant
+        next();
+      } catch (error) {
+        logger.error(`Erreur dans le middleware de limitation de débit: ${error.message}`);
+        next(error);
+      }
+    };
+  }
+};
+
+module.exports = rateLimitMiddleware;</code></pre>
+            
+            <p>Ce système de limitation de débit sophistiqué protège l'API contre les abus tout en permettant une utilisation intensive par les clients autorisés, garantissant ainsi la disponibilité et les performances optimales du service.</p>
+        </div>
+    </div>
+    
+    <div class="faq-item">
+        <h3 id="api-webhook">Comment fonctionne le système de webhooks pour l'intégration avec des applications externes ?</h3>
+        <div class="faq-answer">
+            <p>FHIRHub implémente un système de webhooks robuste pour notifier les applications externes des événements importants :</p>
+            
+            <ol>
+                <li><strong>Notifications asynchrones :</strong> Les événements sont envoyés de manière asynchrone</li>
+                <li><strong>Signatures de sécurité :</strong> Chaque webhook est signé cryptographiquement</li>
+                <li><strong>Mécanisme de retry :</strong> Les notifications échouées sont automatiquement réessayées</li>
+            </ol>
+            
+            <p>Voici l'implémentation du service de webhook dans <code>src/services/webhookService.js</code> :</p>
+            
+            <pre><code>const axios = require('axios');
+const crypto = require('crypto');
+const db = require('../database');
+const logger = require('../utils/logger');
+const { setTimeout } = require('timers/promises');
+
+// Gestionnaire de webhooks
+class WebhookService {
+  constructor() {
+    // Configuration
+    this.retryDelays = [5000, 15000, 30000, 60000, 120000]; // Délais en ms entre les tentatives
+    this.secretKey = process.env.WEBHOOK_SECRET_KEY || crypto.randomBytes(32).toString('hex');
+    
+    // File d'attente des webhooks à traiter
+    this.queue = [];
+    this.isProcessing = false;
+    
+    // Démarrer le traitement de la file d'attente
+    this.startProcessing();
+  }
+  
+  // Enregistrer un nouvel événement à notifier
+  async notify(event, payload, options = {}) {
+    try {
+      // Récupérer tous les webhooks enregistrés pour ce type d'événement
+      const subscriptions = await db.getWebhookSubscriptions(event);
+      
+      if (subscriptions.length === 0) {
+        logger.debug(`Aucun webhook enregistré pour l'événement ${event}`);
+        return;
+      }
+      
+      logger.info(`Notification de ${subscriptions.length} webhook(s) pour l'événement ${event}`);
+      
+      // Créer un ID d'événement unique
+      const eventId = crypto.randomUUID();
+      
+      // Pour chaque abonnement, créer une notification
+      for (const subscription of subscriptions) {
+        // Vérifier si l'abonnement est actif
+        if (!subscription.active) {
+          continue;
+        }
+        
+        // Préparer les données à envoyer
+        const webhookData = {
+          id: eventId,
+          event,
+          timestamp: new Date().toISOString(),
+          payload
+        };
+        
+        // Signer les données
+        const signature = this.signWebhook(webhookData, subscription.secret || this.secretKey);
+        
+        // Ajouter à la file d'attente
+        this.queue.push({
+          url: subscription.url,
+          data: webhookData,
+          signature,
+          retryCount: 0,
+          subscriptionId: subscription.id,
+          clientId: subscription.clientId,
+          maxRetries: options.maxRetries || subscription.maxRetries || 5
+        });
+      }
+      
+      // Déclencher le traitement si nécessaire
+      if (!this.isProcessing) {
+        this.processQueue();
+      }
+      
+      return eventId;
+    } catch (error) {
+      logger.error(`Erreur lors de la notification webhook: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  // Signer un webhook pour garantir son authenticité
+  signWebhook(data, secret) {
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(JSON.stringify(data));
+    return hmac.digest('hex');
+  }
+  
+  // Démarrer le traitement de la file d'attente
+  startProcessing() {
+    // Vérifier périodiquement s'il y a des webhooks à traiter
+    setInterval(() => {
+      if (this.queue.length > 0 && !this.isProcessing) {
+        this.processQueue();
+      }
+    }, 1000);
+  }
+  
+  // Traiter la file d'attente
+  async processQueue() {
+    if (this.queue.length === 0 || this.isProcessing) {
+      return;
+    }
+    
+    this.isProcessing = true;
+    
+    try {
+      // Traiter les webhooks un par un
+      while (this.queue.length > 0) {
+        const webhook = this.queue.shift();
+        await this.sendWebhook(webhook);
+      }
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+  
+  // Envoyer un webhook
+  async sendWebhook(webhook) {
+    try {
+      // Envoyer la requête HTTP
+      const response = await axios.post(webhook.url, webhook.data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-FHIRHub-Signature': webhook.signature,
+          'X-FHIRHub-Event': webhook.data.event,
+          'X-FHIRHub-Delivery': webhook.data.id
+        },
+        timeout: 10000 // 10 secondes de timeout
+      });
+      
+      // Vérifier la réponse
+      if (response.status >= 200 && response.status < 300) {
+        logger.info(`Webhook envoyé avec succès à ${webhook.url} (ID: ${webhook.data.id})`);
+        
+        // Enregistrer le succès
+        await db.logWebhookDelivery({
+          eventId: webhook.data.id,
+          subscriptionId: webhook.subscriptionId,
+          status: 'success',
+          statusCode: response.status,
+          responseTime: response.headers['x-response-time'] || null,
+          createdAt: new Date()
+        });
+      } else {
+        throw new Error(`Réponse non valide: ${response.status}`);
+      }
+    } catch (error) {
+      logger.error(`Erreur lors de l'envoi du webhook à ${webhook.url}: ${error.message}`);
+      
+      // Enregistrer l'échec
+      await db.logWebhookDelivery({
+        eventId: webhook.data.id,
+        subscriptionId: webhook.subscriptionId,
+        status: 'failed',
+        statusCode: error.response?.status || 0,
+        responseBody: error.response?.data ? JSON.stringify(error.response.data).substring(0, 1000) : null,
+        error: error.message,
+        createdAt: new Date()
+      });
+      
+      // Gérer les retentatives
+      if (webhook.retryCount < webhook.maxRetries) {
+        const nextRetry = this.retryDelays[Math.min(webhook.retryCount, this.retryDelays.length - 1)];
+        webhook.retryCount++;
+        
+        logger.info(`Planification d'une nouvelle tentative pour le webhook ${webhook.data.id} dans ${nextRetry}ms (tentative ${webhook.retryCount}/${webhook.maxRetries})`);
+        
+        // Attendre avant de remettre dans la file d'attente
+        await setTimeout(nextRetry);
+        this.queue.push(webhook);
+      } else {
+        logger.warn(`Abandon du webhook ${webhook.data.id} après ${webhook.maxRetries} tentatives`);
+        
+        // Mettre à jour l'état final
+        await db.updateWebhookSubscriptionStatus(webhook.subscriptionId, {
+          lastFailure: new Date(),
+          failureCount: db.raw('failure_count + 1')
+        });
+      }
+    }
+  }
+}
+
+// Exporter une instance singleton
+const webhookService = new WebhookService();
+module.exports = webhookService;</code></pre>
+            
+            <p>Ce système de webhooks permet aux applications externes de recevoir des notifications en temps réel pour les événements importants, facilitant ainsi l'intégration de FHIRHub dans des workflows complexes et des écosystèmes d'applications de santé.</p>
+        </div>
+    </div>
+</div>

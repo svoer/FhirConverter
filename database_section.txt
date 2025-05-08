@@ -1,0 +1,226 @@
+            <div id="database" class="documentation-section">
+                <h2>Base de données</h2>
+                
+                <div class="faq-item">
+                    <h3 id="database-schema">Comment est organisé le schéma de base de données de FHIRHub ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise un schéma de base de données SQLite optimisé pour les performances et la portabilité :</p>
+                        
+                        <ol>
+                            <li><strong>Tables principales :</strong> Utilisateurs, Applications, API Keys, Logs de conversion</li>
+                            <li><strong>Contraintes d'intégrité :</strong> Clés étrangères avec DELETE CASCADE pour maintenir la cohérence</li>
+                            <li><strong>Indexes optimisés :</strong> Sur les colonnes fréquemment recherchées pour accélérer les requêtes</li>
+                        </ol>
+                        
+                        <p>Voici un extrait du script de création de la base de données :</p>
+                        
+                        <pre><code>// Création de la table de logs de conversion
+db.exec(`
+CREATE TABLE IF NOT EXISTS conversion_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id TEXT,
+  application_id INTEGER,
+  user_id INTEGER,
+  message_type TEXT,
+  status TEXT NOT NULL,
+  input_message TEXT,
+  output_bundle TEXT,
+  processing_time INTEGER,
+  resource_count INTEGER,
+  error_message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+)`);
+
+// Création des indexes pour optimiser les performances
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_application_id ON conversion_logs(application_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_timestamp ON conversion_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_status ON conversion_logs(status);
+CREATE INDEX IF NOT EXISTS idx_conversion_logs_message_type ON conversion_logs(message_type);
+`);</code></pre>
+                        
+                        <p>Cette organisation permet une exécution efficace des requêtes même sur des appareils avec des ressources limitées, tout en maintenant l'intégrité des données.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="database-migrations">Comment FHIRHub gère-t-il les migrations de schéma de base de données ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un système de migrations de base de données robuste pour gérer les évolutions du schéma :</p>
+                        
+                        <ol>
+                            <li><strong>Migrations versionnées :</strong> Chaque changement de schéma est numéroté et appliqué séquentiellement</li>
+                            <li><strong>Transactions atomiques :</strong> Les migrations s'exécutent dans des transactions pour garantir la cohérence</li>
+                            <li><strong>Vérification de version :</strong> Le système vérifie la version actuelle avant d'appliquer les migrations</li>
+                        </ol>
+                        
+                        <p>Voici le code du gestionnaire de migrations dans <code>src/database/migrations.js</code> :</p>
+                        
+                        <pre><code>// Système de migrations pour SQLite
+async function runMigrations(db) {
+  // Créer la table de suivi des migrations si elle n'existe pas
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Récupérer la version actuelle
+  const currentVersionRow = db.prepare('SELECT MAX(version) as version FROM schema_migrations').get();
+  const currentVersion = currentVersionRow.version || 0;
+  
+  console.log(`Version actuelle de la base de données: ${currentVersion}`);
+  
+  // Liste des migrations disponibles
+  const migrations = [
+    {
+      version: 1,
+      description: 'Création des tables initiales',
+      up: `
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          email TEXT UNIQUE,
+          role TEXT NOT NULL DEFAULT 'user',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS applications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          user_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+      `
+    },
+    {
+      version: 2,
+      description: 'Ajout de la table api_keys',
+      up: `
+        CREATE TABLE IF NOT EXISTS api_keys (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT NOT NULL UNIQUE,
+          application_id INTEGER NOT NULL,
+          description TEXT,
+          active BOOLEAN NOT NULL DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME,
+          FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
+        );
+      `
+    }
+    // Autres migrations...
+  ];
+  
+  // Appliquer les migrations manquantes
+  for (const migration of migrations) {
+    if (migration.version > currentVersion) {
+      console.log(`Application de la migration ${migration.version}: ${migration.description}`);
+      
+      try {
+        // Démarrer une transaction
+        db.exec('BEGIN TRANSACTION');
+        
+        // Exécuter la migration
+        db.exec(migration.up);
+        
+        // Enregistrer la migration appliquée
+        db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run(migration.version);
+        
+        // Valider la transaction
+        db.exec('COMMIT');
+        
+        console.log(`Migration ${migration.version} appliquée avec succès`);
+      } catch (error) {
+        // Annuler la transaction en cas d'erreur
+        db.exec('ROLLBACK');
+        console.error(`Erreur lors de l'application de la migration ${migration.version}:`, error);
+        throw error;
+      }
+    }
+  }
+  
+  console.log('Migrations terminées');
+}</code></pre>
+                        
+                        <p>Ce système de migrations garantit que la base de données évolue de manière contrôlée, sans risque de perte de données, tout en maintenant la compatibilité avec les versions précédentes de l'application.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="database-backup">Comment FHIRHub implémente-t-il la sauvegarde et la restauration de la base de données ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise un système de sauvegarde et restauration robuste pour protéger les données critiques :</p>
+                        
+                        <ol>
+                            <li><strong>Sauvegardes périodiques :</strong> Planifiées automatiquement à des intervalles configurables</li>
+                            <li><strong>Sauvegardes incrémentales :</strong> Pour minimiser l'espace disque tout en préservant l'historique</li>
+                            <li><strong>Compression des sauvegardes :</strong> Pour réduire l'espace de stockage nécessaire</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation du mécanisme de sauvegarde dans <code>src/services/backupService.js</code> :</p>
+                        
+                        <pre><code>const fs = require('fs');
+const path = require('path');
+const archiver = require('archiver');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+
+async function createDatabaseBackup(dbPath, backupDir) {
+  // Créer le répertoire de sauvegarde s'il n'existe pas
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  
+  // Générer un nom de fichier avec horodatage
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupFileName = `backup-${timestamp}.zip`;
+  const backupPath = path.join(backupDir, backupFileName);
+  
+  // Créer un flux de sortie pour l'archive ZIP
+  const output = fs.createWriteStream(backupPath);
+  const archive = archiver('zip', {
+    zlib: { level: 9 } // Niveau de compression maximal
+  });
+  
+  // Pipe archive data to the output file
+  archive.pipe(output);
+  
+  try {
+    // Utiliser SQLite3 pour créer une sauvegarde cohérente
+    const backupTempFile = path.join(backupDir, `temp-${timestamp}.db`);
+    
+    // Utiliser sqlite3 .backup pour créer une copie cohérente
+    await execAsync(`sqlite3 "${dbPath}" ".backup '${backupTempFile}'"`);
+    
+    // Ajouter le fichier temporaire à l'archive
+    archive.file(backupTempFile, { name: path.basename(dbPath) });
+    
+    // Finaliser l'archive
+    await archive.finalize();
+    
+    // Supprimer le fichier temporaire
+    fs.unlinkSync(backupTempFile);
+    
+    // Nettoyer les anciennes sauvegardes (garder seulement les 10 dernières)
+    await cleanupOldBackups(backupDir, 10);
+    
+    console.log(`Sauvegarde de la base de données créée avec succès: ${backupPath}`);
+    return backupPath;
+  } catch (error) {
+    console.error(`Erreur lors de la création de la sauvegarde:`, error);
+    throw error;
+  }
+}</code></pre>
+                        
+                        <p>Ce système de sauvegarde et restauration garantit que les données critiques sont protégées contre les pertes accidentelles, les corruptions ou les erreurs utilisateur, tout en permettant une récupération rapide en cas de problème.</p>
+                    </div>
+                </div>
+            </div>
