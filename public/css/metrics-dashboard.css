@@ -96,6 +96,46 @@
   font-size: 0.8rem;
   color: #777;
   margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Style pour le bouton de rafraîchissement */
+.btn-refresh {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e74c3c 0%, #f18805 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-refresh:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.btn-refresh:active {
+  transform: scale(0.95);
+}
+
+.btn-refresh.refreshing {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 #statsUpdateTime, #lastUpdateTime {
