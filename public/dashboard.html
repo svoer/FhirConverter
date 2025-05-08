@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="/css/sidebar-menu.css">
   <link rel="stylesheet" href="/css/metrics-dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="/js/dashboard-charts.js"></script>
   
   <!-- Inclusions du chatbot de support -->
   <link rel="stylesheet" href="/css/support-chatbot.css">
@@ -378,10 +377,7 @@
             data.data.applicationStats
           );
           
-          // Utiliser la nouvelle fonction de mise à jour des graphiques
-          if (window.updateDashboardCharts) {
-            window.updateDashboardCharts(data.data);
-          }
+          // Utiliser directement la mise à jour des graphiques sans fonction externe
         }
       })
       .catch(error => {
@@ -974,6 +970,14 @@
     }
     
     function initCharts() {
+      // Destruction des graphiques existants si présents
+      ['memoryChart', 'conversionTrendChart', 'resourceDistChart', 'successRateChart', 'messageTypesChart'].forEach(chartId => {
+        const existingChart = Chart.getChart(document.getElementById(chartId));
+        if (existingChart) {
+          existingChart.destroy();
+        }
+      });
+      
       // Labels communs pour tous les graphiques temporels
       const timeLabels = ['Il y a 100 sec', 'Il y a 80 sec', 'Il y a 60 sec', 'Il y a 40 sec', 'Il y a 20 sec'];
       
