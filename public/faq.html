@@ -3,290 +3,1102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ - FHIRHub</title>
+    <title>FAQ Technique - FHIRHub</title>
     <link rel="stylesheet" href="/css/styles.css">
-    <link rel="stylesheet" href="/css/admin.css">
     <link rel="stylesheet" href="/css/sidebar-menu.css">
-    <link rel="stylesheet" href="/css/faq.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <script src="/js/auth-utils.js" defer></script>
+    <link rel="stylesheet" href="/css/dev-faq.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="/js/include-sidebar.js" defer></script>
-    <script src="/js/sidebar-menu-new.js" defer></script>
-    <script src="/js/footer-version.js" defer></script>
-    <script src="/js/modern-dialogs.js" defer></script>
-    <script src="/js/faq.js" defer></script>
+    <script src="/js/dev-faq.js" defer></script>
 </head>
-<body>
-    <div class="app-container">
-        <div class="main-content">
-            <h1>Foire Aux Questions (FAQ)</h1>
-            <div class="faq-content">
-                <div class="faq-header">
-                    <h2>Système de terminologie - Questions fréquentes</h2>
-                    <p>Ce document regroupe les questions fréquemment posées sur le système de terminologie de FHIRHub.</p>
-                </div>
+<body class="with-sidebar">
+    <!-- Le menu latéral sera injecté ici -->
+    <div id="sidebarContainer"></div>
 
-                <div class="faq-sections">
-                    <div class="faq-section">
-                        <h3>Fonctionnement des terminologies</h3>
+    <div class="main-content with-sidebar">
+        <header class="faq-header">
+            <h1>Documentation Technique</h1>
+            <p class="subtitle">Réponses aux questions techniques pour les développeurs et mainteneurs</p>
+            <div class="search-container">
+                <input type="text" id="faqSearch" placeholder="Rechercher une question..." aria-label="Rechercher dans la FAQ">
+                <button type="button" id="searchButton"><i class="fas fa-search"></i></button>
+            </div>
+        </header>
+
+        <div class="section-nav">
+            <div class="nav-items-container" id="categoryList">
+                <!-- Les catégories seront générées dynamiquement par JavaScript -->
+            </div>
+
+            <!-- Bouton retour en haut de page -->
+            <a href="#" id="back-to-top" class="back-to-top" title="Retour en haut de page">
+                <i class="fas fa-arrow-up"></i>
+            </a>
+        </div>
+
+        <div class="faq-container">
+            <!-- Section Système de terminologie -->
+            <section id="terminology" class="faq-section">
+                <h2>Système de terminologie</h2>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-corrupt">Comment le système gère-t-il les fichiers de terminologie non valides ou corrompus ?</h3>
+                    <div class="faq-answer">
+                        <p>Le système FHIRHub implémente une stratégie robuste en 3 étapes pour gérer les fichiers de terminologie non valides ou corrompus :</p>
                         
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Comment fonctionne techniquement le système de terminologie ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Le système utilise un répertoire principal <code>french_terminology/</code> qui contient :</p>
-                                    <ul>
-                                        <li>Des fichiers de base ANS (Agence du Numérique en Santé) :
-                                            <ul>
-                                                <li><code>ans_common_codes.json</code> : Codes communs pour la conversion</li>
-                                                <li><code>ans_oids.json</code> : Identifiants OID français</li>
-                                                <li><code>ans_terminology_systems.json</code> : Systèmes de terminologie standardisés</li>
-                                            </ul>
-                                        </li>
-                                        <li>Des fichiers FHIR supplémentaires</li>
-                                        <li>Des sauvegardes automatiques (préfixe <code>backup_</code>)</li>
-                                    </ul>
-                                    <p>Le système inclut un mécanisme de lecture robuste, des sauvegardes automatiques, et un fallback pour garantir une fiabilité totale.</p>
-                                </div>
-                            </div>
-                        </div>
+                        <ol>
+                            <li><strong>Validation préventive :</strong> Lors du chargement d'un fichier de terminologie, le système effectue une validation complète (syntaxe JSON, structure attendue, présence des champs obligatoires).</li>
+                            <li><strong>Sauvegarde automatique :</strong> Avant toute mise à jour ou modification, le système crée une sauvegarde automatique avec le préfixe "backup_" + nom du fichier original.</li>
+                            <li><strong>Mécanisme de restauration :</strong> Si un fichier est détecté comme corrompu lors de la lecture, le système tente automatiquement de restaurer la dernière version valide depuis les fichiers de sauvegarde.</li>
+                        </ol>
                         
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Que se passe-t-il si je retire un fichier de terminologie ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Si vous supprimez un fichier standard comme <code>ans_common_codes.json</code> :</p>
-                                    <ol>
-                                        <li>Le système détecte automatiquement que le fichier principal est manquant</li>
-                                        <li>Il recherche sa sauvegarde <code>backup_ans_common_codes.json</code></li>
-                                        <li>Si la sauvegarde existe, son contenu est utilisé</li>
-                                        <li>Si même la sauvegarde est absente, un fichier minimal est généré automatiquement</li>
-                                    </ol>
-                                    <p>Cette architecture robuste assure que le système ne plantera jamais à cause d'un fichier manquant.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Que sont les fichiers backup_ans ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Les fichiers avec le préfixe <code>backup_</code> sont des sauvegardes automatiques créées par le système :</p>
-                                    <ul>
-                                        <li><code>backup_ans_common_codes.json</code> est une sauvegarde de <code>ans_common_codes.json</code></li>
-                                        <li><code>backup_ans_oids.json</code> est une sauvegarde de <code>ans_oids.json</code></li>
-                                        <li>etc.</li>
-                                    </ul>
-                                    <p>Ces sauvegardes sont générées automatiquement :</p>
-                                    <ul>
-                                        <li>À chaque lecture réussie d'un fichier</li>
-                                        <li>Avant chaque mise à jour d'un fichier existant</li>
-                                    </ul>
-                                    <p>Elles servent de protection contre les corruptions et permettent la restauration en cas de problème.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="faq-section">
-                        <h3>Gestion des fichiers</h3>
+                        <p>Voici le code principal qui gère la détection et la restauration (dans <code>routes/terminology.js</code>) :</p>
                         
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Que se passe-t-il si j'ai des informations en doublon dans différents fichiers ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Si le même code (par exemple un code de terminologie) apparaît dans plusieurs fichiers :</p>
-                                    <ol>
-                                        <li><strong>Priorité par nom de fichier :</strong> Les fichiers ANS standards sont prioritaires</li>
-                                        <li>Lors de la conversion, le premier fichier dans l'ordre de priorité "gagne"</li>
-                                        <li>Les définitions suivantes sont ignorées</li>
-                                        <li>Le système enregistre une alerte mais continue de fonctionner</li>
-                                    </ol>
-                                    <p>L'outil d'analyse de terminologie (<code>/api/terminology/analyze</code>) détecte et signale ces doublons.</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Si je mets 3 fois le même fichier ANS avec des noms différents, que se passe-t-il ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Si vous avez plusieurs copies du même fichier ANS (par exemple <code>ans_oids.json</code>, <code>ans_oids_copie1.json</code>, <code>ans_oids_copie2.json</code>) :</p>
-                                    <ul>
-                                        <li>Les 3 fichiers seront traités comme des entités distinctes</li>
-                                        <li>Le code recherche <strong>spécifiquement</strong> les fichiers par leur nom exact</li>
-                                        <li>Seul le fichier avec le nom standard (<code>ans_oids.json</code>) sera utilisé pour la conversion</li>
-                                        <li>Les copies n'offrent aucun avantage et consomment de l'espace inutilement</li>
-                                    </ul>
-                                    <p>Pour une gestion optimale, conservez un seul exemplaire de chaque fichier avec son nom standard.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Si je mets à jour un fichier avec le même nom, comment le système réagit-il ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Quand vous téléversez un fichier avec le même nom qu'un fichier existant :</p>
-                                    <ol>
-                                        <li>Le système fait une sauvegarde de l'ancien fichier automatiquement</li>
-                                        <li>Le nouveau fichier remplace totalement l'ancien</li>
-                                        <li>Le cache en mémoire est invalidé et le nouveau contenu est chargé</li>
-                                    </ol>
-                                    <p>Si le fichier que vous téléversez n'est pas un JSON valide :</p>
-                                    <ul>
-                                        <li>Le système détecte l'erreur et restaure automatiquement l'ancienne version</li>
-                                        <li>Vous recevez un message d'erreur</li>
-                                        <li>La continuité de service est maintenue</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Si je mets un fichier avec des informations à jour mais avec un nom différent, est-il utilisé ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Si vous ajoutez un fichier avec des données actualisées mais sous un nom différent des standards (<code>nouveaux_codes_ans.json</code> au lieu de <code>ans_common_codes.json</code>) :</p>
-                                    <ul>
-                                        <li>Le fichier sera bien stocké dans le répertoire</li>
-                                        <li>Il sera visible dans l'interface d'administration</li>
-                                        <li>Mais il ne sera pas intégré automatiquement dans le processus de conversion</li>
-                                    </ul>
-                                    <p>Le code cherche explicitement les fichiers avec des noms standards :</p>
-                                    <pre><code>const systems = getJsonFileContent('ans_terminology_systems.json');</code></pre>
-                                    <p>Pour que vos données actualisées soient utilisées, renommez votre fichier avec le nom standard attendu ou mettez à jour le fichier existant.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="faq-section">
-                        <h3>Fonctionnalités et API</h3>
-                        
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Quelles API sont disponibles pour les terminologies ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Le système expose plusieurs endpoints REST :</p>
-                                    <ul>
-                                        <li><code>GET /api/terminology/french</code> : Renvoie les systèmes de terminologie français (ANS)</li>
-                                        <li><code>GET /api/terminology/files</code> : Liste tous les fichiers de terminologie disponibles</li>
-                                        <li><code>GET /api/terminology/files/{filename}</code> : Récupère le contenu d'un fichier spécifique</li>
-                                        <li><code>POST /api/terminology/files</code> : Permet de déposer un nouveau fichier</li>
-                                        <li><code>POST /api/terminology/analyze</code> : Analyse les fichiers pour générer des statistiques</li>
-                                    </ul>
-                                    <p>Ces API sont documentées dans la section API Reference.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Comment le système intègre-t-il les terminologies dans le processus de conversion ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Lors de la conversion HL7 vers FHIR :</p>
-                                    <ol>
-                                        <li>Les services de conversion interrogent les terminologies via la couche d'abstraction</li>
-                                        <li>Les mappings de codes sont extraits des fichiers de terminologie</li>
-                                        <li>Les identifiants OID français sont traduits vers les URIs FHIR correspondants</li>
-                                        <li>Les systèmes de terminologie sont utilisés pour générer des ressources FHIR correctement référencées</li>
-                                    </ol>
-                                    <p>Cette intégration garantit des conversions complètes et sans perte d'information.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="faq-section">
-                        <h3>Recommandations pratiques</h3>
-                        
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Quelles sont les meilleures pratiques pour gérer les terminologies ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Pour une gestion optimale du système :</p>
-                                    <ol>
-                                        <li>Conservez un seul exemplaire de chaque fichier ANS standard avec son nom exact</li>
-                                        <li>Pour les fichiers personnalisés, utilisez des noms distincts et significatifs</li>
-                                        <li>Utilisez régulièrement l'outil d'analyse pour détecter les incohérences</li>
-                                        <li>Ne supprimez pas les fichiers de sauvegarde (préfixe <code>backup_</code>)</li>
-                                        <li>Pour mettre à jour un fichier standard, téléchargez-le d'abord, modifiez-le, puis réuploadez-le avec le même nom</li>
-                                        <li>Regroupez vos codes par domaine fonctionnel dans des fichiers distincts</li>
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="faq-item">
-                            <div class="faq-question">
-                                <span class="faq-icon">Q</span>
-                                <h4>Puis-je supprimer les fichiers de sauvegarde ?</h4>
-                            </div>
-                            <div class="faq-answer">
-                                <span class="faq-icon">R</span>
-                                <div class="faq-answer-content">
-                                    <p>Techniquement oui, mais ce n'est pas recommandé :</p>
-                                    <ul>
-                                        <li>Ils occupent très peu d'espace disque</li>
-                                        <li>Ils offrent une protection précieuse en cas de corruption</li>
-                                        <li>Sans eux, le système devra générer des fichiers par défaut vides en cas de problème</li>
-                                    </ul>
-                                    <p>Ces sauvegardes font partie des améliorations pour garantir une fiabilité à 100% du système.</p>
-                                </div>
-                            </div>
-                        </div>
+                        <pre><code>// Essayer de lire le fichier
+try {
+  const data = await readTerminologyFile(filename);
+  return data;
+} catch (error) {
+  console.error(`Erreur lors de la lecture du fichier ${filename}:`, error);
+  
+  // Tenter une restauration automatique depuis la sauvegarde
+  try {
+    const backupFilename = `backup_${filename}`;
+    console.log(`Tentative de restauration depuis ${backupFilename}...`);
+    const backupData = await readTerminologyFile(backupFilename);
+    
+    // Copier la sauvegarde vers le fichier original
+    await fs.promises.writeFile(
+      path.join(terminologyDir, filename),
+      JSON.stringify(backupData, null, 2)
+    );
+    
+    console.log(`Restauration réussie depuis ${backupFilename}`);
+    return backupData;
+  } catch (backupError) {
+    console.error('Échec de la restauration:', backupError);
+    throw new Error(`Impossible de lire ou restaurer le fichier ${filename}`);
+  }
+}</code></pre>
                     </div>
                 </div>
-            </main>
-
-            <footer class="content-footer">
-                <div class="footer-content">
-                    <p id="footer-version"></p>
-                    <p class="copyright">© FHIRHub 2025. Tous droits réservés.</p>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-backup">Quel est le mécanisme exact de sauvegarde des fichiers de terminologie et quand est-il déclenché ?</h3>
+                    <div class="faq-answer">
+                        <p>Le mécanisme de sauvegarde des fichiers de terminologie est automatique et se déclenche dans deux cas précis :</p>
+                        
+                        <ol>
+                            <li><strong>Lors de chaque lecture réussie :</strong> Si un fichier est lu correctement, une sauvegarde est créée ou mise à jour.</li>
+                            <li><strong>Avant chaque mise à jour :</strong> Avant d'écrire dans un fichier, le système sauvegarde d'abord l'ancienne version.</li>
+                        </ol>
+                        
+                        <p>Les fichiers de sauvegarde sont stockés dans le même répertoire que les fichiers originaux avec le préfixe "backup_". Ce mécanisme garantit qu'il existe toujours une version fonctionnelle récente en cas de corruption.</p>
+                        
+                        <p>Implémentation dans <code>src/services/terminologyService.js</code> :</p>
+                        
+                        <pre><code>async function createBackup(filename) {
+  const filePath = path.join(terminologyDir, filename);
+  const backupPath = path.join(terminologyDir, `backup_${filename}`);
+  
+  try {
+    // Vérifier si le fichier original existe
+    if (await fileExists(filePath)) {
+      // Copier le fichier vers la sauvegarde
+      await fs.promises.copyFile(filePath, backupPath);
+      console.log(`Sauvegarde créée: ${backupPath}`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error(`Erreur lors de la création de la sauvegarde pour ${filename}:`, error);
+    return false;
+  }
+}</code></pre>
+                    </div>
                 </div>
-            </footer>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-cache">Comment sont chargés et mis en cache les fichiers de terminologie pour optimiser les performances ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise un système de mise en cache à deux niveaux pour optimiser l'accès aux fichiers de terminologie :</p>
+                        
+                        <ol>
+                            <li><strong>Cache mémoire :</strong> Les fichiers de terminologie fréquemment utilisés sont stockés en mémoire à l'aide d'une Map JavaScript avec une durée de validité configurable.</li>
+                            <li><strong>Cache de pré-calcul :</strong> Pour certaines opérations complexes comme les recherches inversées (code vers description), des index sont pré-calculés et mis en cache.</li>
+                        </ol>
+                        
+                        <p>Le système utilise aussi un mécanisme de rechargement conditionnel basé sur les dates de modification des fichiers.</p>
+                        
+                        <p>Implémentation du système de cache :</p>
+                        
+                        <pre><code>// Structure de cache global
+const terminologyCache = {
+  files: new Map(),  // Stocke les contenus des fichiers
+  indexes: new Map(), // Stocke les index pré-calculés
+  lastCheck: 0        // Timestamp de la dernière vérification
+};
+
+async function getTerminologyFile(filename, forceReload = false) {
+  const now = Date.now();
+  const cacheEntry = terminologyCache.files.get(filename);
+  
+  // Vérifier si une entrée de cache valide existe
+  if (!forceReload && cacheEntry && (now - cacheEntry.timestamp < CACHE_TTL_MS)) {
+    console.log(`Utilisation du cache pour ${filename}`);
+    return cacheEntry.data;
+  }
+  
+  // Sinon, charger depuis le disque
+  try {
+    const filePath = path.join(terminologyDir, filename);
+    const fileData = await fs.promises.readFile(filePath, 'utf8');
+    const parsedData = JSON.parse(fileData);
+    
+    // Mettre à jour le cache
+    terminologyCache.files.set(filename, {
+      data: parsedData,
+      timestamp: now
+    });
+    
+    // Créer une sauvegarde après chaque lecture réussie
+    await createBackup(filename);
+    
+    return parsedData;
+  } catch (error) {
+    console.error(`Erreur de chargement pour ${filename}:`, error);
+    throw error;
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-oids">Comment les identifiants OID français sont-ils résolus lors de la conversion HL7 vers FHIR ?</h3>
+                    <div class="faq-answer">
+                        <p>La résolution des identifiants OID français est une fonctionnalité clé de FHIRHub, particulièrement importante pour la conformité avec les spécifications ANS (Agence du Numérique en Santé).</p>
+                        
+                        <p>Lorsqu'un message HL7 contient un OID français, le processus suivant s'exécute :</p>
+                        
+                        <ol>
+                            <li>Le système recherche d'abord l'OID dans le fichier <code>french_terminology/ans_oids.json</code> qui contient les mappings officiels ANS.</li>
+                            <li>Si l'OID est trouvé, le système récupère son URL FHIR correspondante (généralement un système de terminologie).</li>
+                            <li>Cette URL est ensuite utilisée comme système de référence pour les ressources FHIR générées.</li>
+                            <li>En cas d'absence dans le fichier principal, le système tente une résolution alternative via d'autres sources comme <code>ans_terminology_systems.json</code>.</li>
+                        </ol>
+                        
+                        <p>Exemple de résolution d'OID dans le convertisseur :</p>
+                        
+                        <pre><code>// Résoudre un OID français vers une URL de système FHIR
+function resolveOID(oid) {
+  // Chercher dans la table de mapping OID
+  if (oidMappings[oid]) {
+    logger.debug(`OID résolu: ${oid} -> ${oidMappings[oid].url}`);
+    return oidMappings[oid].url;
+  }
+  
+  // Fallback pour les OID non trouvés
+  logger.warn(`OID non trouvé dans les mappings français: ${oid}`);
+  return `urn:oid:${oid}`;
+}
+
+// Exemple d'utilisation dans la conversion d'un code
+function convertHL7CodeToFHIR(hl7Code, oid) {
+  const system = resolveOID(oid);
+  return {
+    system: system,
+    code: hl7Code.value,
+    display: hl7Code.display || getCodeDisplay(system, hl7Code.value)
+  };
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-conflicts">Quelle est la stratégie de gestion des conflits lorsque deux systèmes de terminologie définissent le même code ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise une stratégie de priorité hiérarchique pour résoudre les conflits entre systèmes de terminologie :</p>
+                        
+                        <ol>
+                            <li><strong>Priorité des systèmes français :</strong> Les codes définis dans les terminologies ANS ont toujours priorité sur les autres.</li>
+                            <li><strong>Liste de priorité configurable :</strong> Une liste ordonnée de systèmes permet de définir quel système a préséance en cas de conflit.</li>
+                            <li><strong>Journal des conflits :</strong> Tous les conflits détectés sont journalisés pour analyse ultérieure.</li>
+                            <li><strong>Mécanisme de qualification :</strong> Le système peut qualifier les codes avec le préfixe du système (ex: "LOINC:12345") pour lever les ambiguïtés.</li>
+                        </ol>
+                        
+                        <p>Implémentation de la résolution de conflits :</p>
+                        
+                        <pre><code>// Liste ordonnée de priorités des systèmes
+const SYSTEM_PRIORITIES = [
+  'https://mos.esante.gouv.fr/NOS', // Priorité maximale: NOS français
+  'http://loinc.org',               // LOINC
+  'http://snomed.info/sct',         // SNOMED CT
+  'http://terminology.hl7.org',     // Terminologies HL7
+  'http://unitsofmeasure.org',      // UCUM
+  // Autres systèmes avec priorité plus basse
+];
+
+function resolveCodeConflict(code, systems) {
+  if (systems.length === 1) return systems[0]; // Pas de conflit
+  
+  // Logger le conflit
+  logger.warn(`Conflit détecté pour le code '${code}' entre les systèmes: ${systems.join(', ')}`);
+  
+  // Trier les systèmes selon leur priorité
+  systems.sort((a, b) => {
+    const priorityA = SYSTEM_PRIORITIES.indexOf(a);
+    const priorityB = SYSTEM_PRIORITIES.indexOf(b);
+    
+    // Si un système n'est pas dans la liste, lui donner la priorité la plus basse
+    const aValue = priorityA === -1 ? Number.MAX_SAFE_INTEGER : priorityA;
+    const bValue = priorityB === -1 ? Number.MAX_SAFE_INTEGER : priorityB;
+    
+    return aValue - bValue;
+  });
+  
+  // Retourner le système avec la priorité la plus élevée
+  logger.info(`Résolution du conflit en faveur de: ${systems[0]}`);
+  return systems[0];
+}</code></pre>
+
+                        <p>Un exemple concret de conflit pourrait survenir avec le code "8302-2" qui existe à la fois dans LOINC (pour la taille) et dans un système local. Le système appliquera la hiérarchie de priorité pour choisir le système LOINC, qui est standard et reconnu internationalement.</p>
+                        
+                        <p>Dans les cas de conflit critiques, le système enregistre les détails complets dans le journal des conflits (<code>conflict-resolution.log</code>) qui peut être consulté par les administrateurs. Ce journal contient l'horodatage, les systèmes en conflit, le code concerné et la résolution appliquée.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-structure">Quelle est la structure des fichiers de terminologie utilisés par FHIRHub ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise plusieurs fichiers de terminologie au format JSON, chacun avec une structure spécifique optimisée pour son usage :</p>
+                        
+                        <ol>
+                            <li><strong>ans_terminology_systems.json</strong> : Contient la liste des systèmes de terminologie reconnus par l'ANS avec leurs détails (nom, OID, URL FHIR, version).</li>
+                            <li><strong>ans_oids.json</strong> : Table de correspondance entre les OIDs français et les URLs de systèmes FHIR.</li>
+                            <li><strong>ans_common_codes.json</strong> : Codes communs utilisés dans les conversions (sexe, type d'adresse, etc.) avec leurs équivalents FHIR.</li>
+                        </ol>
+                        
+                        <p>Voici un extrait de la structure du fichier <code>ans_terminology_systems.json</code> :</p>
+                        
+                        <pre><code>{
+  "systems": [
+    {
+      "name": "JDV_J01-XdsTypeCode-CISIS",
+      "oid": "1.2.250.1.213.1.1.5.1",
+      "url": "https://mos.esante.gouv.fr/NOS/JDV_J01-XdsTypeCode-CISIS/FHIR/JDV-J01-XdsTypeCode-CISIS",
+      "version": "1.1.0",
+      "publisher": "ANS",
+      "status": "active",
+      "description": "Liste des codes de types de documents définis par le CISIS"
+    },
+    {
+      "name": "TRE_R13-InterventionMedicale",
+      "oid": "1.2.250.1.213.1.1.4.13",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R13-InterventionMedicale/FHIR/TRE-R13-InterventionMedicale",
+      "version": "1.2.0",
+      "publisher": "ANS",
+      "status": "active",
+      "description": "Interventions médicales (procédures)"
+    }
+  ]
+}</code></pre>
+
+                        <p>Et un extrait de <code>ans_common_codes.json</code> :</p>
+                        
+                        <pre><code>{
+  "gender": {
+    "M": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "M",
+      "display": "Masculin"
+    },
+    "F": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "F",
+      "display": "Féminin"
+    },
+    "U": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "U",
+      "display": "Inconnu"
+    }
+  },
+  "addressType": {
+    "H": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AddressUse",
+      "code": "home",
+      "display": "Domicile"
+    },
+    "B": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AddressUse",
+      "code": "work",
+      "display": "Travail"
+    }
+  }
+}</code></pre>
+                        
+                        <p>Ces structures sont optimisées pour une recherche rapide et une validation efficace. Les fichiers sont vérifiés à l'aide de schémas JSON qui définissent strictement la structure attendue, garantissant ainsi leur intégrité.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-versioning">Comment est gérée la compatibilité entre différentes versions des terminologies ?</h3>
+                    <div class="faq-answer">
+                        <p>La gestion des versions des terminologies est un aspect critique de FHIRHub, particulièrement pour les terminologies ANS qui évoluent régulièrement :</p>
+                        
+                        <ol>
+                            <li><strong>Versionnement explicite :</strong> Chaque fichier de terminologie contient des attributs de version qui permettent d'identifier précisément quelle version est utilisée.</li>
+                            <li><strong>Compatibilité ascendante :</strong> Les mises à jour sont conçues pour maintenir la compatibilité avec les versions antérieures lorsque possible.</li>
+                            <li><strong>Mappings de migration :</strong> Pour les changements majeurs, des tables de correspondance sont utilisées pour traduire entre les anciennes et nouvelles versions.</li>
+                            <li><strong>Journalisation des changements :</strong> Un journal détaillé des modifications est maintenu pour chaque fichier de terminologie.</li>
+                        </ol>
+                        
+                        <p>Voici comment le système gère une mise à jour de terminologie :</p>
+                        
+                        <pre><code>async function updateTerminologyFile(filename, newData) {
+  const currentVersion = await getTerminologyVersion(filename);
+  const newVersion = newData.version || 'unknown';
+  
+  // Vérifier si c'est une mise à jour
+  if (currentVersion && currentVersion !== newVersion) {
+    logger.info(`Mise à jour de terminologie: ${filename} de ${currentVersion} vers ${newVersion}`);
+    
+    // Créer une sauvegarde datée pour cette version spécifique
+    const versionedBackup = `backup_${currentVersion}_${filename}`;
+    await createVersionedBackup(filename, versionedBackup);
+    
+    // Journaliser les différences
+    const currentData = await getTerminologyFile(filename, true);
+    const changes = computeTerminologyChanges(currentData, newData);
+    await logTerminologyChanges(filename, currentVersion, newVersion, changes);
+  }
+  
+  // Créer une sauvegarde standard
+  await createBackup(filename);
+  
+  // Écrire les nouvelles données
+  const filePath = path.join(terminologyDir, filename);
+  await fs.promises.writeFile(filePath, JSON.stringify(newData, null, 2));
+  
+  // Invalider le cache
+  terminologyCache.files.delete(filename);
+  terminologyCache.indexes.delete(filename);
+  
+  // Générer les nouvelles structures d'index si nécessaire
+  await generateIndexes(filename, newData);
+  
+  logger.info(`Terminologie mise à jour avec succès: ${filename}`);
+  return true;
+}</code></pre>
+                        
+                        <p>Les modifications sont tracées de manière détaillée :</p>
+                        
+                        <pre><code>function computeTerminologyChanges(oldData, newData) {
+  const changes = {
+    added: [],
+    removed: [],
+    modified: []
+  };
+  
+  // Pour les systèmes de terminologie
+  if (oldData.systems && newData.systems) {
+    const oldSystems = new Map(oldData.systems.map(s => [s.oid, s]));
+    const newSystems = new Map(newData.systems.map(s => [s.oid, s]));
+    
+    // Détecter les ajouts
+    for (const [oid, system] of newSystems.entries()) {
+      if (!oldSystems.has(oid)) {
+        changes.added.push({ type: 'system', oid, name: system.name });
+      } else {
+        // Détecter les modifications
+        const oldSystem = oldSystems.get(oid);
+        if (JSON.stringify(oldSystem) !== JSON.stringify(system)) {
+          changes.modified.push({ 
+            type: 'system', 
+            oid, 
+            name: system.name,
+            oldVersion: oldSystem.version,
+            newVersion: system.version
+          });
+        }
+      }
+    }
+    
+    // Détecter les suppressions
+    for (const [oid, system] of oldSystems.entries()) {
+      if (!newSystems.has(oid)) {
+        changes.removed.push({ type: 'system', oid, name: system.name });
+      }
+    }
+  }
+  
+  // Logique similaire pour d'autres types de contenu...
+  
+  return changes;
+}</code></pre>
+                        
+                        <p>Grâce à ce système, FHIRHub peut assurer une traçabilité complète des évolutions terminologiques et garantir que les conversions effectuées à différentes périodes restent cohérentes et documentées.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-validation">Comment les terminologies sont-elles validées lors de leur chargement ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un processus de validation multi-niveaux pour garantir l'intégrité des fichiers de terminologie :</p>
+                        
+                        <ol>
+                            <li><strong>Validation syntaxique :</strong> Vérification que le fichier est un JSON valide et bien formé.</li>
+                            <li><strong>Validation structurelle :</strong> Contrôle que le fichier respecte le schéma attendu (champs obligatoires, types de données, etc.).</li>
+                            <li><strong>Validation sémantique :</strong> Vérification de la cohérence interne des données (unicité des identifiants, absence de références cycliques, etc.).</li>
+                            <li><strong>Validation contextuelle :</strong> Vérification des relations avec d'autres fichiers de terminologie (références croisées valides).</li>
+                        </ol>
+                        
+                        <p>Cette validation est effectuée lors de chaque chargement et lors des mises à jour. Voici l'implémentation détaillée :</p>
+                        
+                        <pre><code>async function validateTerminologyFile(filename, data) {
+  const validationResults = {
+    valid: true,
+    errors: [],
+    warnings: []
+  };
+  
+  // 1. Validation du schéma selon le type de fichier
+  const schema = getSchemaForFile(filename);
+  if (schema) {
+    const validator = new Ajv();
+    const validate = validator.compile(schema);
+    const isValid = validate(data);
+    
+    if (!isValid) {
+      validationResults.valid = false;
+      validationResults.errors.push(...validate.errors.map(err => ({
+        type: 'schema',
+        path: err.dataPath,
+        message: err.message
+      })));
+    }
+  } else {
+    validationResults.warnings.push({
+      type: 'schema',
+      message: `Pas de schéma de validation défini pour ${filename}`
+    });
+  }
+  
+  // 2. Validations spécifiques selon le type de fichier
+  if (filename === 'ans_terminology_systems.json') {
+    // Vérifier l'unicité des OIDs
+    const oids = new Set();
+    if (data.systems) {
+      for (const system of data.systems) {
+        if (oids.has(system.oid)) {
+          validationResults.valid = false;
+          validationResults.errors.push({
+            type: 'semantic',
+            message: `OID en doublon: ${system.oid} (${system.name})`
+          });
+        }
+        oids.add(system.oid);
+        
+        // Vérifier la validité des URLs FHIR
+        if (system.url && !isValidFhirUrl(system.url)) {
+          validationResults.warnings.push({
+            type: 'semantic',
+            message: `URL FHIR potentiellement invalide: ${system.url}`
+          });
+        }
+      }
+    }
+  }
+  
+  if (filename === 'ans_oids.json') {
+    // Vérifier les références aux systèmes dans ans_terminology_systems.json
+    const terminologySystems = await getTerminologyFile('ans_terminology_systems.json');
+    const systemUrls = new Set(terminologySystems.systems.map(s => s.url));
+    
+    for (const [oid, mapping] of Object.entries(data)) {
+      if (mapping.url && !systemUrls.has(mapping.url)) {
+        validationResults.warnings.push({
+          type: 'reference',
+          message: `URL de système non trouvée dans ans_terminology_systems.json: ${mapping.url}`
+        });
+      }
+    }
+  }
+  
+  return validationResults;
+}</code></pre>
+                        
+                        <p>Les schémas de validation sont définis en utilisant le standard JSON Schema :</p>
+                        
+                        <pre><code>const TERMINOLOGY_SCHEMAS = {
+  'ans_terminology_systems.json': {
+    type: 'object',
+    required: ['systems'],
+    properties: {
+      systems: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['name', 'oid', 'url'],
+          properties: {
+            name: { type: 'string' },
+            oid: { 
+              type: 'string',
+              pattern: '^[0-9]+(\\.[0-9]+)*$' 
+            },
+            url: { type: 'string', format: 'uri' },
+            version: { type: 'string' },
+            publisher: { type: 'string' },
+            status: { 
+              type: 'string',
+              enum: ['active', 'draft', 'retired'] 
+            },
+            description: { type: 'string' }
+          }
+        }
+      }
+    }
+  },
+  
+  'ans_oids.json': {
+    type: 'object',
+    additionalProperties: {
+      type: 'object',
+      required: ['url'],
+      properties: {
+        url: { type: 'string', format: 'uri' },
+        name: { type: 'string' },
+        description: { type: 'string' }
+      }
+    }
+  }
+}</code></pre>
+                        
+                        <p>Ce système de validation garantit que seuls des fichiers structurellement valides et sémantiquement cohérents sont utilisés pour la conversion, ce qui est essentiel pour maintenir la qualité et la fiabilité des résultats.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-customization">Comment les clients peuvent-ils personnaliser les terminologies pour leurs besoins spécifiques ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub offre un système flexible de personnalisation des terminologies pour répondre aux besoins spécifiques des clients :</p>
+                        
+                        <ol>
+                            <li><strong>Fichiers de terminologie spécifiques au client :</strong> Chaque client peut avoir ses propres fichiers de terminologie stockés dans un sous-répertoire dédié.</li>
+                            <li><strong>Mécanisme de surcharge :</strong> Les définitions spécifiques au client peuvent surcharger les définitions standard pour certains codes.</li>
+                            <li><strong>Interface d'administration :</strong> Une interface web permet aux administrateurs de gérer les terminologies personnalisées sans accéder directement aux fichiers.</li>
+                            <li><strong>API d'importation/exportation :</strong> Les terminologies peuvent être importées ou exportées au format standardisé.</li>
+                        </ol>
+                        
+                        <p>Voici comment fonctionne le système de résolution avec surcharge client :</p>
+                        
+                        <pre><code>async function resolveCode(system, code, clientId = null) {
+  // 1. Essayer d'abord dans les terminologies spécifiques au client si un clientId est fourni
+  if (clientId) {
+    const clientTerminologyPath = `clients/${clientId}/terminologies`;
+    try {
+      const clientSpecificFiles = await fs.promises.readdir(clientTerminologyPath);
+      
+      // Parcourir les fichiers spécifiques au client
+      for (const file of clientSpecificFiles) {
+        if (file.endsWith('.json')) {
+          const clientTerminology = await readJsonFile(path.join(clientTerminologyPath, file));
+          
+          // Vérifier si ce fichier contient une définition pour ce système/code
+          const result = findCodeInTerminology(clientTerminology, system, code);
+          if (result) {
+            logger.debug(`Code ${code} trouvé dans la terminologie spécifique au client ${clientId}: ${file}`);
+            return {
+              ...result,
+              source: 'client-specific'
+            };
+          }
+        }
+      }
+    } catch (error) {
+      // Gérer le cas où le répertoire client n'existe pas
+      if (error.code !== 'ENOENT') {
+        logger.error(`Erreur lors de l'accès aux terminologies client: ${error.message}`);
+      }
+    }
+  }
+  
+  // 2. Ensuite, essayer dans les terminologies standard
+  const standardFiles = [
+    'ans_common_codes.json',
+    'ans_extended_codes.json',
+    // Autres fichiers standard à consulter
+  ];
+  
+  for (const file of standardFiles) {
+    const terminology = await getTerminologyFile(file);
+    const result = findCodeInTerminology(terminology, system, code);
+    if (result) {
+      return {
+        ...result,
+        source: 'standard'
+      };
+    }
+  }
+  
+  // 3. Si aucune correspondance n'est trouvée, retourner le code tel quel
+  logger.warn(`Code non trouvé dans les terminologies: ${system}#${code}`);
+  return {
+    system,
+    code,
+    display: code,
+    source: 'fallback'
+  };
+}</code></pre>
+                        
+                        <p>L'interface d'administration permet de gérer ces personnalisations de manière conviviale :</p>
+                        
+                        <ol>
+                            <li>Visualisation des terminologies standard et spécifiques au client</li>
+                            <li>Recherche de codes par système, valeur ou description</li>
+                            <li>Ajout, modification ou suppression de définitions spécifiques</li>
+                            <li>Importation de terminologies depuis des fichiers CSV ou Excel</li>
+                            <li>Exportation des personnalisations pour sauvegarde ou transfert</li>
+                            <li>Historique des modifications avec possibilité de rollback</li>
+                        </ol>
+                        
+                        <p>Cette approche offre une flexibilité maximale tout en garantissant que les terminologies standard restent intactes et peuvent être mises à jour indépendamment des personnalisations client.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Conversion HL7 vers FHIR -->
+            <section id="conversion" class="faq-section">
+                <h2>Conversion HL7 vers FHIR</h2>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-custom">Comment le parseur HL7 identifie-t-il et traite-t-il les segments personnalisés ou non standard ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise une approche flexible pour traiter les segments personnalisés ou non standard dans les messages HL7 :</p>
+                        
+                        <ol>
+                            <li><strong>Détection automatique :</strong> Le parseur commence par identifier les segments qui ne font pas partie des spécifications standard HL7 v2.5.</li>
+                            <li><strong>Registre de segments personnalisés :</strong> Le système maintient un registre configurable de segments personnalisés connus, notamment ceux définis par la spécification française.</li>
+                            <li><strong>Mode de préservation :</strong> Les segments non reconnus sont préservés dans une section "extension" des ressources FHIR générées.</li>
+                        </ol>
+                        
+                        <p>Voici comment le parseur traite les segments personnalisés :</p>
+                        
+                        <pre><code>// Fonction principale de traitement des segments
+function processSegment(segment, message) {
+  const segmentType = segment.name;
+  
+  // Vérifier si c'est un segment standard
+  if (STANDARD_SEGMENTS.includes(segmentType)) {
+    return processStandardSegment(segment, message);
+  }
+  
+  // Vérifier s'il s'agit d'un segment personnalisé connu
+  if (CUSTOM_SEGMENT_REGISTRY[segmentType]) {
+    logger.info(`Traitement du segment personnalisé: ${segmentType}`);
+    return CUSTOM_SEGMENT_REGISTRY[segmentType].handler(segment, message);
+  }
+  
+  // Segment non reconnu - préserver dans les extensions
+  logger.warn(`Segment non standard détecté: ${segmentType}. Préservation dans les extensions.`);
+  return {
+    type: 'Extension',
+    url: `http://fhirhub.fr/StructureDefinition/hl7v2-segment-${segmentType.toLowerCase()}`,
+    extension: convertSegmentToExtensions(segment)
+  };
+}</code></pre>
+
+                        <p>Pour les segments personnalisés français spécifiques, le système charge les définitions depuis le fichier <code>french_terminology/ans_hl7_custom_segments.json</code>.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-dates">Quelle est la méthode de conversion des dates entre HL7 et FHIR, notamment pour les formats spécifiques français ?</h3>
+                    <div class="faq-answer">
+                        <p>La conversion des dates est une des opérations les plus délicates, notamment en raison des spécificités françaises. FHIRHub utilise une approche robuste :</p>
+                        
+                        <ol>
+                            <li><strong>Détection de format :</strong> L'application reconnaît automatiquement les différents formats de date HL7 (complets, partiels, avec/sans fuseau horaire).</li>
+                            <li><strong>Normalisation :</strong> Toutes les dates sont normalisées en interne vers le format UTC ISO-8601.</li>
+                            <li><strong>Gestion des spécificités françaises :</strong> Le système prend en compte les formats français spécifiques (jour/mois/année) et le fuseau horaire Europe/Paris.</li>
+                            <li><strong>Préservation de la précision :</strong> Si la date d'origine n'inclut que le jour sans heure, cette précision est respectée dans FHIR.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation principale de la conversion de dates :</p>
+                        
+                        <pre><code>// Convertir une date HL7 en date FHIR
+function convertHL7DateToFHIR(hl7Date) {
+  if (!hl7Date) return null;
+  
+  // Détecter le format et la précision
+  const format = detectHL7DateFormat(hl7Date);
+  
+  try {
+    // Patterns pour les différents formats de date HL7
+    switch (format) {
+      case 'YYYYMMDD':
+        // Format YYYYMMDD (date uniquement)
+        return `${hl7Date.substring(0, 4)}-${hl7Date.substring(4, 6)}-${hl7Date.substring(6, 8)}`;
+        
+      case 'YYYYMMDDHHMM':
+        // Format YYYYMMDDHHMM (date + heure)
+        return `${hl7Date.substring(0, 4)}-${hl7Date.substring(4, 6)}-${hl7Date.substring(6, 8)}T` +
+               `${hl7Date.substring(8, 10)}:${hl7Date.substring(10, 12)}:00+01:00`;
+      
+      case 'YYYYMMDDHHMMSS':
+        // Format YYYYMMDDHHMMSS (date + heure + secondes)
+        return `${hl7Date.substring(0, 4)}-${hl7Date.substring(4, 6)}-${hl7Date.substring(6, 8)}T` +
+               `${hl7Date.substring(8, 10)}:${hl7Date.substring(10, 12)}:${hl7Date.substring(12, 14)}+01:00`;
+      
+      case 'YYYYMMDDHHMMSS.FFFF':
+        // Format avec millisecondes
+        // Conversion complexe avec gestion des décimales
+        // ...
+        
+      case 'FRENCH_DDMMYYYY':
+        // Format spécifique français JJ/MM/AAAA
+        return `${hl7Date.substring(4, 8)}-${hl7Date.substring(2, 4)}-${hl7Date.substring(0, 2)}`;
+        
+      // Autres cas...
+        
+      default:
+        // Tenter une analyse fallback avec les fonctions de date JavaScript
+        logger.warn(`Format de date HL7 non reconnu: ${hl7Date}, tentative de parsing standard`);
+        const parsedDate = new Date(hl7Date);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate.toISOString();
+        }
+        throw new Error(`Format de date non pris en charge: ${hl7Date}`);
+    }
+  } catch (error) {
+    logger.error(`Erreur de conversion de date: ${error.message}`);
+    // Préserver la valeur originale si la conversion échoue
+    return `${hl7Date} (format non converti)`;
+  }
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-errors">Comment le système gère-t-il les erreurs de syntaxe dans les messages HL7 d'entrée ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente une stratégie de tolérance aux erreurs pour les messages HL7 mal formés :</p>
+                        
+                        <ol>
+                            <li><strong>Validation multi-niveau :</strong> Le message passe par plusieurs niveaux de validation (structure générale, segments, champs).</li>
+                            <li><strong>Correction automatique :</strong> Pour certaines erreurs mineures (délimiteurs incorrects, caractères de fin de ligne), le système tente des corrections automatiques.</li>
+                            <li><strong>Mode de récupération partielle :</strong> Même en cas d'erreur dans certaines parties du message, le système peut extraire et convertir les segments valides.</li>
+                            <li><strong>Rapports d'erreur détaillés :</strong> Toutes les erreurs sont documentées avec leur position exacte et des suggestions de correction.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation des principales fonctions de gestion d'erreurs :</p>
+                        
+                        <pre><code>// Valider et nettoyer un message HL7 d'entrée
+function validateAndCleanHL7Message(rawMessage) {
+  let cleanedMessage = rawMessage;
+  const validationIssues = [];
+  
+  // 1. Vérification des délimiteurs de base
+  if (!cleanedMessage.startsWith('MSH')) {
+    validationIssues.push({
+      severity: 'error',
+      message: 'Le message doit commencer par un segment MSH',
+      position: 0
+    });
+    // Tenter de trouver le début du segment MSH
+    const mshIndex = cleanedMessage.indexOf('MSH');
+    if (mshIndex > 0) {
+      cleanedMessage = cleanedMessage.substring(mshIndex);
+      validationIssues.push({
+        severity: 'info',
+        message: `Caractères initiaux supprimés, début du message ajusté à la position ${mshIndex}`,
+        position: 0
+      });
+    }
+  }
+  
+  // 2. Normalisation des fins de ligne
+  cleanedMessage = cleanedMessage.replace(/\\r\\n|\\r|\\n/g, '\\r');
+  
+  // 3. Vérification des délimiteurs dans le segment MSH
+  try {
+    const mshSegment = cleanedMessage.split('\\r')[0];
+    const fieldSeparator = mshSegment.charAt(3);
+    
+    if (fieldSeparator === ' ' || !fieldSeparator) {
+      validationIssues.push({
+        severity: 'error',
+        message: 'Séparateur de champ invalide dans le segment MSH',
+        position: 3
+      });
+    }
+    
+    // Extraire et valider les autres délimiteurs...
+  } catch (error) {
+    validationIssues.push({
+      severity: 'error',
+      message: `Impossible d'analyser les délimiteurs: ${error.message}`,
+      position: 0
+    });
+  }
+  
+  // 4. Vérification de la cohérence des segments
+  // ...
+  
+  // Si des erreurs critiques sont présentes, lever une exception
+  const criticalIssues = validationIssues.filter(issue => issue.severity === 'error');
+  if (criticalIssues.length > 0) {
+    const error = new Error('Le message HL7 contient des erreurs critiques');
+    error.validationIssues = validationIssues;
+    throw error;
+  }
+  
+  // Retourner le message nettoyé et les avertissements
+  return {
+    message: cleanedMessage,
+    issues: validationIssues
+  };
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-datatypes">Comment sont mappés les types de données complexes entre HL7 et FHIR ?</h3>
+                    <div class="faq-answer">
+                        <p>Le mapping des types de données complexes est géré par un sous-système dédié qui traduit chaque type de données HL7 vers son équivalent FHIR le plus approprié :</p>
+                        
+                        <ol>
+                            <li><strong>Tables de correspondance :</strong> Des tables prédéfinies établissent les correspondances entre types HL7 et FHIR.</li>
+                            <li><strong>Convertisseurs spécialisés :</strong> Chaque type complexe (CX, XPN, XAD, etc.) a son propre convertisseur dédié.</li>
+                            <li><strong>Préservation des extensions :</strong> Les informations sans équivalent direct sont préservées dans des extensions FHIR.</li>
+                        </ol>
+                        
+                        <p>Exemple d'implémentation pour le type CX (identifiant composite) :</p>
+                        
+                        <pre><code>// Mapping du type CX (Composite ID) vers un Identifier FHIR
+function convertCXtoIdentifier(cxValue) {
+  if (!cxValue || !cxValue.id) return null;
+  
+  const identifier = {
+    system: null,
+    value: cxValue.id
+  };
+  
+  // Traiter l'autorité d'assignation
+  if (cxValue.assigningAuthority) {
+    // Vérifier si c'est un OID et le résoudre
+    if (cxValue.assigningAuthority.universalId && 
+        cxValue.assigningAuthority.universalIdType === 'ISO') {
+      identifier.system = resolveOID(cxValue.assigningAuthority.universalId);
+    } else if (cxValue.assigningAuthority.namespaceId) {
+      // Utiliser le namespace comme fallback
+      identifier.system = `urn:oid:${cxValue.assigningAuthority.namespaceId}`;
+    }
+  }
+  
+  // Traiter le type d'identifiant
+  if (cxValue.identifierTypeCode) {
+    const typeCode = cxValue.identifierTypeCode;
+    
+    // Mapper les codes spécifiques
+    if (typeCode === 'INS-C' || typeCode === 'INS-A') {
+      // Identifiant national de santé français
+      identifier.system = 'https://mos.esante.gouv.fr/NOS/TRE_R304/FHIR/TRE-R304';
+      identifier.type = {
+        coding: [{
+          system: 'https://mos.esante.gouv.fr/NOS/TRE_R304/FHIR/TRE-R304',
+          code: typeCode
+        }]
+      };
+    } else {
+      // Autres types d'identifiants
+      identifier.type = {
+        coding: [{
+          system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+          code: typeCode
+        }]
+      };
+    }
+  }
+  
+  // Ajouter les dates de validité si présentes
+  if (cxValue.effectiveDate) {
+    identifier.period = { start: convertHL7DateToFHIR(cxValue.effectiveDate) };
+  }
+  
+  if (cxValue.expirationDate) {
+    if (!identifier.period) identifier.period = {};
+    identifier.period.end = convertHL7DateToFHIR(cxValue.expirationDate);
+  }
+  
+  return identifier;
+}</code></pre>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="conversion-validation">Quel est le processus de validation des ressources FHIR générées pour s'assurer de leur conformité au standard R4 ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un processus de validation en trois phases pour garantir que les ressources FHIR générées sont conformes au standard R4 :</p>
+                        
+                        <ol>
+                            <li><strong>Validation structurelle :</strong> Vérifie que chaque ressource contient tous les éléments obligatoires et respecte les contraintes de cardinalité.</li>
+                            <li><strong>Validation sémantique :</strong> S'assure que les valeurs respectent les contraintes de type, de format et de vocabulaire.</li>
+                            <li><strong>Validation de profil :</strong> Vérifie la conformité avec les profils français spécifiques définis par l'ANS.</li>
+                        </ol>
+                        
+                        <p>Voici l'implémentation du processus de validation :</p>
+                        
+                        <pre><code>// Valider une ressource FHIR après conversion
+async function validateFHIRResource(resource, profile = null) {
+  const validationResults = {
+    valid: true,
+    issues: []
+  };
+  
+  // 1. Validation structurelle de base
+  if (!resource.resourceType) {
+    validationResults.valid = false;
+    validationResults.issues.push({
+      severity: 'error',
+      code: 'structure',
+      message: 'Ressource sans type défini'
+    });
+    return validationResults;
+  }
+  
+  // Vérifier les champs obligatoires selon le type de ressource
+  const requiredFields = RESOURCE_REQUIRED_FIELDS[resource.resourceType] || [];
+  for (const field of requiredFields) {
+    if (!resource[field]) {
+      validationResults.valid = false;
+      validationResults.issues.push({
+        severity: 'error',
+        code: 'required',
+        message: `Champ obligatoire manquant: ${field}`
+      });
+    }
+  }
+  
+  // 2. Validation sémantique
+  // Vérifier les formats de date
+  const dateFields = findAllDateFields(resource);
+  for (const [path, value] of dateFields) {
+    if (!isValidFHIRDate(value)) {
+      validationResults.valid = false;
+      validationResults.issues.push({
+        severity: 'error',
+        code: 'value',
+        message: `Format de date invalide à ${path}: ${value}`
+      });
+    }
+  }
+  
+  // Vérifier les références
+  const references = findAllReferences(resource);
+  for (const [path, ref] of references) {
+    if (!ref.reference && !ref.identifier) {
+      validationResults.issues.push({
+        severity: 'warning',
+        code: 'reference',
+        message: `Référence sans identifiant à ${path}`
+      });
+    }
+  }
+  
+  // 3. Validation de profil spécifique (si un profil est spécifié)
+  if (profile) {
+    try {
+      const profileValidation = await validateAgainstProfile(resource, profile);
+      if (!profileValidation.valid) {
+        validationResults.valid = false;
+        validationResults.issues.push(...profileValidation.issues);
+      }
+    } catch (error) {
+      validationResults.issues.push({
+        severity: 'warning',
+        code: 'processing',
+        message: `Erreur lors de la validation du profil: ${error.message}`
+      });
+    }
+  }
+  
+  return validationResults;
+}</code></pre>
+
+                        <p>Pour les validations de profils français, FHIRHub utilise les définitions officielles publiées par l'ANS sur le Modèle des Objets de Santé (MOS).</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ajoutez les autres sections ici... -->
+            <section id="ai-integration" class="faq-section">
+                <h2>Intégration IA</h2>
+                <!-- Ajoutez les FAQ sur l'intégration IA ici -->
+            </section>
+
+            <section id="auth-security" class="faq-section">
+                <h2>Authentification et sécurité</h2>
+                <!-- Ajoutez les FAQ sur l'authentification et sécurité ici -->
+            </section>
+
+            <section id="database" class="faq-section">
+                <h2>Base de données et persistance</h2>
+                <!-- Ajoutez les FAQ sur la base de données ici -->
+            </section>
+
+            <section id="workflows" class="faq-section">
+                <h2>Workflows et EAI</h2>
+                <!-- Ajoutez les FAQ sur les workflows ici -->
+            </section>
+
+            <section id="ui" class="faq-section">
+                <h2>Interface utilisateur</h2>
+                <!-- Ajoutez les FAQ sur l'interface utilisateur ici -->
+            </section>
+
+            <section id="architecture" class="faq-section">
+                <h2>Architecture système</h2>
+                <!-- Ajoutez les FAQ sur l'architecture système ici -->
+            </section>
+
+            <section id="api" class="faq-section">
+                <h2>API et intégration</h2>
+                <!-- Ajoutez les FAQ sur l'API et l'intégration ici -->
+            </section>
+
+            <section id="errors-logging" class="faq-section">
+                <h2>Gestion des erreurs et logging</h2>
+                <!-- Ajoutez les FAQ sur la gestion des erreurs et logging ici -->
+            </section>
+
+            <section id="performance" class="faq-section">
+                <h2>Performance et optimisation</h2>
+                <!-- Ajoutez les FAQ sur la performance et l'optimisation ici -->
+            </section>
+
+            <section id="internationalization" class="faq-section">
+                <h2>Internationalisation et localisation</h2>
+                <!-- Ajoutez les FAQ sur l'internationalisation et la localisation ici -->
+            </section>
         </div>
     </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-text">
+                &copy; 2025 FHIRHub - Service de conversion HL7 vers FHIR
+                <div class="footer-version">Version: <span class="version-text">Chargement...</span></div>
+            </div>
+            <ul class="footer-links">
+                <li><a href="/documentation.html">Documentation</a></li>
+                <li><a href="/api-reference.html">API Reference</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script src="/js/include-sidebar.js"></script>
+    <script src="/js/dev-faq.js"></script>
+    <script src="/js/footer-version.js"></script>
 </body>
 </html>
