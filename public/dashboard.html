@@ -251,7 +251,7 @@
       initChatbot();
       
       // Configurer l'intervalle de rafraîchissement des métriques
-      setInterval(fetchStats, 20000); // Rafraîchir toutes les 20 secondes
+      setInterval(fetchStats, 10000); // Rafraîchir toutes les 10 secondes pour une mise à jour plus rapide
       
       // Ajouter l'indicateur de dernière mise à jour
       updateLastRefreshTime();
@@ -474,8 +474,8 @@
         memoryChart.data.datasets[0].data.push(usedMemory);
         memoryChart.data.datasets[0].data.shift();
         
-        // Mettre à jour le graphique
-        memoryChart.update();
+        // Mettre à jour le graphique avec animation complète pour forcer le rafraîchissement
+        memoryChart.update('none');
       }
       
       // Mettre à jour le graphique des tendances de temps de conversion avec des données RÉELLES
