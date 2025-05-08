@@ -103,10 +103,10 @@
             </div>
           </div>
           
-          <!-- Bouton de réinitialisation des statistiques -->
-          <button id="resetEnvironmentBtn" class="btn-reset-env">
-            <i class="fas fa-sync-alt"></i> Réinitialiser les statistiques
-          </button>
+          <!-- Espace réservé pour des indicateurs supplémentaires -->
+          <div id="metricsUpdateIndicator" class="update-indicator">
+            Métriques mises à jour <span id="lastUpdateTime"></span>
+          </div>
         </div>
       </div>
       
@@ -189,8 +189,8 @@
       // Initialisation du chatbot de support
       initChatbot();
       
-      // Gestionnaire d'événements pour le bouton de réinitialisation de l'environnement
-      initResetEnvironmentButton();
+      // Configurer l'intervalle de rafraîchissement des métriques
+      setInterval(fetchStats, 5000); // Rafraîchir toutes les 5 secondes
     });
     
     // La fonction initChatbot est maintenant gérée par le fichier support-chatbot.js
@@ -393,6 +393,33 @@
         // Mettre à jour le graphique
         memoryChart.update();
       }
+      
+      // Mettre à jour le CPU fictif avec des valeurs plus réalistes
+      // Dans un environnement de production, ces données viendraient
+      // de Prometheus ou d'autres outils de surveillance système
+      const cpuChart = Chart.getChart(document.getElementById('cpuChart'));
+      if (cpuChart) {
+        // Générer une valeur CPU "réaliste" qui varie légèrement
+        // basée sur l'utilisation de la mémoire pour que ce soit cohérent
+        const baseValue = 15 + (memPercent / 5);
+        const randomVariation = Math.random() * 5 - 2.5; // Entre -2.5 et +2.5
+        const cpuValue = Math.min(95, Math.max(5, baseValue + randomVariation));
+        
+        // Ajouter la nouvelle valeur et supprimer la plus ancienne
+        cpuChart.data.datasets[0].data.push(Math.round(cpuValue));
+        cpuChart.data.datasets[0].data.shift();
+        
+        // Mettre à jour le graphique
+        cpuChart.update();
+      }
+      
+      // Mettre à jour l'indicateur de dernière mise à jour
+      const now = new Date();
+      const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                      now.getMinutes().toString().padStart(2, '0') + ':' + 
+                      now.getSeconds().toString().padStart(2, '0');
+      
+      document.getElementById('lastUpdateTime').textContent = timeStr;
     }
     
     function fetchApplicationsCount() {
