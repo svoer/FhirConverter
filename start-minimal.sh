@@ -88,15 +88,15 @@ datasources:
     isDefault: true
     editable: true
     
-  # Simplejson datasource pour les logs d'application FHIRHub
+  # Simplejson datasource pour les logs d'application FHIRHub - simple et sans dépendances
   - name: FHIRHub Logs
-    type: simplejson
+    type: prometheus
     access: proxy
-    url: http://fhirhub:9091/api/logs
+    url: http://prometheus:9090/api/v1/query
     isDefault: false
     editable: true
     jsonData:
-      timeField: "timestamp"
+      timeInterval: "30s"
 EOF
   echo -e "${GREEN}✅ Configuration des datasources Grafana créée${NC}"
 fi
