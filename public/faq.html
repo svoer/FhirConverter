@@ -1097,8 +1097,32 @@ async function validateFHIRResource(resource, profile = null) {
         </div>
     </footer>
 
-    <script src="/js/include-sidebar.js"></script>
-    <script src="/js/dev-faq.js"></script>
     <script src="/js/footer-version.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Vérifier si les scripts ont déjà été chargés
+            if (!window.faqInitialized) {
+                // Ajouter l'élément pour la table des matières qui manque
+                const tocElement = document.createElement('div');
+                tocElement.className = 'faq-toc';
+                tocElement.innerHTML = `
+                    <div class="toc-header">
+                        <button id="tocToggle" class="toc-toggle">
+                            Table des matières <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <ul id="tocList" class="toc-list"></ul>
+                `;
+                
+                // Insérer après le conteneur de catégories
+                const sectionNav = document.querySelector('.section-nav');
+                if (sectionNav) {
+                    sectionNav.appendChild(tocElement);
+                }
+                
+                window.faqInitialized = true;
+            }
+        });
+    </script>
 </body>
 </html>
