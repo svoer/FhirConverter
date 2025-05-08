@@ -137,7 +137,7 @@
             <button id="resetOrderBtn" class="btn-metric-control" title="Réinitialiser l'ordre des graphiques">
               <i class="fas fa-undo"></i>
             </button>
-            <div class="metric-info">Pour réorganiser les graphiques, faites-les glisser par leur titre</div>
+            <span class="metric-info">Pour réorganiser les graphiques, faites-les glisser par leur titre</span>
           </div>
         </div>
         
@@ -742,7 +742,7 @@
         labels: ['ADT', 'ORU', 'ORM', 'MDM', 'Autres'],
         datasets: [{
           label: 'Types de messages',
-          data: [3, 1, 1, 0, 0],
+          data: [0, 0, 0, 0, 0], // Initialiser avec des zéros pour mise à jour correcte
           backgroundColor: [
             'rgba(231, 76, 60, 0.7)',
             'rgba(241, 136, 5, 0.7)', 
