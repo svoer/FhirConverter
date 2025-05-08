@@ -29,17 +29,7 @@
             </ul>
         </nav>
 
-        <div class="toc-container">
-            <div class="toc-header">
-                <h2>Table des matières</h2>
-                <button type="button" id="tocToggle" aria-label="Afficher/masquer la table des matières">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-            </div>
-            <ul id="tocList" class="visible">
-                <!-- La table des matières sera générée dynamiquement par JavaScript -->
-            </ul>
-        </div>
+
 
         <div class="faq-container">
             <!-- Section Système de terminologie -->
@@ -265,6 +255,409 @@ function resolveCodeConflict(code, systems) {
   logger.info(`Résolution du conflit en faveur de: ${systems[0]}`);
   return systems[0];
 }</code></pre>
+
+                        <p>Un exemple concret de conflit pourrait survenir avec le code "8302-2" qui existe à la fois dans LOINC (pour la taille) et dans un système local. Le système appliquera la hiérarchie de priorité pour choisir le système LOINC, qui est standard et reconnu internationalement.</p>
+                        
+                        <p>Dans les cas de conflit critiques, le système enregistre les détails complets dans le journal des conflits (<code>conflict-resolution.log</code>) qui peut être consulté par les administrateurs. Ce journal contient l'horodatage, les systèmes en conflit, le code concerné et la résolution appliquée.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-structure">Quelle est la structure des fichiers de terminologie utilisés par FHIRHub ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub utilise plusieurs fichiers de terminologie au format JSON, chacun avec une structure spécifique optimisée pour son usage :</p>
+                        
+                        <ol>
+                            <li><strong>ans_terminology_systems.json</strong> : Contient la liste des systèmes de terminologie reconnus par l'ANS avec leurs détails (nom, OID, URL FHIR, version).</li>
+                            <li><strong>ans_oids.json</strong> : Table de correspondance entre les OIDs français et les URLs de systèmes FHIR.</li>
+                            <li><strong>ans_common_codes.json</strong> : Codes communs utilisés dans les conversions (sexe, type d'adresse, etc.) avec leurs équivalents FHIR.</li>
+                        </ol>
+                        
+                        <p>Voici un extrait de la structure du fichier <code>ans_terminology_systems.json</code> :</p>
+                        
+                        <pre><code>{
+  "systems": [
+    {
+      "name": "JDV_J01-XdsTypeCode-CISIS",
+      "oid": "1.2.250.1.213.1.1.5.1",
+      "url": "https://mos.esante.gouv.fr/NOS/JDV_J01-XdsTypeCode-CISIS/FHIR/JDV-J01-XdsTypeCode-CISIS",
+      "version": "1.1.0",
+      "publisher": "ANS",
+      "status": "active",
+      "description": "Liste des codes de types de documents définis par le CISIS"
+    },
+    {
+      "name": "TRE_R13-InterventionMedicale",
+      "oid": "1.2.250.1.213.1.1.4.13",
+      "url": "https://mos.esante.gouv.fr/NOS/TRE_R13-InterventionMedicale/FHIR/TRE-R13-InterventionMedicale",
+      "version": "1.2.0",
+      "publisher": "ANS",
+      "status": "active",
+      "description": "Interventions médicales (procédures)"
+    }
+  ]
+}</code></pre>
+
+                        <p>Et un extrait de <code>ans_common_codes.json</code> :</p>
+                        
+                        <pre><code>{
+  "gender": {
+    "M": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "M",
+      "display": "Masculin"
+    },
+    "F": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "F",
+      "display": "Féminin"
+    },
+    "U": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AdministrativeGender",
+      "code": "U",
+      "display": "Inconnu"
+    }
+  },
+  "addressType": {
+    "H": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AddressUse",
+      "code": "home",
+      "display": "Domicile"
+    },
+    "B": {
+      "system": "http://terminology.hl7.org/CodeSystem/v3-AddressUse",
+      "code": "work",
+      "display": "Travail"
+    }
+  }
+}</code></pre>
+                        
+                        <p>Ces structures sont optimisées pour une recherche rapide et une validation efficace. Les fichiers sont vérifiés à l'aide de schémas JSON qui définissent strictement la structure attendue, garantissant ainsi leur intégrité.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-versioning">Comment est gérée la compatibilité entre différentes versions des terminologies ?</h3>
+                    <div class="faq-answer">
+                        <p>La gestion des versions des terminologies est un aspect critique de FHIRHub, particulièrement pour les terminologies ANS qui évoluent régulièrement :</p>
+                        
+                        <ol>
+                            <li><strong>Versionnement explicite :</strong> Chaque fichier de terminologie contient des attributs de version qui permettent d'identifier précisément quelle version est utilisée.</li>
+                            <li><strong>Compatibilité ascendante :</strong> Les mises à jour sont conçues pour maintenir la compatibilité avec les versions antérieures lorsque possible.</li>
+                            <li><strong>Mappings de migration :</strong> Pour les changements majeurs, des tables de correspondance sont utilisées pour traduire entre les anciennes et nouvelles versions.</li>
+                            <li><strong>Journalisation des changements :</strong> Un journal détaillé des modifications est maintenu pour chaque fichier de terminologie.</li>
+                        </ol>
+                        
+                        <p>Voici comment le système gère une mise à jour de terminologie :</p>
+                        
+                        <pre><code>async function updateTerminologyFile(filename, newData) {
+  const currentVersion = await getTerminologyVersion(filename);
+  const newVersion = newData.version || 'unknown';
+  
+  // Vérifier si c'est une mise à jour
+  if (currentVersion && currentVersion !== newVersion) {
+    logger.info(`Mise à jour de terminologie: ${filename} de ${currentVersion} vers ${newVersion}`);
+    
+    // Créer une sauvegarde datée pour cette version spécifique
+    const versionedBackup = `backup_${currentVersion}_${filename}`;
+    await createVersionedBackup(filename, versionedBackup);
+    
+    // Journaliser les différences
+    const currentData = await getTerminologyFile(filename, true);
+    const changes = computeTerminologyChanges(currentData, newData);
+    await logTerminologyChanges(filename, currentVersion, newVersion, changes);
+  }
+  
+  // Créer une sauvegarde standard
+  await createBackup(filename);
+  
+  // Écrire les nouvelles données
+  const filePath = path.join(terminologyDir, filename);
+  await fs.promises.writeFile(filePath, JSON.stringify(newData, null, 2));
+  
+  // Invalider le cache
+  terminologyCache.files.delete(filename);
+  terminologyCache.indexes.delete(filename);
+  
+  // Générer les nouvelles structures d'index si nécessaire
+  await generateIndexes(filename, newData);
+  
+  logger.info(`Terminologie mise à jour avec succès: ${filename}`);
+  return true;
+}</code></pre>
+                        
+                        <p>Les modifications sont tracées de manière détaillée :</p>
+                        
+                        <pre><code>function computeTerminologyChanges(oldData, newData) {
+  const changes = {
+    added: [],
+    removed: [],
+    modified: []
+  };
+  
+  // Pour les systèmes de terminologie
+  if (oldData.systems && newData.systems) {
+    const oldSystems = new Map(oldData.systems.map(s => [s.oid, s]));
+    const newSystems = new Map(newData.systems.map(s => [s.oid, s]));
+    
+    // Détecter les ajouts
+    for (const [oid, system] of newSystems.entries()) {
+      if (!oldSystems.has(oid)) {
+        changes.added.push({ type: 'system', oid, name: system.name });
+      } else {
+        // Détecter les modifications
+        const oldSystem = oldSystems.get(oid);
+        if (JSON.stringify(oldSystem) !== JSON.stringify(system)) {
+          changes.modified.push({ 
+            type: 'system', 
+            oid, 
+            name: system.name,
+            oldVersion: oldSystem.version,
+            newVersion: system.version
+          });
+        }
+      }
+    }
+    
+    // Détecter les suppressions
+    for (const [oid, system] of oldSystems.entries()) {
+      if (!newSystems.has(oid)) {
+        changes.removed.push({ type: 'system', oid, name: system.name });
+      }
+    }
+  }
+  
+  // Logique similaire pour d'autres types de contenu...
+  
+  return changes;
+}</code></pre>
+                        
+                        <p>Grâce à ce système, FHIRHub peut assurer une traçabilité complète des évolutions terminologiques et garantir que les conversions effectuées à différentes périodes restent cohérentes et documentées.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-validation">Comment les terminologies sont-elles validées lors de leur chargement ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub implémente un processus de validation multi-niveaux pour garantir l'intégrité des fichiers de terminologie :</p>
+                        
+                        <ol>
+                            <li><strong>Validation syntaxique :</strong> Vérification que le fichier est un JSON valide et bien formé.</li>
+                            <li><strong>Validation structurelle :</strong> Contrôle que le fichier respecte le schéma attendu (champs obligatoires, types de données, etc.).</li>
+                            <li><strong>Validation sémantique :</strong> Vérification de la cohérence interne des données (unicité des identifiants, absence de références cycliques, etc.).</li>
+                            <li><strong>Validation contextuelle :</strong> Vérification des relations avec d'autres fichiers de terminologie (références croisées valides).</li>
+                        </ol>
+                        
+                        <p>Cette validation est effectuée lors de chaque chargement et lors des mises à jour. Voici l'implémentation détaillée :</p>
+                        
+                        <pre><code>async function validateTerminologyFile(filename, data) {
+  const validationResults = {
+    valid: true,
+    errors: [],
+    warnings: []
+  };
+  
+  // 1. Validation du schéma selon le type de fichier
+  const schema = getSchemaForFile(filename);
+  if (schema) {
+    const validator = new Ajv();
+    const validate = validator.compile(schema);
+    const isValid = validate(data);
+    
+    if (!isValid) {
+      validationResults.valid = false;
+      validationResults.errors.push(...validate.errors.map(err => ({
+        type: 'schema',
+        path: err.dataPath,
+        message: err.message
+      })));
+    }
+  } else {
+    validationResults.warnings.push({
+      type: 'schema',
+      message: `Pas de schéma de validation défini pour ${filename}`
+    });
+  }
+  
+  // 2. Validations spécifiques selon le type de fichier
+  if (filename === 'ans_terminology_systems.json') {
+    // Vérifier l'unicité des OIDs
+    const oids = new Set();
+    if (data.systems) {
+      for (const system of data.systems) {
+        if (oids.has(system.oid)) {
+          validationResults.valid = false;
+          validationResults.errors.push({
+            type: 'semantic',
+            message: `OID en doublon: ${system.oid} (${system.name})`
+          });
+        }
+        oids.add(system.oid);
+        
+        // Vérifier la validité des URLs FHIR
+        if (system.url && !isValidFhirUrl(system.url)) {
+          validationResults.warnings.push({
+            type: 'semantic',
+            message: `URL FHIR potentiellement invalide: ${system.url}`
+          });
+        }
+      }
+    }
+  }
+  
+  if (filename === 'ans_oids.json') {
+    // Vérifier les références aux systèmes dans ans_terminology_systems.json
+    const terminologySystems = await getTerminologyFile('ans_terminology_systems.json');
+    const systemUrls = new Set(terminologySystems.systems.map(s => s.url));
+    
+    for (const [oid, mapping] of Object.entries(data)) {
+      if (mapping.url && !systemUrls.has(mapping.url)) {
+        validationResults.warnings.push({
+          type: 'reference',
+          message: `URL de système non trouvée dans ans_terminology_systems.json: ${mapping.url}`
+        });
+      }
+    }
+  }
+  
+  return validationResults;
+}</code></pre>
+                        
+                        <p>Les schémas de validation sont définis en utilisant le standard JSON Schema :</p>
+                        
+                        <pre><code>const TERMINOLOGY_SCHEMAS = {
+  'ans_terminology_systems.json': {
+    type: 'object',
+    required: ['systems'],
+    properties: {
+      systems: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['name', 'oid', 'url'],
+          properties: {
+            name: { type: 'string' },
+            oid: { 
+              type: 'string',
+              pattern: '^[0-9]+(\\.[0-9]+)*$' 
+            },
+            url: { type: 'string', format: 'uri' },
+            version: { type: 'string' },
+            publisher: { type: 'string' },
+            status: { 
+              type: 'string',
+              enum: ['active', 'draft', 'retired'] 
+            },
+            description: { type: 'string' }
+          }
+        }
+      }
+    }
+  },
+  
+  'ans_oids.json': {
+    type: 'object',
+    additionalProperties: {
+      type: 'object',
+      required: ['url'],
+      properties: {
+        url: { type: 'string', format: 'uri' },
+        name: { type: 'string' },
+        description: { type: 'string' }
+      }
+    }
+  }
+}</code></pre>
+                        
+                        <p>Ce système de validation garantit que seuls des fichiers structurellement valides et sémantiquement cohérents sont utilisés pour la conversion, ce qui est essentiel pour maintenir la qualité et la fiabilité des résultats.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <h3 id="terminology-customization">Comment les clients peuvent-ils personnaliser les terminologies pour leurs besoins spécifiques ?</h3>
+                    <div class="faq-answer">
+                        <p>FHIRHub offre un système flexible de personnalisation des terminologies pour répondre aux besoins spécifiques des clients :</p>
+                        
+                        <ol>
+                            <li><strong>Fichiers de terminologie spécifiques au client :</strong> Chaque client peut avoir ses propres fichiers de terminologie stockés dans un sous-répertoire dédié.</li>
+                            <li><strong>Mécanisme de surcharge :</strong> Les définitions spécifiques au client peuvent surcharger les définitions standard pour certains codes.</li>
+                            <li><strong>Interface d'administration :</strong> Une interface web permet aux administrateurs de gérer les terminologies personnalisées sans accéder directement aux fichiers.</li>
+                            <li><strong>API d'importation/exportation :</strong> Les terminologies peuvent être importées ou exportées au format standardisé.</li>
+                        </ol>
+                        
+                        <p>Voici comment fonctionne le système de résolution avec surcharge client :</p>
+                        
+                        <pre><code>async function resolveCode(system, code, clientId = null) {
+  // 1. Essayer d'abord dans les terminologies spécifiques au client si un clientId est fourni
+  if (clientId) {
+    const clientTerminologyPath = `clients/${clientId}/terminologies`;
+    try {
+      const clientSpecificFiles = await fs.promises.readdir(clientTerminologyPath);
+      
+      // Parcourir les fichiers spécifiques au client
+      for (const file of clientSpecificFiles) {
+        if (file.endsWith('.json')) {
+          const clientTerminology = await readJsonFile(path.join(clientTerminologyPath, file));
+          
+          // Vérifier si ce fichier contient une définition pour ce système/code
+          const result = findCodeInTerminology(clientTerminology, system, code);
+          if (result) {
+            logger.debug(`Code ${code} trouvé dans la terminologie spécifique au client ${clientId}: ${file}`);
+            return {
+              ...result,
+              source: 'client-specific'
+            };
+          }
+        }
+      }
+    } catch (error) {
+      // Gérer le cas où le répertoire client n'existe pas
+      if (error.code !== 'ENOENT') {
+        logger.error(`Erreur lors de l'accès aux terminologies client: ${error.message}`);
+      }
+    }
+  }
+  
+  // 2. Ensuite, essayer dans les terminologies standard
+  const standardFiles = [
+    'ans_common_codes.json',
+    'ans_extended_codes.json',
+    // Autres fichiers standard à consulter
+  ];
+  
+  for (const file of standardFiles) {
+    const terminology = await getTerminologyFile(file);
+    const result = findCodeInTerminology(terminology, system, code);
+    if (result) {
+      return {
+        ...result,
+        source: 'standard'
+      };
+    }
+  }
+  
+  // 3. Si aucune correspondance n'est trouvée, retourner le code tel quel
+  logger.warn(`Code non trouvé dans les terminologies: ${system}#${code}`);
+  return {
+    system,
+    code,
+    display: code,
+    source: 'fallback'
+  };
+}</code></pre>
+                        
+                        <p>L'interface d'administration permet de gérer ces personnalisations de manière conviviale :</p>
+                        
+                        <ol>
+                            <li>Visualisation des terminologies standard et spécifiques au client</li>
+                            <li>Recherche de codes par système, valeur ou description</li>
+                            <li>Ajout, modification ou suppression de définitions spécifiques</li>
+                            <li>Importation de terminologies depuis des fichiers CSV ou Excel</li>
+                            <li>Exportation des personnalisations pour sauvegarde ou transfert</li>
+                            <li>Historique des modifications avec possibilité de rollback</li>
+                        </ol>
+                        
+                        <p>Cette approche offre une flexibilité maximale tout en garantissant que les terminologies standard restent intactes et peuvent être mises à jour indépendamment des personnalisations client.</p>
                     </div>
                 </div>
             </section>
