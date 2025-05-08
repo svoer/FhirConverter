@@ -1,0 +1,145 @@
+# 🔥 FHIRHub
+
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Node.js](https://img.shields.io/badge/node-18.x%20%7C%2020.x-green.svg)
+![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)
+
+**Convertisseur HL7 v2.5 vers FHIR R4 pour l'écosystème e-santé français**
+
+<div align="center">
+  <img src="generated-icon.png" alt="FHIRHub Logo" width="120"/>
+  <br>
+  <em>Le futur du partage de données santé, dès aujourd'hui</em>
+</div>
+
+## ✨ Principales fonctionnalités
+
+| 🚀 Conversion | 🔒 Sécurité | 📊 Monitoring | 🔄 Intégration |
+|-------------|----------|-----------|------------|
+| Conversion complète HL7 v2.5 → FHIR R4 | Authentification JWT & API Keys | Tableaux de bord Grafana | API REST complète |
+| Support terminologies ANS | RBAC (contrôle d'accès) | Métriques Prometheus | Export/import JSON |
+| Mappage personnalisable | Journalisation avancée | Filtrage logs par date/erreur | Architecture modulaire |
+| Mode online & offline | Audit trail complet | Alertes personnalisables | Docker multi-services |
+
+## 🚀 Démarrage rapide
+
+### Installation locale
+
+```bash
+# Cloner le dépôt
+git clone https://github.com/votre-organisation/fhirhub.git
+cd fhirhub
+
+# Linux/macOS: Donner les permissions d'exécution et installer
+chmod +x install.sh start.sh
+./install.sh
+
+# Windows: Lancer le script d'installation
+install.bat
+
+# Démarrer l'application
+./start.sh   # Linux/macOS
+start.bat    # Windows
+```
+
+### Déploiement Docker
+
+```bash
+# Configuration minimale avec monitoring (recommandée)
+./start-minimal.sh
+
+# OU configuration complète avec tous les services
+./docker-init.sh
+docker-compose up -d
+```
+
+## 🌐 Accès aux interfaces
+
+| Service | URL | Identifiants par défaut |
+|---------|-----|------------------------|
+| **FHIRHub** | http://localhost:5001 | admin / adminfhirhub |
+| **Grafana** | http://localhost:3000 | admin / admin123 |
+| **Prometheus** | http://localhost:9090 | - |
+| **API Documentation** | http://localhost:5001/api-docs | - |
+
+## 📦 Modes de déploiement
+
+### ⚙️ Configuration minimale
+
+Idéale pour les déploiements légers ou les environnements de développement:
+
+```bash
+./start-minimal.sh
+```
+
+Cette configuration inclut:
+- Application FHIRHub principale
+- Prometheus pour les métriques
+- Grafana pour la visualisation
+- Base de données SQLite
+- Terminologies françaises
+
+### 🏢 Configuration complète
+
+Pour les environnements de production nécessitant des fonctionnalités avancées:
+
+```bash
+docker-compose up -d
+```
+
+Cette configuration ajoute:
+- Loki pour la gestion avancée des logs
+- Promtail pour la collecte des logs
+- Node Exporter pour les métriques système
+- Watchtower pour les mises à jour automatiques
+
+## 🧰 Outils de maintenance
+
+| Script | Description |
+|--------|-------------|
+| `clean-docker.sh` | Nettoie complètement l'environnement Docker |
+| `fix-docker-loki-permissions.sh` | Résout les problèmes de permissions |
+| `docker-restart-grafana.sh` | Redémarre les services de monitoring |
+| `backup-docker-data.sh` | Sauvegarde les données importantes |
+
+## 🧩 Architecture
+
+```
+FHIRHub
+ ┣ 📂 API RESTful
+ ┃  ┣ 🔒 Authentification
+ ┃  ┣ 📄 Conversion
+ ┃  ┗ 📊 Statistiques
+ ┣ 📂 Convertisseurs
+ ┃  ┣ 🔄 HL7 Parser
+ ┃  ┗ 🔄 FHIR Generator
+ ┣ 📂 Interface utilisateur
+ ┃  ┣ 📱 Conversion directe
+ ┃  ┣ 📊 Tableaux de bord
+ ┃  ┗ ⚙️ Administration
+ ┗ 📂 Monitoring
+    ┣ 📈 Prometheus
+    ┣ 📊 Grafana
+    ┗ 📋 Loki/Promtail
+```
+
+## 📚 Documentation
+
+Pour une documentation complète, consultez le dossier `/docs` ou les pages suivantes:
+
+- [Guide de démarrage rapide](docs/quickstart.md)
+- [Configuration avancée](docs/advanced-configuration.md)
+- [API Reference](http://localhost:5001/api-docs)
+- [FAQ](docs/faq.md)
+
+## 🤝 Support
+
+Pour toute question ou assistance:
+
+- Créez une issue sur GitHub
+- Contactez notre équipe support à support@fhirhub.com
+- Consultez notre [centre de support](https://support.fhirhub.com)
+
+## 📄 Licence
+
+Copyright © 2025 FHIRHub. Tous droits réservés.
