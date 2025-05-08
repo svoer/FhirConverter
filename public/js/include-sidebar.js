@@ -232,6 +232,7 @@
         '/ai-settings.html': { title: 'Paramètres IA', icon: 'fas fa-robot' },
         '/documentation.html': { title: 'Documentation', icon: 'fas fa-file-alt' },
         '/api-reference.html': { title: 'API Reference', icon: 'fas fa-code' },
+        '/faq.html': { title: 'FAQ', icon: 'fas fa-question-circle' },
         '/hl7-ai-assistant.html': { title: 'Assistant IA', icon: 'fas fa-robot' }
       };
       
