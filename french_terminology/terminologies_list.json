@@ -52,7 +52,7 @@
     "title": "BDPM",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-02T09:51:51.040+0000",
+    "publishedDate": "2025-05-06T09:19:44.281+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceLOv2",
@@ -212,7 +212,7 @@
     "title": "Dictionnaire RMS (Referentials Management Services) ",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-23T09:34:29.847+0000",
+    "publishedDate": "2025-05-07T13:39:46.602+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceCCBY",
@@ -236,7 +236,7 @@
     "title": "Dictionnaire SMS(Substance Management Services)",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-07T19:00:28.510+0000",
+    "publishedDate": "2025-05-07T07:56:13.914+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceCCBY4.0",
@@ -518,7 +518,7 @@
     "title": "MEDICABASE",
     "forProtected": true,
     "forPublisherAns": true,
-    "publishedDate": "2025-03-27T09:08:41.375+0000",
+    "publishedDate": "2025-05-05T08:34:38.301+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceMedicabase",
@@ -678,7 +678,7 @@
     "title": "NUVA",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-03T09:38:51.769+0000",
+    "publishedDate": "2025-05-07T11:47:29.543+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/licenceNuva",
@@ -713,7 +713,7 @@
     "title": "Nomenclature des besoins et prestations du secteur médico-social",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-03-13T10:40:32.253+0000",
+    "publishedDate": "2025-05-05T08:46:21.193+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceLOv2",
@@ -827,7 +827,7 @@
     "title": "Référentiel UCD",
     "forProtected": true,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-02T09:09:02.515+0000",
+    "publishedDate": "2025-05-06T08:26:29.820+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceCIP_UCD",
@@ -849,7 +849,7 @@
     "title": "Référentiel unique d'interopérabilité du médicament",
     "forProtected": false,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-22T13:37:09.287+0000",
+    "publishedDate": "2025-05-07T08:09:08.961+0000",
     "licences": [
       {
         "uri": "https://data.esante.gouv.fr/profile/distributions/LicenceLOv2",
@@ -915,7 +915,7 @@
     "title": "SNOMED CT - Edition internationale",
     "forProtected": true,
     "forPublisherAns": true,
-    "publishedDate": "2025-04-02T15:30:13.669+0000",
+    "publishedDate": "2025-05-07T12:25:49.679+0000",
     "licences": [
       {
         "uri": "http://data.esante.gouv.fr/vocabulary/licence/licence_affiliation_SNOMED_CT",
