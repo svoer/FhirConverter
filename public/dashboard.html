@@ -338,11 +338,14 @@
     
     function fetchStats() {
       fetch('/api/stats', {
-        method: 'GET'
+        method: 'GET',
+        cache: 'no-store' // S'assurer que nous obtenons toujours les données les plus récentes
       })
       .then(response => response.json())
       .then(data => {
         if (data.success) {
+          console.log("Données fraîches reçues:", data.data);
+          
           // Mise à jour du compteur de conversions
           document.getElementById('conversionsCount').textContent = data.data.conversions;
           
@@ -1012,9 +1015,44 @@
       }
       
       // Mettre à jour les horodatages chaque fois que les statistiques sont rafraîchies
+      // Modifier la fonction fetchStats pour assurer le rafraîchissement
       const originalFetchStats = fetchStats;
       fetchStats = function() {
-        originalFetchStats();
+        // Utiliser une requête avec cache désactivé pour forcer un rafraîchissement
+        fetch('/api/stats', {
+          method: 'GET',
+          cache: 'no-store', // Forcer le rafraîchissement sans cache
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            console.log("Données fraîches reçues via fetchStats modifié:", data.data);
+            
+            // Mise à jour complète des données
+            const stats = data.data;
+            // Mise à jour du compteur de conversions
+            document.getElementById('conversionsCount').textContent = stats.conversions;
+            
+            // Continuer avec les autres mises à jour
+            if (stats.conversionStats) {
+              updateBenefitsMetrics(stats);
+              updateSystemMetrics(
+                stats.memory,
+                stats.conversionStats,
+                stats.applicationStats
+              );
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Erreur lors de la récupération des statistiques:', error);
+        });
+        
+        // Mettre à jour l'horodatage
         const now = new Date();
         const timeStr = now.toLocaleTimeString();
         
@@ -1030,6 +1068,9 @@
           statsUpdateElement.textContent = timeStr;
         }
       };
+      
+      // Réduire l'intervalle de rafraîchissement
+      setInterval(fetchStats, 10000); // Actualisation toutes les 10 secondes
     }
   </script>
 
