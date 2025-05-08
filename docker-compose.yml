@@ -22,11 +22,11 @@ services:
     container_name: fhirhub
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5001:5001"
       - "9091:9091"
     environment:
       - NODE_ENV=production
-      - PORT=5000
+      - PORT=5001
       - DB_PATH=/app/storage/db/fhirhub.db
       - DB_PERSISTENT=true
       - JWT_SECRET=fhirhub-secure-jwt-secret
@@ -45,7 +45,7 @@ services:
       - ./import:/app/import:ro
       - ./export:/app/export:rw
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

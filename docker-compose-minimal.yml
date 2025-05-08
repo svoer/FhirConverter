@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"  # Correction du port pour cohérence
+      - "5001:5001"  # Utilisation du port 5001 pour éviter les conflits
       - "9091:9091"
     volumes:
       # Utilisation de volumes nommés pour une meilleure isolation et portabilité
@@ -34,7 +34,7 @@ services:
       - ./export:/app/export:rw
     environment:
       - NODE_ENV=production
-      - PORT=5000  # Corriger le port pour cohérence
+      - PORT=5001  # Utilisation du port 5001 pour éviter les conflits
       - METRICS_PORT=9091
       - METRICS_ENABLED=true
       - DB_PATH=/app/storage/db/fhirhub.db
@@ -44,7 +44,7 @@ services:
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-VNjTxMwJ1UwOpQBDERIAwdWKK4LHsCXd}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
