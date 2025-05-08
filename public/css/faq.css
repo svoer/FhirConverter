@@ -5,6 +5,14 @@
     padding: 20px;
 }
 
+/* Styles pour intégration avec le menu latéral */
+.main-content h1 {
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+    padding-left: 20px;
+    color: #e64a19;
+}
+
 .faq-header {
     margin-bottom: 30px;
     border-radius: 8px;
