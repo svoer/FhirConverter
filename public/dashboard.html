@@ -170,7 +170,9 @@
           <!-- Distribution des ressources FHIR -->
           <div class="metric-container" data-metric-id="resourceDist" draggable="true">
             <div class="metric-header">Distribution ressources FHIR</div>
-            <div class="metric-body">
+            <div class="metric-body" style="position: relative;">
+              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
+              <p id="noDataMessageResourceDist" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Statistiques détaillées non disponibles</p>
               <canvas id="resourceDistChart"></canvas>
             </div>
           </div>
@@ -178,7 +180,9 @@
           <!-- Taux de réussite -->
           <div class="metric-container" data-metric-id="successRate" draggable="true">
             <div class="metric-header">Taux de réussite des conversions</div>
-            <div class="metric-body">
+            <div class="metric-body" style="position: relative;">
+              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
+              <p id="noDataMessageSuccessRate" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Aucune donnée disponible</p>
               <canvas id="successRateChart"></canvas>
             </div>
           </div>
@@ -188,7 +192,7 @@
             <div class="metric-header">Types de messages HL7</div>
             <div class="metric-body" style="position: relative;">
               <!-- Message à afficher lorsque les données ne sont pas disponibles -->
-              <p id="noDataMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10;">Aucune donnée disponible</p>
+              <p id="noDataMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Aucune donnée disponible</p>
               <canvas id="messageTypesChart"></canvas>
             </div>
           </div>

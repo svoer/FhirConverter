@@ -164,6 +164,7 @@ function updateResourceDistChart(conversionStats, conversions) {
   charts.resourceDist.destroy();
   
   const ctx = document.getElementById('resourceDistChart');
+  const noDataMessage = document.getElementById('noDataMessageResourceDist');
   
   // Si les statistiques réelles de distribution sont disponibles
   if (conversionStats && conversionStats.resourcesDistribution) {
@@ -180,6 +181,9 @@ function updateResourceDistChart(conversionStats, conversions) {
     const hasRealData = distributionData.some(value => value > 0);
     
     if (hasRealData) {
+      // Masquer le message "Aucune donnée disponible"
+      if (noDataMessage) noDataMessage.style.display = 'none';
+      
       // Création d'un nouveau graphique avec données réelles
       charts.resourceDist = new Chart(ctx, {
         type: 'pie',
@@ -230,19 +234,22 @@ function updateResourceDistChart(conversionStats, conversions) {
   
   // Fonction auxiliaire pour créer un graphique basé sur les ressources moyennes
   function createBackupResourceChart() {
-    console.log("Données de distribution détaillée non disponibles, création d'un graphique informatif avec ressources moyennes");
+    console.log("Données de distribution détaillée non disponibles, affichage d'un message d'information");
     
-    // Pour éviter de créer des données fictives, nous allons simplement indiquer la moyenne
+    // Afficher le message "Aucune donnée disponible"
+    if (noDataMessage) noDataMessage.style.display = 'block';
+    
+    // Pour éviter de créer des données fictives, créer un graphique vide (invisible)
     charts.resourceDist = new Chart(ctx, {
       type: 'pie',
       data: {
-        labels: [`Moyenne de ${conversionStats.avgResources} ressource(s) par conversion`],
+        labels: [],
         datasets: [{
           label: 'Information',
-          data: [conversions], // Utiliser le nombre total de conversions comme donnée
-          backgroundColor: ['rgba(243, 156, 18, 0.7)'],
-          borderColor: ['rgba(243, 156, 18, 1)'],
-          borderWidth: 1
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+          borderWidth: 0
         }]
       },
       options: {
@@ -250,19 +257,7 @@ function updateResourceDistChart(conversionStats, conversions) {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'top',
-            labels: {
-              font: {
-                size: 11
-              }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: function() {
-                return `${conversions} conversion(s) avec une moyenne de ${conversionStats.avgResources} ressource(s)`;
-              }
-            }
+            display: false
           }
         }
       }
@@ -273,17 +268,20 @@ function updateResourceDistChart(conversionStats, conversions) {
   function createNoDataResourceChart() {
     console.log("Aucune donnée de distribution disponible, affichage d'un message informatif");
     
-    // Créer un nouveau graphique avec un message d'information
+    // Afficher le message "Aucune donnée disponible"
+    if (noDataMessage) noDataMessage.style.display = 'block';
+    
+    // Créer un graphique vide (invisible) derrière le message
     charts.resourceDist = new Chart(ctx, {
       type: 'pie',
       data: {
-        labels: ['Aucune donnée disponible'],
+        labels: [],
         datasets: [{
           label: 'Information',
-          data: [1],
-          backgroundColor: ['rgba(200, 200, 200, 0.7)'],
-          borderColor: ['rgba(200, 200, 200, 1)'],
-          borderWidth: 1
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+          borderWidth: 0
         }]
       },
       options: {
@@ -291,27 +289,7 @@ function updateResourceDistChart(conversionStats, conversions) {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            position: 'top',
-            labels: {
-              font: {
-                size: 11
-              }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: function() {
-                return 'Aucune donnée de distribution disponible';
-              }
-            }
-          },
-          title: {
-            display: true,
-            text: 'Statistiques détaillées non disponibles',
-            font: {
-              size: 14
-            },
-            color: '#666'
+            display: false
           }
         }
       }
@@ -379,11 +357,15 @@ function updateSuccessRateChart(conversionStats, conversions) {
   charts.successRate.destroy();
   
   const ctx = document.getElementById('successRateChart');
+  const noDataMessage = document.getElementById('noDataMessageSuccessRate');
   
   // Si les statistiques réelles détaillées sont disponibles
   if (conversionStats && typeof conversionStats.successCount !== 'undefined') {
     const successfulCount = conversionStats.successCount;
     const errorCount = conversionStats.errorCount || 0;
+    
+    // Masquer le message "Aucune donnée disponible"
+    if (noDataMessage) noDataMessage.style.display = 'none';
     
     // Créer un nouveau graphique avec les données réelles
     charts.successRate = new Chart(ctx, {
@@ -431,6 +413,9 @@ function updateSuccessRateChart(conversionStats, conversions) {
     
     // Créer un nouveau graphique avec valeurs par défaut
     if (successfulCount > 0) {
+      // Masquer le message "Aucune donnée disponible"
+      if (noDataMessage) noDataMessage.style.display = 'none';
+      
       console.log(`Utilisation du nombre de conversions (${successfulCount}) comme taux de réussite par défaut`);
       charts.successRate = new Chart(ctx, {
         type: 'doughnut',
@@ -471,16 +456,21 @@ function updateSuccessRateChart(conversionStats, conversions) {
     } else {
       // S'il n'y a pas de données, afficher un message explicite
       console.log("Aucune donnée de taux de réussite disponible, affichage d'un message");
+      
+      // Afficher le message "Aucune donnée disponible"
+      if (noDataMessage) noDataMessage.style.display = 'block';
+      
+      // Créer un graphique vide (invisible) derrière le message
       charts.successRate = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['Données non disponibles'],
+          labels: [],
           datasets: [{
             label: 'Taux de réussite',
-            data: [1],
-            backgroundColor: ['rgba(200, 200, 200, 0.7)'],
-            borderColor: ['rgba(200, 200, 200, 1)'],
-            borderWidth: 1
+            data: [],
+            backgroundColor: [],
+            borderColor: [],
+            borderWidth: 0
           }]
         },
         options: {
@@ -488,20 +478,7 @@ function updateSuccessRateChart(conversionStats, conversions) {
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              position: 'top',
-              labels: {
-                font: {
-                  size: 11
-                }
-              }
-            },
-            title: {
-              display: true,
-              text: 'Aucune donnée sur le taux de réussite',
-              font: {
-                size: 14
-              },
-              color: '#666'
+              display: false
             }
           }
         }
@@ -573,9 +550,15 @@ function updateMessageTypesChart(conversionStats, conversions) {
   
   const ctx = document.getElementById('messageTypesChart');
   
+  // Référence au message 'Aucune donnée disponible'
+  const noDataMessage = document.getElementById('noDataMessage');
+  
   // Si les statistiques réelles sont disponibles
   if (conversionStats && conversionStats.messageTypesDistribution) {
     console.log("Utilisation des données réelles de distribution des types de messages:", conversionStats.messageTypesDistribution);
+    
+    // Masquer le message "Aucune donnée disponible"
+    if (noDataMessage) noDataMessage.style.display = 'none';
     
     const labels = [];
     const data = [];
@@ -646,6 +629,9 @@ function updateMessageTypesChart(conversionStats, conversions) {
         console.log("Données de types de messages HL7 reçues:", messageTypesData);
         
         if (messageTypesData && messageTypesData.length > 0) {
+          // Masquer le message "Aucune donnée disponible"
+          if (noDataMessage) noDataMessage.style.display = 'none';
+          
           const labels = messageTypesData.map(item => item.message_type);
           const data = messageTypesData.map(item => item.count);
           
@@ -688,17 +674,20 @@ function updateMessageTypesChart(conversionStats, conversions) {
           
           console.log("Graphique des types de messages HL7 recréé avec les données réelles");
         } else {
-          // Créer un graphique avec message indiquant l'absence de données
+          // Afficher le message "Aucune donnée disponible"
+          if (noDataMessage) noDataMessage.style.display = 'block';
+          
+          // Créer un graphique vide (invisible) derrière le message
           charts.messageTypes = new Chart(ctx, {
             type: 'bar',
             data: {
-              labels: ['Aucune donnée disponible'],
+              labels: [],
               datasets: [{
                 label: 'Types de messages',
-                data: [0],
-                backgroundColor: 'rgba(200, 200, 200, 0.7)',
-                borderColor: 'rgba(200, 200, 200, 1)',
-                borderWidth: 1
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 0
               }]
             },
             options: {
@@ -739,17 +728,20 @@ function updateMessageTypesChart(conversionStats, conversions) {
       .catch(error => {
         console.error("Erreur lors de la récupération des types de messages:", error);
         
-        // En cas d'erreur, créer un graphique avec message d'erreur
+        // Afficher le message "Aucune donnée disponible"
+        if (noDataMessage) noDataMessage.style.display = 'block';
+        
+        // En cas d'erreur, créer un graphique vide (invisible) derrière le message
         charts.messageTypes = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: ['Erreur'],
+            labels: [],
             datasets: [{
               label: 'Types de messages',
-              data: [0],
-              backgroundColor: 'rgba(231, 76, 60, 0.7)',
-              borderColor: 'rgba(231, 76, 60, 1)',
-              borderWidth: 1
+              data: [],
+              backgroundColor: [],
+              borderColor: [],
+              borderWidth: 0
             }]
           },
           options: {
