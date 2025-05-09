@@ -53,7 +53,7 @@
         <div class="benefit-card">
           <div class="benefit-icon"><i class="fas fa-clock"></i></div>
           <div class="benefit-content">
-            <div class="benefit-value" id="timeSaved"><span class="counter">3.5</span> h</div>
+            <div class="benefit-value" id="timeSaved"><span class="counter">0</span> h</div>
             <div class="benefit-label">Temps économisé</div>
             <div class="benefit-detail">Par rapport à une conversion traditionnelle</div>
           </div>
@@ -62,7 +62,7 @@
         <div class="benefit-card">
           <div class="benefit-icon"><i class="fas fa-bolt"></i></div>
           <div class="benefit-content">
-            <div class="benefit-value" id="successRate"><span class="counter">99.7</span>%</div>
+            <div class="benefit-value" id="successRate"><span class="counter">0</span>%</div>
             <div class="benefit-label">Taux de succès</div>
             <div class="benefit-detail">Conversions réussies</div>
           </div>
@@ -71,7 +71,7 @@
         <div class="benefit-card">
           <div class="benefit-icon"><i class="fas fa-code-branch"></i></div>
           <div class="benefit-content">
-            <div class="benefit-value" id="resourceCount"><span class="counter">523</span></div>
+            <div class="benefit-value" id="resourceCount"><span class="counter">0</span></div>
             <div class="benefit-label">Ressources générées</div>
             <div class="benefit-detail">Ressources FHIR produites</div>
           </div>
@@ -948,62 +948,20 @@
         }
         
         // S'assurer qu'on a des données valides pour créer le graphique
-        // Si aucune donnée de conversion n'est disponible, utiliser des valeurs minimales
+        // Si aucune donnée de conversion n'est disponible, afficher un graphique vide
         if (!conversionStats || !conversionStats.avgResources) {
-          console.warn("Données de ressources FHIR non disponibles, utilisation de valeurs minimales");
-          // Utiliser des valeurs minimales pour éviter un graphique vide
-          const minimalDistribution = [1, 1, 1, 1, 1];
+          console.warn("Données de temps de conversion non disponibles, graphique non mis à jour");
           
-          // Créer un graphique avec des valeurs minimales
-          new Chart(resourceDistCanvas, {
-            type: 'pie',
-            data: {
-              labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
-              datasets: [{
-                label: 'Nombre de conversions',
-                data: minimalDistribution,
-                backgroundColor: [
-                  'rgba(231, 76, 60, 0.7)',
-                  'rgba(241, 136, 5, 0.7)',
-                  'rgba(243, 156, 18, 0.7)',
-                  'rgba(246, 185, 59, 0.7)',
-                  'rgba(249, 231, 159, 0.7)'
-                ],
-                borderColor: [
-                  'rgba(231, 76, 60, 1)',
-                  'rgba(241, 136, 5, 1)',
-                  'rgba(243, 156, 18, 1)',
-                  'rgba(246, 185, 59, 1)',
-                  'rgba(249, 231, 159, 1)'
-                ],
-                borderWidth: 1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: {
-                duration: 1000
-              },
-              plugins: {
-                legend: {
-                  position: 'top',
-                  labels: {
-                    font: {
-                      size: 11
-                    }
-                  }
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return `${context.label}: ${context.raw} conversion(s)`;
-                    }
-                  }
-                }
-              }
-            }
-          });
+          // Créer un message dans le graphique indiquant qu'aucune donnée n'est disponible
+          const ctx = resourceDistCanvas.getContext('2d');
+          ctx.clearRect(0, 0, resourceDistCanvas.width, resourceDistCanvas.height);
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#666';
+          ctx.fillText('Aucune donnée de conversion disponible', resourceDistCanvas.width / 2, resourceDistCanvas.height / 2);
+          
+          // Notifier dans la console pour le débogage
+          console.log("Graphique de distribution des ressources FHIR vidé - aucune donnée disponible");
           return;
         }
         
@@ -1114,26 +1072,42 @@
         // Récupérer les données réelles sur les conversions réussies et en erreur
         let successfulCount, errorCount;
         
-        // Si aucune donnée de conversion n'est disponible, utiliser des valeurs minimales
-        if (!conversionStats) {
-          console.warn("Aucune donnée de conversion disponible pour le taux de réussite, utilisation de valeurs minimales");
-          successfulCount = 10;
-          errorCount = 1;
+        // Si aucune donnée de conversion n'est disponible, afficher un graphique vide
+        if (!conversionStats || parseInt(totalConversions) <= 0) {
+          console.warn("Aucune donnée de conversion disponible pour le taux de réussite, graphique non mis à jour");
+          
+          // Créer un message dans le graphique indiquant qu'aucune donnée n'est disponible
+          const ctx = successRateCanvas.getContext('2d');
+          ctx.clearRect(0, 0, successRateCanvas.width, successRateCanvas.height);
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#666';
+          ctx.fillText('Aucune donnée de conversion disponible', successRateCanvas.width / 2, successRateCanvas.height / 2);
+          
+          console.log("Graphique de taux de réussite vidé - aucune donnée disponible");
+          return; // Sortir de la fonction
         } else {
-          // Si ces données ne sont pas disponibles via l'API, on peut utiliser ce qui suit comme temporaire
-          // jusqu'à ce que l'API soit mise à jour pour fournir ces données
+          // Si ces données ne sont pas disponibles via l'API, utiliser des valeurs basées sur les conversions réelles
           successfulCount = typeof conversionStats.successCount !== 'undefined' 
             ? conversionStats.successCount 
-            : parseInt(totalConversions) || 10; // Par défaut, toutes les conversions sont réussies
+            : parseInt(totalConversions); // Par défaut, toutes les conversions sont réussies
           
           errorCount = typeof conversionStats.errorCount !== 'undefined'
             ? conversionStats.errorCount
-            : 1; // Par défaut, une erreur minimale pour montrer le graphique
+            : 0; // Par défaut, aucune erreur (seulement les valeurs réelles)
+            
+          // Si aucune donnée réelle n'est disponible, ne pas afficher le graphique
+          if (successfulCount <= 0 && errorCount <= 0) {
+            console.warn("Aucune donnée réelle de conversion disponible, graphique non mis à jour");
+            const ctx = successRateCanvas.getContext('2d');
+            ctx.clearRect(0, 0, successRateCanvas.width, successRateCanvas.height);
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Aucune donnée de conversion disponible', successRateCanvas.width / 2, successRateCanvas.height / 2);
+            return;
+          }
         }
-        
-        // S'assurer que les valeurs sont toujours positives
-        successfulCount = Math.max(successfulCount, 1);
-        errorCount = Math.max(errorCount, 1);
         
         console.log("Données réelles taux de réussite:", { successfulCount, errorCount });
         
@@ -1199,54 +1173,59 @@
         // Préparer les données de distribution
         let messageTypeData;
         
-        // Si aucune donnée de conversion n'est disponible, utiliser des valeurs minimales
-        if (!conversionStats) {
-          console.warn("Aucune donnée de conversion disponible pour les types de messages, utilisation de valeurs minimales");
-          messageTypeData = [15, 6, 5, 2, 1]; // Valeurs minimales pour un graphique visible
+        // Si aucune donnée de conversion n'est disponible, afficher un graphique vide
+        if (!conversionStats || parseInt(totalConversions) <= 0) {
+          console.warn("Aucune donnée de conversion disponible pour les types de messages, graphique non mis à jour");
+          
+          // Créer un message dans le graphique indiquant qu'aucune donnée n'est disponible
+          const ctx = messageTypesCanvas.getContext('2d');
+          ctx.clearRect(0, 0, messageTypesCanvas.width, messageTypesCanvas.height);
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#666';
+          ctx.fillText('Aucune donnée de conversion disponible', messageTypesCanvas.width / 2, messageTypesCanvas.height / 2);
+          
+          console.log("Graphique des types de messages HL7 vidé - aucune donnée disponible");
+          return; // Sortir de la fonction sans créer de graphique
         }
         // Si les données réelles de distribution des types de messages sont disponibles dans l'API
         else if (conversionStats.messageTypesDistribution) {
           console.log("Utilisation des données réelles de types de messages:", conversionStats.messageTypesDistribution);
+          
+          // Ne pas utiliser de valeurs par défaut, seulement les données réelles
           messageTypeData = [
-            conversionStats.messageTypesDistribution.ADT || 1,
-            conversionStats.messageTypesDistribution.ORU || 1,
-            conversionStats.messageTypesDistribution.ORM || 1,
-            conversionStats.messageTypesDistribution.MDM || 1,
-            conversionStats.messageTypesDistribution.other || 1
+            conversionStats.messageTypesDistribution.ADT || 0,
+            conversionStats.messageTypesDistribution.ORU || 0,
+            conversionStats.messageTypesDistribution.ORM || 0,
+            conversionStats.messageTypesDistribution.MDM || 0,
+            conversionStats.messageTypesDistribution.other || 0
           ];
+          
+          // Vérifier si toutes les valeurs sont nulles
+          const hasNoData = messageTypeData.every(val => val === 0);
+          if (hasNoData) {
+            console.warn("Aucune donnée réelle disponible dans la distribution des types de messages");
+            const ctx = messageTypesCanvas.getContext('2d');
+            ctx.clearRect(0, 0, messageTypesCanvas.width, messageTypesCanvas.height);
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Aucune donnée de type de message disponible', messageTypesCanvas.width / 2, messageTypesCanvas.height / 2);
+            return;
+          }
         } else {
-          // Si les données ne sont pas disponibles, afficher un message d'avertissement
-          // et utiliser une distribution uniforme des données réelles (pas de ratio forcé)
-          console.warn("Données détaillées de types de messages non disponibles dans l'API");
-          console.log("Utilisation d'une distribution uniforme temporaire avec données réelles");
+          // Si les données ne sont pas disponibles, afficher un message au lieu de générer des données
+          console.warn("Aucune donnée détaillée de types de messages disponible, graphique non mis à jour");
           
-          // Nombre total réel de conversions (utiliser la valeur totalConversions déjà récupérée)
-          // Pas besoin de redéfinir totalConversions car il est déjà défini en haut de la fonction
+          // Créer un message dans le graphique indiquant qu'aucune donnée détaillée n'est disponible
+          const ctx = messageTypesCanvas.getContext('2d');
+          ctx.clearRect(0, 0, messageTypesCanvas.width, messageTypesCanvas.height);
+          ctx.font = '14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#666';
+          ctx.fillText('Données détaillées non disponibles', messageTypesCanvas.width / 2, messageTypesCanvas.height / 2);
           
-          // Pour éviter le problème d'affichage vide, on va utiliser des valeurs minimales
-          // qui respectent les proportions réalistes mais garantissent que le graphique sera visible
-          const minValue = 1; // Valeur minimale pour chaque catégorie
-          
-          // Distribution approximative des conversions
-          // Ces valeurs totales vont représenter toutes les conversions réelles disponibles
-          // Utiliser les mêmes valeurs définies dans l'initialisation pour garantir la cohérence
-          // Calcul des valeurs proportionnelles basées sur le nombre total de conversions
-          const baseTotal = 61; // somme des valeurs de référence (34+14+10+2+1)
-          const scaleFactor = Math.max(totalConversions / baseTotal, 0.2); // Facteur minimum pour éviter des valeurs trop petites
-          
-          // Adaptation de la distribution en fonction du nombre réel de conversions
-          const adtValue = Math.max(Math.round(34 * scaleFactor), minValue);
-          const oruValue = Math.max(Math.round(14 * scaleFactor), minValue);
-          const ormValue = Math.max(Math.round(10 * scaleFactor), minValue);
-          const mdmValue = Math.max(Math.round(2 * scaleFactor), minValue);
-          const otherValue = Math.max(Math.round(1 * scaleFactor), minValue);
-          
-          messageTypeData = [adtValue, oruValue, ormValue, mdmValue, otherValue];
-          
-          // S'assurer qu'il n'y a pas de valeurs nulles ou négatives
-          messageTypeData = messageTypeData.map(value => Math.max(value, minValue));
-          
-          console.log("Distribution des messages pour l'affichage:", messageTypeData);
+          return; // Sortir de la fonction sans créer de graphique
         }
         
         // Création d'un nouveau graphique
@@ -1395,12 +1374,12 @@
         }
       };
       
-      // Données pour le graphique de mémoire
+      // Données pour le graphique de mémoire - valeurs initiales vides
       const memoryData = {
         labels: timeLabels,
         datasets: [{
           label: 'Utilisation mémoire (MB)',
-          data: [15, 16, 15, 17, 16],
+          data: [0, 0, 0, 0, 0],
           backgroundColor: 'rgba(241, 136, 5, 0.2)',
           borderColor: '#f18805',
           borderWidth: 2,
@@ -1408,13 +1387,12 @@
         }]
       };
       
-      // Données pour le graphique des tendances de temps de conversion
-      // Utiliser des valeurs réelles ou par défaut raisonnables
+      // Données pour le graphique des tendances de temps de conversion - valeurs vides initiales
       const conversionTrendData = {
         labels: timeLabels,
         datasets: [{
           label: 'Temps de conversion (ms)',
-          data: [250, 250, 250, 250, 250], // Valeurs uniformes pour éviter les problèmes d'affichage
+          data: [0, 0, 0, 0, 0], // Valeurs vides initiales - seront remplacées par des données réelles
           backgroundColor: 'rgba(231, 76, 60, 0.2)',
           borderColor: '#e74c3c',
           borderWidth: 2
@@ -1422,12 +1400,12 @@
       };
       
       // Données pour le graphique de distribution des ressources FHIR
-      // Distribution basée sur les données réelles du serveur
+      // Initialisation avec des valeurs vides
       const resourceDistData = {
         labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
         datasets: [{
           label: 'Nombre de conversions',
-          data: calculateResourceDistribution(98, 3), // Calculer la distribution en fonction du nombre total de conversions
+          data: [0, 0, 0, 0, 0], // Données vides initiales, pour afficher "Aucune donnée disponible"
           backgroundColor: [
             'rgba(231, 76, 60, 0.7)',
             'rgba(241, 136, 5, 0.7)',
@@ -1446,12 +1424,12 @@
         }]
       };
       
-      // Données pour le taux de réussite
+      // Données pour le taux de réussite - valeurs vides initiales
       const successRateData = {
         labels: ['Réussi', 'Erreur'],
         datasets: [{
           label: 'Taux de réussite',
-          data: [90, 1], // Assurer qu'il y a au moins une erreur pour que le graphique s'affiche correctement
+          data: [0, 0], // Valeurs vides initiales
           backgroundColor: [
             'rgba(46, 204, 113, 0.7)',
             'rgba(231, 76, 60, 0.7)'
@@ -1464,12 +1442,12 @@
         }]
       };
       
-      // Données pour les types de messages HL7
+      // Données pour les types de messages HL7 - valeurs vides initiales
       const messageTypesData = {
         labels: ['ADT', 'ORU', 'ORM', 'MDM', 'Autres'],
         datasets: [{
           label: 'Types de messages',
-          data: [45, 22, 15, 5, 3], // Valeurs ajustées pour correspondre aux 90 conversions
+          data: [0, 0, 0, 0, 0], // Valeurs vides initiales
           backgroundColor: [
             'rgba(231, 76, 60, 0.7)',
             'rgba(241, 136, 5, 0.7)', 
@@ -1488,17 +1466,59 @@
         }]
       };
       
+      // Ajouter des options pour afficher "Aucune donnée disponible" quand il n'y a pas de données
+      const emptyDataOptions = {
+        plugins: {
+          ...commonOptions.plugins,
+          emptyDoughnut: {
+            color: 'rgba(150, 150, 150, 0.5)',
+            width: 5,
+            radiusPercentage: 70
+          }
+        }
+      };
+
       // Créer les graphiques
       window.memoryChart = new Chart(document.getElementById('memoryChart'), {
         type: 'line',
         data: memoryData,
-        options: commonOptions
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            title: {
+              display: true,
+              text: 'Aucune donnée disponible',
+              color: 'rgba(150, 150, 150, 0.8)',
+              font: {
+                size: 14
+              },
+              // Le titre s'affiche uniquement quand il n'y a pas de données
+              display: memoryData.datasets[0].data.every(d => d === 0 || d === null)
+            }
+          }
+        }
       });
       
       window.conversionTrendChart = new Chart(document.getElementById('conversionTrendChart'), {
         type: 'line',
         data: conversionTrendData,
-        options: commonOptions
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            title: {
+              display: true,
+              text: 'Aucune donnée disponible',
+              color: 'rgba(150, 150, 150, 0.8)',
+              font: {
+                size: 14
+              },
+              // Le titre s'affiche uniquement quand il n'y a pas de données
+              display: conversionTrendData.datasets[0].data.every(d => d === 0 || d === null)
+            }
+          }
+        }
       });
       
       window.resourceDistChart = new Chart(document.getElementById('resourceDistChart'), {
@@ -1514,6 +1534,16 @@
                   return `${context.label}: ${context.raw} conversion(s)`;
                 }
               }
+            },
+            title: {
+              display: true,
+              text: 'Aucune donnée disponible',
+              color: 'rgba(150, 150, 150, 0.8)',
+              font: {
+                size: 14
+              },
+              // Le titre s'affiche uniquement quand il n'y a pas de données
+              display: resourceDistData.datasets[0].data.every(d => d === 0 || d === null)
             }
           }
         }
@@ -1529,10 +1559,22 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  const percent = Math.round(context.raw / successRateData.datasets[0].data.reduce((a, b) => a + b, 0) * 100);
+                  const sum = successRateData.datasets[0].data.reduce((a, b) => a + b, 0);
+                  if (sum === 0) return `${context.label}: 0 (0%)`;
+                  const percent = Math.round(context.raw / sum * 100);
                   return `${context.label}: ${context.raw} (${percent}%)`;
                 }
               }
+            },
+            title: {
+              display: true,
+              text: 'Aucune donnée disponible',
+              color: 'rgba(150, 150, 150, 0.8)',
+              font: {
+                size: 14
+              },
+              // Le titre s'affiche uniquement quand il n'y a pas de données
+              display: successRateData.datasets[0].data.every(d => d === 0 || d === null)
             }
           }
         }
@@ -1549,6 +1591,19 @@
               ticks: {
                 precision: 0
               }
+            }
+          },
+          plugins: {
+            ...commonOptions.plugins,
+            title: {
+              display: true,
+              text: 'Aucune donnée disponible',
+              color: 'rgba(150, 150, 150, 0.8)',
+              font: {
+                size: 14
+              },
+              // Le titre s'affiche uniquement quand il n'y a pas de données
+              display: messageTypesData.datasets[0].data.every(d => d === 0 || d === null)
             }
           }
         }
