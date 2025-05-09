@@ -998,41 +998,95 @@ app.get('/api/resource-distribution', (req, res) => {
             try {
               const output = conversion.output_message;
               
-              // Utiliser une approche basée uniquement sur les expressions régulières
-              // pour extraire les différents types de ressources FHIR
+              // Version de diagnostic pour comprendre pourquoi nous n'avons pas le bon nombre de ressources
+              console.log("Analyse d'un message de sortie pour FHIR...");
               
-              // Compter les occurrences de chaque type de ressource explicitement
-              standardFhirResources.forEach(resourceType => {
-                // Rechercher chaque type de ressource - peu importe sa position dans la structure JSON
-                // Chercher spécifiquement le motif exact:
-                // "resourceType":"[Type]"
-                const pattern = new RegExp(`"resourceType"\\s*:\\s*"${resourceType}"`, 'g');
-                const matches = output.match(pattern);
-                
-                if (matches) {
-                  // Ajouter le compte au total
-                  resourceCounts[resourceType] += matches.length;
-                }
+              // Récupérer le Resource Count de la base de données
+              const dbResourceCount = db.prepare('SELECT resource_count FROM conversion_logs WHERE id = ?').get(conversion.id);
+              console.log(`Resource count dans la base de données: ${dbResourceCount ? dbResourceCount.resource_count : 'Non disponible'}`);
+              
+              // On va d'abord analyser le message complet pour voir si c'est un Bundle
+              const isBundle = output.includes('"resourceType":"Bundle"');
+              console.log("Est-ce un Bundle FHIR?", isBundle);
+              
+              // Réinitialiser tous les compteurs avant de commencer
+              standardFhirResources.forEach(type => {
+                resourceCounts[type] = 0;
               });
               
-              // Extraire spécifiquement les ressources imbriquées dans un Bundle
-              // sous la forme "resource":{"resourceType":"[Type]"
-              const bundlePattern = /"resource"\s*:\s*\{\s*"resourceType"\s*:\s*"([^"]+)"/g;
-              let match;
-              let bundleMatches = [];
-              
-              // Trouver toutes les correspondances
-              while ((match = bundlePattern.exec(output)) !== null) {
-                if (match[1] && standardFhirResources.includes(match[1])) {
-                  bundleMatches.push(match[1]);
-                  resourceCounts[match[1]]++;
+              if (isBundle) {
+                // 1. Compter d'abord le Bundle lui-même
+                resourceCounts['Bundle'] = 1;
+                
+                // 2. Rechercher les ressources imbriquées dans le Bundle avec une regex spécifique
+                const bundleResourcePattern = /"resource"\s*:\s*\{\s*"resourceType"\s*:\s*"([^"]+)"/g;
+                let match;
+                let bundleEntries = [];
+                
+                // Collect all matches
+                while ((match = bundleResourcePattern.exec(output)) !== null) {
+                  if (match[1] && standardFhirResources.includes(match[1])) {
+                    bundleEntries.push(match[1]);
+                    resourceCounts[match[1]]++;
+                  }
+                }
+                
+                // Afficher le détail des ressources trouvées
+                console.log(`Ressources imbriquées dans le Bundle: ${bundleEntries.join(', ')}`);
+                console.log(`Total: ${bundleEntries.length} ressources imbriquées + 1 Bundle = ${bundleEntries.length + 1} ressources`);
+                
+                // 3. Pour le debug, tenter de parser en JSON pour voir si ça fonctionne
+                try {
+                  // Extraire seulement la première partie du message si c'est très long
+                  const outputSample = output.substring(0, 5000);
+                  console.log("Tentative de parsing JSON du début du message...");
+                  const jsonObj = JSON.parse(outputSample);
+                  
+                  if (jsonObj && jsonObj.entry && Array.isArray(jsonObj.entry)) {
+                    console.log(`Le Bundle contient ${jsonObj.entry.length} entrées dans le tableau 'entry'`);
+                    
+                    // Compter les ressources avec leur type
+                    const resourceTypes = {};
+                    jsonObj.entry.forEach(entry => {
+                      if (entry.resource && entry.resource.resourceType) {
+                        const type = entry.resource.resourceType;
+                        resourceTypes[type] = (resourceTypes[type] || 0) + 1;
+                      }
+                    });
+                    
+                    console.log("Types de ressources trouvés par parsing JSON:", resourceTypes);
+                  }
+                } catch (jsonError) {
+                  console.log("Impossible de parser le message en JSON:", jsonError.message);
+                }
+                
+              } else {
+                // Pour une ressource non-Bundle, chercher simplement le type principal
+                const resourceTypePattern = /"resourceType"\s*:\s*"([^"]+)"/;
+                const match = resourceTypePattern.exec(output);
+                
+                if (match && match[1] && standardFhirResources.includes(match[1])) {
+                  resourceCounts[match[1]] = 1;
+                  console.log(`Ressource principale trouvée: ${match[1]}`);
+                } else {
+                  console.log("Aucune ressource principale trouvée");
                 }
               }
               
-              // Ajuster le comptage pour éviter de compter deux fois les mêmes ressources
-              // Le motif général "resourceType":"Bundle" pourrait déjà être compté
-              if (resourceCounts['Bundle'] > 0) {
-                resourceCounts['Bundle']--; // Déduire 1 pour éviter de compter deux fois
+              // Comparer avec ce qui est attendu
+              let totalResources = Object.values(resourceCounts).reduce((sum, count) => sum + count, 0);
+              console.log(`Comparaison: ${totalResources} ressources détectées vs ${dbResourceCount ? dbResourceCount.resource_count : '?'} dans la base de données`);
+              
+              // Utiliser le nombre de ressources stocké en base de données si disponible
+              if (dbResourceCount && dbResourceCount.resource_count > 0 && totalResources != dbResourceCount.resource_count) {
+                console.log(`ATTENTION: Différence entre notre comptage (${totalResources}) et la BDD (${dbResourceCount.resource_count}) - Utilisation de la valeur BDD`);
+                
+                // Si un seul type de ressource, mettre à jour son compteur
+                const resourceTypes = Object.keys(resourceCounts).filter(type => resourceCounts[type] > 0);
+                if (resourceTypes.length === 1) {
+                  resourceCounts[resourceTypes[0]] = dbResourceCount.resource_count - (isBundle ? 1 : 0);
+                  console.log(`Correction appliquée à ${resourceTypes[0]}: ${resourceCounts[resourceTypes[0]]}`);
+                }
               }
               
               // Log pour debugging
