@@ -677,5 +677,6 @@ EOF
   fi
 fi
 
-# Démarrage avec le Node.js approprié
+# Démarrage avec le Node.js approprié et PORT forcé à 5001
+export PORT=5001
 $NODE_CMD app.js
