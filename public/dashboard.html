@@ -80,13 +80,13 @@
       
       <!-- Statistiques de conversion -->
       <div class="card">
-        <div class="card-header" style="position: sticky; top: 0; background: white; z-index: 100; padding: 15px; border-bottom: 1px solid #eee;">
+        <div class="card-header" style="position: sticky; top: 0; background: white; z-index: 999; padding: 15px; border-bottom: 1px solid #eee;">
           <h2 class="card-title">Statistiques de conversion</h2>
-          <div class="refresh-info">
-            <button id="refreshStatsBtn" class="btn-refresh" title="Rafraîchir les statistiques">
+          <div class="refresh-info" style="position: sticky; top: 0; display: flex; align-items: center; padding: 5px 0;">
+            <button id="refreshStatsBtn" class="btn-refresh" title="Rafraîchir les statistiques" style="margin-right: 10px;">
               <i class="fas fa-sync-alt"></i>
             </button>
-            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; z-index: 1050; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2);">
+            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="position: sticky; top: 15px; right: 15px; display: inline-flex !important; visibility: visible !important; z-index: 9999; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.4); margin-right: 10px; border: 2px solid #fff; font-size: 18px; align-items: center; justify-content: center; transition: transform 0.2s ease, box-shadow 0.2s ease;">
               <i class="fas fa-trash-alt" style="margin: auto;"></i>
             </button>
             <span style="margin-left: 5px;">Dernière mise à jour: <span id="statsUpdateTime"></span></span>
@@ -327,9 +327,8 @@
         });
       }
       
-      // Ajouter le gestionnaire d'événement pour les boutons de réinitialisation (normal et flottant)
+      // Ajouter le gestionnaire d'événement pour le bouton de réinitialisation
       const resetStatsBtn = document.getElementById('resetStatsBtn');
-      const floatingResetBtn = document.getElementById('floatingResetBtn');
       const resetConfirmModal = document.getElementById('resetConfirmModal');
       const cancelResetBtn = document.getElementById('cancelResetBtn');
       const confirmResetBtn = document.getElementById('confirmResetBtn');
@@ -343,9 +342,7 @@
         resetStatsBtn.addEventListener('click', showResetConfirmation);
       }
       
-      if (floatingResetBtn) {
-        floatingResetBtn.addEventListener('click', showResetConfirmation);
-      }
+      // Le gestionnaire d'événement pour le bouton flottant est supprimé
       
       // Gérer le clic sur le bouton Annuler
       if (cancelResetBtn) {

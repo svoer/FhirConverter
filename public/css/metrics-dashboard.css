@@ -135,13 +135,39 @@
 .btn-reset {
   margin-right: 15px;
   background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-  /* Rendre le bouton reset encore plus visible */
-  transform: scale(1.05);
+  /* Rendre le bouton reset encore plus visible et attirant */
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  border: 2px solid white;
+  position: sticky;
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+  z-index: 9999;
 }
 
-.btn-refresh:hover, .btn-reset:hover {
+/* Animation de pulsation pour attirer l'attention */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+}
+
+.btn-refresh:hover {
   transform: scale(1.1);
   box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.btn-reset:hover {
+  transform: scale(1.15) !important;
+  box-shadow: 0 5px 15px rgba(231, 76, 60, 0.6) !important;
+  background: linear-gradient(135deg, #ff5e51 0%, #e74c3c 100%) !important;
+  cursor: pointer;
 }
 
 .btn-refresh:active, .btn-reset:active {
