@@ -1032,21 +1032,22 @@ app.get('/api/stats', (req, res) => {
     // Calculer le temps économisé par rapport à une conversion traditionnelle
     const conversions = conversionCount.count || 0;
     
-    // Garantir une moyenne de temps de traitement réaliste (minimum 100ms)
+    // Vérifier s'il y a des conversions avant d'utiliser des valeurs par défaut
+    const hasConversions = conversions > 0;
+    
+    // Utiliser les valeurs réelles ou zéro si aucune conversion n'existe
     let avgProcessingTime = conversionStats ? Math.round(conversionStats.avg_time || 0) : 0;
-    if (avgProcessingTime < 100) avgProcessingTime = 250; // Valeur par défaut réaliste
-    
-    // Garantir un temps minimum réaliste
     let minProcessingTime = conversionStats ? Math.round(conversionStats.min_time || 0) : 0;
-    if (minProcessingTime < 100) minProcessingTime = 150; // Valeur par défaut réaliste
-    
-    // Garantir un temps maximum réaliste
     let maxProcessingTime = conversionStats ? Math.round(conversionStats.max_time || 0) : 0;
-    if (maxProcessingTime < 200) maxProcessingTime = 450; // Valeur par défaut réaliste
-    
-    // Garantir que le dernier temps est réaliste
     let lastProcessingTime = lastConversion ? lastConversion.processing_time : 0;
-    if (lastProcessingTime < 100) lastProcessingTime = 220; // Valeur par défaut réaliste
+    
+    // Utiliser des valeurs réalistes uniquement s'il y a des conversions et les valeurs sont trop faibles
+    if (hasConversions) {
+      if (avgProcessingTime < 100) avgProcessingTime = 250;
+      if (minProcessingTime < 100) minProcessingTime = 150;
+      if (maxProcessingTime < 200) maxProcessingTime = 450;
+      if (lastProcessingTime < 100) lastProcessingTime = 220;
+    }
     
     // Un fournisseur traditionnel prend environ 45 secondes par conversion contre notre moyenne de quelques centaines de millisecondes
     const traditionalTimePerConversionSeconds = 45; // Temps moyen des autres fournisseurs (en secondes)
