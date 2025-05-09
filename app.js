@@ -1312,26 +1312,25 @@ app.get('/api/stats', (req, res) => {
 // Initialiser la base de données
 initDb();
 
-// Mettre à jour les valeurs de temps de traitement dans la base de données uniquement si des conversions existent
+// Vérification des statistiques sans manipulation de données fictives
 try {
-  // Vérifier d'abord s'il y a des entrées dans la table conversion_logs
+  // Vérifier s'il y a des entrées dans la table conversion_logs
   const count = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
   
-  // Ne mettre à jour les temps que s'il existe des conversions
   if (count && count.count > 0) {
-    console.log('[DB] Correction des temps de traitement des conversions...');
-    // Mettre à jour tous les enregistrements avec des temps trop bas
-    db.prepare(`
-      UPDATE conversion_logs 
-      SET processing_time = CAST(ABS(RANDOM() % 400) + 100 AS INTEGER)
-      WHERE processing_time < 100 OR processing_time IS NULL
-    `).run();
-    console.log('[DB] Temps de traitement ajustés avec succès pour', count.count, 'conversions');
+    console.log('[DB] Statistiques existantes détectées:', count.count, 'conversions dans la base de données');
+    
+    // Vérifier les valeurs nulles ou manquantes dans les enregistrements
+    const invalidRecords = db.prepare('SELECT COUNT(*) as count FROM conversion_logs WHERE processing_time IS NULL OR resource_count IS NULL').get();
+    if (invalidRecords && invalidRecords.count > 0) {
+      console.log('[DB] Détection de', invalidRecords.count, 'enregistrements avec des valeurs manquantes');
+      // Nous ne corrigeons PAS les données - nous utilisons uniquement les vraies données
+    }
   } else {
-    console.log('[DB] Aucune conversion trouvée, pas de correction de temps nécessaire');
+    console.log('[DB] Aucune conversion trouvée dans la base de données');
   }
 } catch (err) {
-  console.warn('[DB] Erreur lors de la mise à jour des temps de traitement :', err.message);
+  console.warn('[DB] Erreur lors de la vérification des statistiques :', err.message);
 }
 
 // Initialisation du service de workflow
