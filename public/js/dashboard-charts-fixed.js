@@ -119,35 +119,57 @@ function updateTimestamps() {
 
 // Initialisation et gestion du graphique de distribution des ressources FHIR
 function initResourceDistChart() {
-  const ctx = document.getElementById('resourceDistChart');
-  if (!ctx) {
-    console.error('Canvas resourceDistChart non trouvé');
-    return;
-  }
-  
-  // Créer un graphique vide
-  charts.resourceDist = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: [],
-      datasets: [{
-        label: '',
-        data: [],
-        backgroundColor: [],
-        borderColor: [],
-        borderWidth: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
+  try {
+    const ctx = document.getElementById('resourceDistChart');
+    if (!ctx) {
+      console.error('Canvas resourceDistChart non trouvé');
+      return;
+    }
+    
+    console.log('Initialisation du graphique resourceDist sur élément:', ctx);
+    
+    // Vérifier si le graphique existe déjà
+    if (charts.resourceDist) {
+      console.log('Destruction de l\'ancien graphique resourceDist');
+      charts.resourceDist.destroy();
+      charts.resourceDist = null;
+    }
+    
+    // Créer un graphique vide
+    charts.resourceDist = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['Pas de données'],
+        datasets: [{
+          label: 'Distribution des ressources',
+          data: [1],
+          backgroundColor: ['rgba(200, 200, 200, 0.5)'],
+          borderColor: ['rgba(200, 200, 200, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'Pas de données disponibles';
+              }
+            }
+          }
         }
       }
-    }
-  });
+    });
+    
+    console.log('Graphique resourceDist initialisé avec succès:', charts.resourceDist);
+  } catch (error) {
+    console.error('Erreur lors de l\'initialisation du graphique resourceDist:', error);
+  }
   
   // Laisser le conteneur visible mais masquer le message de "Aucune donnée" par défaut
   const chartContainer = document.getElementById('resourceDistChartContainer');
@@ -757,6 +779,9 @@ function initMemoryChart() {
 function updateMemoryChart(memoryData) {
   if (!charts.memoryUsage) {
     console.warn('Graphique memoryUsage non initialisé');
+    // Essayer d'initialiser le graphique
+    console.log('Tentative d\'initialisation du graphique mémoire...');
+    initMemoryChart();
     return;
   }
   
@@ -836,6 +861,8 @@ function initConversionTrendChart() {
 function updateConversionTrendChart(lastConversionTime) {
   if (!charts.conversionTrend) {
     console.warn('Graphique conversionTrend non initialisé');
+    console.log('Tentative d\'initialisation du graphique de tendance de conversion...');
+    initConversionTrendChart();
     return;
   }
   
@@ -856,3 +883,59 @@ function updateConversionTrendChart(lastConversionTime) {
   // Actualisation du graphique
   charts.conversionTrend.update();
 }
+
+// Fonction centrale de mise à jour de tous les graphiques
+function updateAllCharts(statsData) {
+  console.log("Mise à jour de tous les graphiques avec les données fraîches:", statsData);
+  
+  // Mise à jour du graphique de distribution des ressources FHIR
+  updateResourceDistChart(statsData.conversionStats, statsData.conversions);
+  
+  // Mise à jour du graphique de taux de réussite
+  updateSuccessRateChart(statsData.conversionStats, statsData.conversions);
+  
+  // Mise à jour du graphique des types de messages HL7
+  updateMessageTypesChart(statsData.conversionStats, statsData.conversions);
+  
+  // Mise à jour du graphique d'utilisation mémoire
+  if (statsData.memory) {
+    updateMemoryChart(statsData.memory);
+  }
+  
+  // Mise à jour du graphique de tendances de conversion
+  if (statsData.conversionStats && statsData.conversionStats.lastTime) {
+    updateConversionTrendChart(statsData.conversionStats.lastTime);
+  }
+}
+
+// Initialisation automatique des graphiques au chargement de la page
+// et ajout d'une fonction pour appeler explicitement fetchStats
+document.addEventListener('DOMContentLoaded', function() {
+  console.log("Initialisation automatique des graphiques avec dashboard-charts-fixed.js");
+  
+  // Attendre que tout soit chargé avant d'initialiser les graphiques
+  setTimeout(function() {
+    // Initialisation des graphiques du tableau de bord
+    initResourceDistChart();
+    initSuccessRateChart();
+    initMessageTypesChart();
+    initMemoryChart();
+    initConversionTrendChart();
+    
+    // Premier chargement des données depuis l'API
+    console.log("Chargement initial des données pour les graphiques");
+    
+    // Récupération des données pour les graphiques
+    fetch('/api/stats')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log("Données initiales reçues pour les graphiques:", data.data);
+          updateAllCharts(data.data);
+        }
+      })
+      .catch(error => {
+        console.error("Erreur lors du chargement initial des données:", error);
+      });
+  }, 500);
+});

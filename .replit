@@ -22,8 +22,8 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash start.sh"
-waitForPort = 5001
+args = "bash -c \"export PORT=5000 && node app.js\""
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "cd backend && npm install express cors uuid hapi-fhir && cd ../frontend && npm install react react-dom && cd .. && node backend/server.js"]
