@@ -170,30 +170,33 @@
           <!-- Distribution des ressources FHIR -->
           <div class="metric-container" data-metric-id="resourceDist" draggable="true">
             <div class="metric-header">Distribution ressources FHIR</div>
-            <div class="metric-body" style="position: relative;">
-              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
-              <p id="noDataMessageResourceDist" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Statistiques détaillées non disponibles</p>
-              <canvas id="resourceDistChart"></canvas>
+            <div class="metric-body">
+              <div id="resourceDistNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Statistiques détaillées non disponibles</div>
+              <div id="resourceDistChartContainer" style="height: 100%; width: 100%; display: none;">
+                <canvas id="resourceDistChart"></canvas>
+              </div>
             </div>
           </div>
           
           <!-- Taux de réussite -->
           <div class="metric-container" data-metric-id="successRate" draggable="true">
             <div class="metric-header">Taux de réussite des conversions</div>
-            <div class="metric-body" style="position: relative;">
-              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
-              <p id="noDataMessageSuccessRate" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Aucune donnée disponible</p>
-              <canvas id="successRateChart"></canvas>
+            <div class="metric-body">
+              <div id="successRateNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Aucune donnée disponible</div>
+              <div id="successRateChartContainer" style="height: 100%; width: 100%; display: none;">
+                <canvas id="successRateChart"></canvas>
+              </div>
             </div>
           </div>
           
           <!-- Types de messages HL7 -->
           <div class="metric-container" data-metric-id="messageTypes" draggable="true">
             <div class="metric-header">Types de messages HL7</div>
-            <div class="metric-body" style="position: relative;">
-              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
-              <p id="noDataMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10; display: none;">Aucune donnée disponible</p>
-              <canvas id="messageTypesChart"></canvas>
+            <div class="metric-body">
+              <div id="messageTypesNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Aucune donnée disponible</div>
+              <div id="messageTypesChartContainer" style="height: 100%; width: 100%; display: none;">
+                <canvas id="messageTypesChart"></canvas>
+              </div>
             </div>
           </div>
         </div>

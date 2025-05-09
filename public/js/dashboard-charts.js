@@ -160,11 +160,13 @@ function updateResourceDistChart(conversionStats, conversions) {
     return;
   }
   
-  // Détruire l'ancien graphique pour le recréer avec un message ou des données réelles
+  // Détruire l'ancien graphique
   charts.resourceDist.destroy();
   
+  // Éléments DOM
+  const chartContainer = document.getElementById('resourceDistChartContainer');
+  const noDataMessage = document.getElementById('resourceDistNoData');
   const ctx = document.getElementById('resourceDistChart');
-  const noDataMessage = document.getElementById('noDataMessageResourceDist');
   
   // Si les statistiques réelles de distribution sont disponibles
   if (conversionStats && conversionStats.resourcesDistribution) {
@@ -181,8 +183,9 @@ function updateResourceDistChart(conversionStats, conversions) {
     const hasRealData = distributionData.some(value => value > 0);
     
     if (hasRealData) {
-      // Masquer le message "Aucune donnée disponible"
-      if (noDataMessage) noDataMessage.style.display = 'none';
+      // Afficher le container du graphique et masquer le message
+      chartContainer.style.display = 'block';
+      noDataMessage.style.display = 'none';
       
       // Création d'un nouveau graphique avec données réelles
       charts.resourceDist = new Chart(ctx, {
@@ -220,64 +223,29 @@ function updateResourceDistChart(conversionStats, conversions) {
         }
       });
     } else {
-      // Même avec resourcesDistribution présent, toutes les valeurs sont à 0
-      // Basculer vers l'option de secours avec la moyenne
-      createBackupResourceChart();
+      // Pas de données réelles, afficher le message
+      createEmptyChart();
     }
-  } else if (conversionStats && typeof conversionStats.avgResources !== 'undefined' && conversions > 0) {
-    // Utiliser les statistiques disponibles lorsque les détails par catégorie ne sont pas disponibles
-    createBackupResourceChart();
   } else {
-    // Aucune donnée exploitable disponible
-    createNoDataResourceChart();
+    // Pas de données réelles, afficher le message
+    createEmptyChart();
   }
   
-  // Fonction auxiliaire pour créer un graphique basé sur les ressources moyennes
-  function createBackupResourceChart() {
+  // Fonction pour créer un graphique vide et afficher le message
+  function createEmptyChart() {
     console.log("Données de distribution détaillée non disponibles, affichage d'un message d'information");
     
-    // Afficher le message "Aucune donnée disponible"
-    if (noDataMessage) noDataMessage.style.display = 'block';
+    // Masquer le container du graphique et afficher le message
+    chartContainer.style.display = 'none';
+    noDataMessage.style.display = 'flex';
     
-    // Pour éviter de créer des données fictives, créer un graphique vide (invisible)
+    // Créer un graphique vide (invisible)
     charts.resourceDist = new Chart(ctx, {
       type: 'pie',
       data: {
         labels: [],
         datasets: [{
-          label: 'Information',
-          data: [],
-          backgroundColor: [],
-          borderColor: [],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
-      }
-    });
-  }
-  
-  // Fonction auxiliaire pour créer un graphique "aucune donnée"
-  function createNoDataResourceChart() {
-    console.log("Aucune donnée de distribution disponible, affichage d'un message informatif");
-    
-    // Afficher le message "Aucune donnée disponible"
-    if (noDataMessage) noDataMessage.style.display = 'block';
-    
-    // Créer un graphique vide (invisible) derrière le message
-    charts.resourceDist = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Information',
+          label: '',
           data: [],
           backgroundColor: [],
           borderColor: [],
@@ -353,19 +321,22 @@ function updateSuccessRateChart(conversionStats, conversions) {
     return;
   }
   
-  // Détruire l'ancien graphique pour le recréer avec des données réelles
+  // Détruire l'ancien graphique
   charts.successRate.destroy();
   
+  // Éléments DOM
+  const chartContainer = document.getElementById('successRateChartContainer');
+  const noDataMessage = document.getElementById('successRateNoData');
   const ctx = document.getElementById('successRateChart');
-  const noDataMessage = document.getElementById('noDataMessageSuccessRate');
   
   // Si les statistiques réelles détaillées sont disponibles
   if (conversionStats && typeof conversionStats.successCount !== 'undefined') {
     const successfulCount = conversionStats.successCount;
     const errorCount = conversionStats.errorCount || 0;
     
-    // Masquer le message "Aucune donnée disponible"
-    if (noDataMessage) noDataMessage.style.display = 'none';
+    // Afficher le container du graphique et masquer le message
+    chartContainer.style.display = 'block';
+    noDataMessage.style.display = 'none';
     
     // Créer un nouveau graphique avec les données réelles
     charts.successRate = new Chart(ctx, {
@@ -413,8 +384,9 @@ function updateSuccessRateChart(conversionStats, conversions) {
     
     // Créer un nouveau graphique avec valeurs par défaut
     if (successfulCount > 0) {
-      // Masquer le message "Aucune donnée disponible"
-      if (noDataMessage) noDataMessage.style.display = 'none';
+      // Afficher le container du graphique et masquer le message
+      chartContainer.style.display = 'block';
+      noDataMessage.style.display = 'none';
       
       console.log(`Utilisation du nombre de conversions (${successfulCount}) comme taux de réussite par défaut`);
       charts.successRate = new Chart(ctx, {
@@ -457,16 +429,17 @@ function updateSuccessRateChart(conversionStats, conversions) {
       // S'il n'y a pas de données, afficher un message explicite
       console.log("Aucune donnée de taux de réussite disponible, affichage d'un message");
       
-      // Afficher le message "Aucune donnée disponible"
-      if (noDataMessage) noDataMessage.style.display = 'block';
+      // Masquer le container du graphique et afficher le message
+      chartContainer.style.display = 'none';
+      noDataMessage.style.display = 'flex';
       
-      // Créer un graphique vide (invisible) derrière le message
+      // Créer un graphique vide (invisible)
       charts.successRate = new Chart(ctx, {
         type: 'doughnut',
         data: {
           labels: [],
           datasets: [{
-            label: 'Taux de réussite',
+            label: '',
             data: [],
             backgroundColor: [],
             borderColor: [],
