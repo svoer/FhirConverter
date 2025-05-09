@@ -199,15 +199,45 @@ function initializeAllCharts() {
 }
 
 // Fonction qui récupère les données et met à jour tous les graphiques
-function fetchAndUpdateCharts() {
+// Ajouter un paramètre optionnel forceReset pour forcer la réinitialisation lors d'une réinitialisation
+function fetchAndUpdateCharts(forceReset) {
   console.log("Récupération des données pour les graphiques...");
+  
+  // Attacher window.fetchAndUpdateCharts pour permettre l'accès depuis dashboard.html
+  window.fetchAndUpdateCharts = fetchAndUpdateCharts;
+  
+  // Si on force la réinitialisation, réinitialiser immédiatement les graphiques
+  if (forceReset) {
+    console.log("Réinitialisation forcée des graphiques demandée");
+    // Réinitialiser tous les graphiques
+    resetAllCharts();
+  }
+  
+  // Utiliser AbortController pour gérer les timeouts
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes timeout
   
   // Variable pour suivre toutes les requêtes
   const requests = [];
   
+  // Ajouter un timestamp pour éviter le cache
+  const timestamp = Date.now();
+  
   // Récupérer les statistiques générales
-  const statsPromise = fetch('/api/stats')
-    .then(response => response.json())
+  const statsPromise = fetch(`/api/stats?t=${timestamp}`, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    signal: controller.signal
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
       if (data.success) {
         console.log("Données reçues pour les graphiques:", data.data);
@@ -226,27 +256,59 @@ function fetchAndUpdateCharts() {
         // (toutes conversions réussies si pas d'info détaillée)
         updateSuccessRateChart(data.data.conversions, 0);
         
+        // S'assurer que cette nouvelle version des données est accessible pour les autres fonctions
+        window.latestStatsData = data.data;
+        
+        // Indiquer également que les données fraîches ont été reçues
+        console.log("Données fraîches reçues via fetchStats modifié:", data.data);
+        
         return data.data;
+      } else {
+        throw new Error("Réponse invalide du serveur");
       }
     })
     .catch(error => {
-      console.error("Erreur lors de la récupération des statistiques:", error);
+      // Vérifier si c'est une erreur d'annulation
+      if (error.name === 'AbortError') {
+        console.warn("La requête stats a été interrompue car elle prenait trop de temps");
+      } else {
+        console.error("Erreur lors de la récupération des statistiques:", error);
+      }
     });
   
   requests.push(statsPromise);
     
   // Récupérer les données de types de messages HL7
-  const messageTypesPromise = fetch('/api/message-types')
-    .then(response => response.json())
+  const messageTypesPromise = fetch(`/api/message-types?t=${timestamp}`, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    signal: controller.signal
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
       if (data.success) {
         console.log("Données de types de messages HL7 reçues:", data.data);
         updateMessageTypesChart(data.data);
         return data.data;
+      } else {
+        throw new Error("Réponse invalide pour les types de messages");
       }
     })
     .catch(error => {
-      console.error("Erreur lors de la récupération des types de messages:", error);
+      // Vérifier si c'est une erreur d'annulation
+      if (error.name === 'AbortError') {
+        console.warn("La requête message-types a été interrompue car elle prenait trop de temps");
+      } else {
+        console.error("Erreur lors de la récupération des types de messages:", error);
+      }
     });
   
   requests.push(messageTypesPromise);
@@ -256,11 +318,22 @@ function fetchAndUpdateCharts() {
   // Attendre que toutes les requêtes soient terminées
   Promise.all(requests)
     .then(() => {
+      // Annuler le timeout car toutes les requêtes sont terminées
+      clearTimeout(timeoutId);
+      
       // Mettre à jour les timestamps
       updateTimestamps();
     })
     .catch(error => {
+      // Annuler le timeout en cas d'erreur
+      clearTimeout(timeoutId);
+      
       console.error("Erreur lors de la mise à jour des graphiques:", error);
+    })
+    .finally(() => {
+      // Même en cas d'erreur, mettre à jour les timestamps 
+      // pour montrer que l'application a tenté une mise à jour
+      updateTimestamps();
     });
 }
 
@@ -480,6 +553,38 @@ function createResourceDistChart() {
 // Widget graphique de distribution des ressources FHIR supprimé
 function updateResourceDistChart(resourceData) {
   // Fonction vide - widget supprimé
+}
+
+// Cette fonction n'était pas définie dans ce fichier, mais est appelée par la fonction resetStats dans dashboard.html
+function resetAllCharts() {
+  console.log("Réinitialisation de tous les graphiques demandée");
+  
+  // Réinitialiser le graphique de mémoire
+  if (charts.memory) {
+    charts.memory.data.datasets[0].data = Array(10).fill(0);
+    charts.memory.update();
+  }
+  
+  // Réinitialiser le graphique de tendance de conversion
+  if (charts.conversionTrend) {
+    charts.conversionTrend.data.datasets[0].data = Array(10).fill(0);
+    charts.conversionTrend.update();
+  }
+  
+  // Réinitialiser le graphique de taux de succès
+  if (charts.successRate) {
+    charts.successRate.data.datasets[0].data = [0, 0];
+    charts.successRate.update();
+  }
+  
+  // Réinitialiser le graphique de types de messages
+  if (charts.messageTypes) {
+    charts.messageTypes.data.datasets[0].data = Array(5).fill(0);
+    charts.messageTypes.update();
+  }
+  
+  // Mettre à jour les timestamps pour montrer quand la réinitialisation a eu lieu
+  updateTimestamps();
 }
 
 // Création et mise à jour du graphique taux de réussite
