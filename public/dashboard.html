@@ -80,19 +80,18 @@
       
       <!-- Statistiques de conversion -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="position: sticky; top: 0; background: white; z-index: 100; padding: 15px; border-bottom: 1px solid #eee;">
           <h2 class="card-title">Statistiques de conversion</h2>
           <div class="refresh-info">
             <button id="refreshStatsBtn" class="btn-refresh" title="Rafraîchir les statistiques">
               <i class="fas fa-sync-alt"></i>
             </button>
-            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; z-index: 1050; position: relative; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2);">
+            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; z-index: 1050; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2);">
               <i class="fas fa-trash-alt" style="margin: auto;"></i>
             </button>
             <span style="margin-left: 5px;">Dernière mise à jour: <span id="statsUpdateTime"></span></span>
           </div>
-          
-          <!-- Suppression du bouton flottant comme demandé -->
+          <!-- Les boutons sont maintenant sticky (fixés) en haut lors du défilement -->
         </div>
         
         <div class="conversion-stats">
@@ -503,14 +502,19 @@
       // Sauvegarder la disposition des widgets avant la réinitialisation
       saveWidgetLayout();
       
-      // Réinitialiser immédiatement les valeurs affichées dans l'interface
+      // Réinitialiser immédiatement toutes les valeurs affichées dans l'interface
       document.getElementById('conversionsCount').textContent = "0";
       document.getElementById('avg-conversion-time').textContent = "0 ms";
       document.getElementById('last-conversion-time').textContent = "0 ms";
       document.getElementById('minmax-conversion-time').textContent = "0 / 0 ms";
       document.getElementById('avg-resources').textContent = "0";
       
-      // Réinitialiser les graphiques immédiatement
+      // Réinitialiser également les statistiques de bénéfices
+      document.querySelector('#timeSaved .counter').textContent = "0";
+      document.querySelector('#successRate .counter').textContent = "100.0";
+      document.querySelector('#resourceCount .counter').textContent = "0";
+      
+      // Réinitialiser les graphiques immédiatement de façon complète
       resetAllCharts();
       
       // Afficher un indicateur de chargement
@@ -550,23 +554,56 @@
         // Premier rafraîchissement pour obtenir les statistiques réinitialisées
         setTimeout(() => {
           console.log("Première actualisation après réinitialisation");
-          fetchStats();
-          
-          // Restaurer la disposition des widgets
-          setTimeout(() => {
-            console.log("Restauration de la disposition des widgets");
+          // Force un rafraîchissement complet en contournant le cache
+          fetch('/api/stats?t=' + Date.now(), { 
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            // Mettre à jour manuellement les données avec des zéros
+            console.log("Mise à jour forcée à zéro des statistiques");
+            
+            // Restaurer la disposition des widgets
             restoreWidgetLayout();
             
-            // Réinitialiser à nouveau les graphiques
-            resetAllCharts();
+            // Réinitialiser à nouveau tous les graphiques pour garantir qu'ils sont vides
+            if (window.memoryChart) {
+              window.memoryChart.data.datasets[0].data = Array(10).fill(0);
+              window.memoryChart.update();
+            }
             
-            // Rafraîchir une dernière fois
-            setTimeout(() => {
-              console.log("Actualisation finale après réinitialisation");
-              fetchStats();
-            }, 800);
-          }, 800);
-        }, 800);
+            if (window.conversionTrendChart) {
+              window.conversionTrendChart.data.datasets[0].data = Array(10).fill(0);
+              window.conversionTrendChart.update();
+            }
+            
+            if (window.resourceDistChart) {
+              window.resourceDistChart.data.datasets[0].data = Array(5).fill(0);
+              window.resourceDistChart.update();
+            }
+            
+            if (window.successRateChart) {
+              window.successRateChart.data.datasets[0].data = [100, 0];
+              window.successRateChart.update();
+            }
+            
+            if (window.messageTypesChart) {
+              window.messageTypesChart.data.datasets[0].data = Array(5).fill(0);
+              window.messageTypesChart.update();
+            }
+            
+            // Mettre à jour l'heure de dernière actualisation
+            updateLastRefreshTime();
+          })
+          .catch(error => {
+            console.error('Erreur lors de la vérification des stats après réinitialisation:', error);
+          });
+        }, 1000);
       })
       .catch(error => {
         // Supprimer l'indicateur de chargement
