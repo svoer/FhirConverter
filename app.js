@@ -900,6 +900,59 @@ app.post('/api/reset-stats', async (req, res) => {
   }
 });
 
+// Ajout d'une route spécifique pour récupérer les types de messages HL7
+app.get('/api/message-types', (req, res) => {
+  // Ajout d'en-têtes pour empêcher la mise en cache
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '-1');
+  
+  // Ajouter des en-têtes CORS pour permettre tous les domaines et éviter les problèmes d'accès
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  try {
+    // Extraire les types de messages HL7 à partir des messages d'entrée
+    const messageTypesQuery = `
+      SELECT 
+        CASE 
+          WHEN input_message LIKE '%ADT^A01%' THEN 'ADT^A01'
+          WHEN input_message LIKE '%ADT^A02%' THEN 'ADT^A02'
+          WHEN input_message LIKE '%ADT^A03%' THEN 'ADT^A03'
+          WHEN input_message LIKE '%ADT^A04%' THEN 'ADT^A04'
+          WHEN input_message LIKE '%ADT^A08%' THEN 'ADT^A08'
+          WHEN input_message LIKE '%ORU^R01%' THEN 'ORU^R01'
+          WHEN input_message LIKE '%ORM^O01%' THEN 'ORM^O01'
+          WHEN input_message LIKE '%MDM^%' THEN 'MDM'
+          WHEN input_message LIKE '%SIU^%' THEN 'SIU'
+          WHEN input_message LIKE '%ADT^%' THEN 'ADT (autre)'
+          ELSE 'Autre'
+        END as message_type,
+        COUNT(*) as count
+      FROM conversion_logs
+      GROUP BY message_type
+      ORDER BY count DESC
+    `;
+    
+    const messageTypes = db.prepare(messageTypesQuery).all() || [];
+    
+    // Formater les résultats
+    res.json({
+      success: true,
+      data: messageTypes,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('[API] Erreur lors de la récupération des types de messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur de récupération des types de messages',
+      message: error.message
+    });
+  }
+});
+
 app.get('/api/stats', (req, res) => {
   // Ajout d'en-têtes pour empêcher strictement la mise en cache côté client
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');

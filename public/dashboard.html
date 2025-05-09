@@ -1725,6 +1725,7 @@
       // Modifier la fonction fetchStats pour assurer le rafraîchissement
       const originalFetchStats = fetchStats;
       fetchStats = function() {
+        // Utiliser le chemin relatif pour éviter les problèmes CORS
         // Utiliser une requête avec cache désactivé pour forcer un rafraîchissement
         fetch('/api/stats', {
           method: 'GET',
@@ -1776,8 +1777,100 @@
         }
       };
       
-      // Réduire l'intervalle de rafraîchissement
-      setInterval(fetchStats, 10000); // Actualisation toutes les 10 secondes
+      // Fonction pour récupérer les types de messages HL7
+      function fetchMessageTypes() {
+        // Nous utilisons le chemin relatif pour éviter les problèmes CORS
+        fetch('/api/message-types', {
+          method: 'GET',
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success && data.data && data.data.length > 0) {
+            console.log("Données de types de messages HL7 reçues:", data.data);
+            
+            // Préparer les données pour le graphique
+            const labels = [];
+            const values = [];
+            
+            // Extraire les données
+            data.data.forEach(item => {
+              labels.push(item.message_type);
+              values.push(item.count);
+            });
+            
+            // Mise à jour du graphique des types de messages
+            if (window.messageTypesChart) {
+              // Destruction du graphique existant pour éviter les problèmes de mise à jour
+              window.messageTypesChart.destroy();
+              
+              // Création d'un nouveau graphique avec les données réelles
+              const messageTypesCtx = document.getElementById('messageTypesChart').getContext('2d');
+              window.messageTypesChart = new Chart(messageTypesCtx, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: 'Types de messages',
+                    data: values,
+                    backgroundColor: [
+                      'rgba(231, 76, 60, 0.7)',
+                      'rgba(241, 136, 5, 0.7)',
+                      'rgba(243, 156, 18, 0.7)',
+                      'rgba(246, 185, 59, 0.7)',
+                      'rgba(249, 231, 159, 0.7)'
+                    ],
+                    borderColor: [
+                      'rgba(231, 76, 60, 1)',
+                      'rgba(241, 136, 5, 1)',
+                      'rgba(243, 156, 18, 1)',
+                      'rgba(246, 185, 59, 1)',
+                      'rgba(249, 231, 159, 1)'
+                    ],
+                    borderWidth: 1
+                  }]
+                },
+                options: {
+                  ...commonOptions,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        precision: 0
+                      }
+                    }
+                  },
+                  plugins: {
+                    ...commonOptions.plugins,
+                    title: {
+                      display: false
+                    }
+                  }
+                }
+              });
+              console.log("Graphique des types de messages HL7 recréé avec les données réelles");
+            }
+          } else {
+            console.warn("Aucune donnée de types de messages HL7 disponible");
+          }
+        })
+        .catch(error => {
+          console.error('Erreur lors de la récupération des types de messages:', error);
+        });
+      }
+      
+      // Appel initial pour charger les types de messages
+      fetchMessageTypes();
+      
+      // Réduire l'intervalle de rafraîchissement et ajouter les types de messages
+      setInterval(() => {
+        fetchStats();
+        fetchMessageTypes();
+      }, 10000); // Actualisation toutes les 10 secondes
     }
   </script>
 
