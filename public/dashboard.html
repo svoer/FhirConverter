@@ -186,7 +186,9 @@
           <!-- Types de messages HL7 -->
           <div class="metric-container" data-metric-id="messageTypes" draggable="true">
             <div class="metric-header">Types de messages HL7</div>
-            <div class="metric-body">
+            <div class="metric-body" style="position: relative;">
+              <!-- Message à afficher lorsque les données ne sont pas disponibles -->
+              <p id="noDataMessage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; color: #666; z-index: 10;">Aucune donnée disponible</p>
               <canvas id="messageTypesChart"></canvas>
             </div>
           </div>
@@ -1846,6 +1848,10 @@
       
       // Fonction pour récupérer les types de messages HL7
       function fetchMessageTypes() {
+        // Récupérer l'élément du message "Aucune donnée disponible"
+        const noDataMsg = document.getElementById('noDataMessage');
+        const chartCanvas = document.getElementById('messageTypesChart');
+        
         // Nous utilisons le chemin relatif pour éviter les problèmes CORS
         fetch('/api/message-types', {
           method: 'GET',
@@ -1857,13 +1863,24 @@
         })
         .then(response => response.json())
         .then(data => {
-          if (data.success && data.data && data.data.length > 0) {
-            console.log("Données de types de messages HL7 reçues:", data.data);
+          // Déterminer si nous avons des données valides à afficher
+          let messageTypesData = data;
+          if (data.success && data.data) {
+            messageTypesData = data.data;
+          }
+          
+          // Vérifiez si nous avons effectivement des données de message
+          if (messageTypesData && messageTypesData.length > 0) {
+            console.log("Données de types de messages HL7 reçues:", messageTypesData);
             
-            // Masquer le message "Aucune donnée disponible" s'il existe
-            const noDataMsg = document.querySelector('#messageTypesChart').parentNode.querySelector('.no-data-message');
+            // Masquer le message "Aucune donnée disponible"
             if (noDataMsg) {
               noDataMsg.style.display = 'none';
+            }
+            
+            // Afficher le canevas pour le graphique
+            if (chartCanvas) {
+              chartCanvas.style.opacity = '1';
             }
             
             // Préparer les données pour le graphique
@@ -1871,12 +1888,12 @@
             const values = [];
             
             // Extraire les données
-            data.data.forEach(item => {
+            messageTypesData.forEach(item => {
               labels.push(item.message_type);
               values.push(item.count);
             });
             
-            const messageTypesCtx = document.getElementById('messageTypesChart').getContext('2d');
+            const messageTypesCtx = chartCanvas.getContext('2d');
             
             // Mise à jour du graphique des types de messages
             if (window.messageTypesChart) {
@@ -1940,10 +1957,43 @@
             }
           } else {
             console.warn("Aucune donnée de types de messages HL7 disponible");
+            
+            // Afficher le message "Aucune donnée disponible"
+            if (noDataMsg) {
+              noDataMsg.style.display = 'block';
+            }
+            
+            // Masquer ou opacifier le canevas qui pourrait avoir un ancien graphique
+            if (chartCanvas) {
+              chartCanvas.style.opacity = '0.2';
+            }
+            
+            // Détruire le graphique s'il existe pour éviter les données fantômes
+            if (window.messageTypesChart) {
+              window.messageTypesChart.destroy();
+              window.messageTypesChart = null;
+            }
           }
         })
         .catch(error => {
           console.error('Erreur lors de la récupération des types de messages:', error);
+          
+          // Afficher le message "Aucune donnée disponible" en cas d'erreur
+          if (noDataMsg) {
+            noDataMsg.textContent = 'Erreur lors de la récupération des données';
+            noDataMsg.style.display = 'block';
+          }
+          
+          // Masquer ou opacifier le canevas en cas d'erreur
+          if (chartCanvas) {
+            chartCanvas.style.opacity = '0.2';
+          }
+          
+          // Détruire le graphique s'il existe pour éviter les données fantômes
+          if (window.messageTypesChart) {
+            window.messageTypesChart.destroy();
+            window.messageTypesChart = null;
+          }
         });
       }
       
