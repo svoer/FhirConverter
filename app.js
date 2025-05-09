@@ -970,74 +970,71 @@ app.get('/api/resource-distribution', (req, res) => {
   try {
     console.log('Récupération de la distribution des ressources FHIR...');
     
-    // Analyser les données des types de ressources FHIR à partir de la colonne output_resources
-    // de la table conversion_logs
-    let resourceDistribution = [];
+    // Définition des ressources FHIR standard que nous rechercherons dans les messages de sortie
+    const standardFhirResources = [
+      'Patient', 'Encounter', 'Observation', 'Condition', 'Practitioner',
+      'Procedure', 'Medication', 'MedicationRequest', 'DiagnosticReport',
+      'AllergyIntolerance', 'Immunization', 'Organization', 'Location'
+    ];
     
-    // Vérifier d'abord si nous avons des données de conversion
+    // Initialiser les compteurs pour chaque type de ressource standard
+    const resourceCounts = {};
+    standardFhirResources.forEach(type => {
+      resourceCounts[type] = 0;
+    });
+    
+    // Vérifier si nous avons des données de conversion
     const conversionsCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
     
     if (conversionsCount && conversionsCount.count > 0) {
       try {
-        // Obtenir toutes les sorties de conversion qui contiennent des données structurées
-        const conversions = db.prepare('SELECT output_resources FROM conversion_logs WHERE output_resources IS NOT NULL').all();
+        // Obtenir tous les messages de sortie qui contiennent probablement des ressources FHIR
+        const conversions = db.prepare('SELECT output_message FROM conversion_logs WHERE output_message LIKE ?')
+          .all('%resourceType%');
         
-        // Compteur pour chaque type de ressource
-        const resourceCounts = {};
-        
-        // Parcourir toutes les conversions avec des ressources
+        // Analyser les messages de sortie pour identifier et compter les ressources FHIR
         conversions.forEach(conversion => {
-          if (conversion.output_resources) {
+          if (conversion.output_message) {
             try {
-              // Essayer de parser les ressources (stockées en JSON)
-              const resources = JSON.parse(conversion.output_resources);
+              // Pour chaque type de ressource, compter les occurrences dans le message
+              standardFhirResources.forEach(resourceType => {
+                // Utiliser une expression régulière pour rechercher les déclarations de type
+                const pattern = new RegExp(`"resourceType"\\s*:\\s*"${resourceType}"`, 'g');
+                const matches = conversion.output_message.match(pattern);
+                
+                if (matches) {
+                  resourceCounts[resourceType] += matches.length;
+                }
+              });
               
-              // Si c'est un tableau, compter chaque type de ressource
-              if (Array.isArray(resources)) {
-                resources.forEach(resource => {
-                  if (resource && resource.resourceType) {
-                    const type = resource.resourceType;
-                    resourceCounts[type] = (resourceCounts[type] || 0) + 1;
-                  }
-                });
-              } else if (resources && resources.resourceType) {
-                // Si c'est une seule ressource
-                const type = resources.resourceType;
-                resourceCounts[type] = (resourceCounts[type] || 0) + 1;
-              }
             } catch (parseError) {
-              // Ignorer les erreurs de parsing pour ce record spécifique
-              console.log("Erreur de parsing des ressources dans un enregistrement:", parseError.message);
+              console.log("Erreur d'analyse des ressources dans un message:", parseError.message);
             }
           }
         });
-        
-        // Convertir le compteur en tableau pour pouvoir le trier
-        for (const [name, count] of Object.entries(resourceCounts)) {
-          resourceDistribution.push({ name, count });
-        }
-        
-        // Trier par nombre décroissant
-        resourceDistribution.sort((a, b) => b.count - a.count);
-        
-        // Limiter aux 10 premiers types
-        resourceDistribution = resourceDistribution.slice(0, 10);
-      } catch (parsingError) {
-        console.error("Erreur pendant l'analyse des ressources FHIR:", parsingError);
+      } catch (dbError) {
+        console.error("Erreur lors de la récupération des messages de conversion:", dbError.message);
       }
     }
     
-    // Si nous n'avons pas trouvé de données ou s'il y a eu une erreur,
-    // utiliser une structure fixe basée sur les standards FHIR pour un message HL7 ADT
-    if (resourceDistribution.length === 0) {
-      resourceDistribution = [
-        { name: 'Patient', count: 0 },
-        { name: 'Encounter', count: 0 },
-        { name: 'Observation', count: 0 },
-        { name: 'Condition', count: 0 },
-        { name: 'Practitioner', count: 0 }
-      ];
+    // Convertir les compteurs en tableau pour le tri
+    let resourceDistribution = [];
+    for (const [name, count] of Object.entries(resourceCounts)) {
+      if (count > 0) { // N'inclure que les ressources réellement présentes
+        resourceDistribution.push({ name, count });
+      }
     }
+    
+    // Trier par nombre décroissant
+    resourceDistribution.sort((a, b) => b.count - a.count);
+    
+    // Si aucune ressource n'a été trouvée, utiliser des valeurs vides
+    if (resourceDistribution.length === 0) {
+      resourceDistribution = standardFhirResources.slice(0, 5).map(name => ({ name, count: 0 }));
+    }
+    
+    // Ajouter un log pour vérifier la consistance des données
+    console.log("Distribution des ressources FHIR calculée:", resourceDistribution);
     
     // Retourner les données avec un timestamp unique
     res.json({
