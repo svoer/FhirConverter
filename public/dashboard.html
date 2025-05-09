@@ -1860,6 +1860,12 @@
           if (data.success && data.data && data.data.length > 0) {
             console.log("Données de types de messages HL7 reçues:", data.data);
             
+            // Masquer le message "Aucune donnée disponible" s'il existe
+            const noDataMsg = document.querySelector('#messageTypesChart').parentNode.querySelector('.no-data-message');
+            if (noDataMsg) {
+              noDataMsg.style.display = 'none';
+            }
+            
             // Préparer les données pour le graphique
             const labels = [];
             const values = [];
