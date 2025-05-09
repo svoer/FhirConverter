@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/css/sidebar-menu.css">
   <link rel="stylesheet" href="/css/metrics-dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/dashboard-charts-fixed.js" defer></script>
   
   <!-- Inclusions du chatbot de support -->
   <link rel="stylesheet" href="/css/support-chatbot.css">
@@ -172,7 +173,7 @@
             <div class="metric-header">Distribution ressources FHIR</div>
             <div class="metric-body">
               <div id="resourceDistNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Statistiques détaillées non disponibles</div>
-              <div id="resourceDistChartContainer" style="height: 100%; width: 100%; display: none;">
+              <div id="resourceDistChartContainer" style="height: 100%; width: 100%;">
                 <canvas id="resourceDistChart"></canvas>
               </div>
             </div>
@@ -183,7 +184,7 @@
             <div class="metric-header">Taux de réussite des conversions</div>
             <div class="metric-body">
               <div id="successRateNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Aucune donnée disponible</div>
-              <div id="successRateChartContainer" style="height: 100%; width: 100%; display: none;">
+              <div id="successRateChartContainer" style="height: 100%; width: 100%;">
                 <canvas id="successRateChart"></canvas>
               </div>
             </div>
@@ -194,7 +195,7 @@
             <div class="metric-header">Types de messages HL7</div>
             <div class="metric-body">
               <div id="messageTypesNoData" style="display: flex; justify-content: center; align-items: center; height: 100%; font-weight: bold; color: #666;">Aucune donnée disponible</div>
-              <div id="messageTypesChartContainer" style="height: 100%; width: 100%; display: none;">
+              <div id="messageTypesChartContainer" style="height: 100%; width: 100%;">
                 <canvas id="messageTypesChart"></canvas>
               </div>
             </div>
@@ -229,18 +230,6 @@
   <!-- Le chatbot sera créé dynamiquement par support-chatbot.js -->
 
   <script>
-    // Fonction pour calculer la distribution des ressources FHIR en fonction du nombre total de conversions et de la moyenne
-    function calculateResourceDistribution(totalConversions, avgResources) {
-      console.log("Recréation du graphique distribution ressources FHIR");
-      
-      // Ne pas générer de données simplifiées, nous voulons uniquement des données réelles
-      console.log("Données de distribution détaillée non disponibles");
-      console.log("Aucune donnée fictive ne sera générée, conformément aux exigences de données réelles");
-      
-      // Retourner null pour indiquer que nous n'avons pas de données réelles
-      return null;
-    }
-    
     document.addEventListener('DOMContentLoaded', function() {
       // Vérifier l'authentification
       const token = localStorage.getItem('token');
@@ -494,7 +483,7 @@
       document.querySelector('#resourceCount .counter').textContent = "0";
       
       // Réinitialiser les graphiques immédiatement de façon complète
-      resetAllCharts();
+      // Réinitialisation des graphiques gérée par dashboard-charts-fixed.js
       
       // Afficher un indicateur de chargement
       const loadingDiv = document.createElement('div');
@@ -550,31 +539,7 @@
             // Restaurer la disposition des widgets
             restoreWidgetLayout();
             
-            // Réinitialiser à nouveau tous les graphiques pour garantir qu'ils sont vides
-            if (window.memoryChart) {
-              window.memoryChart.data.datasets[0].data = Array(10).fill(0);
-              window.memoryChart.update();
-            }
-            
-            if (window.conversionTrendChart) {
-              window.conversionTrendChart.data.datasets[0].data = Array(10).fill(0);
-              window.conversionTrendChart.update();
-            }
-            
-            if (window.resourceDistChart) {
-              window.resourceDistChart.data.datasets[0].data = Array(5).fill(0);
-              window.resourceDistChart.update();
-            }
-            
-            if (window.successRateChart) {
-              window.successRateChart.data.datasets[0].data = [100, 0];
-              window.successRateChart.update();
-            }
-            
-            if (window.messageTypesChart) {
-              window.messageTypesChart.data.datasets[0].data = Array(5).fill(0);
-              window.messageTypesChart.update();
-            }
+            // La réinitialisation des graphiques est maintenant gérée par le fichier dashboard-charts-fixed.js
             
             // Mettre à jour l'heure de dernière actualisation
             updateLastRefreshTime();
@@ -822,20 +787,20 @@
     }
     
     function updateSystemMetrics(memory, conversionStats, applicationStats) {
-      // Continuer uniquement avec des données réelles, ne pas utiliser de valeurs par défaut
-      
-      // Récupérer les valeurs réelles (nombre total de conversions et moyenne de ressources par conversion)
-      const totalConversions = document.getElementById('conversionsCount').textContent || 0;
-      const avgResources = conversionStats && conversionStats.avgResources ? conversionStats.avgResources : 3;
-      
-      // Calculer l'utilisation de la mémoire en MB, avec des valeurs réelles uniquement
-      const usedMemory = memory ? Math.round(memory.heapUsed / 1024 / 1024) : null;
-      
-      // Si la mémoire réelle n'est pas disponible, ne pas mettre à jour le graphique
-      if (usedMemory === null) {
-        console.warn("Données mémoire non disponibles, graphique non mis à jour");
+      // Utiliser la fonction updateAllCharts de notre fichier externe dashboard-charts-fixed.js
+      if (typeof updateAllCharts === 'function') {
+        const statsData = {
+          conversions: parseInt(document.getElementById('conversionsCount').textContent) || 0,
+          memory: memory,
+          conversionStats: conversionStats,
+          applicationStats: applicationStats
+        };
+        updateAllCharts(statsData);
         return;
       }
+      
+      // Fallback en cas de problème avec le fichier externe
+      console.warn("La fonction updateAllCharts n'est pas disponible");
       
       // Mettre à jour le graphique de mémoire avec des données RÉELLES seulement
       const memoryChart = Chart.getChart(document.getElementById('memoryChart'));
