@@ -93,7 +93,7 @@
           </div>
           
           <!-- Bouton de réinitialisation flottant (toujours visible lors du défilement) -->
-          <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+          <div style="position: fixed; bottom: 20px; right: 90px; z-index: 1000;">
             <button id="floatingResetBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; position: relative; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.3); border: none; cursor: pointer;">
               <i class="fas fa-trash-alt" style="margin: auto; font-size: 20px;"></i>
             </button>
@@ -508,6 +508,16 @@
       // Sauvegarder la disposition des widgets avant la réinitialisation
       saveWidgetLayout();
       
+      // Réinitialiser immédiatement les valeurs affichées dans l'interface
+      document.getElementById('conversionsCount').textContent = "0";
+      document.getElementById('avg-conversion-time').textContent = "0 ms";
+      document.getElementById('last-conversion-time').textContent = "0 ms";
+      document.getElementById('minmax-conversion-time').textContent = "0 / 0 ms";
+      document.getElementById('avg-resources').textContent = "0";
+      
+      // Réinitialiser les graphiques immédiatement
+      resetAllCharts();
+      
       // Afficher un indicateur de chargement
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'loading-overlay';
@@ -522,7 +532,10 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       })
       .then(response => {
@@ -538,30 +551,27 @@
         // Afficher un message de succès
         alert('Les statistiques ont été réinitialisées avec succès');
         
-        // Réinitialiser les valeurs affichées dans l'interface
-        document.getElementById('conversionsCount').textContent = "0";
-        document.getElementById('avg-conversion-time').textContent = "0 ms";
-        document.getElementById('last-conversion-time').textContent = "0 ms";
-        document.getElementById('minmax-conversion-time').textContent = "0 / 0 ms";
-        document.getElementById('avg-resources').textContent = "0";
-        
-        // Réinitialiser les graphiques
-        resetAllCharts();
-        
-        // Récupérer les nouvelles statistiques après une seconde
+        // Rafraîchir séquentiellement pour assurer une réinitialisation complète
+        // Premier rafraîchissement pour obtenir les statistiques réinitialisées
         setTimeout(() => {
+          console.log("Première actualisation après réinitialisation");
           fetchStats();
           
           // Restaurer la disposition des widgets
           setTimeout(() => {
+            console.log("Restauration de la disposition des widgets");
             restoreWidgetLayout();
+            
+            // Réinitialiser à nouveau les graphiques
+            resetAllCharts();
             
             // Rafraîchir une dernière fois
             setTimeout(() => {
+              console.log("Actualisation finale après réinitialisation");
               fetchStats();
-            }, 500);
-          }, 500);
-        }, 1000);
+            }, 800);
+          }, 800);
+        }, 800);
       })
       .catch(error => {
         // Supprimer l'indicateur de chargement
