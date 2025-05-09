@@ -750,51 +750,47 @@ app.post('/api/reset-stats', async (req, res) => {
   try {
     console.log('[RESET] Début de la réinitialisation complète des statistiques...');
     
+    // Vérifier que les tables nécessaires existent avant de procéder
+    let tableExists = false;
+    try {
+      // Vérifier si la table conversion_logs existe
+      const tableCheck = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversion_logs'`).get();
+      tableExists = tableCheck && tableCheck.name === 'conversion_logs';
+      console.log(`[RESET] Vérification de la table conversion_logs: ${tableExists ? 'Existe' : 'N\'existe pas'}`);
+    } catch (tableErr) {
+      console.error('[RESET] Erreur lors de la vérification de la table:', tableErr);
+      // Continuer même si la vérification échoue
+    }
+    
     // Première étape : Vider COMPLÈTEMENT la base de données des statistiques
     try {
-      // Supprimer toutes les entrées de la table conversion_logs
-      db.prepare(`DELETE FROM conversion_logs`).run();
-      console.log(`[RESET] Table conversion_logs complètement vidée`);
-      
-      // Supprimer les entrées de sqlite_sequence pour réinitialiser les compteurs d'auto-increment
-      db.prepare(`DELETE FROM sqlite_sequence WHERE name = 'conversion_logs'`).run();
-      console.log(`[RESET] Séquence d'auto-incrément réinitialisée`);
-      
-      // Optimiser la base de données pour libérer l'espace
-      db.prepare('VACUUM').run();
-      console.log(`[RESET] Base de données optimisée avec VACUUM`);
-      
-      // Insérer une seule entrée avec des valeurs nulles pour éviter les erreurs de requêtes vides
-      const defaultData = {
-        input_message: 'RESET',
-        output_message: '',
-        status: 'reset',
-        processing_time: 0,
-        resource_count: 0,
-        timestamp: new Date().toISOString(),
-        application_id: 1
-      };
-      
-      // Insérer une entrée avec des valeurs à zéro pour éviter les erreurs NULL
-      db.prepare(`INSERT INTO conversion_logs 
-                (input_message, output_message, status, processing_time, resource_count, timestamp, application_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
-        defaultData.input_message,
-        defaultData.output_message,
-        defaultData.status,
-        defaultData.processing_time,
-        defaultData.resource_count,
-        defaultData.timestamp,
-        defaultData.application_id
-      );
-      console.log(`[RESET] Entrée de statistiques par défaut créée avec ID=1`);
-      
-      // Supprimer immédiatement cette entrée pour avoir réellement 0 entrée
-      db.prepare(`DELETE FROM conversion_logs WHERE input_message = 'RESET'`).run();
-      console.log(`[RESET] Entrée temporaire supprimée, table réellement vide`);
-      
+      if (tableExists) {
+        // Supprimer toutes les entrées de la table conversion_logs
+        db.prepare(`DELETE FROM conversion_logs`).run();
+        console.log(`[RESET] Table conversion_logs complètement vidée`);
+        
+        // Supprimer les entrées de sqlite_sequence pour réinitialiser les compteurs d'auto-increment
+        try {
+          db.prepare(`DELETE FROM sqlite_sequence WHERE name = 'conversion_logs'`).run();
+          console.log(`[RESET] Séquence d'auto-incrément réinitialisée`);
+        } catch (seqErr) {
+          console.log(`[RESET] Note: La table sqlite_sequence n'existe peut-être pas ou n'a pas d'entrée pour conversion_logs`);
+        }
+        
+        // Optimiser la base de données pour libérer l'espace
+        try {
+          db.prepare('VACUUM').run();
+          console.log(`[RESET] Base de données optimisée avec VACUUM`);
+        } catch (vacuumErr) {
+          console.warn(`[RESET] Avertissement: Impossible d'exécuter VACUUM:`, vacuumErr.message);
+        }
+      } else {
+        console.log(`[RESET] Aucune table conversion_logs trouvée, création de la structure de base...`);
+        // La table n'existe pas, elle sera créée automatiquement lors de la prochaine opération
+      }
     } catch (err) {
       console.error(`[RESET] Erreur lors du vidage de la table conversion_logs:`, err);
+      // Ne pas interrompre le processus, continuer avec les autres étapes
     }
     
     // Deuxième étape : Vider les répertoires de données plus complètement
@@ -803,8 +799,8 @@ app.post('/api/reset-stats', async (req, res) => {
       './data/history', 
       './data/outputs',
       './data/temp',
-      './storage/cache', // Ajout du cache pour une réinitialisation plus complète
-      './logs/conversions' // Ajout des logs de conversion
+      './storage/cache', 
+      './logs/conversions'
     ];
     
     const fs = require('fs');
@@ -813,33 +809,45 @@ app.post('/api/reset-stats', async (req, res) => {
     for (const dir of dirsToEmpty) {
       try {
         if (fs.existsSync(dir)) {
+          console.log(`[RESET] Vidage du répertoire ${dir}...`);
           const files = fs.readdirSync(dir);
+          
+          if (files.length === 0 || (files.length === 1 && files[0] === '.gitkeep')) {
+            console.log(`[RESET] Répertoire ${dir} déjà vide`);
+            continue;
+          }
           
           for (const file of files) {
             // Ne pas supprimer les fichiers .gitkeep et les dossiers
             if (file !== '.gitkeep') {
               const filePath = path.join(dir, file);
-              if (fs.lstatSync(filePath).isFile()) {
-                fs.unlinkSync(filePath);
-                console.log(`[RESET] Fichier ${filePath} supprimé`);
-              } else if (fs.lstatSync(filePath).isDirectory()) {
-                // Vider récursivement les sous-dossiers, sauf node_modules et .git
-                if (file !== 'node_modules' && file !== '.git') {
-                  try {
-                    const subFiles = fs.readdirSync(filePath);
-                    for (const subFile of subFiles) {
-                      if (subFile !== '.gitkeep') {
-                        const subFilePath = path.join(filePath, subFile);
-                        if (fs.lstatSync(subFilePath).isFile()) {
-                          fs.unlinkSync(subFilePath);
+              try {
+                if (fs.lstatSync(filePath).isFile()) {
+                  fs.unlinkSync(filePath);
+                  console.log(`[RESET] Fichier ${filePath} supprimé`);
+                } else if (fs.lstatSync(filePath).isDirectory()) {
+                  // Vider récursivement les sous-dossiers, sauf node_modules et .git
+                  if (file !== 'node_modules' && file !== '.git') {
+                    try {
+                      const subFiles = fs.readdirSync(filePath);
+                      for (const subFile of subFiles) {
+                        if (subFile !== '.gitkeep') {
+                          const subFilePath = path.join(filePath, subFile);
+                          if (fs.lstatSync(subFilePath).isFile()) {
+                            fs.unlinkSync(subFilePath);
+                            console.log(`[RESET] Fichier ${subFilePath} supprimé`);
+                          }
                         }
                       }
+                      console.log(`[RESET] Sous-dossier ${filePath} vidé`);
+                    } catch (subErr) {
+                      console.error(`[RESET] Erreur lors du vidage du sous-dossier ${filePath}:`, subErr);
                     }
-                    console.log(`[RESET] Sous-dossier ${filePath} vidé`);
-                  } catch (subErr) {
-                    console.error(`[RESET] Erreur lors du vidage du sous-dossier ${filePath}:`, subErr);
                   }
                 }
+              } catch (fileErr) {
+                console.error(`[RESET] Erreur lors de la suppression du fichier ${filePath}:`, fileErr);
+                // Continuer avec les autres fichiers
               }
             }
           }
@@ -856,16 +864,19 @@ app.post('/api/reset-stats', async (req, res) => {
         }
       } catch (err) {
         console.error(`[RESET] Erreur lors du vidage du répertoire ${dir}:`, err);
+        // Continuer avec les autres répertoires
       }
     }
     
     // Troisième étape : Forcer le rafraîchissement complet des caches en mémoire
-    global.statsCache = null;
-    if (global.conversionCache) global.conversionCache.clear();
+    if (global.statsCache !== undefined) global.statsCache = null;
+    if (global.conversionCache && typeof global.conversionCache.clear === 'function') {
+      global.conversionCache.clear();
+    }
     if (global.metricsCache) global.metricsCache = {};
     
     // Si les métriques existent, les réinitialiser aussi
-    if (metrics && typeof metrics.resetCounters === 'function') {
+    if (typeof metrics !== 'undefined' && metrics && typeof metrics.resetCounters === 'function') {
       try {
         metrics.resetCounters();
         console.log('[RESET] Compteurs de métriques réinitialisés');
@@ -880,7 +891,7 @@ app.post('/api/reset-stats', async (req, res) => {
     res.status(200).json({ 
       success: true, 
       message: 'Réinitialisation terminée avec succès',
-      timestamp: Date.now(),  // Ajouter un timestamp pour forcer l'actualisation côté client
+      timestamp: Date.now(),
       stats: {
         conversions: 0,
         conversionStats: {
@@ -895,8 +906,15 @@ app.post('/api/reset-stats', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[RESET] Erreur de réinitialisation:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('[RESET] Erreur générale lors de la réinitialisation des statistiques:', error);
+    
+    // Même en cas d'erreur, essayer de renvoyer une réponse cohérente
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erreur lors de la réinitialisation', 
+      message: error.message || 'Une erreur inconnue est survenue',
+      timestamp: Date.now()
+    });
   }
 });
 
