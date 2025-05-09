@@ -728,8 +728,8 @@ function updateMessageTypesChart(messageData) {
         datasets: [{
           label: 'Nombre de messages',
           data: values,
-          backgroundColor: colors.redGradient[0],
-          borderColor: colors.redGradientBorders[0],
+          backgroundColor: 'rgba(244, 67, 54, 0.8)', // Rouge plus opaque
+          borderColor: 'rgba(244, 67, 54, 1)', // Rouge solide pour la bordure
           borderWidth: 1
         }]
       },
