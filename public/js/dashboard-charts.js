@@ -159,46 +159,148 @@ function updateResourceDistChart(conversionStats, conversions) {
     return;
   }
   
-  let distributionData;
+  // Détruire l'ancien graphique pour le recréer avec un message ou des données réelles
+  charts.resourceDist.destroy();
+  
+  const ctx = document.getElementById('resourceDistChart');
   
   // Si les statistiques réelles de distribution sont disponibles
   if (conversionStats && conversionStats.resourcesDistribution) {
     console.log("Utilisation des données réelles de distribution des ressources:", conversionStats.resourcesDistribution);
-    distributionData = [
-      conversionStats.resourcesDistribution.single || 1,
-      conversionStats.resourcesDistribution.two || 1,
-      conversionStats.resourcesDistribution.three || 1,
-      conversionStats.resourcesDistribution.fourToFive || 1,
-      conversionStats.resourcesDistribution.sixPlus || 1
+    const distributionData = [
+      conversionStats.resourcesDistribution.single || 0,
+      conversionStats.resourcesDistribution.two || 0,
+      conversionStats.resourcesDistribution.three || 0,
+      conversionStats.resourcesDistribution.fourToFive || 0,
+      conversionStats.resourcesDistribution.sixPlus || 0
     ];
-  } else if (conversionStats && typeof conversionStats.avgResources !== 'undefined') {
-    // Approche simplifiée basée sur la moyenne
-    console.log("Utilisation de l'approche simplifiée basée sur la moyenne");
-    const avgResources = Math.round(conversionStats.avgResources);
     
-    // Valeurs par défaut
-    distributionData = [1, 1, 1, 1, 1];
+    // Création d'un nouveau graphique avec données réelles
+    charts.resourceDist = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
+        datasets: [{
+          label: 'Nombre de conversions',
+          data: distributionData,
+          backgroundColor: chartColors.redGradient,
+          borderColor: chartColors.redGradientBorders,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.label}: ${context.raw} conversion(s)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  } else if (conversionStats && typeof conversionStats.avgResources !== 'undefined' && conversions > 0) {
+    // Créer un graphique simple basé sur le nombre moyen de ressources par conversion
+    console.log("Données de distribution détaillée non disponibles, création d'un graphique informatif");
     
-    // Placer toutes les conversions dans la catégorie correspondante
-    const totalConversions = parseInt(conversions) || 5;
-    if (avgResources === 1) distributionData[0] = totalConversions;
-    else if (avgResources === 2) distributionData[1] = totalConversions;
-    else if (avgResources === 3) distributionData[2] = totalConversions;
-    else if (avgResources >= 4 && avgResources <= 5) distributionData[3] = totalConversions;
-    else if (avgResources >= 6) distributionData[4] = totalConversions;
+    // Pour éviter de créer des données fictives, nous allons simplement indiquer la moyenne
+    charts.resourceDist = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: [`Moyenne de ${conversionStats.avgResources} ressource(s) par conversion`],
+        datasets: [{
+          label: 'Information',
+          data: [1],
+          backgroundColor: ['rgba(243, 156, 18, 0.7)'],
+          borderColor: ['rgba(243, 156, 18, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function() {
+                return `${conversions} conversion(s) avec une moyenne de ${conversionStats.avgResources} ressource(s)`;
+              }
+            }
+          }
+        }
+      }
+    });
   } else {
-    // Valeurs minimales en cas d'absence complète de données
-    distributionData = [1, 1, 5, 1, 1];
+    // Afficher un message honnête indiquant l'absence de données réelles
+    console.log("Aucune donnée de distribution disponible, affichage d'un message informatif");
+    
+    // Nettoyer le canvas et afficher un message texte
+    const context = ctx.getContext('2d');
+    context.clearRect(0, 0, ctx.width, ctx.height);
+    
+    // Créer un nouveau graphique avec un message d'information
+    charts.resourceDist = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['Données non disponibles'],
+        datasets: [{
+          label: 'Information',
+          data: [1],
+          backgroundColor: ['rgba(200, 200, 200, 0.7)'],
+          borderColor: ['rgba(200, 200, 200, 1)'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function() {
+                return 'Aucune donnée de distribution disponible';
+              }
+            }
+          },
+          title: {
+            display: true,
+            text: 'Statistiques de distribution non disponibles',
+            font: {
+              size: 14
+            },
+            color: '#666'
+          }
+        }
+      }
+    });
   }
-  
-  // S'assurer qu'aucune valeur n'est égale à zéro pour éviter les graphiques vides
-  distributionData = distributionData.map(val => Math.max(val, 1));
-  
-  // Mise à jour des données
-  charts.resourceDist.data.datasets[0].data = distributionData;
-  
-  // Actualisation du graphique
-  charts.resourceDist.update();
 }
 
 // Initialisation et gestion du graphique de taux de réussite
@@ -260,25 +362,137 @@ function updateSuccessRateChart(conversionStats, conversions) {
     return;
   }
   
-  // Données par défaut
-  let successfulCount = parseInt(conversions) || 10;
-  let errorCount = 1; // Valeur minimale pour afficher le graphique
+  // Détruire l'ancien graphique pour le recréer avec des données réelles
+  charts.successRate.destroy();
+  
+  const ctx = document.getElementById('successRateChart');
   
   // Si les statistiques réelles sont disponibles
   if (conversionStats && typeof conversionStats.successCount !== 'undefined') {
-    successfulCount = conversionStats.successCount;
-    errorCount = conversionStats.errorCount || 0;
+    const successfulCount = conversionStats.successCount;
+    const errorCount = conversionStats.errorCount || 0;
+    
+    // Créer un nouveau graphique avec les données réelles
+    charts.successRate = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Réussi', 'Erreur'],
+        datasets: [{
+          label: 'Taux de réussite',
+          data: [successfulCount, errorCount],
+          backgroundColor: chartColors.successError,
+          borderColor: chartColors.successErrorBorders,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percent = total > 0 ? Math.round(context.raw / total * 100) : 0;
+                return `${context.label}: ${context.raw} (${percent}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log("Données réelles taux de réussite:", { successfulCount, errorCount });
+  } else {
+    // Utiliser le nombre de conversions comme réussies si disponible
+    let successfulCount = parseInt(conversions) || 0;
+    let errorCount = 0;
+    
+    // Créer un nouveau graphique
+    if (successfulCount > 0 || errorCount > 0) {
+      charts.successRate = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Réussi', 'Erreur'],
+          datasets: [{
+            label: 'Taux de réussite',
+            data: [successfulCount, errorCount],
+            backgroundColor: chartColors.successError,
+            borderColor: chartColors.successErrorBorders,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 11
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percent = total > 0 ? Math.round(context.raw / total * 100) : 0;
+                  return `${context.label}: ${context.raw} (${percent}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      // S'il n'y a pas de données, afficher un message explicite
+      charts.successRate = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Données non disponibles'],
+          datasets: [{
+            label: 'Taux de réussite',
+            data: [1],
+            backgroundColor: ['rgba(200, 200, 200, 0.7)'],
+            borderColor: ['rgba(200, 200, 200, 1)'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 11
+                }
+              }
+            },
+            title: {
+              display: true,
+              text: 'Aucune donnée sur le taux de réussite',
+              font: {
+                size: 14
+              },
+              color: '#666'
+            }
+          }
+        }
+      });
+    }
   }
-  
-  // S'assurer que les valeurs sont positives
-  successfulCount = Math.max(successfulCount, 1);
-  errorCount = Math.max(errorCount, 1);
-  
-  // Mise à jour des données
-  charts.successRate.data.datasets[0].data = [successfulCount, errorCount];
-  
-  // Actualisation du graphique
-  charts.successRate.update();
 }
 
 // Initialisation et gestion du graphique des types de messages HL7
@@ -339,40 +553,223 @@ function updateMessageTypesChart(conversionStats, conversions) {
     return;
   }
   
-  let messageTypeData;
+  // Détruire l'ancien graphique pour le recréer avec un message ou des données réelles
+  charts.messageTypes.destroy();
   
-  // Si les données réelles sont disponibles
+  const ctx = document.getElementById('messageTypesChart');
+  
+  // Si les statistiques réelles sont disponibles
   if (conversionStats && conversionStats.messageTypesDistribution) {
-    messageTypeData = [
-      conversionStats.messageTypesDistribution.ADT || 1,
-      conversionStats.messageTypesDistribution.ORU || 1,
-      conversionStats.messageTypesDistribution.ORM || 1,
-      conversionStats.messageTypesDistribution.MDM || 1,
-      conversionStats.messageTypesDistribution.other || 1
-    ];
-  } else {
-    // Distribution approximative basée sur les conversions totales
-    const totalConversions = parseInt(conversions) || 10;
-    const baseTotal = 61; // Somme des valeurs de référence (34+14+10+2+1)
-    const scaleFactor = Math.max(totalConversions / baseTotal, 0.2);
+    console.log("Utilisation des données réelles de distribution des types de messages:", conversionStats.messageTypesDistribution);
     
-    messageTypeData = [
-      Math.max(Math.round(34 * scaleFactor), 1),
-      Math.max(Math.round(14 * scaleFactor), 1),
-      Math.max(Math.round(10 * scaleFactor), 1),
-      Math.max(Math.round(2 * scaleFactor), 1),
-      Math.max(Math.round(1 * scaleFactor), 1)
-    ];
+    const labels = [];
+    const data = [];
+    
+    // Construire les données réelles
+    if (conversionStats.messageTypesDistribution.ADT) {
+      labels.push('ADT');
+      data.push(conversionStats.messageTypesDistribution.ADT);
+    }
+    if (conversionStats.messageTypesDistribution.ORU) {
+      labels.push('ORU');
+      data.push(conversionStats.messageTypesDistribution.ORU);
+    }
+    if (conversionStats.messageTypesDistribution.ORM) {
+      labels.push('ORM');
+      data.push(conversionStats.messageTypesDistribution.ORM);
+    }
+    if (conversionStats.messageTypesDistribution.MDM) {
+      labels.push('MDM');
+      data.push(conversionStats.messageTypesDistribution.MDM);
+    }
+    if (conversionStats.messageTypesDistribution.other) {
+      labels.push('Autres');
+      data.push(conversionStats.messageTypesDistribution.other);
+    }
+    
+    // Création d'un nouveau graphique avec données réelles
+    charts.messageTypes = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Types de messages',
+          data: data,
+          backgroundColor: chartColors.redGradient.slice(0, data.length),
+          borderColor: chartColors.redGradientBorders.slice(0, data.length),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                size: 11
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    // Récupérer les données depuis l'API des types de messages HL7
+    fetch('/api/message-types')
+      .then(response => response.json())
+      .then(messageTypesData => {
+        console.log("Données de types de messages HL7 reçues:", messageTypesData);
+        
+        if (messageTypesData && messageTypesData.length > 0) {
+          const labels = messageTypesData.map(item => item.message_type);
+          const data = messageTypesData.map(item => item.count);
+          
+          // Création du graphique avec les données réelles
+          charts.messageTypes = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Types de messages',
+                data: data,
+                backgroundColor: chartColors.redGradient.slice(0, data.length),
+                borderColor: chartColors.redGradientBorders.slice(0, data.length),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    precision: 0
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  position: 'top',
+                  labels: {
+                    font: {
+                      size: 11
+                    }
+                  }
+                }
+              }
+            }
+          });
+          
+          console.log("Graphique des types de messages HL7 recréé avec les données réelles");
+        } else {
+          // Créer un graphique avec message indiquant l'absence de données
+          charts.messageTypes = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['Aucune donnée disponible'],
+              datasets: [{
+                label: 'Types de messages',
+                data: [0],
+                backgroundColor: 'rgba(200, 200, 200, 0.7)',
+                borderColor: 'rgba(200, 200, 200, 1)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    precision: 0
+                  }
+                }
+              },
+              plugins: {
+                legend: {
+                  position: 'top',
+                  labels: {
+                    font: {
+                      size: 11
+                    }
+                  }
+                },
+                title: {
+                  display: true,
+                  text: 'Aucune donnée de type de message disponible',
+                  font: {
+                    size: 14
+                  },
+                  color: '#666'
+                }
+              }
+            }
+          });
+          
+          console.warn("Aucune donnée détaillée de types de messages disponible");
+        }
+      })
+      .catch(error => {
+        console.error("Erreur lors de la récupération des types de messages:", error);
+        
+        // En cas d'erreur, créer un graphique avec message d'erreur
+        charts.messageTypes = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Erreur'],
+            datasets: [{
+              label: 'Types de messages',
+              data: [0],
+              backgroundColor: 'rgba(231, 76, 60, 0.7)',
+              borderColor: 'rgba(231, 76, 60, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  font: {
+                    size: 11
+                  }
+                }
+              },
+              title: {
+                display: true,
+                text: 'Erreur lors de la récupération des données',
+                font: {
+                  size: 14
+                },
+                color: '#666'
+              }
+            }
+          }
+        });
+      });
   }
-  
-  // S'assurer qu'aucune valeur n'est nulle
-  messageTypeData = messageTypeData.map(value => Math.max(value, 1));
-  
-  // Mise à jour des données
-  charts.messageTypes.data.datasets[0].data = messageTypeData;
-  
-  // Actualisation du graphique
-  charts.messageTypes.update();
 }
 
 // Initialisation et gestion du graphique d'utilisation mémoire

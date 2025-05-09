@@ -224,39 +224,12 @@
     function calculateResourceDistribution(totalConversions, avgResources) {
       console.log("Recréation du graphique distribution ressources FHIR");
       
-      // Par défaut, utiliser l'approche simplifiée basée sur la moyenne si des données détaillées ne sont pas disponibles
-      console.log("Données de distribution détaillée non disponibles, utilisation de l'approche simplifiée");
-      console.log("Moyenne réelle de ressources par conversion:", avgResources);
+      // Ne pas générer de données simplifiées, nous voulons uniquement des données réelles
+      console.log("Données de distribution détaillée non disponibles");
+      console.log("Aucune donnée fictive ne sera générée, conformément aux exigences de données réelles");
       
-      // Distribution par défaut basée sur la moyenne
-      if (avgResources === 3) {
-        // Distribution centrée autour de 3 ressources
-        return [
-          Math.round(totalConversions * 0.05), // 1 ressource (5%)
-          Math.round(totalConversions * 0.15), // 2 ressources (15%)
-          Math.round(totalConversions * 0.60), // 3 ressources (60%)
-          Math.round(totalConversions * 0.15), // 4-5 ressources (15%)
-          Math.round(totalConversions * 0.05)  // 6+ ressources (5%)
-        ];
-      } else if (avgResources < 3) {
-        // Distribution décalée vers des nombres plus faibles
-        return [
-          Math.round(totalConversions * 0.30), // 1 ressource (30%)
-          Math.round(totalConversions * 0.45), // 2 ressources (45%)
-          Math.round(totalConversions * 0.15), // 3 ressources (15%)
-          Math.round(totalConversions * 0.07), // 4-5 ressources (7%)
-          Math.round(totalConversions * 0.03)  // 6+ ressources (3%)
-        ];
-      } else {
-        // Distribution décalée vers des nombres plus élevés
-        return [
-          Math.round(totalConversions * 0.03), // 1 ressource (3%)
-          Math.round(totalConversions * 0.12), // 2 ressources (12%)
-          Math.round(totalConversions * 0.30), // 3 ressources (30%)
-          Math.round(totalConversions * 0.40), // 4-5 ressources (40%)
-          Math.round(totalConversions * 0.15)  // 6+ ressources (15%)
-        ];
-      }
+      // Retourner null pour indiquer que nous n'avons pas de données réelles
+      return null;
     }
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -965,96 +938,190 @@
           return;
         }
         
-        // Variables pour stocker les données à utiliser
-        let distributionData;
-        
         // Si les statistiques réelles de distribution sont disponibles dans l'API, utiliser celles-ci
         if (conversionStats.resourcesDistribution) {
           console.log("Utilisation des données réelles de distribution des ressources:", conversionStats.resourcesDistribution);
-          distributionData = [
-            conversionStats.resourcesDistribution.single || 1,
-            conversionStats.resourcesDistribution.two || 1,
-            conversionStats.resourcesDistribution.three || 1,
-            conversionStats.resourcesDistribution.fourToFive || 1,
-            conversionStats.resourcesDistribution.sixPlus || 1
+          
+          let distributionData = [
+            conversionStats.resourcesDistribution.single || 0,
+            conversionStats.resourcesDistribution.two || 0,
+            conversionStats.resourcesDistribution.three || 0,
+            conversionStats.resourcesDistribution.fourToFive || 0,
+            conversionStats.resourcesDistribution.sixPlus || 0
           ];
-        } else {
-          // Utiliser une approche simplifiée basée sur les données réelles disponibles
-          console.log("Données de distribution détaillée non disponibles, utilisation de l'approche simplifiée");
           
-          // Afficher simplement le nombre total de conversions dans la catégorie correspondant à la moyenne
-          const avgResources = Math.round(conversionStats.avgResources || 3);
-          console.log("Moyenne réelle de ressources par conversion:", avgResources);
+          // Vérifier si toutes les valeurs sont à zéro
+          const allZeros = distributionData.every(val => val === 0);
           
-          // Initialiser toutes les catégories avec des valeurs minimales pour éviter un graphique vide
-          distributionData = [1, 1, 1, 1, 1];
-          
-          // Placer toutes les conversions dans la catégorie correspondant à la moyenne
-          // C'est une approche simplifiée mais basée sur des données réelles
-          const conversionsCount = parseInt(totalConversions) || 5;
-          
-          if (avgResources === 1) distributionData[0] = Math.max(conversionsCount, 1);
-          else if (avgResources === 2) distributionData[1] = Math.max(conversionsCount, 1);
-          else if (avgResources === 3) distributionData[2] = Math.max(conversionsCount, 1);
-          else if (avgResources >= 4 && avgResources <= 5) distributionData[3] = Math.max(conversionsCount, 1);
-          else if (avgResources >= 6) distributionData[4] = Math.max(conversionsCount, 1);
-          
-          console.log("Distribution simplifiée basée sur la moyenne réelle de ressources:", distributionData);
-        }
-        
-        // S'assurer qu'aucune valeur n'est égale à zéro pour éviter les graphiques vides
-        distributionData = distributionData.map(val => Math.max(val, 1));
-        
-        // Créer un nouveau graphique avec les données mises à jour
-        new Chart(resourceDistCanvas, {
-          type: 'pie',
-          data: {
-            labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
-            datasets: [{
-              label: 'Nombre de conversions',
-              data: distributionData,
-              backgroundColor: [
-                'rgba(231, 76, 60, 0.7)',
-                'rgba(241, 136, 5, 0.7)',
-                'rgba(243, 156, 18, 0.7)',
-                'rgba(246, 185, 59, 0.7)',
-                'rgba(249, 231, 159, 0.7)'
-              ],
-              borderColor: [
-                'rgba(231, 76, 60, 1)',
-                'rgba(241, 136, 5, 1)',
-                'rgba(243, 156, 18, 1)',
-                'rgba(246, 185, 59, 1)',
-                'rgba(249, 231, 159, 1)'
-              ],
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-              duration: 1000  // Animation plus longue pour montrer clairement le changement
-            },
-            plugins: {
-              legend: {
-                position: 'top',
-                labels: {
-                  font: {
-                    size: 11
-                  }
-                }
+          if (allZeros) {
+            // Afficher un message indiquant l'absence de données réelles
+            new Chart(resourceDistCanvas, {
+              type: 'pie',
+              data: {
+                labels: ['Données insuffisantes'],
+                datasets: [{
+                  label: 'Information',
+                  data: [1],
+                  backgroundColor: ['rgba(200, 200, 200, 0.7)'],
+                  borderColor: ['rgba(200, 200, 200, 1)'],
+                  borderWidth: 1
+                }]
               },
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    return `${context.label}: ${context.raw} conversion(s)`;
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                  duration: 1000
+                },
+                plugins: {
+                  legend: {
+                    position: 'top',
+                    labels: {
+                      font: {
+                        size: 11
+                      }
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        return 'Aucune donnée réelle disponible';
+                      }
+                    }
+                  },
+                  title: {
+                    display: true,
+                    text: 'Données insuffisantes pour l\'analyse',
+                    font: {
+                      size: 14
+                    },
+                    color: '#666'
                   }
                 }
               }
-            }
+            });
+          } else {
+            // Créer un graphique avec les données réelles
+            new Chart(resourceDistCanvas, {
+              type: 'pie',
+              data: {
+                labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
+                datasets: [{
+                  label: 'Nombre de conversions',
+                  data: distributionData,
+                  backgroundColor: [
+                    'rgba(231, 76, 60, 0.7)',
+                    'rgba(241, 136, 5, 0.7)',
+                    'rgba(243, 156, 18, 0.7)',
+                    'rgba(246, 185, 59, 0.7)',
+                    'rgba(249, 231, 159, 0.7)'
+                  ],
+                  borderColor: [
+                    'rgba(231, 76, 60, 1)',
+                    'rgba(241, 136, 5, 1)',
+                    'rgba(243, 156, 18, 1)',
+                    'rgba(246, 185, 59, 1)',
+                    'rgba(249, 231, 159, 1)'
+                  ],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                  duration: 1000
+                },
+                plugins: {
+                  legend: {
+                    position: 'top',
+                    labels: {
+                      font: {
+                        size: 11
+                      }
+                    }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function(context) {
+                        return `${context.label}: ${context.raw} conversion(s)`;
+                      }
+                    }
+                  }
+                }
+              }
+            });
           }
-        });
+        } else {
+          // Afficher un message honnête indiquant que les données détaillées ne sont pas disponibles
+          console.log("Données de distribution détaillée non disponibles, affichage d'un message d'information");
+          
+          // Créer un nouveau graphique avec un message d'information
+          new Chart(resourceDistCanvas, {
+            type: 'pie',
+            data: {
+              labels: ['Données détaillées non disponibles'],
+              datasets: [{
+                label: 'Information',
+                data: [1],
+                backgroundColor: ['rgba(200, 200, 200, 0.7)'],
+                borderColor: ['rgba(200, 200, 200, 1)'],
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: {
+                duration: 1000
+              },
+              plugins: {
+                legend: {
+                  position: 'top',
+                  labels: {
+                    font: {
+                      size: 11
+                    }
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return 'Détails par ressource non disponibles';
+                    }
+                  }
+                },
+                title: {
+                  display: true,
+                  text: 'Statistiques détaillées non disponibles',
+                  font: {
+                    size: 14
+                  },
+                  color: '#666'
+                }
+              }
+            }
+          });
+          
+          // Arrêter l'exécution ici
+          return;
+        }
+        
+        // Cette partie du code ne devrait jamais être exécutée
+        // car tous les cas sont traités dans les conditions précédentes
+        console.warn("Code inattendu exécuté dans le widget de distribution FHIR");
+        
+        // Afficher un message d'erreur dans le graphique
+        const ctx = resourceDistCanvas.getContext('2d');
+        ctx.clearRect(0, 0, resourceDistCanvas.width, resourceDistCanvas.height);
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#666';
+        ctx.fillText('Erreur interne du graphique', resourceDistCanvas.width / 2, resourceDistCanvas.height / 2);
+        
+        // Notifier dans la console pour le débogage
+        console.error("Problème avec le graphique de distribution des ressources FHIR");
+        return;
       }
       
       // Destruction et recréation complète du graphique de taux de réussite
@@ -1803,13 +1870,17 @@
               values.push(item.count);
             });
             
+            const messageTypesCtx = document.getElementById('messageTypesChart').getContext('2d');
+            
             // Mise à jour du graphique des types de messages
             if (window.messageTypesChart) {
-              // Destruction du graphique existant pour éviter les problèmes de mise à jour
-              window.messageTypesChart.destroy();
-              
-              // Création d'un nouveau graphique avec les données réelles
-              const messageTypesCtx = document.getElementById('messageTypesChart').getContext('2d');
+              // Mettre à jour les données du graphique existant sans le détruire
+              window.messageTypesChart.data.labels = labels;
+              window.messageTypesChart.data.datasets[0].data = values;
+              window.messageTypesChart.update();
+              console.log("Graphique des types de messages HL7 mis à jour avec les données réelles");
+            } else {
+              // Création d'un nouveau graphique avec les données réelles si aucun n'existe
               window.messageTypesChart = new Chart(messageTypesCtx, {
                 type: 'bar',
                 data: {
@@ -1859,7 +1930,7 @@
                   }
                 }
               });
-              console.log("Graphique des types de messages HL7 recréé avec les données réelles");
+              console.log("Graphique des types de messages HL7 créé avec les données réelles");
             }
           } else {
             console.warn("Aucune donnée de types de messages HL7 disponible");
@@ -1873,11 +1944,11 @@
       // Appel initial pour charger les types de messages
       fetchMessageTypes();
       
-      // Réduire l'intervalle de rafraîchissement et ajouter les types de messages
+      // Intervalle d'actualisation réduit à une fois par minute pour améliorer la stabilité
       setInterval(() => {
         fetchStats();
         fetchMessageTypes();
-      }, 10000); // Actualisation toutes les 10 secondes
+      }, 60000); // Actualisation toutes les 60 secondes
     }
   </script>
 
