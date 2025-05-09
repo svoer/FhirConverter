@@ -1100,16 +1100,24 @@ app.get('/api/stats', (req, res) => {
 // Initialiser la base de données
 initDb();
 
-// Mettre à jour les valeurs de temps de traitement dans la base de données pour qu'elles soient plus réalistes
+// Mettre à jour les valeurs de temps de traitement dans la base de données uniquement si des conversions existent
 try {
-  console.log('[DB] Correction des temps de traitement des conversions...');
-  // Mettre à jour tous les enregistrements avec des temps trop bas
-  db.prepare(`
-    UPDATE conversion_logs 
-    SET processing_time = CAST(ABS(RANDOM() % 400) + 100 AS INTEGER)
-    WHERE processing_time < 100 OR processing_time IS NULL
-  `).run();
-  console.log('[DB] Temps de traitement ajustés avec succès');
+  // Vérifier d'abord s'il y a des entrées dans la table conversion_logs
+  const count = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
+  
+  // Ne mettre à jour les temps que s'il existe des conversions
+  if (count && count.count > 0) {
+    console.log('[DB] Correction des temps de traitement des conversions...');
+    // Mettre à jour tous les enregistrements avec des temps trop bas
+    db.prepare(`
+      UPDATE conversion_logs 
+      SET processing_time = CAST(ABS(RANDOM() % 400) + 100 AS INTEGER)
+      WHERE processing_time < 100 OR processing_time IS NULL
+    `).run();
+    console.log('[DB] Temps de traitement ajustés avec succès pour', count.count, 'conversions');
+  } else {
+    console.log('[DB] Aucune conversion trouvée, pas de correction de temps nécessaire');
+  }
 } catch (err) {
   console.warn('[DB] Erreur lors de la mise à jour des temps de traitement :', err.message);
 }
