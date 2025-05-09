@@ -996,16 +996,55 @@ app.get('/api/resource-distribution', (req, res) => {
         conversions.forEach(conversion => {
           if (conversion.output_message) {
             try {
-              // Pour chaque type de ressource, compter les occurrences dans le message
+              const output = conversion.output_message;
+              
+              // Utiliser une approche basée uniquement sur les expressions régulières
+              // pour extraire les différents types de ressources FHIR
+              
+              // Compter les occurrences de chaque type de ressource explicitement
               standardFhirResources.forEach(resourceType => {
-                // Utiliser une expression régulière pour rechercher les déclarations de type
+                // Rechercher chaque type de ressource - peu importe sa position dans la structure JSON
+                // Chercher spécifiquement le motif exact:
+                // "resourceType":"[Type]"
                 const pattern = new RegExp(`"resourceType"\\s*:\\s*"${resourceType}"`, 'g');
-                const matches = conversion.output_message.match(pattern);
+                const matches = output.match(pattern);
                 
                 if (matches) {
+                  // Ajouter le compte au total
                   resourceCounts[resourceType] += matches.length;
                 }
               });
+              
+              // Extraire spécifiquement les ressources imbriquées dans un Bundle
+              // sous la forme "resource":{"resourceType":"[Type]"
+              const bundlePattern = /"resource"\s*:\s*\{\s*"resourceType"\s*:\s*"([^"]+)"/g;
+              let match;
+              let bundleMatches = [];
+              
+              // Trouver toutes les correspondances
+              while ((match = bundlePattern.exec(output)) !== null) {
+                if (match[1] && standardFhirResources.includes(match[1])) {
+                  bundleMatches.push(match[1]);
+                  resourceCounts[match[1]]++;
+                }
+              }
+              
+              // Ajuster le comptage pour éviter de compter deux fois les mêmes ressources
+              // Le motif général "resourceType":"Bundle" pourrait déjà être compté
+              if (resourceCounts['Bundle'] > 0) {
+                resourceCounts['Bundle']--; // Déduire 1 pour éviter de compter deux fois
+              }
+              
+              // Log pour debugging
+              const foundResources = Object.entries(resourceCounts)
+                .filter(([_, count]) => count > 0)
+                .map(([name, count]) => `${name}: ${count}`)
+                .join(', ');
+              
+              if (foundResources) {
+                console.log("Ressources FHIR identifiées:", foundResources);
+              }
+            
               
             } catch (parseError) {
               console.log("Erreur d'analyse des ressources dans un message:", parseError.message);
