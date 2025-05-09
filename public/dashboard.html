@@ -86,10 +86,17 @@
             <button id="refreshStatsBtn" class="btn-refresh" title="Rafraîchir les statistiques">
               <i class="fas fa-sync-alt"></i>
             </button>
-            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; z-index: 10; position: relative; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2);">
+            <button id="resetStatsBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; z-index: 1050; position: relative; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 32px; height: 32px; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2);">
               <i class="fas fa-trash-alt" style="margin: auto;"></i>
             </button>
             <span style="margin-left: 5px;">Dernière mise à jour: <span id="statsUpdateTime"></span></span>
+          </div>
+          
+          <!-- Bouton de réinitialisation flottant (toujours visible lors du défilement) -->
+          <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+            <button id="floatingResetBtn" class="btn-reset" title="Réinitialiser toutes les données" style="display: inline-flex !important; visibility: visible !important; position: relative; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.3); border: none; cursor: pointer;">
+              <i class="fas fa-trash-alt" style="margin: auto; font-size: 20px;"></i>
+            </button>
           </div>
         </div>
         
@@ -326,22 +333,30 @@
         });
       }
       
-      // Ajouter le gestionnaire d'événement pour le bouton de réinitialisation
+      // Ajouter le gestionnaire d'événement pour les boutons de réinitialisation (normal et flottant)
       const resetStatsBtn = document.getElementById('resetStatsBtn');
+      const floatingResetBtn = document.getElementById('floatingResetBtn');
       const resetConfirmModal = document.getElementById('resetConfirmModal');
       const cancelResetBtn = document.getElementById('cancelResetBtn');
       const confirmResetBtn = document.getElementById('confirmResetBtn');
       
+      // Fonction pour afficher la boîte de dialogue de confirmation
+      function showResetConfirmation() {
+        resetConfirmModal.style.display = 'block';
+      }
+      
       if (resetStatsBtn) {
-        resetStatsBtn.addEventListener('click', function() {
-          // Afficher la boîte de dialogue de confirmation
-          resetConfirmModal.style.display = 'block';
-        });
-        
-        // Gérer le clic sur le bouton Annuler
-        cancelResetBtn.addEventListener('click', function() {
-          resetConfirmModal.style.display = 'none';
-        });
+        resetStatsBtn.addEventListener('click', showResetConfirmation);
+      }
+      
+      if (floatingResetBtn) {
+        floatingResetBtn.addEventListener('click', showResetConfirmation);
+      }
+      
+      // Gérer le clic sur le bouton Annuler
+      cancelResetBtn.addEventListener('click', function() {
+        resetConfirmModal.style.display = 'none';
+      });
         
         // Gérer le clic en dehors de la boîte de dialogue
         window.addEventListener('click', function(event) {
@@ -520,11 +535,30 @@
         // Afficher un message de succès
         alert('Les statistiques ont été réinitialisées avec succès');
         
-        // Rafraîchir les statistiques
-        fetchStats();
+        // Réinitialiser les valeurs affichées dans l'interface
+        document.getElementById('conversionsCount').textContent = "0";
+        document.getElementById('avg-conversion-time').textContent = "0 ms";
+        document.getElementById('last-conversion-time').textContent = "0 ms";
+        document.getElementById('minmax-conversion-time').textContent = "0 / 0 ms";
+        document.getElementById('avg-resources').textContent = "0";
         
-        // Restaurer la disposition des widgets
-        setTimeout(restoreWidgetLayout, 500);
+        // Réinitialiser les graphiques
+        resetAllCharts();
+        
+        // Récupérer les nouvelles statistiques après une seconde
+        setTimeout(() => {
+          fetchStats();
+          
+          // Restaurer la disposition des widgets
+          setTimeout(() => {
+            restoreWidgetLayout();
+            
+            // Rafraîchir une dernière fois
+            setTimeout(() => {
+              fetchStats();
+            }, 500);
+          }, 500);
+        }, 1000);
       })
       .catch(error => {
         // Supprimer l'indicateur de chargement
@@ -534,6 +568,38 @@
         console.error('Erreur lors de la réinitialisation:', error);
         alert('Une erreur est survenue lors de la réinitialisation des statistiques. Veuillez réessayer plus tard.');
       });
+    }
+    
+    // Fonction pour réinitialiser tous les graphiques
+    function resetAllCharts() {
+      // Récupérer tous les graphiques et les réinitialiser
+      if (window.memoryChart) {
+        window.memoryChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        window.memoryChart.update();
+      }
+      
+      if (window.conversionTrendChart) {
+        window.conversionTrendChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        window.conversionTrendChart.update();
+      }
+      
+      if (window.resourceDistChart) {
+        window.resourceDistChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+        window.resourceDistChart.update();
+      }
+      
+      if (window.successRateChart) {
+        window.successRateChart.data.datasets[0].data = [0, 0];
+        window.successRateChart.update();
+      }
+      
+      if (window.messageTypesChart) {
+        window.messageTypesChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+        window.messageTypesChart.update();
+      }
+      
+      // Mise à jour de l'heure de dernière actualisation
+      updateLastRefreshTime();
     }
 
     function fetchStats() {
