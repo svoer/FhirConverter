@@ -750,35 +750,57 @@ app.post('/api/reset-stats', async (req, res) => {
   try {
     console.log('[RESET] Début de la réinitialisation des données');
     
-    // Vider la base de données des statistiques
-    const tables = ['conversion_logs', 'applications'];
-    for (const table of tables) {
-      try {
-        db.prepare(`DELETE FROM ${table}`).run();
-        console.log(`[RESET] Table ${table} vidée avec succès`);
-      } catch (err) {
-        console.error(`[RESET] Erreur lors du vidage de la table ${table}:`, err);
-      }
+    // Vider COMPLÈTEMENT la base de données des statistiques
+    try {
+      // Comme SQLite n'a pas de TRUNCATE, on utilise DELETE FROM sans WHERE pour vider complètement
+      db.prepare(`DELETE FROM conversion_logs`).run();
+      console.log(`[RESET] Table conversion_logs complètement vidée`);
+      
+      // Ajout de données factices pour garantir que les valeurs par défaut sont utilisées
+      const defaultData = {
+        message_type: 'ADT',
+        status: 'completed',
+        processing_time: 0,
+        input_size: 0,
+        output_size: 0,
+        resource_count: 0,
+        timestamp: Date.now(),
+        application_id: 1
+      };
+      
+      // Insérer une entrée avec des valeurs à zéro pour éviter les erreurs NULL
+      db.prepare(`INSERT INTO conversion_logs 
+                (message_type, status, processing_time, input_size, output_size, resource_count, timestamp, application_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        defaultData.message_type,
+        defaultData.status,
+        defaultData.processing_time,
+        defaultData.input_size,
+        defaultData.output_size,
+        defaultData.resource_count,
+        defaultData.timestamp,
+        defaultData.application_id
+      );
+      console.log(`[RESET] Entrée de statistiques par défaut créée`);
+      
+    } catch (err) {
+      console.error(`[RESET] Erreur lors du vidage de la table conversion_logs:`, err);
     }
     
     // Réinitialiser les séquences d'ID
     try {
-      db.prepare('UPDATE sqlite_sequence SET seq = 0 WHERE name IN ("conversion_logs", "applications")').run();
-      console.log('[RESET] Séquences d\'ID réinitialisées');
+      db.prepare('UPDATE sqlite_sequence SET seq = 1 WHERE name = "conversion_logs"').run();
+      console.log('[RESET] Séquence d\'ID réinitialisée pour conversion_logs');
     } catch (err) {
       console.error('[RESET] Erreur lors de la réinitialisation des séquences:', err);
     }
     
-    // Vider les répertoires de données
+    // Vider les répertoires de données (conversion uniquement, pas les applications)
     const dirsToEmpty = [
       './data/conversions', 
       './data/history', 
       './data/outputs',
-      './data/in',
-      './data/out',
       './data/temp',
-      './data/uploads',
-      './attached_assets'
     ];
     
     const fs = require('fs');
@@ -805,16 +827,27 @@ app.post('/api/reset-stats', async (req, res) => {
       }
     }
     
-    // Insertion d'une application par défaut
-    try {
-      db.prepare('INSERT INTO applications (name, api_key, active) VALUES (?, ?, ?)').run('Default', 'FHIRHUB_DEFAULT_KEY', 1);
-      console.log('[RESET] Application par défaut recréée');
-    } catch (err) {
-      console.error('[RESET] Erreur lors de la création de l\'application par défaut:', err);
-    }
+    // Cette ligne force le rafraîchissement du cache des statistiques
+    global.statsCache = null;
     
     console.log('[RESET] Réinitialisation terminée avec succès');
-    res.status(200).json({ success: true, message: 'Réinitialisation terminée avec succès' });
+    
+    // Retourner une réponse immédiatement pour que le client puisse rafraîchir son interface
+    res.status(200).json({ 
+      success: true, 
+      message: 'Réinitialisation terminée avec succès',
+      timestamp: Date.now(),  // Ajouter un timestamp pour forcer l'actualisation côté client
+      stats: {
+        conversions: 0,
+        conversionStats: {
+          avgTime: 0,
+          minTime: 0,
+          maxTime: 0,
+          avgResources: 0,
+          lastTime: 0
+        }
+      }
+    });
   } catch (error) {
     console.error('[RESET] Erreur de réinitialisation:', error);
     res.status(500).json({ success: false, error: error.message });
