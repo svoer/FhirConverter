@@ -153,6 +153,7 @@ function initResourceDistChart() {
   });
 }
 
+// Fonction améliorée pour la mise à jour du graphique de distribution des ressources FHIR
 function updateResourceDistChart(conversionStats, conversions) {
   if (!charts.resourceDist) {
     console.warn('Graphique resourceDist non initialisé');
@@ -175,44 +176,61 @@ function updateResourceDistChart(conversionStats, conversions) {
       conversionStats.resourcesDistribution.sixPlus || 0
     ];
     
-    // Création d'un nouveau graphique avec données réelles
-    charts.resourceDist = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
-        datasets: [{
-          label: 'Nombre de conversions',
-          data: distributionData,
-          backgroundColor: chartColors.redGradient,
-          borderColor: chartColors.redGradientBorders,
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              font: {
-                size: 11
+    // Vérifier si nous avons de vraies données ou seulement des zéros
+    const hasRealData = distributionData.some(value => value > 0);
+    
+    if (hasRealData) {
+      // Création d'un nouveau graphique avec données réelles
+      charts.resourceDist = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
+          datasets: [{
+            label: 'Nombre de conversions',
+            data: distributionData,
+            backgroundColor: chartColors.redGradient,
+            borderColor: chartColors.redGradientBorders,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 11
+                }
               }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return `${context.label}: ${context.raw} conversion(s)`;
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${context.raw} conversion(s)`;
+                }
               }
             }
           }
         }
-      }
-    });
+      });
+    } else {
+      // Même avec resourcesDistribution présent, toutes les valeurs sont à 0
+      // Basculer vers l'option de secours avec la moyenne
+      createBackupResourceChart();
+    }
   } else if (conversionStats && typeof conversionStats.avgResources !== 'undefined' && conversions > 0) {
-    // Créer un graphique simple basé sur le nombre moyen de ressources par conversion
-    console.log("Données de distribution détaillée non disponibles, création d'un graphique informatif");
+    // Utiliser les statistiques disponibles lorsque les détails par catégorie ne sont pas disponibles
+    createBackupResourceChart();
+  } else {
+    // Aucune donnée exploitable disponible
+    createNoDataResourceChart();
+  }
+  
+  // Fonction auxiliaire pour créer un graphique basé sur les ressources moyennes
+  function createBackupResourceChart() {
+    console.log("Données de distribution détaillée non disponibles, création d'un graphique informatif avec ressources moyennes");
     
     // Pour éviter de créer des données fictives, nous allons simplement indiquer la moyenne
     charts.resourceDist = new Chart(ctx, {
@@ -221,7 +239,7 @@ function updateResourceDistChart(conversionStats, conversions) {
         labels: [`Moyenne de ${conversionStats.avgResources} ressource(s) par conversion`],
         datasets: [{
           label: 'Information',
-          data: [1],
+          data: [conversions], // Utiliser le nombre total de conversions comme donnée
           backgroundColor: ['rgba(243, 156, 18, 0.7)'],
           borderColor: ['rgba(243, 156, 18, 1)'],
           borderWidth: 1
@@ -249,19 +267,17 @@ function updateResourceDistChart(conversionStats, conversions) {
         }
       }
     });
-  } else {
-    // Afficher un message honnête indiquant l'absence de données réelles
+  }
+  
+  // Fonction auxiliaire pour créer un graphique "aucune donnée"
+  function createNoDataResourceChart() {
     console.log("Aucune donnée de distribution disponible, affichage d'un message informatif");
-    
-    // Nettoyer le canvas et afficher un message texte
-    const context = ctx.getContext('2d');
-    context.clearRect(0, 0, ctx.width, ctx.height);
     
     // Créer un nouveau graphique avec un message d'information
     charts.resourceDist = new Chart(ctx, {
       type: 'pie',
       data: {
-        labels: ['Données non disponibles'],
+        labels: ['Aucune donnée disponible'],
         datasets: [{
           label: 'Information',
           data: [1],
@@ -291,7 +307,7 @@ function updateResourceDistChart(conversionStats, conversions) {
           },
           title: {
             display: true,
-            text: 'Statistiques de distribution non disponibles',
+            text: 'Statistiques détaillées non disponibles',
             font: {
               size: 14
             },
@@ -301,10 +317,7 @@ function updateResourceDistChart(conversionStats, conversions) {
       }
     });
   }
-}
-
-// Initialisation et gestion du graphique de taux de réussite
-function initSuccessRateChart() {
+}function initSuccessRateChart() {
   const ctx = document.getElementById('successRateChart');
   if (!ctx) {
     console.error('Canvas successRateChart non trouvé');
@@ -367,7 +380,7 @@ function updateSuccessRateChart(conversionStats, conversions) {
   
   const ctx = document.getElementById('successRateChart');
   
-  // Si les statistiques réelles sont disponibles
+  // Si les statistiques réelles détaillées sont disponibles
   if (conversionStats && typeof conversionStats.successCount !== 'undefined') {
     const successfulCount = conversionStats.successCount;
     const errorCount = conversionStats.errorCount || 0;
@@ -416,8 +429,9 @@ function updateSuccessRateChart(conversionStats, conversions) {
     let successfulCount = parseInt(conversions) || 0;
     let errorCount = 0;
     
-    // Créer un nouveau graphique
-    if (successfulCount > 0 || errorCount > 0) {
+    // Créer un nouveau graphique avec valeurs par défaut
+    if (successfulCount > 0) {
+      console.log(`Utilisation du nombre de conversions (${successfulCount}) comme taux de réussite par défaut`);
       charts.successRate = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -456,6 +470,7 @@ function updateSuccessRateChart(conversionStats, conversions) {
       });
     } else {
       // S'il n'y a pas de données, afficher un message explicite
+      console.log("Aucune donnée de taux de réussite disponible, affichage d'un message");
       charts.successRate = new Chart(ctx, {
         type: 'doughnut',
         data: {
