@@ -250,27 +250,8 @@ function fetchAndUpdateCharts() {
     });
   
   requests.push(messageTypesPromise);
-    
-  // Récupérer les données de distribution des ressources avec un timestamp unique
-  // pour éviter le cache du navigateur
-  const uniqueTimestamp = new Date().getTime() + Math.floor(Math.random() * 1000);
-  const resourceDistPromise = fetch(`/api/resource-distribution?_=${uniqueTimestamp}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        console.log("Données de distribution des ressources reçues:", data.data);
-        // Utiliser setTimeout pour garantir qu'on ne crée pas de conflit avec d'autres mises à jour
-        setTimeout(() => {
-          updateResourceDistChart(data.data);
-        }, 50);
-        return data.data;
-      }
-    })
-    .catch(error => {
-      console.log("Distribution des ressources non disponible");
-    });
   
-  requests.push(resourceDistPromise);
+  // Requête à l'API de distribution des ressources FHIR supprimée
   
   // Attendre que toutes les requêtes soient terminées
   Promise.all(requests)
@@ -324,24 +305,18 @@ function updateDashboardCounters(data) {
 function updateTopMetrics(data) {
   // Mettre à jour le temps économisé (déjà géré ci-dessus)
   
-  // Mettre à jour le nombre de ressources générées
-  fetch('/api/resource-distribution?' + new Date().getTime())
-    .then(response => response.json())
-    .then(response => {
-      if (response.success && response.data) {
-        // Calculer le nombre total de ressources (somme des counts)
-        const totalResources = response.data.reduce((sum, item) => sum + item.count, 0);
-        
-        // Mettre à jour l'élément dans le DOM
-        const resourceCountElement = document.querySelector('#resourceCount .counter');
-        if (resourceCountElement) {
-          resourceCountElement.textContent = totalResources;
-        }
-      }
-    })
-    .catch(error => {
-      console.error("Erreur lors de la récupération du nombre de ressources:", error);
-    });
+  // Widget distribution des ressources FHIR supprimé
+  // Utiliser le nombre moyen de ressources comme valeur de remplacement
+  if (data.conversionStats && data.conversions) {
+    const avgResources = data.conversionStats.avgResources || 0;
+    const totalResources = Math.round(avgResources * data.conversions);
+    
+    // Mettre à jour l'élément dans le DOM
+    const resourceCountElement = document.querySelector('#resourceCount .counter');
+    if (resourceCountElement) {
+      resourceCountElement.textContent = totalResources;
+    }
+  }
   
   // Mettre à jour le taux de succès (100% pour l'instant puisque toutes les conversions sont réussies)
   const successRateElement = document.querySelector('#successRate .counter');
@@ -497,183 +472,14 @@ function updateConversionTrendChart(lastConversionTime) {
   charts.conversionTrend.update();
 }
 
-// Création et mise à jour du graphique distribution ressources FHIR
+// Widget graphique de distribution des ressources FHIR supprimé
 function createResourceDistChart() {
-  const ctx = document.getElementById('resourceDistChart');
-  if (!ctx) return;
-  
-  const chartContainer = document.getElementById('resourceDistChartContainer');
-  const noDataMessage = document.getElementById('resourceDistNoData');
-  
-  // Message par défaut: pas de données
-  if (chartContainer) chartContainer.style.display = 'none';
-  if (noDataMessage) noDataMessage.style.display = 'flex';
-  
-  const data = {
-    labels: ['Pas de données'],
-    datasets: [{
-      label: 'Distribution ressources',
-      data: [1],
-      backgroundColor: ['rgba(200,200,200,0.5)'],
-      borderColor: ['rgba(200,200,200,1)'],
-      borderWidth: 1
-    }]
-  };
-  
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  };
-  
-  charts.resourceDist = new Chart(ctx, {
-    type: 'pie',
-    data: data,
-    options: options
-  });
+  // Fonction vide - widget supprimé
 }
 
-// Variable pour suivre la dernière mise à jour du graphique de distribution des ressources
-let lastResourceDistUpdate = 0;
-let pendingResourceUpdate = null;
-
+// Widget graphique de distribution des ressources FHIR supprimé
 function updateResourceDistChart(resourceData) {
-  if (!charts.resourceDist) return;
-  
-  // Protection contre les mises à jour trop fréquentes ou simultanées
-  const now = Date.now();
-  if (now - lastResourceDistUpdate < 500) {
-    // Si une mise à jour est déjà en attente, l'annuler
-    if (pendingResourceUpdate) {
-      clearTimeout(pendingResourceUpdate);
-    }
-    
-    // Programmer une mise à jour différée
-    pendingResourceUpdate = setTimeout(() => {
-      updateResourceDistChart(resourceData);
-      pendingResourceUpdate = null;
-    }, 500);
-    
-    return;
-  }
-  
-  // Marquer cette mise à jour
-  lastResourceDistUpdate = now;
-  
-  const chartContainer = document.getElementById('resourceDistChartContainer');
-  const noDataMessage = document.getElementById('resourceDistNoData');
-  const ctx = document.getElementById('resourceDistChart');
-  
-  if (!ctx) return; // Ne pas continuer si l'élément n'existe pas
-  
-  try {
-    // Détruire l'ancien graphique s'il existe
-    if (charts.resourceDist) {
-      charts.resourceDist.destroy();
-    }
-    
-    // Vérifier si nous avons des données réelles
-    if (resourceData && resourceData.length > 0) {
-      // Afficher le graphique, masquer le message
-      if (chartContainer) chartContainer.style.display = 'block';
-      if (noDataMessage) noDataMessage.style.display = 'none';
-      
-      // Préparer les données
-      const labels = resourceData.map(item => item.name);
-      const values = resourceData.map(item => item.count);
-      
-      // Création du graphique
-      charts.resourceDist = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Distribution ressources',
-            data: values,
-            backgroundColor: colors.redGradient,
-            borderColor: colors.redGradientBorders,
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                font: {
-                  size: 11
-                }
-              }
-            }
-          }
-        }
-      });
-    } else {
-      // Pas de données - afficher le message
-      if (chartContainer) chartContainer.style.display = 'none';
-      if (noDataMessage) noDataMessage.style.display = 'flex';
-      
-      // Créer un graphique vide (invisible)
-      charts.resourceDist = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['Pas de données'],
-          datasets: [{
-            label: 'Distribution ressources',
-            data: [1],
-            backgroundColor: ['rgba(200,200,200,0.5)'],
-            borderColor: ['rgba(200,200,200,1)'],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            }
-          }
-        }
-      });
-    }
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour du graphique de distribution des ressources:", error);
-    // Essayer de restaurer un graphique vide en cas d'erreur
-    try {
-      if (chartContainer) chartContainer.style.display = 'none';
-      if (noDataMessage) noDataMessage.style.display = 'flex';
-      
-      charts.resourceDist = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['Erreur'],
-          datasets: [{
-            data: [1],
-            backgroundColor: ['rgba(200,60,60,0.2)'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            }
-          }
-        }
-      });
-    } catch (e) {
-      console.error("Échec de la récupération après erreur:", e);
-    }
-  }
+  // Fonction vide - widget supprimé
 }
 
 // Création et mise à jour du graphique taux de réussite
