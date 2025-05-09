@@ -241,9 +241,10 @@ function fetchAndUpdateCharts() {
       console.error("Erreur lors de la récupération des types de messages:", error);
     });
     
-  // Récupérer les données de distribution des ressources (à implémenter)
-  // Cette API pourrait ne pas encore exister
-  fetch('/api/resource-distribution')
+  // Récupérer les données de distribution des ressources
+  // Ajouter un paramètre timestamp pour éviter le cache du navigateur
+  const timestamp = new Date().getTime();
+  fetch(`/api/resource-distribution?_=${timestamp}`)
     .then(response => response.json())
     .then(data => {
       if (data.success) {
