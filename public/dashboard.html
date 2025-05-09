@@ -829,220 +829,7 @@
         });
       }
       
-      // Destruction et recréation complète du graphique de distribution des ressources FHIR
-      const resourceDistCanvas = document.getElementById('resourceDistChart');
-      if (resourceDistCanvas) {
-        console.log("Recréation du graphique distribution ressources FHIR");
-        
-        // Détruire l'ancien graphique s'il existe
-        const oldChart = Chart.getChart(resourceDistCanvas);
-        if (oldChart) {
-          oldChart.destroy();
-        }
-        
-        // S'assurer qu'on a des données valides pour créer le graphique
-        // Si aucune donnée de conversion n'est disponible, afficher un graphique vide
-        if (!conversionStats || !conversionStats.avgResources) {
-          console.warn("Données de temps de conversion non disponibles, graphique non mis à jour");
-          
-          // Créer un message dans le graphique indiquant qu'aucune donnée n'est disponible
-          const ctx = resourceDistCanvas.getContext('2d');
-          ctx.clearRect(0, 0, resourceDistCanvas.width, resourceDistCanvas.height);
-          ctx.font = '14px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = '#666';
-          ctx.fillText('Aucune donnée de conversion disponible', resourceDistCanvas.width / 2, resourceDistCanvas.height / 2);
-          
-          // Notifier dans la console pour le débogage
-          console.log("Graphique de distribution des ressources FHIR vidé - aucune donnée disponible");
-          return;
-        }
-        
-        // Si les statistiques réelles de distribution sont disponibles dans l'API, utiliser celles-ci
-        if (conversionStats.resourcesDistribution) {
-          console.log("Utilisation des données réelles de distribution des ressources:", conversionStats.resourcesDistribution);
-          
-          let distributionData = [
-            conversionStats.resourcesDistribution.single || 0,
-            conversionStats.resourcesDistribution.two || 0,
-            conversionStats.resourcesDistribution.three || 0,
-            conversionStats.resourcesDistribution.fourToFive || 0,
-            conversionStats.resourcesDistribution.sixPlus || 0
-          ];
-          
-          // Vérifier si toutes les valeurs sont à zéro
-          const allZeros = distributionData.every(val => val === 0);
-          
-          if (allZeros) {
-            // Afficher un message indiquant l'absence de données réelles
-            new Chart(resourceDistCanvas, {
-              type: 'pie',
-              data: {
-                labels: ['Données insuffisantes'],
-                datasets: [{
-                  label: 'Information',
-                  data: [1],
-                  backgroundColor: ['rgba(200, 200, 200, 0.7)'],
-                  borderColor: ['rgba(200, 200, 200, 1)'],
-                  borderWidth: 1
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                  duration: 1000
-                },
-                plugins: {
-                  legend: {
-                    position: 'top',
-                    labels: {
-                      font: {
-                        size: 11
-                      }
-                    }
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        return 'Aucune donnée réelle disponible';
-                      }
-                    }
-                  },
-                  title: {
-                    display: true,
-                    text: 'Données insuffisantes pour l\'analyse',
-                    font: {
-                      size: 14
-                    },
-                    color: '#666'
-                  }
-                }
-              }
-            });
-          } else {
-            // Créer un graphique avec les données réelles
-            new Chart(resourceDistCanvas, {
-              type: 'pie',
-              data: {
-                labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
-                datasets: [{
-                  label: 'Nombre de conversions',
-                  data: distributionData,
-                  backgroundColor: [
-                    'rgba(231, 76, 60, 0.7)',
-                    'rgba(241, 136, 5, 0.7)',
-                    'rgba(243, 156, 18, 0.7)',
-                    'rgba(246, 185, 59, 0.7)',
-                    'rgba(249, 231, 159, 0.7)'
-                  ],
-                  borderColor: [
-                    'rgba(231, 76, 60, 1)',
-                    'rgba(241, 136, 5, 1)',
-                    'rgba(243, 156, 18, 1)',
-                    'rgba(246, 185, 59, 1)',
-                    'rgba(249, 231, 159, 1)'
-                  ],
-                  borderWidth: 1
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                  duration: 1000
-                },
-                plugins: {
-                  legend: {
-                    position: 'top',
-                    labels: {
-                      font: {
-                        size: 11
-                      }
-                    }
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function(context) {
-                        return `${context.label}: ${context.raw} conversion(s)`;
-                      }
-                    }
-                  }
-                }
-              }
-            });
-          }
-        } else {
-          // Afficher un message honnête indiquant que les données détaillées ne sont pas disponibles
-          console.log("Données de distribution détaillée non disponibles, affichage d'un message d'information");
-          
-          // Créer un nouveau graphique avec un message d'information
-          new Chart(resourceDistCanvas, {
-            type: 'pie',
-            data: {
-              labels: ['Données détaillées non disponibles'],
-              datasets: [{
-                label: 'Information',
-                data: [1],
-                backgroundColor: ['rgba(200, 200, 200, 0.7)'],
-                borderColor: ['rgba(200, 200, 200, 1)'],
-                borderWidth: 1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: {
-                duration: 1000
-              },
-              plugins: {
-                legend: {
-                  position: 'top',
-                  labels: {
-                    font: {
-                      size: 11
-                    }
-                  }
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return 'Détails par ressource non disponibles';
-                    }
-                  }
-                },
-                title: {
-                  display: true,
-                  text: 'Statistiques détaillées non disponibles',
-                  font: {
-                    size: 14
-                  },
-                  color: '#666'
-                }
-              }
-            }
-          });
-          
-          // Arrêter l'exécution ici
-          return;
-        }
-        
-        // Cette partie du code ne devrait jamais être exécutée
-        // car tous les cas sont traités dans les conditions précédentes
-        console.warn("Code inattendu exécuté dans le widget de distribution FHIR");
-        
-        // Afficher un message d'erreur dans le graphique
-        const ctx = resourceDistCanvas.getContext('2d');
-        ctx.clearRect(0, 0, resourceDistCanvas.width, resourceDistCanvas.height);
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#666';
-        ctx.fillText('Erreur interne du graphique', resourceDistCanvas.width / 2, resourceDistCanvas.height / 2);
-        
-        // Notifier dans la console pour le débogage
-        console.error("Problème avec le graphique de distribution des ressources FHIR");
-        return;
-      }
+      // Widget de distribution des ressources FHIR supprimé sur demande utilisateur
       
       // Destruction et recréation complète du graphique de taux de réussite
       const successRateCanvas = document.getElementById('successRateChart');
@@ -1324,13 +1111,13 @@
     // Variables globales pour les graphiques (accessibles pour la réinitialisation)
     window.memoryChart = null;
     window.conversionTrendChart = null;
-    window.resourceDistChart = null;
+    // window.resourceDistChart = null; // Widget supprimé sur demande utilisateur
     window.successRateChart = null;
     window.messageTypesChart = null;
     
     function initCharts() {
       // Destruction des graphiques existants si présents
-      ['memoryChart', 'conversionTrendChart', 'resourceDistChart', 'successRateChart', 'messageTypesChart'].forEach(chartId => {
+      ['memoryChart', 'conversionTrendChart', /* 'resourceDistChart' supprimé, */ 'successRateChart', 'messageTypesChart'].forEach(chartId => {
         const existingChart = Chart.getChart(document.getElementById(chartId));
         if (existingChart) {
           existingChart.destroy();
@@ -1386,30 +1173,7 @@
         }]
       };
       
-      // Données pour le graphique de distribution des ressources FHIR
-      // Initialisation avec des valeurs vides
-      const resourceDistData = {
-        labels: ['1 ressource', '2 ressources', '3 ressources', '4-5 ressources', '6+ ressources'],
-        datasets: [{
-          label: 'Nombre de conversions',
-          data: [0, 0, 0, 0, 0], // Données vides initiales, pour afficher "Aucune donnée disponible"
-          backgroundColor: [
-            'rgba(231, 76, 60, 0.7)',
-            'rgba(241, 136, 5, 0.7)',
-            'rgba(243, 156, 18, 0.7)',
-            'rgba(246, 185, 59, 0.7)',
-            'rgba(249, 231, 159, 0.7)'
-          ],
-          borderColor: [
-            'rgba(231, 76, 60, 1)',
-            'rgba(241, 136, 5, 1)',
-            'rgba(243, 156, 18, 1)',
-            'rgba(246, 185, 59, 1)',
-            'rgba(249, 231, 159, 1)'
-          ],
-          borderWidth: 1
-        }]
-      };
+      // Données pour le graphique de distribution des ressources FHIR - supprimé
       
       // Données pour le taux de réussite - valeurs vides initiales
       const successRateData = {
@@ -1508,33 +1272,7 @@
         }
       });
       
-      window.resourceDistChart = new Chart(document.getElementById('resourceDistChart'), {
-        type: 'pie',
-        data: resourceDistData,
-        options: {
-          ...commonOptions,
-          plugins: {
-            ...commonOptions.plugins,
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.label}: ${context.raw} conversion(s)`;
-                }
-              }
-            },
-            title: {
-              display: true,
-              text: 'Aucune donnée disponible',
-              color: 'rgba(150, 150, 150, 0.8)',
-              font: {
-                size: 14
-              },
-              // Le titre s'affiche uniquement quand il n'y a pas de données
-              display: resourceDistData.datasets[0].data.every(d => d === 0 || d === null)
-            }
-          }
-        }
-      });
+      // Initialisation de resourceDistChart supprimée - widget retiré sur demande utilisateur
       
       window.successRateChart = new Chart(document.getElementById('successRateChart'), {
         type: 'doughnut',
