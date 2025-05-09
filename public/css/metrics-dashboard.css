@@ -118,20 +118,25 @@
   cursor: pointer;
   transition: transform 0.3s ease;
   margin-right: 15px; /* Augmenté de 10px à 15px pour plus d'espace */
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 30px; /* Légèrement plus grand */
-  height: 30px; /* Légèrement plus grand */
+  width: 32px; /* Rendu plus grand pour être mieux visible */
+  height: 32px; /* Rendu plus grand pour être mieux visible */
   border-radius: 50%;
   background: linear-gradient(135deg, #e74c3c 0%, #f18805 100%);
   color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10; /* Assurer que le bouton est au-dessus des autres éléments */
 }
 
 .btn-reset {
   margin-right: 15px;
   background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  /* Rendre le bouton reset encore plus visible */
+  transform: scale(1.05);
 }
 
 .btn-refresh:hover, .btn-reset:hover {
