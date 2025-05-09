@@ -970,56 +970,79 @@ app.get('/api/resource-distribution', (req, res) => {
   try {
     console.log('Récupération de la distribution des ressources FHIR...');
     
-    // Récupérer le nombre de conversions avec timestamp pour éviter le cache
-    const timestamp = req.query._ || Date.now();
-    const conversionCountResult = db.prepare(`SELECT COUNT(*) as count FROM conversion_logs`).get();
-    const conversions = conversionCountResult ? conversionCountResult.count : 0;
+    // Analyser les données des types de ressources FHIR à partir de la colonne output_resources
+    // de la table conversion_logs
+    let resourceDistribution = [];
     
-    // Générer des distributions dynamiques basées sur le nombre de conversions et le timestamp actuel
+    // Vérifier d'abord si nous avons des données de conversion
+    const conversionsCount = db.prepare('SELECT COUNT(*) as count FROM conversion_logs').get();
     
-    // Utiliser le timestamp comme seed pour la génération aléatoire
-    const seed = parseInt(timestamp % 100000) / 100000;
-    const randomFactor = () => 0.85 + (Math.sin(seed * Math.PI * 2) * 0.15);
+    if (conversionsCount && conversionsCount.count > 0) {
+      try {
+        // Obtenir toutes les sorties de conversion qui contiennent des données structurées
+        const conversions = db.prepare('SELECT output_resources FROM conversion_logs WHERE output_resources IS NOT NULL').all();
+        
+        // Compteur pour chaque type de ressource
+        const resourceCounts = {};
+        
+        // Parcourir toutes les conversions avec des ressources
+        conversions.forEach(conversion => {
+          if (conversion.output_resources) {
+            try {
+              // Essayer de parser les ressources (stockées en JSON)
+              const resources = JSON.parse(conversion.output_resources);
+              
+              // Si c'est un tableau, compter chaque type de ressource
+              if (Array.isArray(resources)) {
+                resources.forEach(resource => {
+                  if (resource && resource.resourceType) {
+                    const type = resource.resourceType;
+                    resourceCounts[type] = (resourceCounts[type] || 0) + 1;
+                  }
+                });
+              } else if (resources && resources.resourceType) {
+                // Si c'est une seule ressource
+                const type = resources.resourceType;
+                resourceCounts[type] = (resourceCounts[type] || 0) + 1;
+              }
+            } catch (parseError) {
+              // Ignorer les erreurs de parsing pour ce record spécifique
+              console.log("Erreur de parsing des ressources dans un enregistrement:", parseError.message);
+            }
+          }
+        });
+        
+        // Convertir le compteur en tableau pour pouvoir le trier
+        for (const [name, count] of Object.entries(resourceCounts)) {
+          resourceDistribution.push({ name, count });
+        }
+        
+        // Trier par nombre décroissant
+        resourceDistribution.sort((a, b) => b.count - a.count);
+        
+        // Limiter aux 10 premiers types
+        resourceDistribution = resourceDistribution.slice(0, 10);
+      } catch (parsingError) {
+        console.error("Erreur pendant l'analyse des ressources FHIR:", parsingError);
+      }
+    }
     
-    // Calcul avec variabilité pour simuler l'évolution des données en temps réel
-    // Cela crée une distribution qui change constamment mais reste réaliste
-    let patientCount = Math.max(1, Math.round(conversions * 1.0 * randomFactor()));
-    let encounterCount = Math.max(1, Math.round(conversions * 0.9 * (2 - randomFactor())));
-    let observationCount = Math.max(1, Math.round(conversions * 0.7 * (1 + randomFactor()) / 1.5));
-    let conditionCount = Math.max(1, Math.round(conversions * 0.3 * randomFactor() * 1.2));
-    let practitionerCount = Math.max(1, Math.round(conversions * 0.4 * (2 - randomFactor())));
-    let medicationCount = Math.max(1, Math.round(conversions * 0.2 * randomFactor()));
-    let procedureCount = Math.max(1, Math.round(conversions * 0.15 * (1 + randomFactor())));
-    
-    // Assemblage des données - ajouter d'autres types de ressources pour plus de variété
-    const resourceDistribution = [
-      { name: 'Patient', count: patientCount },
-      { name: 'Encounter', count: encounterCount },
-      { name: 'Observation', count: observationCount },
-      { name: 'Condition', count: conditionCount },
-      { name: 'Practitioner', count: practitionerCount },
-      { name: 'Medication', count: medicationCount },
-      { name: 'Procedure', count: procedureCount }
-    ];
-    
-    // Trier par nombre décroissant
-    resourceDistribution.sort((a, b) => b.count - a.count);
-    
-    // Limiter à 5-6 types pour ne pas surcharger le graphique
-    const topResources = resourceDistribution.slice(0, 5 + Math.floor(randomFactor() * 2));
-    
-    // Forcer des valeurs différentes à chaque appel en ajoutant une petite variation
-    // basée sur les millisecondes du timestamp
-    topResources.forEach(resource => {
-      const ms = new Date().getMilliseconds();
-      const smallVariation = (ms % 10) / 100; // 0% à 9% de variation
-      resource.count = Math.max(1, Math.round(resource.count * (1 + (smallVariation - 0.045))));
-    });
+    // Si nous n'avons pas trouvé de données ou s'il y a eu une erreur,
+    // utiliser une structure fixe basée sur les standards FHIR pour un message HL7 ADT
+    if (resourceDistribution.length === 0) {
+      resourceDistribution = [
+        { name: 'Patient', count: 0 },
+        { name: 'Encounter', count: 0 },
+        { name: 'Observation', count: 0 },
+        { name: 'Condition', count: 0 },
+        { name: 'Practitioner', count: 0 }
+      ];
+    }
     
     // Retourner les données avec un timestamp unique
     res.json({
       success: true,
-      data: topResources,
+      data: resourceDistribution,
       timestamp: Date.now()
     });
   } catch (error) {
