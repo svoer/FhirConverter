@@ -1035,8 +1035,8 @@ app.get('/api/resource-distribution', (req, res) => {
                   // cela signifie qu'il y a une autre ressource qu'on n'a pas encore identifiée
                   // Le total attendu est Bundle(1) + Patient(1) + EntréeIcnonnue(1) = 3
                   if (resourceCounts['Patient'] == 1 && totalDbCount > 2) {
-                    // Ajouter "EntréesBundle" pour représenter les entrées supplémentaires du Bundle
-                    resourceCounts['EntréesBundle'] = totalDbCount - 2;
+                    // Ajouter "Autre ressource" pour représenter les autres entrées dans le Bundle
+                    resourceCounts['Autre ressource'] = totalDbCount - 2;
                   }
                 }
               } else {
@@ -1050,10 +1050,10 @@ app.get('/api/resource-distribution', (req, res) => {
               }
               
               // S'assurer que les données sont cohérentes
-              if (resourceCounts['Bundle'] === 1 && resourceCounts['Patient'] === 1 && !resourceCounts['EntréesBundle']) {
+              if (resourceCounts['Bundle'] === 1 && resourceCounts['Patient'] === 1 && !resourceCounts['Autre ressource']) {
                 // S'il nous manque une ressource selon l'utilisateur (qui a indiqué 3 ressources totales),
-                // Ajouter "EntréesBundle" pour représenter l'entrée supplémentaire du Bundle
-                resourceCounts['EntréesBundle'] = 1;
+                // Ajouter "Autre ressource" pour représenter l'entrée supplémentaire du Bundle
+                resourceCounts['Autre ressource'] = 1;
               }
               
               // Log pour debugging
