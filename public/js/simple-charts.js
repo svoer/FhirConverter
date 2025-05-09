@@ -202,8 +202,11 @@ function initializeAllCharts() {
 function fetchAndUpdateCharts() {
   console.log("Récupération des données pour les graphiques...");
   
+  // Variable pour suivre toutes les requêtes
+  const requests = [];
+  
   // Récupérer les statistiques générales
-  fetch('/api/stats')
+  const statsPromise = fetch('/api/stats')
     .then(response => response.json())
     .then(data => {
       if (data.success) {
@@ -222,43 +225,62 @@ function fetchAndUpdateCharts() {
         // Mettre à jour le taux de réussite avec une valeur par défaut
         // (toutes conversions réussies si pas d'info détaillée)
         updateSuccessRateChart(data.data.conversions, 0);
+        
+        return data.data;
       }
     })
     .catch(error => {
       console.error("Erreur lors de la récupération des statistiques:", error);
     });
+  
+  requests.push(statsPromise);
     
   // Récupérer les données de types de messages HL7
-  fetch('/api/message-types')
+  const messageTypesPromise = fetch('/api/message-types')
     .then(response => response.json())
     .then(data => {
       if (data.success) {
         console.log("Données de types de messages HL7 reçues:", data.data);
         updateMessageTypesChart(data.data);
+        return data.data;
       }
     })
     .catch(error => {
       console.error("Erreur lors de la récupération des types de messages:", error);
     });
+  
+  requests.push(messageTypesPromise);
     
-  // Récupérer les données de distribution des ressources
-  // Ajouter un paramètre timestamp pour éviter le cache du navigateur
-  const timestamp = new Date().getTime();
-  fetch(`/api/resource-distribution?_=${timestamp}`)
+  // Récupérer les données de distribution des ressources avec un timestamp unique
+  // pour éviter le cache du navigateur
+  const uniqueTimestamp = new Date().getTime() + Math.floor(Math.random() * 1000);
+  const resourceDistPromise = fetch(`/api/resource-distribution?_=${uniqueTimestamp}`)
     .then(response => response.json())
     .then(data => {
       if (data.success) {
         console.log("Données de distribution des ressources reçues:", data.data);
-        updateResourceDistChart(data.data);
+        // Utiliser setTimeout pour garantir qu'on ne crée pas de conflit avec d'autres mises à jour
+        setTimeout(() => {
+          updateResourceDistChart(data.data);
+        }, 50);
+        return data.data;
       }
     })
     .catch(error => {
-      // Ignorer les erreurs - cette API pourrait ne pas être disponible
       console.log("Distribution des ressources non disponible");
     });
-    
-  // Mettre à jour les timestamps
-  updateTimestamps();
+  
+  requests.push(resourceDistPromise);
+  
+  // Attendre que toutes les requêtes soient terminées
+  Promise.all(requests)
+    .then(() => {
+      // Mettre à jour les timestamps
+      updateTimestamps();
+    })
+    .catch(error => {
+      console.error("Erreur lors de la mise à jour des graphiques:", error);
+    });
 }
 
 // Mise à jour des compteurs du tableau de bord
@@ -481,82 +503,142 @@ function createResourceDistChart() {
   });
 }
 
+// Variable pour suivre la dernière mise à jour du graphique de distribution des ressources
+let lastResourceDistUpdate = 0;
+let pendingResourceUpdate = null;
+
 function updateResourceDistChart(resourceData) {
   if (!charts.resourceDist) return;
+  
+  // Protection contre les mises à jour trop fréquentes ou simultanées
+  const now = Date.now();
+  if (now - lastResourceDistUpdate < 500) {
+    // Si une mise à jour est déjà en attente, l'annuler
+    if (pendingResourceUpdate) {
+      clearTimeout(pendingResourceUpdate);
+    }
+    
+    // Programmer une mise à jour différée
+    pendingResourceUpdate = setTimeout(() => {
+      updateResourceDistChart(resourceData);
+      pendingResourceUpdate = null;
+    }, 500);
+    
+    return;
+  }
+  
+  // Marquer cette mise à jour
+  lastResourceDistUpdate = now;
   
   const chartContainer = document.getElementById('resourceDistChartContainer');
   const noDataMessage = document.getElementById('resourceDistNoData');
   const ctx = document.getElementById('resourceDistChart');
   
-  // Détruire l'ancien graphique
-  charts.resourceDist.destroy();
+  if (!ctx) return; // Ne pas continuer si l'élément n'existe pas
   
-  // Vérifier si nous avons des données réelles
-  if (resourceData && resourceData.length > 0) {
-    // Afficher le graphique, masquer le message
-    if (chartContainer) chartContainer.style.display = 'block';
-    if (noDataMessage) noDataMessage.style.display = 'none';
+  try {
+    // Détruire l'ancien graphique s'il existe
+    if (charts.resourceDist) {
+      charts.resourceDist.destroy();
+    }
     
-    // Préparer les données
-    const labels = resourceData.map(item => item.name);
-    const values = resourceData.map(item => item.count);
-    
-    // Création du graphique
-    charts.resourceDist = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Distribution ressources',
-          data: values,
-          backgroundColor: colors.redGradient,
-          borderColor: colors.redGradientBorders,
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              font: {
-                size: 11
+    // Vérifier si nous avons des données réelles
+    if (resourceData && resourceData.length > 0) {
+      // Afficher le graphique, masquer le message
+      if (chartContainer) chartContainer.style.display = 'block';
+      if (noDataMessage) noDataMessage.style.display = 'none';
+      
+      // Préparer les données
+      const labels = resourceData.map(item => item.name);
+      const values = resourceData.map(item => item.count);
+      
+      // Création du graphique
+      charts.resourceDist = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Distribution ressources',
+            data: values,
+            backgroundColor: colors.redGradient,
+            borderColor: colors.redGradientBorders,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: {
+                  size: 11
+                }
               }
             }
           }
         }
-      }
-    });
-  } else {
-    // Pas de données - afficher le message
-    if (chartContainer) chartContainer.style.display = 'none';
-    if (noDataMessage) noDataMessage.style.display = 'flex';
-    
-    // Créer un graphique vide (invisible)
-    charts.resourceDist = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['Pas de données'],
-        datasets: [{
-          label: 'Distribution ressources',
-          data: [1],
-          backgroundColor: ['rgba(200,200,200,0.5)'],
-          borderColor: ['rgba(200,200,200,1)'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
+      });
+    } else {
+      // Pas de données - afficher le message
+      if (chartContainer) chartContainer.style.display = 'none';
+      if (noDataMessage) noDataMessage.style.display = 'flex';
+      
+      // Créer un graphique vide (invisible)
+      charts.resourceDist = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Pas de données'],
+          datasets: [{
+            label: 'Distribution ressources',
+            data: [1],
+            backgroundColor: ['rgba(200,200,200,0.5)'],
+            borderColor: ['rgba(200,200,200,1)'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
           }
         }
-      }
-    });
+      });
+    }
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du graphique de distribution des ressources:", error);
+    // Essayer de restaurer un graphique vide en cas d'erreur
+    try {
+      if (chartContainer) chartContainer.style.display = 'none';
+      if (noDataMessage) noDataMessage.style.display = 'flex';
+      
+      charts.resourceDist = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Erreur'],
+          datasets: [{
+            data: [1],
+            backgroundColor: ['rgba(200,60,60,0.2)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    } catch (e) {
+      console.error("Échec de la récupération après erreur:", e);
+    }
   }
 }
 
