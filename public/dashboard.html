@@ -1835,7 +1835,11 @@
                   }]
                 },
                 options: {
-                  ...commonOptions,
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  animation: {
+                    duration: 800
+                  },
                   scales: {
                     y: {
                       beginAtZero: true,
@@ -1845,7 +1849,10 @@
                     }
                   },
                   plugins: {
-                    ...commonOptions.plugins,
+                    legend: {
+                      display: true,
+                      position: 'top'
+                    },
                     title: {
                       display: false
                     }
