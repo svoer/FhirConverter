@@ -354,18 +354,21 @@
       }
       
       // Gérer le clic sur le bouton Annuler
-      cancelResetBtn.addEventListener('click', function() {
-        resetConfirmModal.style.display = 'none';
-      });
-        
-        // Gérer le clic en dehors de la boîte de dialogue
-        window.addEventListener('click', function(event) {
-          if (event.target === resetConfirmModal) {
-            resetConfirmModal.style.display = 'none';
-          }
+      if (cancelResetBtn) {
+        cancelResetBtn.addEventListener('click', function() {
+          resetConfirmModal.style.display = 'none';
         });
-        
-        // Gérer le clic sur le bouton Confirmer
+      }
+      
+      // Gérer le clic en dehors de la boîte de dialogue
+      window.addEventListener('click', function(event) {
+        if (event.target === resetConfirmModal) {
+          resetConfirmModal.style.display = 'none';
+        }
+      });
+      
+      // Gérer le clic sur le bouton Confirmer
+      if (confirmResetBtn) {
         confirmResetBtn.addEventListener('click', function() {
           // Fermer la boîte de dialogue
           resetConfirmModal.style.display = 'none';
@@ -1313,6 +1316,13 @@
       });
     }
     
+    // Variables globales pour les graphiques (accessibles pour la réinitialisation)
+    window.memoryChart = null;
+    window.conversionTrendChart = null;
+    window.resourceDistChart = null;
+    window.successRateChart = null;
+    window.messageTypesChart = null;
+    
     function initCharts() {
       // Destruction des graphiques existants si présents
       ['memoryChart', 'conversionTrendChart', 'resourceDistChart', 'successRateChart', 'messageTypesChart'].forEach(chartId => {
@@ -1440,19 +1450,19 @@
       };
       
       // Créer les graphiques
-      new Chart(document.getElementById('memoryChart'), {
+      window.memoryChart = new Chart(document.getElementById('memoryChart'), {
         type: 'line',
         data: memoryData,
         options: commonOptions
       });
       
-      new Chart(document.getElementById('conversionTrendChart'), {
+      window.conversionTrendChart = new Chart(document.getElementById('conversionTrendChart'), {
         type: 'line',
         data: conversionTrendData,
         options: commonOptions
       });
       
-      new Chart(document.getElementById('resourceDistChart'), {
+      window.resourceDistChart = new Chart(document.getElementById('resourceDistChart'), {
         type: 'pie',
         data: resourceDistData,
         options: {
@@ -1470,7 +1480,7 @@
         }
       });
       
-      new Chart(document.getElementById('successRateChart'), {
+      window.successRateChart = new Chart(document.getElementById('successRateChart'), {
         type: 'doughnut',
         data: successRateData,
         options: {
@@ -1489,7 +1499,7 @@
         }
       });
       
-      new Chart(document.getElementById('messageTypesChart'), {
+      window.messageTypesChart = new Chart(document.getElementById('messageTypesChart'), {
         type: 'bar',
         data: messageTypesData,
         options: {
