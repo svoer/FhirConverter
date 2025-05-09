@@ -347,7 +347,7 @@ function updateTopMetrics(data) {
   const successRateElement = document.querySelector('#successRate .counter');
   if (successRateElement) {
     // Dans le contexte actuel, toutes les conversions sont considérées comme réussies (100%)
-    successRateElement.textContent = '100%';
+    successRateElement.textContent = '100';
   }
 }
 
